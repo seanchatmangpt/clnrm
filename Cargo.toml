@@ -54,13 +54,17 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Container dependencies (required)
 testcontainers = { version = "0.25", features = ["blocking"] }
-testcontainers-modules = "0.13"
+testcontainers-modules = { version = "0.13", features = ["surrealdb"] }
 futures-util = "0.3"
+surrealdb = "2.2"
 clap = { version = "4.5.49", features = ["derive"] }
 env_logger = "0.11.8"
 log = "0.4.28"
 toml = "0.9"
 regex = "1.0"
+tempfile = "3.0"
+junit-report = "0.8"
+notify = "6.0"
 
 [dev-dependencies]
 assert_cmd = "2"

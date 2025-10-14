@@ -9,6 +9,8 @@ use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use std::future::Future;
+use std::pin::Pin;
 
 /// Jane-friendly test macro that handles all the boilerplate
 ///
@@ -37,10 +39,13 @@ macro_rules! cleanroom_test {
     ($(#[$meta:meta])* $vis:vis async fn $name:ident() $body:block) => {
         $(#[$meta])*
         #[tokio::test]
-        $vis async fn $name() {
+        $vis async fn $name() -> Result<(), $crate::error::CleanroomError> {
             // Initialize cleanroom environment
             let env = $crate::cleanroom::CleanroomEnvironment::new().await
-                .expect("Failed to create cleanroom environment");
+                .map_err(|e| $crate::error::CleanroomError::internal_error("Failed to create cleanroom environment")
+                    .with_context("Cleanroom environment initialization failed")
+                    .with_source(e.to_string())
+                )?;
             
             // Set up test context
             let mut test_context = $crate::macros::TestContext::new(env);
@@ -54,6 +59,7 @@ macro_rules! cleanroom_test {
             match result {
                 Ok(_) => {
                     println!("✅ Test '{}' passed", stringify!($name));
+                    Ok(())
                 }
                 Err(e) => {
                     eprintln!("❌ Test '{}' failed: {}", stringify!($name), e);
@@ -61,7 +67,7 @@ macro_rules! cleanroom_test {
                     eprintln!("   - Check if required Docker images are available");
                     eprintln!("   - Verify services are running correctly");
                     eprintln!("   - Check container logs for more details");
-                    panic!("Test failed: {}", e);
+                    Err(e)
                 }
             }
         }
@@ -202,24 +208,28 @@ impl ServicePlugin for DatabaseServicePlugin {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        // In a real implementation, this would start the database container
-        // and return connection details
-        Ok(ServiceHandle {
-            id: format!("db_{}", uuid::Uuid::new_v4()),
-            service_name: self.name.clone(),
-            metadata: HashMap::from([
-                ("type".to_string(), "database".to_string()),
-                ("image".to_string(), self.image.clone()),
-                ("port".to_string(), "5432".to_string()),
-                ("status".to_string(), "running".to_string()),
-            ]),
+    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
+        Box::pin(async move {
+            // In a real implementation, this would start the database container
+            // and return connection details
+            Ok(ServiceHandle {
+                id: format!("db_{}", uuid::Uuid::new_v4()),
+                service_name: self.name.clone(),
+                metadata: HashMap::from([
+                    ("type".to_string(), "database".to_string()),
+                    ("image".to_string(), self.image.clone()),
+                    ("port".to_string(), "5432".to_string()),
+                    ("status".to_string(), "running".to_string()),
+                ]),
+            })
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        // In a real implementation, this would stop the database container
-        Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async move {
+            // In a real implementation, this would stop the database container
+            Ok(())
+        })
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -248,21 +258,25 @@ impl ServicePlugin for CacheServicePlugin {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        Ok(ServiceHandle {
-            id: format!("cache_{}", uuid::Uuid::new_v4()),
-            service_name: self.name.clone(),
-            metadata: HashMap::from([
-                ("type".to_string(), "cache".to_string()),
-                ("image".to_string(), self.image.clone()),
-                ("port".to_string(), "6379".to_string()),
-                ("status".to_string(), "running".to_string()),
-            ]),
+    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(ServiceHandle {
+                id: format!("cache_{}", uuid::Uuid::new_v4()),
+                service_name: self.name.clone(),
+                metadata: HashMap::from([
+                    ("type".to_string(), "cache".to_string()),
+                    ("image".to_string(), self.image.clone()),
+                    ("port".to_string(), "6379".to_string()),
+                    ("status".to_string(), "running".to_string()),
+                ]),
+            })
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(())
+        })
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -290,21 +304,25 @@ impl ServicePlugin for MessageQueueServicePlugin {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        Ok(ServiceHandle {
-            id: format!("mq_{}", uuid::Uuid::new_v4()),
-            service_name: self.name.clone(),
-            metadata: HashMap::from([
-                ("type".to_string(), "message_queue".to_string()),
-                ("image".to_string(), self.image.clone()),
-                ("port".to_string(), "5672".to_string()),
-                ("status".to_string(), "running".to_string()),
-            ]),
+    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(ServiceHandle {
+                id: format!("mq_{}", uuid::Uuid::new_v4()),
+                service_name: self.name.clone(),
+                metadata: HashMap::from([
+                    ("type".to_string(), "message_queue".to_string()),
+                    ("image".to_string(), self.image.clone()),
+                    ("port".to_string(), "5672".to_string()),
+                    ("status".to_string(), "running".to_string()),
+                ]),
+            })
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(())
+        })
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -332,21 +350,25 @@ impl ServicePlugin for WebServerServicePlugin {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        Ok(ServiceHandle {
-            id: format!("web_{}", uuid::Uuid::new_v4()),
-            service_name: self.name.clone(),
-            metadata: HashMap::from([
-                ("type".to_string(), "web_server".to_string()),
-                ("image".to_string(), self.image.clone()),
-                ("port".to_string(), "8080".to_string()),
-                ("status".to_string(), "running".to_string()),
-            ]),
+    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(ServiceHandle {
+                id: format!("web_{}", uuid::Uuid::new_v4()),
+                service_name: self.name.clone(),
+                metadata: HashMap::from([
+                    ("type".to_string(), "web_server".to_string()),
+                    ("image".to_string(), self.image.clone()),
+                    ("port".to_string(), "8080".to_string()),
+                    ("status".to_string(), "running".to_string()),
+                ]),
+            })
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(())
+        })
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -356,7 +378,7 @@ impl ServicePlugin for WebServerServicePlugin {
 
 /// Jane-friendly service setup functions
 /// These provide the simple, declarative API that Jane wants
-
+///
 /// Set up a database service with the specified image
 pub async fn with_database(image: &str) -> Result<()> {
     // This would be called from within the cleanroom_test macro

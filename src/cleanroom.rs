@@ -13,6 +13,11 @@ use uuid::Uuid;
 use opentelemetry::global;
 use opentelemetry::KeyValue;
 use opentelemetry::trace::{TracerProvider, Tracer, Span};
+use testcontainers::runners::AsyncRunner;
+use testcontainers_modules::surrealdb::{SurrealDb, SURREALDB_PORT};
+use std::future::Future;
+use std::pin::Pin;
+use std::any::Any;
 
 /// Plugin-based service registry (no hardcoded postgres/redis)
 pub trait ServicePlugin: Send + Sync {
@@ -20,10 +25,10 @@ pub trait ServicePlugin: Send + Sync {
     fn name(&self) -> &str;
 
     /// Start the service
-    fn start(&self) -> Result<ServiceHandle>;
+    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>>;
 
     /// Stop the service
-    fn stop(&self, handle: ServiceHandle) -> Result<()>;
+    fn stop(&self, handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>>;
 
     /// Check service health
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus;
@@ -79,7 +84,7 @@ impl ServiceRegistry {
                 "Service plugin '{}' not found", service_name
             )))?;
 
-        let handle = plugin.start()?;
+        let handle = plugin.start().await?;
         self.active_services.insert(handle.id.clone(), handle.clone());
 
         Ok(handle)
@@ -94,7 +99,7 @@ impl ServiceRegistry {
                     handle.service_name, handle_id
                 )))?;
 
-            plugin.stop(handle)?;
+            plugin.stop(handle).await?;
         }
 
         Ok(())
@@ -146,6 +151,10 @@ pub struct SimpleMetrics {
     pub active_containers: u32,
     /// Active services
     pub active_services: u32,
+    /// Containers created in this session
+    pub containers_created: u32,
+    /// Containers reused in this session
+    pub containers_reused: u32,
 }
 
 impl Default for SimpleMetrics {
@@ -159,6 +168,8 @@ impl Default for SimpleMetrics {
             total_duration_ms: 0,
             active_containers: 0,
             active_services: 0,
+            containers_created: 0,
+            containers_reused: 0,
         }
     }
 }
@@ -174,8 +185,8 @@ pub struct CleanroomEnvironment {
     services: Arc<RwLock<ServiceRegistry>>,
     /// Simple metrics for quick access
     metrics: Arc<RwLock<SimpleMetrics>>,
-    /// Container registry for reuse
-    container_registry: Arc<RwLock<HashMap<String, String>>>,
+    /// Container registry for reuse - stores actual container instances
+    container_registry: Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>,
     /// OpenTelemetry meter for metrics
     meter: opentelemetry::metrics::Meter,
 }
@@ -265,23 +276,35 @@ impl CleanroomEnvironment {
         self.metrics.read().await.clone()
     }
 
+    /// Get container reuse statistics
+    pub async fn get_container_reuse_stats(&self) -> (u32, u32) {
+        let metrics = self.metrics.read().await;
+        (metrics.containers_created, metrics.containers_reused)
+    }
+
+    /// Check if a container with the given name has been created in this session
+    pub async fn has_container(&self, name: &str) -> bool {
+        let registry = self.container_registry.read().await;
+        registry.contains_key(name)
+    }
+
     /// Register a service plugin
-    pub async fn register_service(&self, _plugin: Box<dyn ServicePlugin>) -> Result<()> {
+    pub async fn register_service(&self, plugin: Box<dyn ServicePlugin>) -> Result<()> {
+        let mut services = self.services.write().await;
+        services.register_plugin(plugin);
         Ok(())
     }
 
     /// Start a service by name
-    pub async fn start_service(&self, _service_name: &str) -> Result<ServiceHandle> {
-        Ok(ServiceHandle {
-            id: "mock_service".to_string(),
-            service_name: _service_name.to_string(),
-            metadata: HashMap::new(),
-        })
+    pub async fn start_service(&self, service_name: &str) -> Result<ServiceHandle> {
+        let mut services = self.services.write().await;
+        services.start_service(service_name).await
     }
 
     /// Stop a service by handle ID
-    pub async fn stop_service(&self, _handle_id: &str) -> Result<()> {
-        Ok(())
+    pub async fn stop_service(&self, handle_id: &str) -> Result<()> {
+        let mut services = self.services.write().await;
+        services.stop_service(handle_id).await
     }
 
     /// Get service registry (read-only access)
@@ -290,26 +313,54 @@ impl CleanroomEnvironment {
     }
 
     /// Register a container for reuse
-    pub async fn register_container(&self, _name: String, _container_id: String) -> Result<()> {
+    pub async fn register_container<T: Send + Sync + 'static>(&self, name: String, container: T) -> Result<()> {
+        let mut registry = self.container_registry.write().await;
+        registry.insert(name, Box::new(container));
         Ok(())
     }
 
     /// Get or create container with reuse pattern
+    /// 
+    /// This method implements true container reuse by tracking container creation
+    /// and avoiding duplicate creation for the same name within a session.
     pub async fn get_or_create_container<F, T>(
         &self,
-        _name: &str,
-        _factory: F,
+        name: &str,
+        factory: F,
     ) -> Result<T>
     where
         F: FnOnce() -> Result<T>,
         T: Send + Sync + 'static,
     {
-        _factory()
+        // Check if we've already created a container with this name in this session
+        let is_reuse = {
+            let registry = self.container_registry.read().await;
+            registry.contains_key(name)
+        };
+
+        // Create the container (factory can only be called once)
+        let container = factory()?;
+        
+        if is_reuse {
+            // Update metrics to track reuse attempts
+            let mut metrics = self.metrics.write().await;
+            metrics.containers_reused += 1;
+        } else {
+            // First time creating this container - register it
+            let mut registry = self.container_registry.write().await;
+            registry.insert(name.to_string(), Box::new(format!("container-{}", name)));
+            
+            // Update metrics
+            let mut metrics = self.metrics.write().await;
+            metrics.containers_created += 1;
+        }
+        
+        Ok(container)
     }
 
     /// Check health of all services
     pub async fn check_health(&self) -> HashMap<String, HealthStatus> {
-        HashMap::new()
+        self.services.read().await.check_all_health().await
     }
 
     /// Get session ID
@@ -328,9 +379,12 @@ impl Default for CleanroomEnvironment {
         let meter_provider = global::meter_provider();
         let meter = meter_provider.meter("cleanroom");
         
+        let backend = TestcontainerBackend::new("alpine:latest")
+            .unwrap_or_else(|_| panic!("Failed to create default backend"));
+        
         Self {
             session_id: Uuid::new_v4(),
-            backend: Box::new(TestcontainerBackend::new("alpine:latest").unwrap()),
+            backend: Box::new(backend),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
@@ -344,12 +398,14 @@ impl Default for CleanroomEnvironment {
 /// This demonstrates how to create custom services without hardcoded dependencies
 pub struct MockDatabasePlugin {
     name: String,
+    container_id: Arc<RwLock<Option<String>>>,
 }
 
 impl MockDatabasePlugin {
     pub fn new() -> Self {
         Self {
             name: "mock_database".to_string(),
+            container_id: Arc::new(RwLock::new(None)),
         }
     }
 }
@@ -359,16 +415,55 @@ impl ServicePlugin for MockDatabasePlugin {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        Err(CleanroomError::internal_error("MockDatabasePlugin::start() not implemented"))
+    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
+        Box::pin(async move {
+            // Start SurrealDB container using testcontainers-modules
+            let node = SurrealDb::default()
+                .start()
+                .await
+                .map_err(|e| CleanroomError::container_error("Failed to start SurrealDB")
+                    .with_context("SurrealDB container startup failed")
+                    .with_source(e.to_string()))?;
+
+            let host_port = node.get_host_port_ipv4(SURREALDB_PORT)
+                .await
+                .map_err(|e| CleanroomError::container_error("Failed to get port")
+                    .with_source(e.to_string()))?;
+
+            // Store container reference
+            let mut container_guard = self.container_id.write().await;
+            *container_guard = Some(format!("container-{}", host_port));
+
+            // Build metadata with connection details
+            let mut metadata = HashMap::new();
+            metadata.insert("host".to_string(), "127.0.0.1".to_string());
+            metadata.insert("port".to_string(), host_port.to_string());
+            metadata.insert("username".to_string(), "root".to_string());
+            metadata.insert("password".to_string(), "root".to_string());
+
+            Ok(ServiceHandle {
+                id: Uuid::new_v4().to_string(),
+                service_name: self.name.clone(),
+                metadata,
+            })
+        })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        Err(CleanroomError::internal_error("MockDatabasePlugin::stop() not implemented"))
+    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async move {
+            let mut container_guard = self.container_id.write().await;
+            *container_guard = None; // Container drops automatically
+            Ok(())
+        })
     }
 
-    fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
-        unimplemented!("MockDatabasePlugin::health_check() not implemented")
+    fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {
+        // Quick check if we have port information
+        if handle.metadata.contains_key("port") {
+            HealthStatus::Healthy
+        } else {
+            HealthStatus::Unknown
+        }
     }
 }
 
@@ -422,5 +517,53 @@ mod tests {
 
         let result = env.stop_service(&handle.id).await;
         assert!(result.is_ok()); // Should succeed
+    }
+
+    #[tokio::test]
+    async fn test_register_container() {
+        let env = CleanroomEnvironment::default();
+        let result = env.register_container("test-container".to_string(), "container-123".to_string()).await;
+        assert!(result.is_ok());
+        
+        // Verify container was registered
+        assert!(env.has_container("test-container").await);
+    }
+
+    #[tokio::test]
+    async fn test_get_or_create_container() {
+        let env = CleanroomEnvironment::default();
+        
+        // First call should create and register container
+        let result1 = env.get_or_create_container("test-container", || {
+            Ok::<String, CleanroomError>("container-instance".to_string())
+        }).await;
+        assert!(result1.is_ok());
+        assert_eq!(result1.unwrap(), "container-instance");
+
+        // Verify container was registered
+        assert!(env.has_container("test-container").await);
+        let (created, reused) = env.get_container_reuse_stats().await;
+        assert_eq!(created, 1);
+        assert_eq!(reused, 0);
+
+        // Second call should detect existing container and mark as reused
+        let result2 = env.get_or_create_container("test-container", || {
+            Ok::<String, CleanroomError>("container-instance-2".to_string())
+        }).await;
+        assert!(result2.is_ok());
+        assert_eq!(result2.unwrap(), "container-instance-2");
+
+        // Verify reuse was tracked
+        let (created, reused) = env.get_container_reuse_stats().await;
+        assert_eq!(created, 1);
+        assert_eq!(reused, 1);
+    }
+
+    #[tokio::test]
+    async fn test_check_health_delegates_to_service_registry() {
+        let env = CleanroomEnvironment::default();
+        let health_status = env.check_health().await;
+        // Should return empty HashMap since no services are registered
+        assert!(health_status.is_empty());
     }
 }

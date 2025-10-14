@@ -2,24 +2,40 @@
 
 ## 🎯 Error Handling Best Practices
 
-### ❌ Avoid unwrap() calls in production code
+### ❌ NEVER use unwrap() or expect() in production code
 ```rust
 // ❌ Bad: Using unwrap() - can cause panics
 let result = some_operation().unwrap();
 
-// ✅ Good: Proper error handling
-let result = some_operation()?;
-```
-
-### ❌ Avoid expect() calls in production code
-```rust
-// ❌ Bad: Using expect() - can cause panics
+// ❌ Bad: Using expect() - can cause panics  
 let result = some_operation().expect("This should not fail");
 
+// ❌ Bad: Even in Default implementations
+impl Default for MyStruct {
+    fn default() -> Self {
+        Self {
+            backend: SomeOperation::new().unwrap(), // NEVER DO THIS!
+        }
+    }
+}
+
 // ✅ Good: Proper error handling
+let result = some_operation()?;
+
+// ✅ Good: Proper error handling with context
 let result = some_operation().map_err(|e| {
     CleanroomError::internal_error(format!("Operation failed: {}", e))
 })?;
+
+// ✅ Good: Default implementations with proper error handling
+impl Default for MyStruct {
+    fn default() -> Self {
+        Self {
+            backend: SomeOperation::new()
+                .unwrap_or_else(|_| panic!("Failed to create default backend")),
+        }
+    }
+}
 ```
 
 ### ✅ Use structured error types with context
@@ -35,6 +51,34 @@ fn my_function() -> Result<MyType, CleanroomError> {
 ```
 
 ## 🔄 Async/Sync Best Practices
+
+### ❌ NEVER make trait methods async - breaks dyn compatibility
+```rust
+// ❌ Bad: Async trait methods break dyn compatibility
+pub trait ServicePlugin: Send + Sync {
+    async fn start(&self) -> Result<ServiceHandle>; // BREAKS dyn ServicePlugin!
+    async fn stop(&self, handle: ServiceHandle) -> Result<()>; // BREAKS dyn ServicePlugin!
+}
+
+// ✅ Good: Keep trait methods sync, use async in implementations
+pub trait ServicePlugin: Send + Sync {
+    fn start(&self) -> Result<ServiceHandle>; // dyn compatible
+    fn stop(&self, handle: ServiceHandle) -> Result<()>; // dyn compatible
+}
+
+// Implementation can still be async internally
+impl ServicePlugin for MyPlugin {
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                // Async operations here
+                Ok(ServiceHandle::new())
+            })
+        })
+    }
+}
+```
 
 ### ✅ Use async for I/O and long-running operations
 ```rust
@@ -195,6 +239,23 @@ fn process_data() -> Result<(), CleanroomError> {
 }
 ```
 
+### ❌ NEVER use unwrap() or expect() anywhere in production code
+```rust
+// ❌ Bad: Even in tests, avoid unwrap() in production code paths
+#[test]
+fn test_something() {
+    let result = production_function().unwrap(); // Don't do this!
+}
+
+// ✅ Good: Use proper error handling even in tests
+#[test]
+fn test_something() -> Result<(), CleanroomError> {
+    let result = production_function()?; // Proper error handling
+    assert_eq!(result, expected_value);
+    Ok(())
+}
+```
+
 ### ❌ Avoid hardcoded dependencies and magic numbers
 ```rust
 // ❌ Bad: Hardcoded values
@@ -248,18 +309,72 @@ pub struct TaskQueue {
 }
 ```
 
+## 🚫 Breaking Changes and Compatibility
+
+### ❌ NEVER make breaking changes without migration plan
+```rust
+// ❌ Bad: Changing trait signatures breaks all implementations
+pub trait ServicePlugin: Send + Sync {
+    fn start(&self) -> Result<ServiceHandle>; // Original
+    // Later changed to:
+    async fn start(&self) -> Result<ServiceHandle>; // BREAKS ALL IMPLEMENTATIONS!
+}
+
+// ✅ Good: Add new methods, deprecate old ones
+pub trait ServicePlugin: Send + Sync {
+    fn start(&self) -> Result<ServiceHandle>; // Keep for compatibility
+    
+    #[deprecated(note = "Use start_async instead")]
+    fn start_async(&self) -> impl Future<Output = Result<ServiceHandle>>; // New async version
+}
+```
+
+### ✅ Always maintain backward compatibility
+- Add new methods instead of changing existing ones
+- Use deprecation warnings for old methods
+- Provide migration guides for breaking changes
+- Test all existing implementations still work
+
 ## 🎯 Core Team Standards Summary
 
 1. **Error Handling**: Never use `.unwrap()` or `.expect()` in production code. Always use proper `Result<T, E>` types with meaningful error messages and context.
 
-2. **Async/Sync**: Use `async` for I/O, network, and long-running operations. Use `sync` for pure computation and simple operations.
+2. **Async/Sync**: Use `async` for I/O, network, and long-running operations. Use `sync` for pure computation and simple operations. **NEVER make trait methods async** - breaks dyn compatibility.
 
-3. **Testing**: Follow AAA pattern, use descriptive names, proper async test functions, and avoid external dependencies in unit tests.
+3. **Trait Design**: Keep traits `dyn` compatible. Use sync methods in traits, implement async internally if needed.
 
-4. **Code Quality**: No printing/logging in production code, proper module organization, avoid wildcard imports, use structured error types.
+4. **Breaking Changes**: Never make breaking changes without migration plan. Maintain backward compatibility.
 
-5. **Security**: Proper error handling that doesn't leak internal implementation details, validate all inputs.
+5. **Testing**: Follow AAA pattern, use descriptive names, proper async test functions, and avoid external dependencies in unit tests.
 
-6. **Performance**: Use appropriate data structures, avoid unnecessary allocations, consider algorithmic complexity.
+6. **Code Quality**: No printing/logging in production code, proper module organization, avoid wildcard imports, use structured error types.
+
+7. **Security**: Proper error handling that doesn't leak internal implementation details, validate all inputs.
+
+8. **Performance**: Use appropriate data structures, avoid unnecessary allocations, consider algorithmic complexity.
 
 These rules ensure FAANG-level code quality, reliability, and maintainability while following the core team's established patterns and best practices.
+
+## ✅ Definition of Done - Core Team Standards
+
+### Before any code is considered complete, ALL of these must be true:
+
+1. **✅ Compilation**: Code compiles without errors or warnings
+2. **✅ No unwrap()/expect()**: Zero usage of unwrap() or expect() in production code
+3. **✅ Trait Compatibility**: All traits remain `dyn` compatible (no async trait methods)
+4. **✅ Backward Compatibility**: No breaking changes without migration plan
+5. **✅ All Tests Pass**: Every test in the codebase passes
+6. **✅ No Linting Errors**: Zero linting errors or warnings
+7. **✅ Proper Error Handling**: All functions use Result types with meaningful errors
+8. **✅ Async/Sync Patterns**: Proper use of async for I/O, sync for computation
+
+### Validation Checklist:
+- [ ] `cargo test` passes completely
+- [ ] `cargo clippy` shows no warnings
+- [ ] No `unwrap()` or `expect()` in production code
+- [ ] All traits are `dyn` compatible
+- [ ] No breaking changes to public APIs
+- [ ] All error paths use proper Result types
+- [ ] Async operations use proper async/await patterns
+
+### If ANY of these fail, the code is NOT ready for production.

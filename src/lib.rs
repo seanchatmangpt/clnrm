@@ -18,6 +18,7 @@ pub mod utils;
 pub mod telemetry;
 pub mod macros;
 pub mod assertions;
+pub mod services;
 
 pub use error::CleanroomError;
 pub use policy::{Policy, SecurityLevel, SecurityPolicy};
@@ -29,6 +30,7 @@ pub use telemetry::{OtelConfig, Export, OtelGuard};
 pub use cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, ServiceRegistry, HealthStatus};
 pub use macros::{with_database, with_cache, with_message_queue, with_web_server};
 pub use assertions::{database, cache, email_service, UserAssertions};
+// pub use services::surrealdb::SurrealDbPlugin; // Temporarily disabled
 
 /// Result of a cleanroom run
 #[derive(Debug)]

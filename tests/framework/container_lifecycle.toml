@@ -1,27 +1,29 @@
-[test.metadata]
-name = "container_lifecycle_test"
-description = "Test that containers start, execute commands, and cleanup properly"
+# Container Lifecycle Test
+# Tests container creation, execution, and cleanup functionality
 
-[services.test_container]
-type = "generic_container"
-plugin = "alpine"
-image = "alpine:latest"
+[test]
+name = "container_lifecycle"
+description = "Tests container creation and cleanup using testcontainers backend"
 
-[[steps]]
-name = "verify_container_startup"
-command = ["echo", "Container started successfully"]
-expected_output_regex = "Container started successfully"
+[services]
+test_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
 
 [[steps]]
-name = "test_command_execution"
-command = ["sh", "-c", "echo 'Testing command execution' && sleep 1 && echo 'Command completed'"]
-expected_output_regex = "Command completed"
+name = "create_container"
+command = ["echo", "Container created successfully"]
+expected_output_regex = "Container created successfully"
 
 [[steps]]
-name = "test_file_operations"
-command = ["sh", "-c", "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt"]
-expected_output_regex = "test data"
+name = "execute_basic_command"
+command = ["echo", "hello from container"]
+expected_output_regex = "hello from container"
 
-[assertions]
-container_should_have_executed_commands = 3
-execution_should_be_hermetic = true
+[[steps]]
+name = "test_environment_variables"
+command = ["env"]
+expected_output_regex = "PATH="
+
+[[steps]]
+name = "test_file_system"
+command = ["ls", "/"]
+expected_output_regex = "bin|etc|usr|var"

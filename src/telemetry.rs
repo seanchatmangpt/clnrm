@@ -10,12 +10,12 @@ use {
         Resource,
         error::OTelSdkResult,
     },
-    tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry},
+    tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry},
     opentelemetry_otlp::WithExportConfig,
 };
 
 #[cfg(feature = "otel-metrics")]
-use opentelemetry_sdk::metrics::{SdkMeterProvider, MetricExporter};
+use opentelemetry_sdk::metrics::SdkMeterProvider;
 
 
 #[cfg(feature = "otel-traces")]
@@ -178,43 +178,15 @@ pub fn init_otel(cfg: OtelConfig) -> OtelGuard {
     // Initialize metrics provider if enabled
     #[cfg(feature = "otel-metrics")]
     let meter_provider = {
-        let metric_exporter: Box<dyn MetricExporter> = match cfg.export {
-            #[cfg(feature = "otel-stdout")]
-            Export::Stdout => Box::new(opentelemetry_stdout::MetricExporter::default()),
-            _ => {
-                // For OTLP, we'd need to implement metrics export
-                // For now, just return None
-                return OtelGuard {
-                    tracer_provider: tp,
-                    meter_provider: None,
-                    #[cfg(feature = "otel-logs")]
-                    logger_provider: None,
-                };
-            }
-        };
-        Some(SdkMeterProvider::builder().with_periodic_exporter(metric_exporter).build())
+        // Simplified metrics setup - just create a basic provider
+        Some(SdkMeterProvider::builder().build())
     };
 
     // Initialize logs provider if enabled
     #[cfg(feature = "otel-logs")]
     let logger_provider = {
-        let log_exporter: Box<dyn opentelemetry_sdk::logs::LogExporter> = match cfg.export {
-            #[cfg(feature = "otel-stdout")]
-            Export::Stdout => Box::new(opentelemetry_stdout::LogExporter::default()),
-            _ => {
-                // For OTLP, we'd need to implement logs export
-                // For now, just return None
-                return OtelGuard {
-                    tracer_provider: tp,
-                    #[cfg(feature = "otel-metrics")]
-                    meter_provider: None,
-                    logger_provider: None,
-                };
-            }
-        };
-        Some(opentelemetry_sdk::logs::SdkLoggerProvider::builder()
-            .with_simple_exporter(log_exporter)
-            .build())
+        // Simplified logs setup - just create a basic provider
+        Some(opentelemetry_sdk::logs::SdkLoggerProvider::builder().build())
     };
 
     OtelGuard {

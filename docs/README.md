@@ -12,14 +12,14 @@ Cleanroom is a **framework self-testing platform** that enables reliable, hermet
 
 ### 🚀 Key Features
 
-- **🔒 Hermetic Isolation** - Complete isolation from host system and other tests
-- **📦 Plugin-Based Architecture** - Extensible service system for any technology
-- **⚡ Container Reuse** - 10-50x performance improvement through singleton containers
-- **📊 Built-in Observability** - Automatic tracing and metrics collection
-- **🎛️ Professional CLI** - Feature-rich command-line interface
-- **📋 TOML Configuration** - Declarative test definitions without code
-- **🔍 Regex Validation** - Pattern matching in container output
-- **✅ Rich Assertions** - Domain-specific validation helpers
+- **🔒 Hermetic Isolation** ✅ - Complete isolation from host system and other tests
+- **📦 Plugin-Based Architecture** ✅ - Extensible service system for any technology
+- **⚡ Container Reuse** ✅ - Singleton pattern with session-based tracking
+- **📊 Built-in Observability** ✅ - Automatic tracing and metrics collection
+- **🎛️ Professional CLI** ✅ - Feature-rich command-line interface
+- **📋 TOML Configuration** ⚠️ - Declarative test definitions (validation in progress)
+- **🔍 Regex Validation** ⚠️ - Pattern matching in container output (in development)
+- **✅ Rich Assertions** ⚠️ - Domain-specific validation helpers (in development)
 
 ## 📦 Installation
 
@@ -309,14 +309,31 @@ Cleanroom demonstrates its reliability by testing itself:
 ## 🚀 Performance
 
 ### **Container Reuse Benefits**
-- **First run**: Creates new containers (30-60s for complex services)
-- **Subsequent runs**: Reuses existing containers (2-5ms)
-- **Overall improvement**: **10-50x faster test execution**
+- **Session-based tracking**: Containers are tracked per session to avoid duplicates
+- **Metrics collection**: Automatic tracking of containers created vs reused
+- **Performance optimization**: Reduces redundant container creation within sessions
+- **Memory efficient**: Uses type-erased storage for container registry
 
 ### **Parallel Execution**
 - Multiple tests run concurrently for maximum speed
 - Service dependencies automatically resolved
 - Resource limits prevent system overload
+
+## ⚠️ Known Limitations (v0.3.0-alpha)
+
+This is an early alpha release. The following features are under active development:
+
+- **Container Reuse**: ✅ Implemented with session-based tracking and metrics
+- **TOML Validation**: Parser works but has validation edge cases (7 failing tests)
+- **Performance**: Claims like "10-50x faster" not yet benchmarked
+- **Watch Mode**: CLI flag exists but functionality incomplete
+
+**Fully Working Features:**
+- ✅ Plugin system with async trait support
+- ✅ OpenTelemetry observability (tracing & metrics)
+- ✅ Hermetic container isolation
+- ✅ Basic CLI commands (run, init, services)
+- ✅ Service registry and lifecycle management
 
 ## 🔍 Advanced Features
 
@@ -438,7 +455,7 @@ impl MyCustomAssertions {
 
 ## 📊 Version History
 
-### **v0.3.0** (Current)
+### **v0.3.0-alpha** (Current - Early Access)
 - ✅ Complete framework self-testing implementation
 - ✅ Plugin-based service architecture
 - ✅ Container reuse pattern for performance
