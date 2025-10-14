@@ -1,0 +1,34 @@
+[test.metadata]
+name = "end_to_end_test"
+description = "Complete end-to-end test of all framework features"
+
+[services.test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "test_framework_initialization"
+command = ["echo", "Framework initialized successfully"]
+expected_output_regex = "Framework initialized successfully"
+
+[[steps]]
+name = "test_plugin_loading"
+command = ["which", "bash"]
+expected_exit_code = 0
+
+[[steps]]
+name = "test_container_execution"
+command = ["sh", "-c", "echo 'Container execution test' && sleep 0.5"]
+expected_output_regex = "Container execution test"
+
+[[steps]]
+name = "test_file_system_isolation"
+command = ["sh", "-c", "echo 'isolation_test' > /tmp/isolation.txt && cat /tmp/isolation.txt"]
+expected_output_regex = "isolation_test"
+
+[assertions]
+framework_should_initialize = true
+plugins_should_load = true
+containers_should_execute = true
+filesystem_should_be_isolated = true

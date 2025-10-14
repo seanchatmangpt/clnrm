@@ -1,0 +1,26 @@
+[test.metadata]
+name = "cli_functionality_test"
+description = "Test that the CLI tool works correctly"
+
+[[steps]]
+name = "test_cli_help"
+command = ["clnrm", "--help"]
+expected_output_regex = "Cleanroom Testing Platform"
+expected_exit_code = 0
+
+[[steps]]
+name = "test_cli_version"
+command = ["clnrm", "--version"]
+expected_output_regex = "clnrm [0-9]+\\.[0-9]+\\.[0-9]+"
+expected_exit_code = 0
+
+[[steps]]
+name = "test_toml_validation"
+command = ["clnrm", "validate", "tests/framework/container_lifecycle.toml"]
+expected_output_regex = "Configuration is valid"
+expected_exit_code = 0
+
+[assertions]
+cli_should_provide_help = true
+cli_should_show_version = true
+toml_validation_should_work = true

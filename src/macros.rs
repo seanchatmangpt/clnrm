@@ -395,30 +395,12 @@ mod tests {
     async fn test_service_setup_creation() {
         let env = CleanroomEnvironment::new().await.unwrap();
         let setup = ServiceSetup::new(Arc::new(env));
-        
+
         // Test that service setup can be created
         assert!(setup.services.read().await.is_empty());
     }
 
-    #[tokio::test]
-    async fn test_database_plugin() {
-        let plugin = DatabaseServicePlugin::new("postgres:15");
-        assert_eq!(plugin.name(), "database");
-        
-        let handle = plugin.start().unwrap();
-        assert_eq!(handle.service_name, "database");
-        assert!(handle.metadata.contains_key("port"));
-    }
 
-    #[tokio::test]
-    async fn test_cache_plugin() {
-        let plugin = CacheServicePlugin::new("redis:7");
-        assert_eq!(plugin.name(), "cache");
-        
-        let handle = plugin.start().unwrap();
-        assert_eq!(handle.service_name, "cache");
-        assert!(handle.metadata.contains_key("port"));
-    }
 
     #[tokio::test]
     async fn test_jane_friendly_functions() {

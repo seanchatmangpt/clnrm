@@ -61,6 +61,7 @@ impl AssertionContext {
 }
 
 /// Database assertion helpers
+#[allow(dead_code)]
 pub struct DatabaseAssertions {
     service_name: String,
 }
@@ -73,62 +74,117 @@ impl DatabaseAssertions {
         }
     }
 
-    /// Assert that a user exists in the database
-    pub async fn should_have_user(&self, user_id: i64) -> Result<()> {
-        // In a real implementation, this would query the database
-        println!("🔍 Checking if user {} exists in database", user_id);
-        
-        // Mock implementation - in reality this would query the actual database
-        if user_id > 0 {
-            println!("✅ User {} found in database", user_id);
-            Ok(())
-        } else {
-            Err(CleanroomError::validation_error(&format!(
-                "User {} not found in database. Expected user to exist after registration.",
-                user_id
-            )))
+    /// Self-check method to verify assertion framework is working
+    async fn self_check(&self, method_name: &str) -> Result<()> {
+        // Verify service name is set
+        if self.service_name.is_empty() {
+            return Err(CleanroomError::internal_error("DatabaseAssertions service_name is empty"));
         }
+        
+        // Verify method is being called
+        if method_name.is_empty() {
+            return Err(CleanroomError::internal_error("DatabaseAssertions method_name is empty"));
+        }
+        
+        // Framework self-test: This assertion framework is testing itself
+        Ok(())
+    }
+
+    /// Assert that a user exists in the database
+    pub async fn should_have_user(&self, _user_id: i64) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_user").await?;
+        
+        // Get assertion context to check database state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if user exists in test data
+        if let Some(user_data) = context.get_test_data(&format!("user_{}", _user_id)) {
+            if user_data.is_object() {
+                return Ok(());
+            }
+        }
+        
+        Err(CleanroomError::validation_error(&format!(
+            "User {} not found in database", _user_id
+        )))
     }
 
     /// Assert that the database has a specific number of users
-    pub async fn should_have_user_count(&self, expected_count: i64) -> Result<()> {
-        println!("🔍 Checking if database has {} users", expected_count);
+    pub async fn should_have_user_count(&self, _expected_count: i64) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_user_count").await?;
         
-        // Mock implementation - in reality this would count users in the database
-        let actual_count = 1; // This would come from a real database query
+        // Get assertion context to check database state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
         
-        if actual_count == expected_count {
-            println!("✅ Database has {} users as expected", expected_count);
+        // Count users in test data
+        let mut user_count = 0;
+        for (key, _value) in &context.test_data {
+            if key.starts_with("user_") && !key.contains("session") && !key.contains("email") {
+                user_count += 1;
+            }
+        }
+        
+        if user_count == _expected_count {
             Ok(())
         } else {
             Err(CleanroomError::validation_error(&format!(
-                "Database user count mismatch. Expected: {}, Actual: {}. \
-                Check if user registration is working correctly.",
-                expected_count, actual_count
+                "Expected {} users, found {}", _expected_count, user_count
             )))
         }
     }
 
     /// Assert that a table exists
-    pub async fn should_have_table(&self, table_name: &str) -> Result<()> {
-        println!("🔍 Checking if table '{}' exists", table_name);
+    pub async fn should_have_table(&self, _table_name: &str) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_table").await?;
         
-        // Mock implementation - in reality this would check table existence
-        println!("✅ Table '{}' exists", table_name);
-        Ok(())
+        // Get assertion context to check database state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if table exists in test data
+        if let Some(_table_data) = context.get_test_data(&format!("table_{}", _table_name)) {
+            Ok(())
+        } else {
+            Err(CleanroomError::validation_error(&format!(
+                "Table '{}' not found in database", _table_name
+            )))
+        }
     }
 
     /// Assert that a record was created with specific values
-    pub async fn should_have_record(&self, table: &str, conditions: HashMap<String, String>) -> Result<()> {
-        println!("🔍 Checking if record exists in table '{}' with conditions: {:?}", table, conditions);
+    pub async fn should_have_record(&self, _table: &str, _conditions: HashMap<String, String>) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_record").await?;
         
-        // Mock implementation - in reality this would query the database
-        println!("✅ Record found in table '{}'", table);
-        Ok(())
+        // Get assertion context to check database state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if record exists with matching conditions
+        let record_key = format!("record_{}_{}", _table, 
+            _conditions.iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join("&")
+        );
+        
+        if let Some(_record_data) = context.get_test_data(&record_key) {
+            Ok(())
+        } else {
+            Err(CleanroomError::validation_error(&format!(
+                "Record not found in table '{}' with conditions: {:?}", _table, _conditions
+            )))
+        }
     }
 }
 
 /// Cache assertion helpers
+#[allow(dead_code)]
 pub struct CacheAssertions {
     service_name: String,
 }
@@ -141,45 +197,94 @@ impl CacheAssertions {
         }
     }
 
-    /// Assert that a key exists in the cache
-    pub async fn should_have_key(&self, key: &str) -> Result<()> {
-        println!("🔍 Checking if key '{}' exists in cache", key);
+    /// Self-check method to verify assertion framework is working
+    async fn self_check(&self, method_name: &str) -> Result<()> {
+        // Verify service name is set
+        if self.service_name.is_empty() {
+            return Err(CleanroomError::internal_error("CacheAssertions service_name is empty"));
+        }
         
-        // Mock implementation - in reality this would check the cache
-        println!("✅ Key '{}' found in cache", key);
+        // Verify method is being called
+        if method_name.is_empty() {
+            return Err(CleanroomError::internal_error("CacheAssertions method_name is empty"));
+        }
+        
+        // Framework self-test: This assertion framework is testing itself
         Ok(())
     }
 
-    /// Assert that a key has a specific value
-    pub async fn should_have_value(&self, key: &str, expected_value: &str) -> Result<()> {
-        println!("🔍 Checking if key '{}' has value '{}'", key, expected_value);
+    /// Assert that a key exists in the cache
+    pub async fn should_have_key(&self, _key: &str) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_key").await?;
         
-        // Mock implementation - in reality this would get the value from cache
-        let actual_value = "expected_value"; // This would come from the actual cache
+        // Get assertion context to check cache state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
         
-        if actual_value == expected_value {
-            println!("✅ Key '{}' has expected value '{}'", key, expected_value);
+        // Check if key exists in test data
+        if let Some(_key_data) = context.get_test_data(&format!("cache_key_{}", _key)) {
             Ok(())
         } else {
             Err(CleanroomError::validation_error(&format!(
-                "Cache value mismatch for key '{}'. Expected: '{}', Actual: '{}'. \
-                Check if cache operations are working correctly.",
-                key, expected_value, actual_value
+                "Key '{}' not found in cache", _key
+            )))
+        }
+    }
+
+    /// Assert that a key has a specific value
+    pub async fn should_have_value(&self, _key: &str, _expected_value: &str) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_value").await?;
+        
+        // Get assertion context to check cache state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if key exists and has expected value
+        if let Some(key_data) = context.get_test_data(&format!("cache_key_{}", _key)) {
+            if let Some(actual_value) = key_data.as_str() {
+                if actual_value == _expected_value {
+                    Ok(())
+                } else {
+                    Err(CleanroomError::validation_error(&format!(
+                        "Key '{}' has value '{}', expected '{}'", _key, actual_value, _expected_value
+                    )))
+                }
+            } else {
+                Err(CleanroomError::validation_error(&format!(
+                    "Key '{}' exists but value is not a string", _key
+                )))
+            }
+        } else {
+            Err(CleanroomError::validation_error(&format!(
+                "Key '{}' not found in cache", _key
             )))
         }
     }
 
     /// Assert that a user session exists in the cache
-    pub async fn should_have_user_session(&self, user_id: i64) -> Result<()> {
-        println!("🔍 Checking if user session for user {} exists in cache", user_id);
+    pub async fn should_have_user_session(&self, _user_id: i64) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_user_session").await?;
         
-        // Mock implementation - in reality this would check the cache
-        println!("✅ User session for user {} found in cache", user_id);
-        Ok(())
+        // Get assertion context to check cache state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if user session exists in test data
+        if let Some(_session_data) = context.get_test_data(&format!("user_session_{}", _user_id)) {
+            Ok(())
+        } else {
+            Err(CleanroomError::validation_error(&format!(
+                "User session for user {} not found in cache", _user_id
+            )))
+        }
     }
 }
 
 /// Email service assertion helpers
+#[allow(dead_code)]
 pub struct EmailServiceAssertions {
     service_name: String,
 }
@@ -192,45 +297,91 @@ impl EmailServiceAssertions {
         }
     }
 
-    /// Assert that an email was sent
-    pub async fn should_have_sent_email(&self, to: &str, subject: &str) -> Result<()> {
-        println!("🔍 Checking if email was sent to '{}' with subject '{}'", to, subject);
+    /// Self-check method to verify assertion framework is working
+    async fn self_check(&self, method_name: &str) -> Result<()> {
+        // Verify service name is set
+        if self.service_name.is_empty() {
+            return Err(CleanroomError::internal_error("EmailServiceAssertions service_name is empty"));
+        }
         
-        // Mock implementation - in reality this would check the email service
-        println!("✅ Email sent to '{}' with subject '{}'", to, subject);
+        // Verify method is being called
+        if method_name.is_empty() {
+            return Err(CleanroomError::internal_error("EmailServiceAssertions method_name is empty"));
+        }
+        
+        // Framework self-test: This assertion framework is testing itself
         Ok(())
     }
 
-    /// Assert that a specific number of emails were sent
-    pub async fn should_have_sent_count(&self, expected_count: i64) -> Result<()> {
-        println!("🔍 Checking if {} emails were sent", expected_count);
+    /// Assert that an email was sent
+    pub async fn should_have_sent_email(&self, _to: &str, _subject: &str) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_sent_email").await?;
         
-        // Mock implementation - in reality this would count emails
-        let actual_count = 1; // This would come from the email service
+        // Get assertion context to check email state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
         
-        if actual_count == expected_count {
-            println!("✅ {} emails sent as expected", expected_count);
+        // Check if email was sent (stored in test data)
+        let email_key = format!("email_{}_{}", _to, _subject.replace(" ", "_"));
+        if let Some(_email_data) = context.get_test_data(&email_key) {
             Ok(())
         } else {
             Err(CleanroomError::validation_error(&format!(
-                "Email count mismatch. Expected: {}, Actual: {}. \
-                Check if email sending is working correctly.",
-                expected_count, actual_count
+                "Email to '{}' with subject '{}' was not sent", _to, _subject
+            )))
+        }
+    }
+
+    /// Assert that a specific number of emails were sent
+    pub async fn should_have_sent_count(&self, _expected_count: i64) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_sent_count").await?;
+        
+        // Get assertion context to check email state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Count emails in test data
+        let mut email_count = 0;
+        for (key, _value) in &context.test_data {
+            if key.starts_with("email_") {
+                email_count += 1;
+            }
+        }
+        
+        if email_count == _expected_count {
+            Ok(())
+        } else {
+            Err(CleanroomError::validation_error(&format!(
+                "Expected {} emails sent, found {}", _expected_count, email_count
             )))
         }
     }
 
     /// Assert that a welcome email was sent to a user
-    pub async fn should_have_sent_welcome_email(&self, user_email: &str) -> Result<()> {
-        println!("🔍 Checking if welcome email was sent to '{}'", user_email);
+    pub async fn should_have_sent_welcome_email(&self, _user_email: &str) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_sent_welcome_email").await?;
         
-        // Mock implementation - in reality this would check the email service
-        println!("✅ Welcome email sent to '{}'", user_email);
-        Ok(())
+        // Get assertion context to check email state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if welcome email was sent
+        let welcome_key = format!("welcome_email_{}", _user_email);
+        if let Some(_welcome_data) = context.get_test_data(&welcome_key) {
+            Ok(())
+        } else {
+            Err(CleanroomError::validation_error(&format!(
+                "Welcome email to '{}' was not sent", _user_email
+            )))
+        }
     }
 }
 
 /// User assertion helpers
+#[allow(dead_code)]
 pub struct UserAssertions {
     user_id: i64,
     email: String,
@@ -242,62 +393,119 @@ impl UserAssertions {
         Self { user_id, email }
     }
 
+    /// Self-check method to verify assertion framework is working
+    async fn self_check(&self, method_name: &str) -> Result<()> {
+        // Verify user data is set
+        if self.user_id <= 0 {
+            return Err(CleanroomError::internal_error("UserAssertions user_id is invalid"));
+        }
+        
+        if self.email.is_empty() {
+            return Err(CleanroomError::internal_error("UserAssertions email is empty"));
+        }
+        
+        // Verify method is being called
+        if method_name.is_empty() {
+            return Err(CleanroomError::internal_error("UserAssertions method_name is empty"));
+        }
+        
+        // Framework self-test: This assertion framework is testing itself
+        Ok(())
+    }
+
     /// Assert that the user exists in the database
     pub async fn should_exist_in_database(&self) -> Result<()> {
-        println!("🔍 Checking if user {} exists in database", self.user_id);
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_exist_in_database").await?;
         
-        // Mock implementation - in reality this would query the database
-        if self.user_id > 0 {
-            println!("✅ User {} exists in database", self.user_id);
+        // Get assertion context to check user state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if user exists in test data
+        if let Some(_user_data) = context.get_test_data(&format!("user_{}", self.user_id)) {
             Ok(())
         } else {
             Err(CleanroomError::validation_error(&format!(
-                "User {} not found in database. Expected user to exist after registration.",
-                self.user_id
+                "User {} does not exist in database", self.user_id
             )))
         }
     }
 
     /// Assert that the user has a specific role
-    pub async fn should_have_role(&self, expected_role: &str) -> Result<()> {
-        println!("🔍 Checking if user {} has role '{}'", self.user_id, expected_role);
+    pub async fn should_have_role(&self, _expected_role: &str) -> Result<()> {
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_role").await?;
         
-        // Mock implementation - in reality this would check the user's role
-        let actual_role = "user"; // This would come from the database
+        // Get assertion context to check user state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
         
-        if actual_role == expected_role {
-            println!("✅ User {} has expected role '{}'", self.user_id, expected_role);
-            Ok(())
+        // Check if user has the expected role
+        if let Some(user_data) = context.get_test_data(&format!("user_{}", self.user_id)) {
+            if let Some(role) = user_data.get("role").and_then(|r| r.as_str()) {
+                if role == _expected_role {
+                    Ok(())
+                } else {
+                    Err(CleanroomError::validation_error(&format!(
+                        "User {} has role '{}', expected '{}'", self.user_id, role, _expected_role
+                    )))
+                }
+            } else {
+                Err(CleanroomError::validation_error(&format!(
+                    "User {} exists but has no role information", self.user_id
+                )))
+            }
         } else {
             Err(CleanroomError::validation_error(&format!(
-                "User role mismatch for user {}. Expected: '{}', Actual: '{}'. \
-                Check if role assignment is working correctly.",
-                self.user_id, expected_role, actual_role
+                "User {} does not exist in database", self.user_id
             )))
         }
     }
 
     /// Assert that the user received an email
     pub async fn should_receive_email(&self) -> Result<()> {
-        println!("🔍 Checking if user {} received an email", self.user_id);
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_receive_email").await?;
         
-        // Mock implementation - in reality this would check the email service
-        println!("✅ User {} received an email", self.user_id);
-        Ok(())
+        // Get assertion context to check email state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if user received any email
+        let email_key = format!("user_email_{}", self.user_id);
+        if let Some(_email_data) = context.get_test_data(&email_key) {
+            Ok(())
+        } else {
+            Err(CleanroomError::validation_error(&format!(
+                "User {} did not receive any email", self.user_id
+            )))
+        }
     }
 
     /// Assert that the user has a session in the cache
     pub async fn should_have_session(&self) -> Result<()> {
-        println!("🔍 Checking if user {} has a session in cache", self.user_id);
+        // Self-check: Verify this assertion method is called correctly
+        self.self_check("should_have_session").await?;
         
-        // Mock implementation - in reality this would check the cache
-        println!("✅ User {} has a session in cache", self.user_id);
-        Ok(())
+        // Get assertion context to check session state
+        let context = get_assertion_context()
+            .ok_or_else(|| CleanroomError::internal_error("No assertion context available"))?;
+        
+        // Check if user has a session
+        let session_key = format!("user_session_{}", self.user_id);
+        if let Some(_session_data) = context.get_test_data(&session_key) {
+            Ok(())
+        } else {
+            Err(CleanroomError::validation_error(&format!(
+                "User {} does not have a session in cache", self.user_id
+            )))
+        }
     }
 }
 
-/// Global assertion context for the current test
 thread_local! {
+    // Global assertion context for the current test
     static ASSERTION_CONTEXT: std::cell::RefCell<Option<AssertionContext>> = std::cell::RefCell::new(None);
 }
 
@@ -339,22 +547,62 @@ mod tests {
 
     #[tokio::test]
     async fn test_database_assertions() {
-        let mut context = AssertionContext::new();
-        let db_state = ServiceState {
-            name: "database".to_string(),
-            service_type: "postgres".to_string(),
-            connection_info: HashMap::new(),
-            health: "healthy".to_string(),
-            metrics: HashMap::new(),
-        };
-        context.add_service("database".to_string(), db_state);
-        
         let assertions = DatabaseAssertions::new("database");
-        
-        // Test successful assertion
-        assert!(assertions.should_have_user(123).await.is_ok());
-        assert!(assertions.should_have_user_count(1).await.is_ok());
-        assert!(assertions.should_have_table("users").await.is_ok());
+
+        // Test that methods exist and return not implemented errors
+        let result = assertions.should_have_user(123).await;
+        assert!(result.is_err());
+
+        let result = assertions.should_have_user_count(1).await;
+        assert!(result.is_err());
+
+        let result = assertions.should_have_table("users").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_cache_assertions() {
+        let assertions = CacheAssertions::new("cache");
+
+        let result = assertions.should_have_key("user:123").await;
+        assert!(result.is_err());
+
+        let result = assertions.should_have_value("user:123", "expected_value").await;
+        assert!(result.is_err());
+
+        let result = assertions.should_have_user_session(123).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_email_assertions() {
+        let assertions = EmailServiceAssertions::new("email_service");
+
+        let result = assertions.should_have_sent_email("jane@example.com", "Welcome").await;
+        assert!(result.is_err());
+
+        let result = assertions.should_have_sent_count(1).await;
+        assert!(result.is_err());
+
+        let result = assertions.should_have_sent_welcome_email("jane@example.com").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_user_assertions() {
+        let user = UserAssertions::new(123, "jane@example.com".to_string());
+
+        let result = user.should_exist_in_database().await;
+        assert!(result.is_err());
+
+        let result = user.should_have_role("user").await;
+        assert!(result.is_err());
+
+        let result = user.should_receive_email().await;
+        assert!(result.is_err());
+
+        let result = user.should_have_session().await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
@@ -371,53 +619,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_user_assertions() {
+    async fn test_assertion_framework_self_check() {
+        // 80/20 test: Focus on core self-check functionality
+        let mut context = AssertionContext::new();
+        
+        // Essential test data only
+        context.add_test_data("user_123".to_string(), serde_json::json!({"role": "admin"}));
+        context.add_test_data("cache_key_token".to_string(), serde_json::json!("abc123"));
+        context.add_test_data("user_session_123".to_string(), serde_json::json!({"active": true}));
+        
+        set_assertion_context(context);
+        
+        // Core assertions that matter most
+        let db = DatabaseAssertions::new("test_db");
+        let cache = CacheAssertions::new("test_cache");
         let user = UserAssertions::new(123, "jane@example.com".to_string());
         
-        // Test successful assertions
-        assert!(user.should_exist_in_database().await.is_ok());
-        assert!(user.should_have_role("user").await.is_ok());
-        assert!(user.should_receive_email().await.is_ok());
-        assert!(user.should_have_session().await.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_cache_assertions() {
-        let mut context = AssertionContext::new();
-        let cache_state = ServiceState {
-            name: "cache".to_string(),
-            service_type: "redis".to_string(),
-            connection_info: HashMap::new(),
-            health: "healthy".to_string(),
-            metrics: HashMap::new(),
-        };
-        context.add_service("cache".to_string(), cache_state);
+        // Success cases
+        assert!(db.should_have_user(123).await.is_ok());
+        assert!(cache.should_have_key("token").await.is_ok());
+        assert!(user.should_have_role("admin").await.is_ok());
         
-        let assertions = CacheAssertions::new("cache");
-        
-        // Test successful assertions
-        assert!(assertions.should_have_key("user:123").await.is_ok());
-        assert!(assertions.should_have_value("user:123", "expected_value").await.is_ok());
-        assert!(assertions.should_have_user_session(123).await.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_email_assertions() {
-        let mut context = AssertionContext::new();
-        let email_state = ServiceState {
-            name: "email_service".to_string(),
-            service_type: "mailpit".to_string(),
-            connection_info: HashMap::new(),
-            health: "healthy".to_string(),
-            metrics: HashMap::new(),
-        };
-        context.add_service("email_service".to_string(), email_state);
-        
-        let assertions = EmailServiceAssertions::new("email_service");
-        
-        // Test successful assertions
-        assert!(assertions.should_have_sent_email("jane@example.com", "Welcome").await.is_ok());
-        assert!(assertions.should_have_sent_count(1).await.is_ok());
-        assert!(assertions.should_have_sent_welcome_email("jane@example.com").await.is_ok());
+        // Failure cases
+        assert!(db.should_have_user(999).await.is_err());
+        assert!(cache.should_have_key("missing").await.is_err());
     }
 }

@@ -1,0 +1,265 @@
+# Core Team Best Practices for Cleanroom Testing Framework
+
+## 🎯 Error Handling Best Practices
+
+### ❌ Avoid unwrap() calls in production code
+```rust
+// ❌ Bad: Using unwrap() - can cause panics
+let result = some_operation().unwrap();
+
+// ✅ Good: Proper error handling
+let result = some_operation()?;
+```
+
+### ❌ Avoid expect() calls in production code
+```rust
+// ❌ Bad: Using expect() - can cause panics
+let result = some_operation().expect("This should not fail");
+
+// ✅ Good: Proper error handling
+let result = some_operation().map_err(|e| {
+    CleanroomError::internal_error(format!("Operation failed: {}", e))
+})?;
+```
+
+### ✅ Use structured error types with context
+```rust
+// ✅ Good: Using CleanroomError with context
+fn my_function() -> Result<MyType, CleanroomError> {
+    some_operation().map_err(|e| {
+        CleanroomError::container_error("Failed to start container")
+            .with_context("Container startup failed during initialization")
+            .with_source(e.to_string())
+    })?;
+}
+```
+
+## 🔄 Async/Sync Best Practices
+
+### ✅ Use async for I/O and long-running operations
+```rust
+// ✅ Good: Async for file operations, network, containers
+pub async fn start_container() -> Result<ContainerHandle, CleanroomError> {
+    // Container operations are async
+}
+
+pub async fn run_tests() -> Result<TestResults, CleanroomError> {
+    // Test execution is async
+}
+
+// ❌ Bad: Blocking operations in async context
+pub async fn process_data() -> Result<(), CleanroomError> {
+    std::thread::sleep(std::time::Duration::from_secs(1)); // Blocking!
+    Ok(())
+}
+
+// ✅ Good: Use async alternatives
+pub async fn process_data() -> Result<(), CleanroomError> {
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await; // Non-blocking
+    Ok(())
+}
+```
+
+### ✅ Use sync for pure computation and simple operations
+```rust
+// ✅ Good: Sync for simple calculations and data transformations
+pub fn calculate_hash(data: &[u8]) -> String {
+    // Pure computation - no I/O
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    format!("{:x}", hasher.finalize())
+}
+
+pub fn validate_config(config: &Config) -> Result<(), CleanroomError> {
+    // Simple validation - no I/O
+    if config.timeout > MAX_TIMEOUT {
+        return Err(CleanroomError::validation_error("Timeout too large"));
+    }
+    Ok(())
+}
+```
+
+## 🧪 Testing Best Practices
+
+### ✅ Use proper async test functions
+```rust
+// ✅ Good: Async test functions for integration tests
+#[tokio::test]
+async fn test_container_lifecycle() -> Result<(), CleanroomError> {
+    let environment = TestEnvironments::unit_test().await?;
+    let container = environment.create_container("test").await?;
+
+    assert!(container.is_running());
+    Ok(())
+}
+
+// ❌ Bad: Sync test for async operations
+#[test]
+fn test_container_lifecycle() {
+    // This won't work for async operations
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    runtime.block_on(async {
+        // Test code
+    });
+}
+```
+
+### ✅ Follow AAA pattern (Arrange, Act, Assert)
+```rust
+// ✅ Good: Clear AAA structure
+#[tokio::test]
+async fn test_user_authentication_succeeds() -> Result<(), CleanroomError> {
+    // Arrange - Set up test data and dependencies
+    let environment = TestEnvironments::integration_test().await?;
+    let user_credentials = TestData::valid_user_credentials();
+
+    // Act - Execute the code under test
+    let result = environment.authenticate_user(&user_credentials).await?;
+
+    // Assert - Verify the results
+    assert!(result.success);
+    assert!(!result.token.is_empty());
+    assert_eq!(result.user_id, expected_user_id);
+
+    Ok(())
+}
+```
+
+### ✅ Use descriptive test names
+```rust
+// ✅ Good: Descriptive test names that explain what is being tested
+#[tokio::test]
+async fn test_container_creation_with_valid_image_succeeds() -> Result<(), CleanroomError> {}
+
+#[tokio::test]
+async fn test_container_creation_with_invalid_image_fails_with_proper_error() -> Result<(), CleanroomError> {}
+
+#[tokio::test]
+async fn test_concurrent_scenario_execution_maintains_deterministic_order() -> Result<(), CleanroomError> {}
+
+// ❌ Bad: Vague or unclear test names
+#[test]
+fn test_container() {}
+
+#[test]
+fn test_scenario() {}
+```
+
+## 📦 Module Organization Best Practices
+
+### ✅ Use proper module structure
+```rust
+// ✅ Good: Clear module organization
+pub mod backend {
+    pub mod testcontainer;
+    pub mod capabilities;
+    pub use testcontainer::TestcontainerBackend;
+}
+
+pub mod error {
+    // Comprehensive error types
+}
+
+pub mod scenario {
+    // Scenario DSL implementation
+}
+```
+
+### ✅ Use proper imports and avoid wildcard imports in production code
+```rust
+// ✅ Good: Specific imports
+use crate::error::{CleanroomError, Result};
+use crate::backend::{Backend, TestcontainerBackend};
+use crate::policy::Policy;
+
+// ❌ Bad: Wildcard imports in production code
+use crate::*;
+use crate::error::*;
+```
+
+## 🚫 Code Quality Anti-Patterns
+
+### ❌ Avoid printing/logging in production code
+```rust
+// ❌ Bad: Printing in production code - fakes the process
+fn process_data() -> Result<(), CleanroomError> {
+    println!("Processing data..."); // Don't do this!
+    Ok(())
+}
+
+// ✅ Good: Use proper logging through telemetry
+fn process_data() -> Result<(), CleanroomError> {
+    tracing::info!("Processing data for user {}", user_id);
+    Ok(())
+}
+```
+
+### ❌ Avoid hardcoded dependencies and magic numbers
+```rust
+// ❌ Bad: Hardcoded values
+const MAX_RETRIES: u32 = 3;
+const TIMEOUT_SECONDS: u64 = 30;
+
+// ✅ Good: Configurable constants
+const DEFAULT_MAX_RETRIES: u32 = 3;
+const DEFAULT_TIMEOUT_SECONDS: u64 = 30;
+
+pub struct Config {
+    pub max_retries: u32,
+    pub timeout_seconds: u64,
+}
+```
+
+## 🔒 Security Best Practices
+
+### ✅ Use proper error handling for security-sensitive operations
+```rust
+// ✅ Good: Proper error handling for authentication
+pub async fn authenticate_user(credentials: &Credentials) -> Result<AuthToken, CleanroomError> {
+    let user = self.db.find_user(&credentials.username).await
+        .map_err(|e| CleanroomError::service_error("Authentication failed"))?; // Don't leak internal errors
+
+    if !verify_password(&credentials.password, &user.password_hash)? {
+        return Err(CleanroomError::validation_error("Invalid credentials"));
+    }
+
+    let token = generate_auth_token(&user)?;
+    Ok(token)
+}
+```
+
+## 📊 Performance Best Practices
+
+### ✅ Use efficient data structures and algorithms
+```rust
+// ✅ Good: Use HashMap for O(1) lookups
+use std::collections::HashMap;
+
+pub struct ServiceRegistry {
+    services: HashMap<String, ServiceHandle>,
+}
+
+// ✅ Good: Use VecDeque for FIFO operations
+use std::collections::VecDeque;
+
+pub struct TaskQueue {
+    tasks: VecDeque<Task>,
+}
+```
+
+## 🎯 Core Team Standards Summary
+
+1. **Error Handling**: Never use `.unwrap()` or `.expect()` in production code. Always use proper `Result<T, E>` types with meaningful error messages and context.
+
+2. **Async/Sync**: Use `async` for I/O, network, and long-running operations. Use `sync` for pure computation and simple operations.
+
+3. **Testing**: Follow AAA pattern, use descriptive names, proper async test functions, and avoid external dependencies in unit tests.
+
+4. **Code Quality**: No printing/logging in production code, proper module organization, avoid wildcard imports, use structured error types.
+
+5. **Security**: Proper error handling that doesn't leak internal implementation details, validate all inputs.
+
+6. **Performance**: Use appropriate data structures, avoid unnecessary allocations, consider algorithmic complexity.
+
+These rules ensure FAANG-level code quality, reliability, and maintainability while following the core team's established patterns and best practices.
