@@ -1,0 +1,70 @@
+# Rust build artifacts
+/target/
+**/target/
+
+# Cargo lock file (uncomment if you want to ignore it)
+# Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# IDE analysis and cache files
+.lh/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Rust specific
+*.pdb
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test coverage
+tarpaulin-report.html
+cobertura.xml
+lcov.info
+
+# Profiling data
+*.profraw
+*.profdata
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.backup
+*.bak
+
+# Documentation build artifacts
+/doc/
+
+# Benchmark results
+/benches/target/
+
+# Integration test artifacts
+test_cucumber.rs
+
+# Build script coverage
+build_rs_cov.profraw

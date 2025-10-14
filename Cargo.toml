@@ -1,0 +1,78 @@
+[package]
+name = "clnrm"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["otel-traces"]
+otel-traces = [
+  "opentelemetry/trace",
+  "opentelemetry_sdk/trace",
+  "opentelemetry-otlp/trace",
+  "tracing-opentelemetry",
+]
+otel-logs = ["opentelemetry-appender-tracing", "opentelemetry-otlp/logs"]
+otel-metrics = [
+  "opentelemetry/metrics",
+  "opentelemetry_sdk/metrics",
+  "opentelemetry-otlp/metrics",
+]
+otel-stdout = ["opentelemetry-stdout"]
+
+[dependencies]
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.20", features = [
+  "env-filter",
+  "fmt",
+  "registry",
+] }
+tracing-opentelemetry = { version = "0.32", optional = true }
+
+opentelemetry = { version = "0.31", default-features = false, features = [
+  "trace",
+  "metrics",
+  "logs",
+] }
+opentelemetry_sdk = { version = "0.31", default-features = false, features = [
+  "rt-tokio",
+] }
+opentelemetry-otlp = { version = "0.31", default-features = false, features = [
+  "http-proto",
+  "reqwest-blocking-client",
+  "grpc-tonic",
+], optional = true }
+opentelemetry-appender-tracing = { version = "0.31", optional = true }
+opentelemetry-semantic-conventions = "0.31"
+opentelemetry-stdout = { version = "0.31", optional = true }
+
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Container dependencies (required)
+testcontainers = { version = "0.25", features = ["blocking"] }
+testcontainers-modules = "0.13"
+futures-util = "0.3"
+
+[dev-dependencies]
+assert_cmd = "2"
+assert_fs = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.20", features = [
+  "fmt",
+  "env-filter",
+  "registry",
+] }
+tracing-opentelemetry = "0.32"
+opentelemetry = { version = "0.31", default-features = false, features = [
+  "trace",
+] }
+opentelemetry_sdk = { version = "0.31", default-features = false }
+opentelemetry-stdout = "0.31"
+
+[[bin]]
+name = "clnrm"
+path = "src/main.rs"
