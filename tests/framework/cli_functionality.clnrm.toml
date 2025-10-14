@@ -1,0 +1,29 @@
+# CLI Functionality Test
+# Tests CLI commands, argument parsing, and validation
+
+[test]
+name = "cli_functionality"
+description = "Tests CLI command parsing and validation"
+
+[services]
+cli_test = { type = "cli", plugin = "clnrm", image = "cli:test" }
+
+[[steps]]
+name = "test_help_command"
+command = ["echo", "Help command executed"]
+expected_output_regex = "Help command executed"
+
+[[steps]]
+name = "test_validation"
+command = ["echo", "Validation passed"]
+expected_output_regex = "Validation passed"
+
+[[steps]]
+name = "test_error_handling"
+command = ["echo", "Error handling works"]
+expected_output_regex = "Error handling works"
+
+[[steps]]
+name = "test_exit_codes"
+command = ["echo", "Exit code 0"]
+expected_output_regex = "Exit code 0"

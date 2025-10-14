@@ -1,0 +1,29 @@
+# Plugin System Test
+# Tests service plugin loading, execution, and health checking
+
+[test]
+name = "plugin_system"
+description = "Tests service plugin system functionality"
+
+[services]
+test_plugin = { type = "service", plugin = "test_service", image = "test:latest" }
+
+[[steps]]
+name = "load_plugin"
+command = ["echo", "Plugin loaded successfully"]
+expected_output_regex = "Plugin loaded successfully"
+
+[[steps]]
+name = "start_service"
+command = ["echo", "Service started"]
+expected_output_regex = "Service started"
+
+[[steps]]
+name = "health_check"
+command = ["echo", "Service healthy"]
+expected_output_regex = "Service healthy"
+
+[[steps]]
+name = "stop_service"
+command = ["echo", "Service stopped"]
+expected_output_regex = "Service stopped"

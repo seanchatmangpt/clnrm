@@ -1,0 +1,19 @@
+# Simple Echo Test
+# Demonstrates basic .clnrm.toml file format for non-Rust developers
+
+[test]
+name = "simple_echo_test"
+description = "Basic echo command test to verify container execution"
+
+[services]
+test_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+
+[[steps]]
+name = "echo_hello"
+command = ["echo", "Hello from TOML"]
+expected_output_regex = "Hello from TOML"
+
+[[steps]]
+name = "echo_goodbye"
+command = ["echo", "Goodbye from TOML"]
+expected_output_regex = "Goodbye from TOML"

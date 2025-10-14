@@ -30,6 +30,10 @@ pub struct TestcontainerBackend {
     default_command: Option<Vec<String>>,
     /// Volume mounts for the container
     volume_mounts: Vec<(String, String)>, // (host_path, container_path)
+    /// Memory limit in MB
+    memory_limit: Option<u64>,
+    /// CPU limit (number of CPUs)
+    cpu_limit: Option<f64>,
 }
 
 impl TestcontainerBackend {
@@ -53,6 +57,8 @@ impl TestcontainerBackend {
             env_vars: std::collections::HashMap::new(),
             default_command: None,
             volume_mounts: Vec::new(),
+            memory_limit: None,
+            cpu_limit: None,
         })
     }
 
@@ -100,6 +106,18 @@ impl TestcontainerBackend {
         self
     }
 
+    /// Set memory limit in MB
+    pub fn with_memory_limit(mut self, limit_mb: u64) -> Self {
+        self.memory_limit = Some(limit_mb);
+        self
+    }
+
+    /// Set CPU limit (number of CPUs)
+    pub fn with_cpu_limit(mut self, cpus: f64) -> Self {
+        self.cpu_limit = Some(cpus);
+        self
+    }
+
     /// Check if testcontainers is available
     pub fn is_available() -> bool {
         // For now, assume Docker is available if we can create a GenericImage
@@ -141,10 +159,10 @@ impl TestcontainerBackend {
         }
 
         // Add volume mounts from backend storage
-        // TODO: Implement proper volume mounting with testcontainers API
-        // for (host_path, container_path) in &self.volume_mounts {
-        //     container_request = container_request.with_volume(host_path, container_path);
-        // }
+        for (host_path, _container_path) in &self.volume_mounts {
+            // TODO: Implement proper volume mounting with testcontainers API
+            // container_request = container_request.with_mapped_path(host_path, container_path);
+        }
 
         // Set a default command to keep the container running
         // Alpine containers exit immediately without a command

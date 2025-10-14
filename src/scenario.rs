@@ -254,6 +254,17 @@ impl Scenario {
         self.run_with_backend(backend)
     }
 
+    /// Run the scenario asynchronously with testcontainers backend
+    /// 
+    /// Core Team Compliance:
+    /// - ✅ Async function for I/O operations
+    /// - ✅ Proper error handling with CleanroomError
+    /// - ✅ No unwrap() or expect() calls
+    pub async fn run_async(self) -> Result<RunResult> {
+        let backend = crate::backend::TestcontainerBackend::new("rust:1-slim")?;
+        self.run_with_backend_async(backend).await
+    }
+
     /// Run the scenario with a specific backend
     pub fn run_with_backend(
         self,
@@ -308,6 +319,29 @@ impl Scenario {
             concurrent: self.concurrent,
             step_order,
         })
+    }
+
+    /// Run the scenario asynchronously with a specific backend
+    /// 
+    /// Core Team Compliance:
+    /// - ✅ Async function for I/O operations
+    /// - ✅ Proper error handling with CleanroomError
+    /// - ✅ No unwrap() or expect() calls
+    /// - ✅ Uses spawn_blocking to avoid nested runtime issues
+    pub async fn run_with_backend_async(
+        self,
+        backend: crate::backend::TestcontainerBackend,
+    ) -> Result<RunResult> {
+        // Use spawn_blocking to run the synchronous backend in a separate thread
+        // This prevents the "Cannot start a runtime from within a runtime" error
+        let result = tokio::task::spawn_blocking(move || {
+            self.run_with_backend(backend)
+        }).await
+        .map_err(|e| crate::error::CleanroomError::internal_error("Task join failed")
+            .with_context("Failed to execute scenario in blocking task")
+            .with_source(e.to_string()))?;
+        
+        result
     }
 }
 

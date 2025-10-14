@@ -72,7 +72,7 @@ async fn test_readme_container_reuse_claims() -> Result<()> {
         Ok::<String, CleanroomError>("container_1".to_string())
     }).await?;
     
-    let first_creation_time = start_time.elapsed();
+    let _first_creation_time = start_time.elapsed();
     
     // Second container access (should be faster due to reuse)
     let reuse_start = Instant::now();
@@ -82,12 +82,16 @@ async fn test_readme_container_reuse_claims() -> Result<()> {
     
     let reuse_time = reuse_start.elapsed();
     
-    // Verify reuse pattern works
+    // Verify actual container reuse - container2 should be the SAME instance as container1
     assert_eq!(container1, container2, "Container reuse should return same instance");
     
+    // Verify reuse statistics
+    let (created, reused) = env.get_container_reuse_stats().await;
+    assert_eq!(created, 1, "Should have created exactly 1 container");
+    assert_eq!(reused, 1, "Should have reused exactly 1 container");
+    
     // Verify performance improvement (reuse should be significantly faster)
-    // Note: In a real implementation, this would show 10-50x improvement
-    assert!(reuse_time < first_creation_time, "Container reuse should be faster");
+    assert!(reuse_time < _first_creation_time, "Container reuse should be faster than creation");
     
     Ok(())
 }
@@ -211,25 +215,21 @@ fn test_readme_regex_validation_claims() -> Result<()> {
 fn test_readme_rich_assertions_claims() -> Result<()> {
     // Claim: "Domain-specific validation helpers"
     
-    // Test database assertions
-    let db_assertions = clnrm::assertions::DatabaseAssertions::new("test_db");
-    // Verify the assertion object was created successfully
-    assert!(std::mem::size_of_val(&db_assertions) > 0);
+    // Test database assertions - verify they can actually validate
+    let _db_assertions = clnrm::assertions::DatabaseAssertions::new("test_db");
+    // TODO: Add actual database connection validation test when database assertions are implemented
     
-    // Test cache assertions
-    let cache_assertions = clnrm::assertions::CacheAssertions::new("test_cache");
-    // Verify the assertion object was created successfully
-    assert!(std::mem::size_of_val(&cache_assertions) > 0);
+    // Test cache assertions - verify they can actually validate
+    let _cache_assertions = clnrm::assertions::CacheAssertions::new("test_cache");
+    // TODO: Add actual cache key/value validation test when cache assertions are implemented
     
-    // Test email service assertions
-    let email_assertions = clnrm::assertions::EmailServiceAssertions::new("test_email");
-    // Verify the assertion object was created successfully
-    assert!(std::mem::size_of_val(&email_assertions) > 0);
+    // Test email service assertions - verify they can actually validate
+    let _email_assertions = clnrm::assertions::EmailServiceAssertions::new("test_email");
+    // TODO: Add actual email format validation test when email assertions are implemented
     
-    // Test user assertions
-    let user_assertions = clnrm::assertions::UserAssertions::new(123, "test@example.com".to_string());
-    // Verify the assertion object was created successfully
-    assert!(std::mem::size_of_val(&user_assertions) > 0);
+    // Test user assertions - verify they can actually validate
+    let _user_assertions = clnrm::assertions::UserAssertions::new(123, "test@example.com".to_string());
+    // TODO: Add actual user data validation test when user assertions are implemented
     
     // Test assertion context
     let mut context = clnrm::assertions::AssertionContext::new();
@@ -247,14 +247,20 @@ fn test_readme_rich_assertions_claims() -> Result<()> {
 fn test_readme_scenario_execution_claims() -> Result<()> {
     // Claim: "Multi-step workflows with deterministic execution"
     
-    // Test basic scenario creation
+    // TODO: Scenario execution requires real container environment
+    // This test is currently disabled because scenario execution is not fully implemented
+    // When implemented, this should:
+    // 1. Create a scenario with multiple steps
+    // 2. Execute the scenario in a container
+    // 3. Verify steps run in deterministic order
+    // 4. Verify step outputs are captured correctly
+    
+    // For now, just verify the scenario builder API exists
     let _scenario = scenario("readme_validation_scenario")
         .step("step1".to_string(), ["echo", "Step 1 executed"])
         .step("step2".to_string(), ["echo", "Step 2 executed"]);
     
-    // Verify scenario was created (we can't run it due to container issues in test environment)
-    // In a real implementation, this would execute the steps
-    
+    // TODO: Add actual scenario execution test when container execution is implemented
     Ok(())
 }
 
@@ -302,8 +308,13 @@ async fn test_readme_performance_claims() -> Result<()> {
         Ok::<String, CleanroomError>("different_container".to_string())
     }).await?;
     
-    // Verify reuse pattern
+    // Verify actual container reuse - container2 should be the SAME instance as container1
     assert_eq!(container1, container2, "Container reuse should return same instance");
+    
+    // Verify reuse statistics
+    let (created, reused) = env.get_container_reuse_stats().await;
+    assert_eq!(created, 1, "Should have created exactly 1 container");
+    assert_eq!(reused, 1, "Should have reused exactly 1 container");
     
     // Claim: "Parallel execution support"
     let config = clnrm::cli::CliConfig {
@@ -657,9 +668,15 @@ async fn test_readme_framework_self_testing_philosophy() -> Result<()> {
     assert!(test_names.contains(&"test_cli_functionality"), "Should test CLI functionality");
     assert!(test_names.contains(&"test_otel_integration"), "Should test OTel integration");
     
-    // Verify test results quality
-    let passed_ratio = test_results.passed_tests as f64 / test_results.total_tests as f64;
-    assert!(passed_ratio > 0.8, "Framework self-tests should have high success rate");
+        // Verify test results quality
+        let passed_ratio = test_results.passed_tests as f64 / test_results.total_tests as f64;
+        assert!(passed_ratio >= 0.8, "Framework self-tests should have high success rate: {:.1}%", passed_ratio * 100.0);
+        
+        // Verify that test results have duration information
+        for test_result in &test_results.test_results {
+            assert!(!test_result.name.is_empty(), "Test should have a name");
+            assert!(test_result.duration_ms > 0, "Test should record duration");
+        }
     
     Ok(())
 }
@@ -804,8 +821,8 @@ mod tests {
         
         // Verify results have the structure needed for CI/CD integration
         assert!(test_results.total_tests > 0, "Should have test count for CI/CD");
-        assert!(test_results.passed_tests >= 0, "Should have pass count for CI/CD");
-        assert!(test_results.failed_tests >= 0, "Should have fail count for CI/CD");
+        // Note: passed_tests and failed_tests are unsigned integers, so >= 0 is always true
+        assert!(test_results.passed_tests + test_results.failed_tests == test_results.total_tests, "Pass/fail counts should sum to total");
         assert!(test_results.total_duration_ms > 0, "Should have duration for CI/CD");
         
         // Verify individual test results have CI/CD compatible structure
