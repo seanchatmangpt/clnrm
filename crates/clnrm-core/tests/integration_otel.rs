@@ -3,8 +3,8 @@
 //! These tests validate that OpenTelemetry tracing works correctly with the
 //! testcontainer backend and can connect to OTel services running in containers.
 
-use clnrm::backend::{Backend, Cmd, TestcontainerBackend};
-use clnrm::policy::{Policy, SecurityLevel};
+use clnrm_core::backend::{Backend, Cmd, TestcontainerBackend};
+use clnrm_core::policy::{Policy, SecurityLevel};
 
 /// Helper function to check if Docker is available
 fn docker_available() -> bool {

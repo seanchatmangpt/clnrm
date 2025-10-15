@@ -1,8 +1,8 @@
 //! Integration tests for service plugin system
 
-use clnrm::cleanroom::{CleanroomEnvironment, MockDatabasePlugin, HealthStatus};
-use clnrm::services::surrealdb::SurrealDbPlugin;
-use clnrm::error::CleanroomError;
+use clnrm_core::cleanroom::{CleanroomEnvironment, MockDatabasePlugin, HealthStatus};
+use clnrm_core::services::surrealdb::SurrealDbPlugin;
+use clnrm_core::error::CleanroomError;
 
 #[tokio::test]
 async fn test_mock_database_plugin_lifecycle() -> Result<(), CleanroomError> {

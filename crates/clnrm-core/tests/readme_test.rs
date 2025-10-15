@@ -4,7 +4,7 @@
 //! implemented and working in the codebase. It serves as a living documentation
 //! that ensures the framework delivers on its promises.
 
-use clnrm::{
+use clnrm_core::{
     CleanroomEnvironment, ServicePlugin, ServiceHandle, HealthStatus,
     Policy, SecurityLevel, scenario,
     testing::run_framework_tests,
@@ -133,7 +133,7 @@ async fn test_readme_cli_claims() -> Result<()> {
     // Claim: "Feature-rich command-line interface"
     
     // Test CLI configuration
-    let config = clnrm::cli::CliConfig::default();
+    let config = clnrm_core::cli::CliConfig::default();
     assert_eq!(config.jobs, 4, "CLI should have default job count");
     assert!(!config.parallel, "CLI should support parallel execution");
     assert!(!config.fail_fast, "CLI should support fail-fast mode");
@@ -141,11 +141,11 @@ async fn test_readme_cli_claims() -> Result<()> {
     assert!(!config.interactive, "CLI should support interactive mode");
     
     // Test CLI plugin listing
-    let result = clnrm::cli::list_plugins();
+    let result = clnrm_core::cli::list_plugins();
     assert!(result.is_ok(), "CLI should be able to list plugins");
     
     // Test CLI service status
-    let status_result = clnrm::cli::show_service_status().await;
+    let status_result = clnrm_core::cli::show_service_status().await;
     assert!(status_result.is_ok(), "CLI should be able to show service status");
     
     Ok(())
@@ -174,13 +174,13 @@ command = ["echo", "README validation successful"]
     std::fs::write(&test_file, toml_content)?;
     
     // Test TOML parsing
-    let parsed_config = clnrm::utils::parse_toml_config(&toml_content)?;
+    let parsed_config = clnrm_core::utils::parse_toml_config(&toml_content)?;
     assert!(parsed_config.get("test").is_some(), "TOML should parse test configuration");
     assert!(parsed_config.get("services").is_some(), "TOML should parse services configuration");
     assert!(parsed_config.get("steps").is_some(), "TOML should parse steps configuration");
     
     // Test configuration validation
-    let validation_result = clnrm::cli::validate_config(&test_file);
+    let validation_result = clnrm_core::cli::validate_config(&test_file);
     assert!(validation_result.is_ok(), "TOML configuration should be valid");
     
     Ok(())
@@ -193,18 +193,18 @@ fn test_readme_regex_validation_claims() -> Result<()> {
     
     // Test regex validation utility
     let valid_pattern = r"Container started successfully";
-    let validation_result = clnrm::utils::validate_regex(valid_pattern);
+    let validation_result = clnrm_core::utils::validate_regex(valid_pattern);
     assert!(validation_result.is_ok(), "Valid regex pattern should be accepted");
     
     // Test regex execution
     let test_text = "Container started successfully";
-    let match_result = clnrm::utils::execute_regex_match(test_text, valid_pattern);
+    let match_result = clnrm_core::utils::execute_regex_match(test_text, valid_pattern);
     assert!(match_result.is_ok(), "Regex execution should work");
     assert!(match_result.unwrap(), "Pattern should match expected text");
     
     // Test invalid regex
     let invalid_pattern = r"[invalid regex";
-    let invalid_validation = clnrm::utils::validate_regex(invalid_pattern);
+    let invalid_validation = clnrm_core::utils::validate_regex(invalid_pattern);
     assert!(invalid_validation.is_err(), "Invalid regex should be rejected");
     
     Ok(())
@@ -216,23 +216,23 @@ fn test_readme_rich_assertions_claims() -> Result<()> {
     // Claim: "Domain-specific validation helpers"
     
     // Test database assertions - verify they can actually validate
-    let _db_assertions = clnrm::assertions::DatabaseAssertions::new("test_db");
+    let _db_assertions = clnrm_core::assertions::DatabaseAssertions::new("test_db");
     // TODO: Add actual database connection validation test when database assertions are implemented
     
     // Test cache assertions - verify they can actually validate
-    let _cache_assertions = clnrm::assertions::CacheAssertions::new("test_cache");
+    let _cache_assertions = clnrm_core::assertions::CacheAssertions::new("test_cache");
     // TODO: Add actual cache key/value validation test when cache assertions are implemented
     
     // Test email service assertions - verify they can actually validate
-    let _email_assertions = clnrm::assertions::EmailServiceAssertions::new("test_email");
+    let _email_assertions = clnrm_core::assertions::EmailServiceAssertions::new("test_email");
     // TODO: Add actual email format validation test when email assertions are implemented
     
     // Test user assertions - verify they can actually validate
-    let _user_assertions = clnrm::assertions::UserAssertions::new(123, "test@example.com".to_string());
+    let _user_assertions = clnrm_core::assertions::UserAssertions::new(123, "test@example.com".to_string());
     // TODO: Add actual user data validation test when user assertions are implemented
     
     // Test assertion context
-    let mut context = clnrm::assertions::AssertionContext::new();
+    let mut context = clnrm_core::assertions::AssertionContext::new();
     context.add_test_data("test_key".to_string(), serde_json::json!("test_value"));
     
     let retrieved_value = context.get_test_data("test_key");
@@ -317,7 +317,7 @@ async fn test_readme_performance_claims() -> Result<()> {
     assert_eq!(reused, 1, "Should have reused exactly 1 container");
     
     // Claim: "Parallel execution support"
-    let config = clnrm::cli::CliConfig {
+    let config = clnrm_core::cli::CliConfig {
         parallel: true,
         jobs: 8,
         ..Default::default()
@@ -352,7 +352,7 @@ fn test_readme_error_handling_claims() -> Result<()> {
     // Test error conversion
     let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "File not found");
     let cleanroom_error: CleanroomError = io_error.into();
-    assert!(matches!(cleanroom_error.kind, clnrm::error::ErrorKind::IoError));
+    assert!(matches!(cleanroom_error.kind, clnrm_core::error::ErrorKind::IoError));
     
     Ok(())
 }
@@ -388,11 +388,11 @@ fn test_readme_cli_installation_claims() -> Result<()> {
     // Claim: "CLI Tool (No Rust Required)" and version output
     
     // Test that CLI can be created and configured
-    let config = clnrm::cli::CliConfig::default();
+    let config = clnrm_core::cli::CliConfig::default();
     assert!(config.jobs > 0, "CLI should have default job configuration");
     
     // Test CLI format options
-    use clnrm::cli::OutputFormat;
+    use clnrm_core::cli::OutputFormat;
     let formats = vec![
         OutputFormat::Auto,
         OutputFormat::Human,
@@ -506,7 +506,7 @@ command = ["echo", "Container started successfully"]
 "#;
     
     // Test that this TOML can be parsed
-    let parsed = clnrm::utils::parse_toml_config(readme_toml)?;
+    let parsed = clnrm_core::utils::parse_toml_config(readme_toml)?;
     
     // Verify structure matches README claims
     assert!(parsed.get("test").is_some(), "Should parse test metadata");
@@ -571,13 +571,13 @@ async fn test_readme_cli_command_claims() -> Result<()> {
     // This is validated by the CLI module structure and function existence
     
     // Test run command functionality
-    let config = clnrm::cli::CliConfig {
+    let config = clnrm_core::cli::CliConfig {
         parallel: true,
         jobs: 4,
         fail_fast: true,
         watch: false,
         interactive: false,
-        format: clnrm::cli::OutputFormat::Human,
+        format: clnrm_core::cli::OutputFormat::Human,
         verbose: 1,
     };
     
@@ -586,11 +586,11 @@ async fn test_readme_cli_command_claims() -> Result<()> {
     assert!(config.fail_fast, "CLI should support fail-fast mode");
     
     // Test service management commands
-    let status_result = clnrm::cli::show_service_status().await;
+    let status_result = clnrm_core::cli::show_service_status().await;
     assert!(status_result.is_ok(), "CLI should support service status command");
     
     // Test plugin listing
-    let plugins_result = clnrm::cli::list_plugins();
+    let plugins_result = clnrm_core::cli::list_plugins();
     assert!(plugins_result.is_ok(), "CLI should support plugin listing");
     
     Ok(())
@@ -703,7 +703,7 @@ async fn test_readme_version_history_claims() -> Result<()> {
     }).await?;
     
     // ✅ Professional CLI with advanced features
-    let config = clnrm::cli::CliConfig::default();
+    let config = clnrm_core::cli::CliConfig::default();
     assert!(config.jobs > 0, "CLI should have advanced features");
     
     // ✅ TOML configuration system
@@ -718,13 +718,13 @@ description = "Test version features"
 name = "test_step"
 command = ["echo", "version test"]
 "#;
-    let _parsed = clnrm::utils::parse_toml_config(toml_test)?;
+    let _parsed = clnrm_core::utils::parse_toml_config(toml_test)?;
     
     // ✅ Regex validation in container output
-    let _regex_result = clnrm::utils::validate_regex(r"test pattern")?;
+    let _regex_result = clnrm_core::utils::validate_regex(r"test pattern")?;
     
     // ✅ Rich assertion library
-    let _db_assertions = clnrm::assertions::DatabaseAssertions::new("version_test_db");
+    let _db_assertions = clnrm_core::assertions::DatabaseAssertions::new("version_test_db");
     
     // ✅ Comprehensive observability
     let metrics = env.get_metrics().await;
@@ -810,7 +810,7 @@ mod tests {
         // Claim: "JUnit XML Output" for CI/CD integration
         
         // Test that CLI supports JUnit format
-        use clnrm::cli::OutputFormat;
+        use clnrm_core::cli::OutputFormat;
         let junit_format = OutputFormat::Junit;
         
         // Verify format exists (this validates CI/CD integration capability)
@@ -855,7 +855,7 @@ mod tests {
         custom_plugin.stop(handle).await?;
         
         // Test custom assertions capability
-        let mut context = clnrm::assertions::AssertionContext::new();
+        let mut context = clnrm_core::assertions::AssertionContext::new();
         context.add_test_data("dev_test".to_string(), serde_json::json!({"status": "success"}));
         
         let test_data = context.get_test_data("dev_test");

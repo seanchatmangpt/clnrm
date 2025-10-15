@@ -3,7 +3,7 @@
 //! This shows how Jane would actually use the cleanroom testing library
 //! with the new Jane-friendly API.
 
-use clnrm::{cleanroom_test, with_database, with_cache, database, cache, email_service, UserAssertions};
+use clnrm_core::{cleanroom_test, with_database, with_cache, database, cache, email_service, UserAssertions};
 
 /// Jane's simple user registration test
 /// 

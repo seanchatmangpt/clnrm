@@ -3,7 +3,7 @@
 //! This example demonstrates the 10-50x performance improvement
 //! achieved through container reuse as documented in the README.
 
-use clnrm::{CleanroomEnvironment, CleanroomError};
+use clnrm_core::{CleanroomEnvironment, CleanroomError};
 use std::time::Instant;
 
 #[tokio::main]

@@ -1,0 +1,19 @@
+[package]
+name = "clnrm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Cleanroom Testing Framework - CLI tool"
+
+[[bin]]
+name = "clnrm"
+path = "src/main.rs"
+
+[dependencies]
+clnrm-core = { path = "../clnrm-core", features = ["otel"] }
+tokio = { workspace = true }
+clap = { workspace = true }
+env_logger = { workspace = true }
+log = { workspace = true }

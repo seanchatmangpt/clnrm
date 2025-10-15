@@ -4,7 +4,7 @@
 //! It uses clap for professional command-line argument parsing and provides
 //! comprehensive functionality for running tests, managing services, and generating reports.
 
-use clnrm::cli::run_cli;
+use clnrm_core::cli::run_cli;
 
 #[tokio::main]
 async fn main() {

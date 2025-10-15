@@ -6,8 +6,8 @@
 //! Note: These tests require Docker to be running. If Docker is not available,
 //! the tests will be skipped automatically.
 
-use clnrm::backend::{Backend, Cmd, TestcontainerBackend};
-use clnrm::policy::{Policy, SecurityLevel};
+use clnrm_core::backend::{Backend, Cmd, TestcontainerBackend};
+use clnrm_core::policy::{Policy, SecurityLevel};
 
 /// Helper function to check if Docker is available
 fn docker_available() -> bool {
