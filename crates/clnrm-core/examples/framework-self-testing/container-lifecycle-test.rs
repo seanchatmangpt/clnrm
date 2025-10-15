@@ -37,15 +37,15 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
     let command_start = Instant::now();
 
     // Execute commands as the README shows
-    let result = env.execute_in_container(&container, ["echo", "Container started successfully"]).await?;
-    assert!(result.success);
+    let result = env.execute_in_container(&container, &["echo".to_string(), "Container started successfully".to_string()]).await?;
+    assert!(result.succeeded());
 
-    let result = env.execute_in_container(&container, ["sh", "-c", "echo 'Testing command execution' && sleep 0.1 && echo 'Command completed'"]).await?;
-    assert!(result.success);
+    let result = env.execute_in_container(&container, &["sh".to_string(), "-c".to_string(), "echo 'Testing command execution' && sleep 0.1 && echo 'Command completed'".to_string()]).await?;
+    assert!(result.succeeded());
     assert!(result.stdout.contains("Command completed"));
 
-    let result = env.execute_in_container(&container, ["sh", "-c", "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt"]).await?;
-    assert!(result.success);
+    let result = env.execute_in_container(&container, &["sh".to_string(), "-c".to_string(), "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt".to_string()]).await?;
+    assert!(result.succeeded());
     assert!(result.stdout.contains("test data"));
 
     println!("✅ Command execution works in {:?}", command_start.elapsed());
@@ -102,7 +102,7 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
     }).await?;
 
     // Write different data to each container
-    env.execute_in_container(&container_a, ["sh", "-c", "echo 'data-a' > /tmp/shared.txt"]).await?;
+    env.execute_in_container(&container_a, &["sh".to_string(), "-c".to_string(), "echo 'data-a' > /tmp/shared.txt".to_string()]).await?;
     env.execute_in_container(&container_b, ["sh", "-c", "echo 'data-b' > /tmp/shared.txt"]).await?;
 
     // Verify isolation - each container should have its own data

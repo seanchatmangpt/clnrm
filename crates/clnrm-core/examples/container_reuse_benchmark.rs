@@ -127,7 +127,7 @@ async fn main() -> Result<(), CleanroomError> {
     println!("\n📊 Test 7: Observability Validation");
     println!("----------------------------------");
 
-    let metrics = env.get_metrics().await;
+    let metrics = env.get_metrics().await?;
     println!("📊 Session Metrics:");
     println!("   Tests Executed: {}", metrics.tests_executed);
     println!("   Tests Passed: {}", metrics.tests_passed);
