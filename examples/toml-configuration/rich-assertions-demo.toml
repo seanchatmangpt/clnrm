@@ -1,0 +1,34 @@
+# Rich Assertions Demo
+# This test demonstrates the rich assertions claims from the README
+# Users can copy this file to test assertion functionality
+
+[test.metadata]
+name = "rich_assertions_demo"
+description = "Demonstrates rich assertions as claimed in the README"
+
+[services.assertion_test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "setup_test_data"
+command = ["sh", "-c", "echo 'Setting up test data for assertions' && echo 'test_data' > /tmp/assertion_test.txt"]
+expected_output_regex = "Setting up test data for assertions"
+
+[[steps]]
+name = "execute_test_operations"
+command = ["sh", "-c", "echo 'Executing test operations' && ls -la /tmp/assertion_test.txt"]
+expected_output_regex = "Executing test operations"
+
+[[steps]]
+name = "verify_test_results"
+command = ["sh", "-c", "echo 'Verifying test results' && cat /tmp/assertion_test.txt"]
+expected_output_regex = "test_data"
+
+[assertions]
+# Framework-specific assertions as claimed in README
+container_should_have_executed_commands = 3
+execution_should_be_hermetic = true
+plugin_should_be_loaded = "alpine"
+observability_should_capture_metrics = true

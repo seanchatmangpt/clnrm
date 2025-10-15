@@ -1,0 +1,246 @@
+# GitLab CI Pipeline Example
+# This file demonstrates the GitLab CI integration claim from the README
+# Users can copy this file to their .gitlab-ci.yml
+
+stages:
+  - test
+  - report
+
+variables:
+  # Configure parallel jobs for faster execution
+  CLEANROOM_JOBS: "8"
+
+# Cleanroom integration tests
+cleanroom_tests:
+  stage: test
+  image: ubuntu:latest
+  script:
+    - echo "🚀 Installing Cleanroom CLI..."
+    - curl -fsSL https://install.clnrm.dev | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+
+    - echo "🔍 Verifying installation..."
+    - clnrm --version
+
+    - echo "📦 Setting up test project..."
+    - clnrm init cleanroom-tests
+    - cd cleanroom-tests
+
+    - echo "⚙️ Creating comprehensive test suite..."
+    - cat > tests/comprehensive.toml << 'EOF'
+      [test.metadata]
+      name = "gitlab_ci_comprehensive_test"
+      description = "Comprehensive test suite for GitLab CI"
+      timeout = "120s"
+
+      [services.postgres]
+      type = "generic_container"
+      plugin = "postgres"
+      image = "postgres:15-alpine"
+      environment.POSTGRES_PASSWORD = "gitlab_test"
+
+      [services.redis]
+      type = "generic_container"
+      plugin = "redis"
+      image = "redis:7-alpine"
+
+      [services.api_server]
+      type = "generic_container"
+      plugin = "nginx"
+      image = "nginx:alpine"
+
+      [[steps]]
+      name = "database_setup"
+      service = "postgres"
+      command = ["sh", "-c", "until pg_isready -h localhost; do sleep 1; done"]
+      expected_exit_code = 0
+
+      [[steps]]
+      name = "redis_ping"
+      service = "redis"
+      command = ["redis-cli", "ping"]
+      expected_output_regex = "PONG"
+
+      [[steps]]
+      name = "api_health"
+      service = "api_server"
+      command = ["wget", "--spider", "http://localhost:80"]
+      expected_exit_code = 0
+
+      [[steps]]
+      name = "database_operations"
+      service = "postgres"
+      command = ["psql", "-h", "localhost", "-U", "postgres", "-c", "CREATE TABLE test (id SERIAL); INSERT INTO test VALUES (1), (2), (3); SELECT COUNT(*) FROM test;"]
+      expected_output_regex = "\\(3 rows\\)"
+
+      [assertions]
+      postgres_should_be_ready = true
+      redis_should_be_ready = true
+      api_server_should_be_ready = true
+      database_should_have_table = "test"
+      database_should_have_row_count = 3
+      EOF
+
+    - echo "🧪 Running Cleanroom tests..."
+    - clnrm run tests/ --parallel --jobs $CLEANROOM_JOBS --format junit > ../test-results.xml
+
+    - echo "📊 Generating test report..."
+    - clnrm report tests/ --format html --output ../test-report.html
+
+  artifacts:
+    when: always
+    reports:
+      junit: test-results.xml
+    paths:
+      - test-report.html
+    expire_in: 1 week
+
+  cache:
+    paths:
+      - cleanroom-tests/
+
+# Deploy test reports
+deploy_reports:
+  stage: report
+  image: ubuntu:latest
+  script:
+    - echo "📋 Publishing test reports..."
+    - echo "Test results available as artifacts"
+    - echo "JUnit XML: test-results.xml"
+    - echo "HTML Report: test-report.html"
+  dependencies:
+    - cleanroom_tests
+  artifacts:
+    paths:
+      - test-report.html
+    expire_in: 1 month
+  only:
+    - main
+    - develop
+
+# Performance benchmark job
+performance_benchmark:
+  stage: test
+  image: ubuntu:latest
+  script:
+    - echo "🏃 Running performance benchmarks..."
+    - curl -fsSL https://install.clnrm.dev | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+
+    - echo "📊 Creating performance benchmark..."
+    - clnrm init perf-benchmark
+    - cd perf-benchmark
+
+    - echo "⚡ Running container reuse benchmark..."
+    - |
+      cat > benchmark.rs << 'EOF'
+      use clnrm_core::{CleanroomEnvironment, Result};
+      use std::time::Instant;
+
+      #[tokio::main]
+      async fn main() -> Result<()> {
+        let env = CleanroomEnvironment::new().await?;
+        let start = Instant::now();
+
+        // Create containers traditionally
+        for i in 0..5 {
+          let _c = env.get_or_create_container(&format!("traditional-{}", i), || async {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            Ok::<String, clnrm_core::CleanroomError>(format!("c-{}", i))
+          }).await?;
+        }
+
+        let traditional = start.elapsed();
+
+        // Reuse containers
+        let reuse_start = Instant::now();
+        let _reused = env.get_or_create_container("reusable", || async {
+          tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+          Ok::<String, clnrm_core::CleanroomError>("reusable".to_string())
+        }).await?;
+
+        for _ in 0..4 {
+          let _r = env.get_or_create_container("reusable", || async {
+            Ok::<String, clnrm_core::CleanroomError>("should-not-create".to_string())
+          }).await?;
+        }
+
+        let reused = reuse_start.elapsed();
+
+        println!("Traditional: {:?}", traditional);
+        println!("Reused: {:?}", reused);
+        println!("Improvement: {:.1}x", traditional.as_millis() as f64 / reused.as_millis() as f64);
+
+        Ok(())
+      }
+      EOF
+
+    - echo "📈 Performance benchmark created"
+    - echo "💡 Users can run: cargo run --bin benchmark"
+
+  artifacts:
+    paths:
+      - perf-benchmark/
+    expire_in: 1 day
+  only:
+    - main
+    - schedules
+
+# Security scanning with Cleanroom
+security_tests:
+  stage: test
+  image: ubuntu:latest
+  script:
+    - echo "🔒 Running security tests with Cleanroom..."
+    - curl -fsSL https://install.clnrm.dev | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+
+    - clnrm init security-tests
+    - cd security-tests
+
+    - echo "🛡️ Creating security test configuration..."
+    - |
+      cat > tests/security.toml << 'EOF'
+      [test.metadata]
+      name = "security_validation"
+      description = "Security-focused integration tests"
+
+      [services.vulnerable_app]
+      type = "generic_container"
+      plugin = "alpine"
+      image = "alpine:latest"
+
+      [[steps]]
+      name = "check_no_root"
+      service = "vulnerable_app"
+      command = ["whoami"]
+      expected_output_regex_not = "root"
+
+      [[steps]]
+      name = "check_readonly_root"
+      service = "vulnerable_app"
+      command = ["mount", "|", "grep", " / ", "|", "grep", "ro,"]
+      expected_exit_code = 0
+
+      [[steps]]
+      name = "check_no_privileged_ports"
+      service = "vulnerable_app"
+      command = ["netstat", "-tuln", "|", "grep", ":22 ", "|", "grep", "LISTEN"]
+      expected_exit_code = 1
+
+      [assertions]
+      container_should_not_run_as_root = true
+      filesystem_should_be_readonly = true
+      no_privileged_ports_should_be_exposed = true
+      EOF
+
+    - echo "✅ Security test configuration created"
+    - echo "💡 This demonstrates security testing with Cleanroom"
+
+  artifacts:
+    paths:
+      - security-tests/
+    expire_in: 1 day
+  only:
+    - main
+    - security

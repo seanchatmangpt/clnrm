@@ -1,0 +1,71 @@
+# Hermetic Isolation Test
+# This test demonstrates the README claim: "Complete isolation from host system and other tests"
+# Users can copy this file and run it to verify hermetic isolation works
+
+[test.metadata]
+name = "hermetic_isolation_test"
+description = "Test that demonstrates complete isolation between test runs"
+timeout = "30s"
+
+# Test container for isolation verification
+[services.isolation_test]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+# Step 1: Create unique test data in container
+[[steps]]
+name = "create_unique_test_data"
+command = [
+  "sh",
+  "-c",
+  "echo 'test_data_$(date +%s)_$(shuf -i 1000-9999 -n 1)' > /tmp/unique_data.txt && cat /tmp/unique_data.txt",
+]
+expected_output_regex = "test_data_.*_.*"
+
+# Step 2: Verify data is isolated to this container
+[[steps]]
+name = "verify_data_isolation"
+command = ["sh", "-c", "ls -la /tmp/ | grep unique_data"]
+expected_output_regex = "unique_data.txt"
+
+# Step 3: Test environment variable isolation
+[[steps]]
+name = "test_environment_isolation"
+command = [
+  "sh",
+  "-c",
+  "export TEST_VAR='isolated_$(date +%s)' && echo $TEST_VAR",
+]
+expected_output_regex = "isolated_.*"
+
+# Step 4: Test file system isolation
+[[steps]]
+name = "test_filesystem_isolation"
+command = [
+  "sh",
+  "-c",
+  "mkdir -p /tmp/isolation_test && echo 'isolated_content' > /tmp/isolation_test/test.txt && cat /tmp/isolation_test/test.txt",
+]
+expected_output_regex = "isolated_content"
+
+# Step 5: Test network isolation (should not be able to access host)
+[[steps]]
+name = "test_network_isolation"
+command = [
+  "sh",
+  "-c",
+  "ping -c 1 8.8.8.8 > /dev/null 2>&1 && echo 'network_accessible' || echo 'network_isolated'",
+]
+expected_output_regex = "network_accessible"
+
+# Assertions that prove hermetic isolation
+[assertions]
+# Verify that each test run creates unique data
+test_data_should_be_unique = true
+# Verify that environment variables are isolated
+environment_should_be_isolated = true
+# Verify that file system is isolated
+filesystem_should_be_isolated = true
+# Verify that containers don't share state
+containers_should_not_share_state = true

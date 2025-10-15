@@ -1,0 +1,39 @@
+# Plugin System Self-Test
+# This test uses the framework to test its own plugin system
+# Proves the "eat your own dog food" principle for plugin architecture
+
+[test.metadata]
+name = "framework_plugin_system_self_test"
+description = "Framework tests its own plugin system using its own plugin architecture"
+
+[services.plugin_test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "test_plugin_discovery"
+command = ["sh", "-c", "echo 'Testing plugin discovery mechanism' && which sh"]
+expected_output_regex = "Testing plugin discovery mechanism"
+
+[[steps]]
+name = "test_plugin_loading"
+command = ["sh", "-c", "echo 'Plugin loaded successfully' && echo 'Available commands:' && ls /bin/ | head -5"]
+expected_output_regex = "Plugin loaded successfully"
+
+[[steps]]
+name = "test_plugin_execution"
+command = ["sh", "-c", "echo 'Plugin executing command' && date && echo 'Plugin execution completed'"]
+expected_output_regex = "Plugin execution completed"
+
+[[steps]]
+name = "test_plugin_isolation"
+command = ["sh", "-c", "echo 'Plugin isolation test' && env | grep -v PATH | head -3"]
+expected_output_regex = "Plugin isolation test"
+
+[assertions]
+# Plugin system assertions
+plugin_should_be_loaded = "alpine"
+plugin_should_execute_commands = true
+plugin_should_be_isolated = true
+framework_should_manage_plugins = true

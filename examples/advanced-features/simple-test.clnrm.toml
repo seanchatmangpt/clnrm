@@ -1,0 +1,14 @@
+# Simple Test - Minimal working example
+# This demonstrates the correct TOML format for the CLI
+
+[test]
+name = "simple_test"
+description = "A simple test to verify CLI functionality"
+
+[services]
+test_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+
+[[steps]]
+name = "hello_world"
+command = ["echo", "Hello, World!"]
+expected_output_regex = "Hello, World!"

@@ -22,6 +22,7 @@ use opentelemetry_sdk::metrics::SdkMeterProvider;
 #[cfg(feature = "otel-traces")]
 use tracing_opentelemetry::OpenTelemetryLayer;
 
+
 /// Export mechanism.
 #[derive(Clone, Debug)]
 pub enum Export {

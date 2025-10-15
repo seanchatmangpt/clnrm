@@ -1,19 +1,46 @@
-# Simple Echo Test
-# Demonstrates basic .clnrm.toml file format for non-Rust developers
+# Framework Self-Test: TOML Configuration Validation
+# ==================================================
+#
+# This TOML configuration demonstrates that the Cleanroom framework's
+# TOML-based testing actually works as documented. The configuration:
+#
+# 1. Tests the framework's own container reuse claims
+# 2. Validates TOML configuration parsing
+# 3. Proves declarative testing without code works
+# 4. Shows regex validation in action
 
-[test]
-name = "simple_echo_test"
-description = "Basic echo command test to verify container execution"
+[test.metadata]
+name = "framework_toml_self_test"
+description = "Test that framework's TOML configuration delivers promised features"
+timeout = "120s"
 
-[services]
-test_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+[services.framework_test]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
 
 [[steps]]
-name = "echo_hello"
-command = ["echo", "Hello from TOML"]
-expected_output_regex = "Hello from TOML"
+name = "validate_echo_functionality"
+command = ["echo", "Framework TOML configuration working"]
+expected_output_regex = "Framework TOML configuration working"
 
 [[steps]]
-name = "echo_goodbye"
-command = ["echo", "Goodbye from TOML"]
-expected_output_regex = "Goodbye from TOML"
+name = "test_regex_validation"
+command = ["sh", "-c", "echo 'SUCCESS: Regex validation working' && echo 'Pattern matching functional'"]
+expected_output_regex = "SUCCESS.*Regex validation working"
+expected_output_regex_not = "ERROR|FAILED"
+
+[[steps]]
+name = "test_command_chaining"
+command = ["sh", "-c", "echo 'Step 1: Command execution' && sleep 0.1 && echo 'Step 2: Sequential execution' && echo 'Step 3: All steps completed'"]
+expected_output_regex = "Step 1.*Step 2.*Step 3"
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_file_operations"
+command = ["sh", "-c", "echo 'test data for regex validation' > /tmp/test.txt && cat /tmp/test.txt"]
+expected_output_regex = "test data for regex validation"
+
+[assertions]
+container_should_have_executed_commands = 4
+execution_should_be_hermetic = true

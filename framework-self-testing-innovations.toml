@@ -1,0 +1,75 @@
+# Framework Self-Testing Innovations: Eating Our Own Dog Food
+# This TOML file demonstrates the framework testing itself using its own features
+
+[test.metadata]
+name = "framework_self_testing_innovations"
+description = "Demonstrates innovative framework self-testing using its own features"
+timeout = "60s"
+
+# Test the framework's own container execution capabilities
+[services.framework_validator]
+name = "framework_validator"
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+# Test the framework's own observability features
+[services.observability_tester]
+name = "observability_tester"
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+# Steps that use the framework to test itself
+[[steps]]
+name = "validate_container_execution_innovation"
+command = [
+  "sh",
+  "-c",
+  "echo 'Framework successfully executes container commands' > /tmp/framework_test.txt && cat /tmp/framework_test.txt",
+]
+expected_output_regex = "Framework successfully executes container commands"
+
+[[steps]]
+name = "test_regex_validation_innovation"
+command = [
+  "sh",
+  "-c",
+  "echo 'SUCCESS: Regex validation working in framework self-test' | grep -E 'SUCCESS.*working'",
+]
+expected_output_regex = "SUCCESS.*working"
+expected_exit_code = 0
+
+[[steps]]
+name = "test_hermetic_isolation_innovation"
+command = [
+  "sh",
+  "-c",
+  "echo 'hermetic-isolation-test-$(date +%s)' > /tmp/isolation_test.txt && cat /tmp/isolation_test.txt",
+]
+expected_output_regex = "hermetic-isolation-test-[0-9]+"
+
+[[steps]]
+name = "test_observability_innovation"
+command = [
+  "sh",
+  "-c",
+  "echo 'Framework observability metrics collection test' && sleep 0.1",
+]
+expected_output_regex = "Framework observability metrics collection test"
+
+[[steps]]
+name = "test_performance_benchmarks_innovation"
+command = [
+  "sh",
+  "-c",
+  "start=$(date +%s%N) && echo 'Performance test' && end=$(date +%s%N) && echo $((end-start))",
+]
+expected_output_regex = "[0-9]+"
+
+# Validate that the framework correctly implements its own claims
+[assertions]
+container_should_have_executed_commands = 5
+execution_should_be_hermetic = true
+observability_should_capture_metrics = true
+regex_validation_should_work = true

@@ -21,18 +21,23 @@ pub mod assertions;
 pub mod services;
 pub mod config;
 
-pub use error::CleanroomError;
+pub use error::{CleanroomError, Result};
 pub use policy::{Policy, SecurityLevel, SecurityPolicy};
 pub use scenario::scenario;
 
 #[cfg(feature = "otel-traces")]
 pub use telemetry::{OtelConfig, Export, OtelGuard};
 
-pub use cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, ServiceRegistry, HealthStatus};
+pub use cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, ServiceRegistry, HealthStatus, ExecutionResult};
 pub use macros::{with_database, with_cache, with_message_queue, with_web_server};
 pub use assertions::{database, cache, email_service, UserAssertions};
 pub use services::surrealdb::SurrealDbPlugin;
-pub use config::{TestConfig, ScenarioConfig, StepConfig, parse_toml_config, load_config_from_file};
+pub use config::{
+    TestConfig, ScenarioConfig, StepConfig, parse_toml_config, load_config_from_file,
+    CleanroomConfig, load_cleanroom_config, load_cleanroom_config_from_file
+};
+
+// The cleanroom_test macro is already exported via #[macro_export] in macros.rs
 
 /// Result of a cleanroom run
 #[derive(Debug)]

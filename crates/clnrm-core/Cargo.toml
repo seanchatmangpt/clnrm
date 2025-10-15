@@ -48,6 +48,62 @@ tracing-subscriber = { workspace = true, optional = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 
+[[example]]
+name = "validate-toml-format"
+path = "examples/toml-configuration/validate-toml-format.rs"
+
+[[example]]
+name = "complete-dogfooding-suite"
+path = "examples/framework-self-testing/complete-dogfooding-suite.rs"
+
+[[example]]
+name = "observability-demo"
+path = "examples/observability/observability-demo.rs"
+
+[[example]]
+name = "custom-plugin-demo"
+path = "examples/plugins/custom-plugin-demo.rs"
+
+[[example]]
+name = "container-reuse-benchmark"
+path = "examples/performance/container-reuse-benchmark.rs"
+
+[[example]]
+name = "container-lifecycle-test"
+path = "examples/framework-self-testing/container-lifecycle-test.rs"
+
+[[example]]
+name = "config-loading-test"
+path = "examples/config/config-loading-test.rs"
+
+[[example]]
+name = "hermetic-isolation-test"
+path = "../../examples/framework-self-testing/hermetic_isolation_test.rs"
+
+[[example]]
+name = "plugin-system-test"
+path = "../../examples/framework-self-testing/plugin_system_test.rs"
+
+[[example]]
+name = "observability-test"
+path = "../../examples/framework-self-testing/observability_test.rs"
+
+[[example]]
+name = "simple-framework-test"
+path = "../../examples/framework-self-testing/simple-framework-test.rs"
+
+[[example]]
+name = "innovative-dogfood-test"
+path = "examples/framework-self-testing/innovative-dogfood-test.rs"
+
+[[example]]
+name = "observability-self-test"
+path = "examples/observability/observability-self-test.rs"
+
+[[example]]
+name = "plugin-self-test"
+path = "examples/plugins/plugin-self-test.rs"
+
 [features]
 default = []
 otel-stdout = ["opentelemetry-stdout"]

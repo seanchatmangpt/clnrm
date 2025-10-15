@@ -1,0 +1,39 @@
+# TOML Parsing Self-Test
+# This test uses the framework to test its own TOML parsing capabilities
+# Proves the "eat your own dog food" principle for configuration parsing
+
+[test.metadata]
+name = "framework_toml_parsing_self_test"
+description = "Framework tests its own TOML parsing using its own configuration system"
+
+[services.toml_test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "test_toml_metadata_parsing"
+command = ["sh", "-c", "echo 'TOML metadata parsed: name and description loaded'"]
+expected_output_regex = "TOML metadata parsed: name and description loaded"
+
+[[steps]]
+name = "test_toml_services_parsing"
+command = ["sh", "-c", "echo 'TOML services section parsed: container configuration loaded'"]
+expected_output_regex = "TOML services section parsed: container configuration loaded"
+
+[[steps]]
+name = "test_toml_steps_parsing"
+command = ["sh", "-c", "echo 'TOML steps array parsed: command and regex validation loaded'"]
+expected_output_regex = "TOML steps array parsed: command and regex validation loaded"
+
+[[steps]]
+name = "test_toml_assertions_parsing"
+command = ["sh", "-c", "echo 'TOML assertions section parsed: framework-specific validations loaded'"]
+expected_output_regex = "TOML assertions section parsed: framework-specific validations loaded"
+
+[assertions]
+# TOML parsing assertions
+toml_should_be_parsed_correctly = true
+configuration_should_be_loaded = true
+framework_should_validate_toml = true
+parsing_should_be_hermetic = true

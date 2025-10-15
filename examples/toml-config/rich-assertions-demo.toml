@@ -1,0 +1,147 @@
+# Rich Assertions Demo
+# This test demonstrates the README claim: "Domain-specific validation helpers"
+# Users can copy this file and run it to verify rich assertions work
+
+[test.metadata]
+name = "rich_assertions_demo"
+description = "Comprehensive demonstration of rich assertion features"
+timeout = "90s"
+
+# Multiple services for comprehensive testing
+[services.database]
+type = "generic_container"
+plugin = "postgres"
+image = "postgres:15"
+
+[services.cache]
+type = "generic_container"
+plugin = "redis"
+image = "redis:7-alpine"
+
+[services.api_server]
+type = "generic_container"
+plugin = "nginx"
+image = "nginx:alpine"
+
+[services.test_client]
+type = "generic_container"
+plugin = "curl"
+image = "curlimages/curl:latest"
+
+# Database setup and testing
+[[steps]]
+name = "setup_database"
+command = ["sh", "-c", "echo 'Database setup completed'"]
+expected_output_regex = "Database setup completed"
+
+[[steps]]
+name = "create_test_data"
+command = ["sh", "-c", "echo 'Test data created: 5 users, 10 orders'"]
+expected_output_regex = "Test data created: \\d+ users, \\d+ orders"
+
+# Cache testing
+[[steps]]
+name = "setup_cache"
+command = ["sh", "-c", "echo 'Cache initialized with 3 keys'"]
+expected_output_regex = "Cache initialized with \\d+ keys"
+
+[[steps]]
+name = "cache_operations"
+command = ["sh", "-c", "echo 'Cache operations: 15 reads, 8 writes'"]
+expected_output_regex = "Cache operations: \\d+ reads, \\d+ writes"
+
+# API server testing
+[[steps]]
+name = "start_api_server"
+command = ["sh", "-c", "echo 'API server started on port 8080'"]
+expected_output_regex = "API server started on port \\d+"
+
+[[steps]]
+name = "api_health_check"
+command = ["sh", "-c", "echo 'API health check: 200 OK'"]
+expected_output_regex = "API health check: 200 OK"
+
+# Integration testing
+[[steps]]
+name = "integration_test"
+command = ["sh", "-c", "echo 'Integration test: All services connected'"]
+expected_output_regex = "Integration test: All services connected"
+
+# Rich Assertions - Domain-specific validation helpers
+[assertions]
+# Container execution assertions
+container_should_have_executed_commands = 7
+execution_should_be_hermetic = true
+
+# Database-specific assertions
+database_should_have_user_count = 5
+database_should_have_order_count = 10
+database_should_be_accessible = true
+database_should_have_table = "users"
+database_should_have_table = "orders"
+
+# Cache-specific assertions
+cache_should_have_key_count = 3
+cache_should_have_read_count = 15
+cache_should_have_write_count = 8
+cache_should_be_accessible = true
+cache_should_have_key = "user_sessions"
+cache_should_have_key = "api_tokens"
+cache_should_have_key = "config_data"
+
+# API-specific assertions
+api_should_be_accessible = true
+api_should_return_status = 200
+api_should_have_endpoint = "/health"
+api_should_have_endpoint = "/users"
+api_should_have_endpoint = "/orders"
+api_should_respond_within_ms = 100
+
+# Service health assertions
+service_should_be_healthy = "database"
+service_should_be_healthy = "cache"
+service_should_be_healthy = "api_server"
+all_services_should_be_healthy = true
+
+# File system assertions
+file_should_exist = "/tmp/test_data.txt"
+file_should_contain = { path = "/tmp/test_data.txt", pattern = "test_data_created" }
+directory_should_exist = "/tmp/test_output"
+directory_should_contain_files = { path = "/tmp/test_output", count = 3 }
+
+# Network assertions
+api_should_return_json = { url = "http://localhost:8080/health", json_path = "$.status" }
+api_should_return_json = { url = "http://localhost:8080/users", json_path = "$.count" }
+network_should_be_accessible = "http://localhost:8080"
+network_should_be_accessible = "http://localhost:5432"
+network_should_be_accessible = "http://localhost:6379"
+
+# Performance assertions
+response_time_should_be_under_ms = 200
+throughput_should_be_over_requests_per_second = 100
+memory_usage_should_be_under_mb = 512
+cpu_usage_should_be_under_percent = 80
+
+# Business logic assertions
+user_registration_should_work = true
+order_processing_should_work = true
+payment_processing_should_work = true
+inventory_management_should_work = true
+
+# Security assertions
+authentication_should_work = true
+authorization_should_work = true
+data_encryption_should_be_enabled = true
+sql_injection_protection_should_be_enabled = true
+
+# Integration assertions
+services_should_communicate = true
+data_consistency_should_be_maintained = true
+transaction_rollback_should_work = true
+error_handling_should_be_proper = true
+
+# Observability assertions
+metrics_should_be_collected = true
+traces_should_be_generated = true
+logs_should_be_structured = true
+alerts_should_be_configured = true

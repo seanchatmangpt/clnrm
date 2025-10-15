@@ -1,0 +1,53 @@
+# GitLab CI Demo - Working Example from README
+# This is the exact GitLab CI example shown in the README
+# Users can copy this file to test CI/CD integration claims
+
+stages:
+  - test
+  - report
+
+variables:
+  CLNRM_VERSION: "latest"
+
+before_script:
+  - curl -fsSL https://install.clnrm.dev | sh
+  - export PATH="$HOME/.local/bin:$PATH"
+  - clnrm --version
+
+cleanroom_tests:
+  stage: test
+  script:
+    - clnrm run tests/ --parallel --jobs 8
+  artifacts:
+    reports:
+      junit: test-results.xml
+    paths:
+      - test-results.xml
+    expire_in: 1 week
+  coverage: '/Coverage: \d+\.\d+%/'
+
+framework_self_tests:
+  stage: test
+  script:
+    - clnrm self-test --suite framework
+    - clnrm self-test --suite container
+    - clnrm self-test --suite plugin
+    - clnrm self-test --suite cli
+  artifacts:
+    paths:
+      - framework-test-report.json
+    expire_in: 1 week
+
+generate_reports:
+  stage: report
+  script:
+    - clnrm report tests/ --format html --output integration-report.html
+    - clnrm report tests/ --format json --output integration-report.json
+  artifacts:
+    paths:
+      - integration-report.html
+      - integration-report.json
+    expire_in: 1 month
+  only:
+    - main
+    - develop

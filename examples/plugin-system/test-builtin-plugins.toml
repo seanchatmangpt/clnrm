@@ -1,0 +1,34 @@
+# Built-in Plugins Test
+# This test demonstrates the plugin-based architecture claims from the README
+# Users can copy this file to test built-in plugin functionality
+
+[test.metadata]
+name = "builtin_plugins_test"
+description = "Tests all built-in plugins as claimed in the README"
+
+[services.alpine_plugin_test]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "test_alpine_plugin"
+command = ["sh", "-c", "echo 'Alpine plugin working' && cat /etc/alpine-release"]
+expected_output_regex = "Alpine plugin working"
+
+[services.ubuntu_plugin_test]
+type = "generic_container"
+plugin = "ubuntu"
+image = "ubuntu:22.04"
+
+[[steps]]
+name = "test_ubuntu_plugin"
+command = ["bash", "-c", "echo 'Ubuntu plugin working' && lsb_release -a"]
+expected_output_regex = "Ubuntu plugin working"
+
+[assertions]
+# Plugin system assertions
+plugin_should_be_loaded = "alpine"
+plugin_should_execute_commands = true
+plugin_architecture_should_work = true
+builtin_plugins_should_be_available = true

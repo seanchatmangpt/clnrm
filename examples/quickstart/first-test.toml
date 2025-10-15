@@ -1,0 +1,31 @@
+# First Test - Exact TOML from README Quick Start
+# This is the exact TOML file shown in the README quick start section
+# Users can copy this file to test the framework
+
+[test.metadata]
+name = "container_lifecycle_test"
+description = "Test that containers start, execute commands, and cleanup properly"
+
+[services.test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "verify_container_startup"
+command = ["echo", "Container started successfully"]
+expected_output_regex = "Container started successfully"
+
+[[steps]]
+name = "test_command_execution"
+command = ["sh", "-c", "echo 'Testing command execution' && sleep 1 && echo 'Command completed'"]
+expected_output_regex = "Command completed"
+
+[[steps]]
+name = "test_file_operations"
+command = ["sh", "-c", "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt"]
+expected_output_regex = "test data"
+
+[assertions]
+container_should_have_executed_commands = 3
+execution_should_be_hermetic = true

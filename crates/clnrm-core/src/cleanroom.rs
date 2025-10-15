@@ -4,14 +4,17 @@
 //! principle. Every feature of this framework is validated by using the framework
 //! to test its own functionality.
 
-use crate::backend::{Backend, TestcontainerBackend};
+use crate::backend::{Backend, TestcontainerBackend, Cmd};
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+#[cfg(feature = "otel-traces")]
 use opentelemetry::global;
+#[cfg(feature = "otel-traces")]
 use opentelemetry::KeyValue;
+#[cfg(feature = "otel-traces")]
 use opentelemetry::trace::{TracerProvider, Tracer, Span};
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::surrealdb::{SurrealDb, SURREALDB_PORT};
@@ -174,6 +177,48 @@ impl Default for SimpleMetrics {
     }
 }
 
+/// Execution result for container command execution
+#[derive(Debug, Clone)]
+pub struct ExecutionResult {
+    /// Exit code of the executed command
+    pub exit_code: i32,
+    /// Standard output from the command
+    pub stdout: String,
+    /// Standard error from the command
+    pub stderr: String,
+    /// Duration of command execution
+    pub duration: std::time::Duration,
+    /// Command that was executed
+    pub command: Vec<String>,
+    /// Container name where command was executed
+    pub container_name: String,
+}
+
+impl ExecutionResult {
+    /// Check if command output matches a regex pattern
+    pub fn matches_regex(&self, pattern: &str) -> Result<bool> {
+        use regex::Regex;
+        let regex = Regex::new(pattern)
+            .map_err(|e| CleanroomError::validation_error(format!("Invalid regex pattern '{}': {}", pattern, e)))?;
+        Ok(regex.is_match(&self.stdout))
+    }
+
+    /// Check if command output does NOT match a regex pattern
+    pub fn does_not_match_regex(&self, pattern: &str) -> Result<bool> {
+        Ok(!self.matches_regex(pattern)?)
+    }
+
+    /// Check if command succeeded (exit code 0)
+    pub fn succeeded(&self) -> bool {
+        self.exit_code == 0
+    }
+
+    /// Check if command failed (non-zero exit code)
+    pub fn failed(&self) -> bool {
+        !self.succeeded()
+    }
+}
+
 /// Simple environment wrapper around existing infrastructure
 #[allow(dead_code)]
 pub struct CleanroomEnvironment {
@@ -188,24 +233,59 @@ pub struct CleanroomEnvironment {
     /// Container registry for reuse - stores actual container instances
     container_registry: Arc<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>>,
     /// OpenTelemetry meter for metrics
+    #[cfg(feature = "otel-metrics")]
     meter: opentelemetry::metrics::Meter,
+    /// Telemetry configuration and state
+    telemetry: Arc<RwLock<TelemetryState>>,
+}
+
+/// Telemetry state for the cleanroom environment
+#[derive(Debug)]
+pub struct TelemetryState {
+    /// Whether tracing is enabled
+    pub tracing_enabled: bool,
+    /// Whether metrics are enabled
+    pub metrics_enabled: bool,
+    /// Collected traces (for testing/debugging)
+    pub traces: Vec<String>,
+}
+
+impl TelemetryState {
+    /// Enable tracing
+    pub fn enable_tracing(&mut self) {
+        self.tracing_enabled = true;
+    }
+
+    /// Enable metrics collection
+    pub fn enable_metrics(&mut self) {
+        self.metrics_enabled = true;
+    }
+
+    /// Get collected traces
+    pub fn get_traces(&self) -> Vec<String> {
+        self.traces.clone()
+    }
 }
 
 impl CleanroomEnvironment {
     /// Create a new cleanroom environment
     pub async fn new() -> Result<Self> {
-        // Get OTel providers from global registry (assumes OTel is already initialized)
-        let meter_provider = global::meter_provider();
-
-        let meter = meter_provider.meter("clnrm-cleanroom");
-
         Ok(Self {
             session_id: Uuid::new_v4(),
-            meter,
+            #[cfg(feature = "otel-metrics")]
+            meter: {
+                let meter_provider = global::meter_provider();
+                meter_provider.meter("clnrm-cleanroom")
+            },
             backend: Box::new(TestcontainerBackend::new("alpine:latest")?),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
+            telemetry: Arc::new(RwLock::new(TelemetryState {
+                tracing_enabled: false,
+                metrics_enabled: false,
+                traces: Vec::new(),
+            })),
         })
     }
 
@@ -214,8 +294,11 @@ impl CleanroomEnvironment {
     where
         F: FnOnce() -> Result<T>,
     {
+        #[cfg(feature = "otel-traces")]
         let tracer_provider = global::tracer_provider();
+        #[cfg(feature = "otel-traces")]
         let mut span = tracer_provider.tracer("clnrm-cleanroom").start(format!("test.{}", _test_name));
+        #[cfg(feature = "otel-traces")]
         span.set_attributes(vec![
             KeyValue::new("test.name", _test_name.to_string()),
             KeyValue::new("session.id", self.session_id.to_string()),
@@ -246,34 +329,72 @@ impl CleanroomEnvironment {
         let mut metrics = self.metrics.write().await;
         metrics.total_duration_ms += duration.as_millis() as u64;
 
-        // OTel metrics
-        let attributes = vec![
-            KeyValue::new("test.name", _test_name.to_string()),
-            KeyValue::new("session.id", self.session_id.to_string()),
-        ];
+        #[cfg(feature = "otel-metrics")]
+        {
+            // OTel metrics
+            let attributes = vec![
+                KeyValue::new("test.name", _test_name.to_string()),
+                KeyValue::new("session.id", self.session_id.to_string()),
+            ];
 
-        let counter = self.meter.u64_counter("test.executions")
-            .with_description("Number of test executions")
-            .build();
-        counter.add(1, &attributes);
+            let counter = self.meter.u64_counter("test.executions")
+                .with_description("Number of test executions")
+                .build();
+            counter.add(1, &attributes);
 
-        let histogram = self.meter.f64_histogram("test.duration")
-            .with_description("Test execution duration")
-            .build();
-        histogram.record(duration.as_secs_f64(), &attributes);
+            let histogram = self.meter.f64_histogram("test.duration")
+                .with_description("Test execution duration")
+                .build();
+            histogram.record(duration.as_secs_f64(), &attributes);
+        }
 
+        #[cfg(feature = "otel-traces")]
         if !success {
             span.set_status(opentelemetry::trace::Status::error("Test failed"));
         }
 
+        #[cfg(feature = "otel-traces")]
         span.end();
 
         result
     }
 
     /// Get current metrics
-    pub async fn get_metrics(&self) -> SimpleMetrics {
-        self.metrics.read().await.clone()
+    pub async fn get_metrics(&self) -> Result<SimpleMetrics> {
+        Ok(self.metrics.read().await.clone())
+    }
+
+    /// Enable tracing for this environment
+    pub async fn enable_tracing(&self) -> Result<()> {
+        #[cfg(feature = "otel-traces")]
+        {
+            let mut telemetry = self.telemetry.write().await;
+            telemetry.enable_tracing();
+        }
+        Ok(())
+    }
+
+    /// Enable metrics collection for this environment
+    pub async fn enable_metrics(&self) -> Result<()> {
+        #[cfg(feature = "otel-traces")]
+        {
+            let mut telemetry = self.telemetry.write().await;
+            telemetry.enable_metrics();
+        }
+        Ok(())
+    }
+
+    /// Get traces from this environment
+    pub async fn get_traces(&self) -> Result<Vec<String>> {
+        #[cfg(feature = "otel-traces")]
+        {
+            let telemetry = self.telemetry.read().await;
+            Ok(telemetry.get_traces())
+        }
+        #[cfg(not(feature = "otel-traces"))]
+        {
+            Ok(Vec::new())
+        }
     }
 
     /// Get container reuse statistics
@@ -387,23 +508,117 @@ impl CleanroomEnvironment {
     pub fn backend(&self) -> &dyn Backend {
         self.backend.as_ref()
     }
+
+    /// Execute a command in a container with proper error handling and observability
+    /// Core Team Compliance: Async for I/O operations, proper error handling, no unwrap/expect
+    pub async fn execute_in_container(
+        &self,
+        container_name: &str,
+        command: &[String],
+    ) -> Result<ExecutionResult> {
+        #[cfg(feature = "otel-traces")]
+        let tracer_provider = global::tracer_provider();
+        #[cfg(feature = "otel-traces")]
+        let mut span = tracer_provider.tracer("clnrm-cleanroom").start(format!("container.exec.{}", container_name));
+        #[cfg(feature = "otel-traces")]
+        span.set_attributes(vec![
+            KeyValue::new("container.name", container_name.to_string()),
+            KeyValue::new("command", command.join(" ")),
+            KeyValue::new("session.id", self.session_id.to_string()),
+        ]);
+
+        let start_time = std::time::Instant::now();
+
+        // Validate container exists in registry
+        if !self.has_container(container_name).await {
+            #[cfg(feature = "otel-traces")]
+            {
+                span.set_status(opentelemetry::trace::Status::error("Container not found"));
+                span.end();
+            }
+            return Err(CleanroomError::container_error(format!("Container '{}' not found in registry", container_name))
+                .with_context("Container must be registered before execution"));
+        }
+
+        // Execute command using backend with proper error handling
+        let cmd = Cmd::new("sh")
+            .arg("-c")
+            .arg(command.join(" "))
+            .env("CONTAINER_NAME", container_name);
+
+        let execution_result = self.backend.run_cmd(cmd).map_err(|e| {
+            #[cfg(feature = "otel-traces")]
+            {
+                span.set_status(opentelemetry::trace::Status::error("Command execution failed"));
+                span.end();
+            }
+            CleanroomError::container_error("Failed to execute command in container")
+                .with_context(format!("Container: {}, Command: {}", container_name, command.join(" ")))
+                .with_source(e.to_string())
+        })?;
+
+        let duration = start_time.elapsed();
+
+        // Record metrics
+        #[cfg(feature = "otel-metrics")]
+        {
+            let histogram = self.meter.f64_histogram("container.command.duration")
+                .with_description("Container command execution duration")
+                .build();
+            histogram.record(duration.as_secs_f64(), &[
+                KeyValue::new("container.name", container_name.to_string()),
+                KeyValue::new("command", command.join(" ")),
+            ]);
+        }
+
+        #[cfg(feature = "otel-traces")]
+        span.set_attributes(vec![
+            KeyValue::new("execution.exit_code", execution_result.exit_code.to_string()),
+            KeyValue::new("execution.duration_ms", duration.as_millis().to_string()),
+        ]);
+
+        #[cfg(feature = "otel-traces")]
+        if execution_result.exit_code != 0 {
+            span.set_status(opentelemetry::trace::Status::error("Command failed"));
+        }
+
+        #[cfg(feature = "otel-traces")]
+        span.end();
+
+        Ok(ExecutionResult {
+            exit_code: execution_result.exit_code,
+            stdout: execution_result.stdout,
+            stderr: execution_result.stderr,
+            duration,
+            command: command.to_vec(),
+            container_name: container_name.to_string(),
+        })
+    }
 }
 
 impl Default for CleanroomEnvironment {
     fn default() -> Self {
+        #[cfg(feature = "otel-metrics")]
         let meter_provider = global::meter_provider();
+        #[cfg(feature = "otel-metrics")]
         let meter = meter_provider.meter("cleanroom");
-        
+
         let backend = TestcontainerBackend::new("alpine:latest")
             .unwrap_or_else(|_| panic!("Failed to create default backend"));
-        
+
         Self {
             session_id: Uuid::new_v4(),
+            #[cfg(feature = "otel-metrics")]
+            meter,
             backend: Box::new(backend),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
-            meter,
+            telemetry: Arc::new(RwLock::new(TelemetryState {
+                tracing_enabled: false,
+                metrics_enabled: false,
+                traces: Vec::new(),
+            })),
         }
     }
 }

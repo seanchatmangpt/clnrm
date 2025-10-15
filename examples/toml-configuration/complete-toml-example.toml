@@ -1,0 +1,27 @@
+# Complete TOML Example - Full TOML from README
+# This is the complete TOML example shown in the README configuration section
+# Users can copy this file to test all TOML configuration features
+
+[test.metadata]
+name = "test_name"                    # Test identifier
+description = "Test description"      # Human-readable description
+timeout = "60s"                      # Test timeout
+concurrent = true                     # Run steps in parallel
+
+[services.my_service]
+type = "generic_container"            # Service type
+plugin = "alpine"                     # Plugin implementation
+image = "alpine:latest"               # Container image
+
+[[steps]]
+name = "step_name"                    # Step identifier
+command = ["cmd", "arg1", "arg2"]     # Command to execute
+expected_exit_code = 0               # Expected exit code (default: 0)
+expected_output_regex = "pattern"     # Regex pattern in output
+expected_output_regex_not = "error"  # Pattern that should NOT appear
+depends_on = ["other_service"]        # Service dependencies
+
+[assertions]
+# Framework-specific assertions
+container_should_have_executed_commands = 3
+execution_should_be_hermetic = true

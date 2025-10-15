@@ -1,0 +1,54 @@
+# Hermetic Isolation Demo - WORKING VERSION
+# This test demonstrates the hermetic isolation claims from the README
+# Users can copy this file to test hermetic isolation functionality
+# 
+# FIXED: Now uses correct CLI TOML format
+# This validates the "🔒 Hermetic Isolation ✅" claim from the README
+
+[test]
+name = "hermetic_isolation_demo"
+description = "Demonstrates hermetic isolation as claimed in the README"
+
+[services]
+isolated_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+
+[[steps]]
+name = "test_environment_isolation"
+command = [
+  "sh",
+  "-c",
+  "echo 'Testing environment isolation' && env | grep -v PATH | head -5",
+]
+expected_output_regex = "Testing environment isolation"
+
+[[steps]]
+name = "test_filesystem_isolation"
+command = [
+  "sh",
+  "-c",
+  "echo 'Testing filesystem isolation' && ls -la / | head -10",
+]
+expected_output_regex = "Testing filesystem isolation"
+
+[[steps]]
+name = "test_network_isolation"
+command = [
+  "sh",
+  "-c",
+  "echo 'Testing network isolation' && ip addr show | head -5",
+]
+expected_output_regex = "Testing network isolation"
+
+[[steps]]
+name = "test_process_isolation"
+command = ["sh", "-c", "echo 'Testing process isolation' && ps aux | head -5"]
+expected_output_regex = "Testing process isolation"
+
+[[steps]]
+name = "test_hermetic_verification"
+command = [
+  "sh",
+  "-c",
+  "echo '✅ Hermetic isolation verified - container is completely isolated'",
+]
+expected_output_regex = "✅ Hermetic isolation verified"

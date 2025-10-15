@@ -1,0 +1,32 @@
+# Simple TOML Demo
+# This test demonstrates the README claim: "Declarative test definitions without code"
+# Users can copy this file and run it to verify TOML configuration works
+
+[test.metadata]
+name = "simple_toml_demo"
+description = "Simple demonstration of TOML-based testing without code"
+timeout = "30s"
+
+[services.test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "test_basic_command"
+command = ["echo", "TOML configuration working"]
+expected_output_regex = "TOML configuration working"
+
+[[steps]]
+name = "test_regex_validation"
+command = ["sh", "-c", "echo 'SUCCESS: Regex validation working'"]
+expected_output_regex = "SUCCESS.*Regex validation working"
+
+[[steps]]
+name = "test_file_operations"
+command = ["sh", "-c", "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt"]
+expected_output_regex = "test data"
+
+[assertions]
+container_should_have_executed_commands = 3
+execution_should_be_hermetic = true

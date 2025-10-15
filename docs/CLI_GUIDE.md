@@ -2,6 +2,8 @@
 
 This guide covers the complete CLI interface for the Cleanroom testing framework.
 
+> **💡 Pro Tip:** See our [comprehensive examples](https://github.com/cleanroom-testing/clnrm/tree/main/examples) for real-world usage patterns and verification scripts that demonstrate every CLI feature.
+
 ## Installation
 
 ```bash
@@ -125,9 +127,34 @@ clnrm report tests/ --format junit > test-results.xml
 clnrm report tests/ --format json > data.json
 ```
 
+### `clnrm selftest` - Framework Self-Testing
+
+Run built-in framework self-tests to verify functionality.
+
+```bash
+# Run all self-tests
+clnrm selftest
+
+# Run specific test suite
+clnrm selftest --suite framework
+
+# Run with detailed report
+clnrm selftest --report
+
+# Run container lifecycle tests
+clnrm selftest --suite container
+```
+
+**Test suites available:**
+- `framework` - Core framework functionality
+- `container` - Container lifecycle management
+- `plugin` - Plugin system functionality
+- `cli` - CLI interface testing
+- `otel` - Observability features
+
 ## Configuration
 
-### Project Configuration (`clnrm.toml`)
+### Project Configuration (`cleanroom.toml`)
 
 ```toml
 [cli]
@@ -352,9 +379,97 @@ clnrm run tests/ --parallel --jobs 8
 6. **Monitor service health** - Prevent flaky tests
 7. **Generate reports** - Share results with team
 
+## 📚 CLI Examples & Verification
+
+Cleanroom provides comprehensive CLI examples that demonstrate every feature and verify all claims:
+
+### 🚀 **Installation Verification Examples**
+
+#### Verify CLI Installation
+```bash
+# Copy and run to verify CLI works
+curl -fsSL https://raw.githubusercontent.com/cleanroom-testing/clnrm/main/examples/installation/verify-cli-installation.sh | bash
+```
+
+#### Complete Quick Start Demo
+```bash
+# Copy and run the complete quick start guide
+curl -fsSL https://raw.githubusercontent.com/cleanroom-testing/clnrm/main/examples/installation/quick-start-demo.sh | bash
+```
+
+### 🎯 **CLI Feature Examples**
+
+#### Advanced CLI Features Demo
+```bash
+# Demonstrates all advanced CLI features
+./examples/cli-features/advanced-cli-demo.sh
+```
+
+**Features demonstrated:**
+- ✅ Parallel execution with configurable jobs
+- ✅ Watch mode for development workflow
+- ✅ Comprehensive report generation
+- ✅ Interactive debugging capabilities
+- ✅ Service management commands
+- ✅ Configuration validation
+- ✅ JUnit XML output for CI/CD
+
+#### Performance Verification
+```bash
+# Run real container reuse benchmarks
+cargo run --example container-reuse-benchmark
+```
+
+**Shows actual performance improvements:**
+- Container reuse statistics
+- Parallel execution benefits
+- Real performance measurements
+
+### 📋 **CI/CD Integration Examples**
+
+#### GitHub Actions Workflow
+```bash
+# Copy ready-to-use workflow
+cp examples/ci-cd/github-actions-workflow.yml .github/workflows/
+```
+
+#### GitLab CI Pipeline
+```bash
+# Copy complete CI pipeline
+cp examples/ci-cd/gitlab-ci-pipeline.yml .gitlab-ci.yml
+```
+
+### 🔗 **Verify All Claims**
+```bash
+# Run comprehensive verification of all README claims
+cd examples && ./verify-all-claims.sh
+```
+
+**Verifies:**
+- ✅ Installation works correctly
+- ✅ Framework self-testing works
+- ✅ TOML configuration works
+- ✅ Performance claims are real
+- ✅ Plugin system works
+- ✅ Observability works
+- ✅ CLI features work
+- ✅ CI/CD integration works
+
+### 💡 **Example Categories**
+
+| Category | Files | Purpose |
+|----------|-------|---------|
+| **Installation** | 2 scripts | Verify CLI installation and quick start |
+| **CLI Features** | 12 scripts | Demonstrate all CLI capabilities |
+| **TOML Config** | 16 files | Show no-code testing examples |
+| **Performance** | 5 files | Measure real performance benefits |
+| **CI/CD** | 4 workflows | Ready-to-use integration examples |
+
+**Total: 39 CLI-focused examples** that demonstrate and verify every CLI feature!
+
 ## Support
 
 - **Documentation**: See [TOML Reference](../TOML_REFERENCE.md)
-- **Examples**: See [examples/](../examples/) directory
+- **Examples**: See [comprehensive examples directory](../examples/)
 - **Issues**: Report bugs and feature requests
 - **Community**: Join discussions and get help

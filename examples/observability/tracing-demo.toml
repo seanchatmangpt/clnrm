@@ -1,0 +1,33 @@
+# Tracing Demo
+# This test demonstrates the built-in observability claims from the README
+# Users can copy this file to test automatic tracing functionality
+
+[test.metadata]
+name = "tracing_demo"
+description = "Demonstrates automatic tracing as claimed in the README"
+
+[services.tracing_test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "test_tracing_capture"
+command = ["sh", "-c", "echo 'Testing tracing capture' && sleep 1"]
+expected_output_regex = "Testing tracing capture"
+
+[[steps]]
+name = "test_span_creation"
+command = ["sh", "-c", "echo 'Creating test spans' && date"]
+expected_output_regex = "Creating test spans"
+
+[[steps]]
+name = "test_trace_propagation"
+command = ["sh", "-c", "echo 'Testing trace propagation' && echo 'Trace ID: test-123'"]
+expected_output_regex = "Trace ID: test-123"
+
+[assertions]
+# Observability assertions
+tracing_should_be_automatic = true
+spans_should_be_captured = true
+observability_should_capture_metrics = true

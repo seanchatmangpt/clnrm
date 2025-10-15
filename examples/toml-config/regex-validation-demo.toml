@@ -1,0 +1,121 @@
+# Regex Validation Demo
+# This test demonstrates the README claim: "Pattern matching in container output"
+# Users can copy this file and run it to verify regex validation works
+
+[test.metadata]
+name = "regex_validation_demo"
+description = "Comprehensive demonstration of regex validation features"
+timeout = "60s"
+
+# Test container for regex validation
+[services.regex_test]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+# Test 1: Simple string matching
+[[steps]]
+name = "simple_string_match"
+command = ["echo", "Operation completed successfully"]
+expected_output_regex = "Operation completed successfully"
+
+# Test 2: Multiple patterns (all must match)
+[[steps]]
+name = "multiple_patterns"
+command = [
+  "sh",
+  "-c",
+  "echo 'Server started on port 8080' && echo 'Database connected' && echo 'Ready to serve requests'",
+]
+expected_output_regex = "Server started.*Database connected.*Ready to serve"
+
+# Test 3: Pattern with quantifiers
+[[steps]]
+name = "quantifier_patterns"
+command = [
+  "sh",
+  "-c",
+  "echo 'User 12345 created successfully' && echo 'Processing 100 items'",
+]
+expected_output_regex = "User \\d+ created successfully"
+
+# Test 4: Case-insensitive matching
+[[steps]]
+name = "case_insensitive_match"
+command = ["echo", "SUCCESS: Operation completed"]
+expected_output_regex = "(?i)success"
+
+# Test 5: Negative matching (should NOT contain)
+[[steps]]
+name = "negative_pattern_match"
+command = ["echo", "Operation completed without errors"]
+expected_output_regex_not = "error|failed|exception"
+
+# Test 6: Complex regex with groups
+[[steps]]
+name = "complex_regex_groups"
+command = [
+  "sh",
+  "-c",
+  "echo 'API Response: {\"status\":\"success\",\"data\":{\"id\":123}}'",
+]
+expected_output_regex = "API Response: \\{\"status\":\"success\".*\"id\":\\d+\\}"
+
+# Test 7: Line-based matching
+[[steps]]
+name = "line_based_matching"
+command = [
+  "sh",
+  "-c",
+  "echo 'Line 1: INFO' && echo 'Line 2: DEBUG' && echo 'Line 3: ERROR'",
+]
+expected_output_regex = "^Line 3: ERROR$"
+
+# Test 8: Multi-line matching
+[[steps]]
+name = "multiline_matching"
+command = [
+  "sh",
+  "-c",
+  "echo 'Start of block' && echo 'Middle content' && echo 'End of block'",
+]
+expected_output_regex = "Start of block.*End of block"
+
+# Test 9: Special characters and escaping
+[[steps]]
+name = "special_characters"
+command = [
+  "sh",
+  "-c",
+  "echo 'Path: /home/user/file.txt' && echo 'Price: $19.99'",
+]
+expected_output_regex = "Path: /home/user/.*\\.txt"
+
+# Test 10: Unicode and international characters
+[[steps]]
+name = "unicode_matching"
+command = ["sh", "-c", "echo 'Message: Привет мир' && echo 'Emoji: 🚀'"]
+expected_output_regex = "Message: .*мир"
+
+# Assertions that prove regex validation works
+[assertions]
+# Verify that simple string matching works
+simple_string_matching_should_work = true
+# Verify that multiple patterns work
+multiple_pattern_matching_should_work = true
+# Verify that quantifiers work
+quantifier_patterns_should_work = true
+# Verify that case-insensitive matching works
+case_insensitive_matching_should_work = true
+# Verify that negative matching works
+negative_pattern_matching_should_work = true
+# Verify that complex regex works
+complex_regex_should_work = true
+# Verify that line-based matching works
+line_based_matching_should_work = true
+# Verify that multi-line matching works
+multiline_matching_should_work = true
+# Verify that special characters work
+special_character_matching_should_work = true
+# Verify that unicode matching works
+unicode_matching_should_work = true

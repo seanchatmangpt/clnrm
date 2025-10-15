@@ -1,0 +1,40 @@
+# Regex Validation Demo
+# This test demonstrates the regex validation claims from the README
+# Users can copy this file to test regex validation functionality
+
+[test.metadata]
+name = "regex_validation_demo"
+description = "Demonstrates regex validation in container output as claimed in README"
+
+[services.api_test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "validate_api_response"
+command = ["sh", "-c", "echo '{\"status\":\"healthy\",\"version\":\"1.0.0\"}'"]
+expected_output_regex = "\"status\":\"healthy\""
+expected_output_regex_not = "error|failed"
+
+[[steps]]
+name = "validate_json_structure"
+command = ["sh", "-c", "echo '{\"data\":{\"users\":[{\"id\":1,\"name\":\"test\"}]}}'"]
+expected_output_regex = "\"users\":\\[.*\"id\":1"
+
+[[steps]]
+name = "validate_no_errors"
+command = ["sh", "-c", "echo 'SUCCESS: Operation completed successfully'"]
+expected_output_regex = "SUCCESS:"
+expected_output_regex_not = "ERROR|FAILED|EXCEPTION"
+
+[[steps]]
+name = "validate_version_format"
+command = ["sh", "-c", "echo 'Version: 1.2.3-beta.1'"]
+expected_output_regex = "Version: \\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9\\.]+)?"
+
+[assertions]
+# Regex validation assertions
+regex_validation_should_work = true
+pattern_matching_should_be_accurate = true
+negative_patterns_should_work = true

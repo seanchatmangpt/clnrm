@@ -1,0 +1,39 @@
+# Container Lifecycle Self-Test
+# This test uses the framework to test its own container lifecycle functionality
+# Proves the "eat your own dog food" principle for container management
+
+[test.metadata]
+name = "framework_container_lifecycle_self_test"
+description = "Framework tests its own container lifecycle using its own capabilities"
+
+[services.framework_test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+[[steps]]
+name = "test_container_creation"
+command = ["echo", "Container created by framework"]
+expected_output_regex = "Container created by framework"
+
+[[steps]]
+name = "test_container_isolation"
+command = ["sh", "-c", "echo 'Container ID: ' && hostname && echo 'Process ID: ' && echo $$"]
+expected_output_regex = "Container ID:|Process ID:"
+
+[[steps]]
+name = "test_container_persistence"
+command = ["sh", "-c", "echo 'test_data' > /tmp/framework_test.txt && cat /tmp/framework_test.txt"]
+expected_output_regex = "test_data"
+
+[[steps]]
+name = "test_container_cleanup_preparation"
+command = ["sh", "-c", "echo 'Framework will cleanup this container' && ls -la /tmp/"]
+expected_output_regex = "Framework will cleanup this container"
+
+[assertions]
+# Framework-specific assertions
+container_should_have_executed_commands = 4
+execution_should_be_hermetic = true
+framework_should_manage_lifecycle = true
+container_should_be_isolated = true

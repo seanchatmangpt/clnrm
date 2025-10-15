@@ -1,0 +1,69 @@
+# Cleanroom Integration Test for Erlang Application
+# This test validates that Cleanroom can test an Erlang web application
+# running in a container, demonstrating cross-language testing capabilities
+
+[test.metadata]
+name = "erlang_integration_test"
+description = "Test Erlang web application functionality via HTTP endpoints"
+
+[services.erlang_app]
+type = "generic_container"
+plugin = "erlang"
+image = "erlang-test:latest"
+# In a real scenario, this would build and use the Dockerfile above
+# For this demo, we'll assume the image is available
+
+[[steps]]
+name = "test_root_endpoint"
+command = ["curl", "-s", "http://localhost:8080/"]
+expected_output_regex = "Erlang Test Server"
+expected_exit_code = 0
+
+[[steps]]
+name = "test_hello_endpoint"
+command = ["curl", "-s", "http://localhost:8080/hello"]
+expected_output_regex = "Hello from Erlang"
+expected_exit_code = 0
+
+[[steps]]
+name = "test_math_endpoint"
+command = ["curl", "-s", "http://localhost:8080/add/2/3"]
+expected_output_regex = "5"
+expected_exit_code = 0
+
+[[steps]]
+name = "test_json_endpoint"
+service = "erlang_app"
+command = ["curl", "-s", "http://localhost:8080/json"]
+expected_output_regex = "\"message\":\"Hello from Erlang\""
+expected_exit_code = 0
+
+[[steps]]
+name = "test_health_endpoint"
+command = ["curl", "-s", "http://localhost:8080/health"]
+expected_output_regex = "\"status\":\"healthy\""
+expected_exit_code = 0
+
+[[steps]]
+name = "test_post_endpoint"
+command = ["curl", "-s", "-X", "POST", "http://localhost:8080/api/data"]
+expected_exit_code = 0
+
+[[steps]]
+name = "test_users_endpoint"
+command = ["curl", "-s", "http://localhost:8080/api/users"]
+expected_output_regex = "\"id\":[0-9]+"
+expected_exit_code = 0
+
+[assertions]
+# Container lifecycle assertions
+container_should_have_executed_commands = 7
+execution_should_be_hermetic = true
+
+# Service health assertions
+erlang_app_should_be_ready = true
+
+# Response validation assertions
+all_http_requests_should_succeed = true
+json_responses_should_be_valid = true
+server_should_respond_within = "10s"

@@ -1,0 +1,77 @@
+# Cleanroom Project Configuration
+# Controls framework behavior, CLI defaults, and feature toggles
+
+[project]
+name = "cleanroom"
+version = "0.3.0"
+description = "Hermetic integration testing framework"
+
+[cli]
+# CLI defaults and settings
+parallel = false              # Enable parallel test execution
+jobs = 4                     # Number of parallel workers
+output_format = "human"      # Output format: human, json, junit, tap
+fail_fast = false            # Stop on first failure
+watch = false                # Watch mode for development
+interactive = false          # Interactive debugging mode
+
+[containers]
+# Container management settings
+reuse_enabled = true         # Enable 10-50x performance improvement
+default_image = "alpine:latest"
+pull_policy = "if-not-present"  # always, if-not-present, never
+cleanup_policy = "on-success"   # always, on-success, never, on-failure
+max_containers = 10          # Maximum concurrent containers
+startup_timeout = "60s"      # Container startup timeout
+
+[services]
+# Service configuration defaults
+default_timeout = "30s"      # Default service operation timeout
+health_check_interval = "5s" # Health check frequency
+health_check_timeout = "10s" # Health check timeout
+max_retries = 3              # Service start retry count
+
+[observability]
+# Observability settings
+enable_tracing = true        # OpenTelemetry tracing
+enable_metrics = true        # Metrics collection
+enable_logging = true        # Structured logging
+log_level = "info"          # debug, info, warn, error
+metrics_port = 9090         # Prometheus metrics port
+traces_endpoint = "http://localhost:4317"  # OTLP endpoint
+
+[plugins]
+# Plugin configuration
+auto_discover = true         # Auto-discover plugins
+plugin_dir = "./plugins"     # Custom plugin directory
+enabled_plugins = ["surrealdb", "postgres", "redis"]
+
+[performance]
+# Performance tuning options
+container_pool_size = 5      # Pre-warmed container pool
+lazy_initialization = true   # Lazy service initialization
+cache_compiled_tests = true  # Cache compiled test configurations
+parallel_step_execution = false  # Execute test steps in parallel
+
+[test_execution]
+# Test execution defaults
+default_timeout = "300s"     # Overall test timeout
+step_timeout = "60s"         # Individual step timeout
+retry_on_failure = false     # Retry failed tests
+retry_count = 3              # Number of retries
+test_dir = "./tests"         # Default test directory
+
+[reporting]
+# Reporting configuration
+generate_html = true         # Generate HTML reports
+generate_junit = false       # Generate JUnit XML
+report_dir = "./reports"     # Report output directory
+include_timestamps = true    # Include timestamps in reports
+include_logs = true          # Include service logs in reports
+
+[security]
+# Security and isolation settings
+hermetic_isolation = true    # Enforce hermetic isolation
+network_isolation = true     # Isolate container networks
+file_system_isolation = true # Isolate file systems
+security_level = "medium"    # low, medium, high

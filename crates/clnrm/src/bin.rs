@@ -5,7 +5,27 @@
 
 use clap::{Parser, Subcommand, ValueEnum};
 use clnrm::cli::{run_tests, validate_config, CliConfig};
+use clnrm::config::{load_cleanroom_config, CleanroomConfig};
 use std::path::PathBuf;
+
+/// Global cleanroom configuration
+static mut CLEANROOM_CONFIG: Option<CleanroomConfig> = None;
+
+/// Get the global cleanroom configuration
+fn get_cleanroom_config() -> &'static CleanroomConfig {
+    unsafe {
+        CLEANROOM_CONFIG.as_ref().expect("Cleanroom config not initialized")
+    }
+}
+
+/// Initialize the global cleanroom configuration
+fn init_cleanroom_config() -> Result<(), Box<dyn std::error::Error>> {
+    let config = load_cleanroom_config()?;
+    unsafe {
+        CLEANROOM_CONFIG = Some(config);
+    }
+    Ok(())
+}
 
 /// Cleanroom Testing Platform - Hermetic Integration Testing
 #[derive(Parser)]
@@ -152,19 +172,33 @@ enum ReportFormat {
 fn main() {
     let cli = Cli::parse();
 
-    // Set up logging based on verbosity
-    match cli.verbose {
-        0 => env_logger::init(),
-        1 => env_logger::Builder::from_default_env()
-            .filter_level(log::LevelFilter::Info)
-            .init(),
-        2 => env_logger::Builder::from_default_env()
-            .filter_level(log::LevelFilter::Debug)
-            .init(),
-        _ => env_logger::Builder::from_default_env()
-            .filter_level(log::LevelFilter::Trace)
-            .init(),
+    // Initialize cleanroom configuration
+    if let Err(e) = init_cleanroom_config() {
+        eprintln!("Warning: Failed to load cleanroom.toml: {}", e);
+        eprintln!("Using default configuration. Create cleanroom.toml to customize framework behavior.");
     }
+
+    let cleanroom_config = get_cleanroom_config();
+
+    // Set up logging based on verbosity and config
+    let log_level = match cli.verbose {
+        0 => cleanroom_config.observability.log_level.as_str(),
+        1 => "info",
+        2 => "debug",
+        _ => "trace",
+    };
+
+    env_logger::Builder::from_default_env()
+        .filter_level(match log_level {
+            "debug" => log::LevelFilter::Debug,
+            "info" => log::LevelFilter::Info,
+            "warn" => log::LevelFilter::Warn,
+            "error" => log::LevelFilter::Error,
+            _ => log::LevelFilter::Info,
+        })
+        .init();
+
+    println!("🚀 Cleanroom CLI starting with configuration: {}", cleanroom_config.project.name);
 
     let result = match cli.command {
         Commands::Run {
@@ -175,11 +209,15 @@ fn main() {
             watch,
             interactive,
         } => {
+            // Use config defaults, overridden by CLI flags
             let config = CliConfig {
-                parallel,
-                jobs,
+                parallel: parallel || cleanroom_config.cli.parallel,
+                jobs: if jobs != 4 { jobs } else { cleanroom_config.cli.jobs },
                 format: cli.format.clone(),
-                fail_fast,
+                fail_fast: fail_fast || cleanroom_config.cli.fail_fast,
+                watch: watch || cleanroom_config.cli.watch,
+                interactive: interactive || cleanroom_config.cli.interactive,
+                verbose: cli.verbose,
             };
             run_tests(&paths, &config)
         }
@@ -192,11 +230,11 @@ fn main() {
         }
 
         Commands::Init { name, template } => {
-            init_project(name.as_deref(), &template)
+            init_project(name.as_deref(), &template, &cleanroom_config)
         }
 
         Commands::Plugins => {
-            list_plugins()
+            list_plugins(&cleanroom_config)
         }
 
         Commands::Services { command } => match command {
@@ -226,21 +264,90 @@ fn init_project(name: Option<&str>, _template: &str) -> Result<(), Box<dyn std::
     std::fs::create_dir_all(&format!("{}/tests", project_name))?;
     std::fs::create_dir_all(&format!("{}/examples", project_name))?;
 
-    // Create basic configuration
-    let config_content = r#"# Cleanroom Test Configuration
+    // Create cleanroom.toml configuration file
+    let config_content = format!(
+        r#"# Cleanroom Project Configuration
+# Controls framework behavior, CLI defaults, and feature toggles
+
 [project]
-name = "my-cleanroom-tests"
+name = "{}"
 version = "0.1.0"
+description = "Cleanroom integration tests for {}"
 
 [cli]
-parallel = true
-jobs = 4
+# CLI defaults and settings
+parallel = {}
+jobs = {}
+output_format = "human"
+fail_fast = false
+watch = false
+interactive = false
+
+[containers]
+# Container management settings
+reuse_enabled = {}
+default_image = "alpine:latest"
+pull_policy = "if-not-present"
+cleanup_policy = "on-success"
+max_containers = 10
+startup_timeout = "60s"
 
 [services]
+# Service configuration defaults
 default_timeout = "30s"
-"#;
+health_check_interval = "5s"
+health_check_timeout = "10s"
+max_retries = 3
 
-    std::fs::write(&format!("{}/clnrm.toml", project_name), config_content)?;
+[observability]
+# Observability settings
+enable_tracing = true
+enable_metrics = true
+enable_logging = true
+log_level = "info"
+metrics_port = 9090
+
+[plugins]
+# Plugin configuration
+auto_discover = true
+plugin_dir = "./plugins"
+enabled_plugins = ["surrealdb", "postgres", "redis"]
+
+[performance]
+# Performance tuning options
+container_pool_size = 5
+lazy_initialization = true
+cache_compiled_tests = true
+parallel_step_execution = false
+
+[test_execution]
+# Test execution defaults
+default_timeout = "300s"
+step_timeout = "60s"
+retry_on_failure = false
+retry_count = 3
+test_dir = "./tests"
+
+[reporting]
+# Reporting configuration
+generate_html = true
+generate_junit = false
+report_dir = "./reports"
+include_timestamps = true
+include_logs = true
+
+[security]
+# Security and isolation settings
+hermetic_isolation = true
+network_isolation = true
+file_system_isolation = true
+security_level = "medium"
+"#,
+        project_name, project_name,
+        true, 4, true
+    );
+
+    std::fs::write(&format!("{}/cleanroom.toml", project_name), config_content)?;
 
     // Create example test
     let test_content = r#"[test.metadata]

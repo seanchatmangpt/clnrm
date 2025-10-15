@@ -419,7 +419,7 @@ pub async fn test_otel_integration() -> Result<()> {
     }
 
     // Test 3: Verify metrics are being collected
-    let metrics = environment.get_metrics().await;
+    let metrics = environment.get_metrics().await?;
     if metrics.tests_executed == 0 {
         return Err(CleanroomError::internal_error("OTel metrics collection failed")
             .with_context("No tests recorded in metrics"));

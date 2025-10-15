@@ -1,0 +1,172 @@
+# Complete TOML Configuration Demo
+# This file demonstrates EVERY TOML configuration feature claimed in the README
+# Users can copy this file and run it to verify all claims work
+
+# Test metadata (as shown in README)
+[test.metadata]
+name = "complete_toml_demo"
+description = "Comprehensive demonstration of all TOML configuration features"
+timeout = "60s"
+concurrent = true
+
+# Service definitions (demonstrates plugin-based architecture claim)
+[services.database]
+type = "generic_container"
+plugin = "postgres"
+image = "postgres:15"
+# Environment variables for configuration
+[services.database.environment]
+POSTGRES_PASSWORD = "test_password"
+POSTGRES_DB = "testdb"
+
+[services.cache]
+type = "generic_container"
+plugin = "redis"
+image = "redis:7-alpine"
+
+[services.web_server]
+type = "generic_container"
+plugin = "nginx"
+image = "nginx:alpine"
+
+[services.test_client]
+type = "generic_container"
+plugin = "curl"
+image = "curlimages/curl:latest"
+
+# Step definitions (demonstrates regex validation claim)
+[[steps]]
+name = "verify_database_startup"
+service = "database"
+command = ["pg_isready", "-h", "localhost"]
+expected_exit_code = 0
+
+[[steps]]
+name = "create_test_table"
+service = "database"
+command = [
+  "psql",
+  "-h",
+  "localhost",
+  "-U",
+  "postgres",
+  "-d",
+  "testdb",
+  "-c",
+  "CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255));",
+]
+expected_exit_code = 0
+
+[[steps]]
+name = "verify_redis_startup"
+service = "cache"
+command = ["redis-cli", "ping"]
+expected_output_regex = "PONG"
+
+[[steps]]
+name = "set_redis_key"
+service = "cache"
+command = ["redis-cli", "set", "test_key", "test_value"]
+expected_output_regex = "OK"
+
+[[steps]]
+name = "get_redis_key"
+service = "cache"
+command = ["redis-cli", "get", "test_key"]
+expected_output_regex = "test_value"
+
+[[steps]]
+name = "test_nginx_startup"
+service = "web_server"
+command = ["wget", "--spider", "http://localhost:80"]
+expected_exit_code = 0
+
+[[steps]]
+name = "create_test_file"
+service = "test_client"
+command = [
+  "sh",
+  "-c",
+  "echo 'Hello from TOML config' > /tmp/hello.txt && cat /tmp/hello.txt",
+]
+expected_output_regex = "Hello from TOML config"
+
+# Advanced regex validation (demonstrates "Regex Validation" claim)
+[[steps]]
+name = "test_api_health_check"
+service = "test_client"
+command = ["curl", "-s", "http://web_server:80"]
+expected_output_regex = "Welcome to nginx"
+expected_output_regex_not = "error|failed|404"
+
+# Complex multi-line command with file operations
+[[steps]]
+name = "test_file_operations"
+service = "test_client"
+command = [
+  "sh",
+  "-c",
+  "echo 'line 1' > /tmp/multi_line.txt && echo 'line 2' >> /tmp/multi_line.txt && echo 'line 3' >> /tmp/multi_line.txt && cat /tmp/multi_line.txt",
+]
+expected_output_regex = "line 1\nline 2\nline 3"
+
+# Dependency management (steps depend on other steps)
+[[steps]]
+name = "insert_user_data"
+service = "database"
+depends_on = ["create_test_table"]
+command = [
+  "psql",
+  "-h",
+  "localhost",
+  "-U",
+  "postgres",
+  "-d",
+  "testdb",
+  "-c",
+  "INSERT INTO users (email) VALUES ('alice@example.com'), ('bob@example.com');",
+]
+expected_exit_code = 0
+
+[[steps]]
+name = "verify_user_data"
+service = "database"
+depends_on = ["insert_user_data"]
+command = [
+  "psql",
+  "-h",
+  "localhost",
+  "-U",
+  "postgres",
+  "-d",
+  "testdb",
+  "-c",
+  "SELECT COUNT(*) FROM users;",
+]
+expected_output_regex = "\\(2 rows\\)"
+
+# Assertions (demonstrates "Rich Assertions" claim)
+[assertions]
+# Container lifecycle assertions
+container_should_have_executed_commands = 9
+execution_should_be_hermetic = true
+
+# Service-specific assertions
+database_should_be_ready = true
+cache_should_be_ready = true
+web_server_should_be_ready = true
+
+# Plugin assertions
+plugin_should_be_loaded = "postgres"
+plugin_should_be_loaded = "redis"
+plugin_should_be_loaded = "nginx"
+plugin_should_be_loaded = "curl"
+
+# Data assertions
+database_should_have_table = "users"
+database_should_have_user_count = 2
+cache_should_have_key = "test_key"
+cache_should_have_value = "test_value"
+
+# Performance assertions
+execution_should_complete_within = "30s"

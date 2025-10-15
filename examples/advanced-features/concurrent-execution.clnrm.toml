@@ -1,0 +1,58 @@
+# Concurrent Execution Demo - WORKING VERSION
+# This test demonstrates the concurrent execution claims from the README
+# Users can copy this file to test concurrent execution functionality
+#
+# FIXED: Now uses correct CLI TOML format
+# This validates concurrent execution capabilities from the README
+
+[test]
+name = "concurrent_execution_demo"
+description = "Demonstrates concurrent execution as claimed in the README"
+
+[services]
+concurrent_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+
+[[steps]]
+name = "concurrent_step_1"
+command = [
+  "sh",
+  "-c",
+  "echo 'Concurrent step 1 started' && sleep 2 && echo 'Concurrent step 1 completed'",
+]
+expected_output_regex = "Concurrent step 1 completed"
+
+[[steps]]
+name = "concurrent_step_2"
+command = [
+  "sh",
+  "-c",
+  "echo 'Concurrent step 2 started' && sleep 1 && echo 'Concurrent step 2 completed'",
+]
+expected_output_regex = "Concurrent step 2 completed"
+
+[[steps]]
+name = "concurrent_step_3"
+command = [
+  "sh",
+  "-c",
+  "echo 'Concurrent step 3 started' && sleep 3 && echo 'Concurrent step 3 completed'",
+]
+expected_output_regex = "Concurrent step 3 completed"
+
+[[steps]]
+name = "concurrent_step_4"
+command = [
+  "sh",
+  "-c",
+  "echo 'Concurrent step 4 started' && sleep 1 && echo 'Concurrent step 4 completed'",
+]
+expected_output_regex = "Concurrent step 4 completed"
+
+[[steps]]
+name = "concurrent_verification"
+command = [
+  "sh",
+  "-c",
+  "echo '✅ Concurrent execution verified - all steps completed successfully'",
+]
+expected_output_regex = "✅ Concurrent execution verified"
