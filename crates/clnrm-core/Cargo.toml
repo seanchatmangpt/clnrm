@@ -129,7 +129,7 @@ name = "simple-framework-stress-demo"
 path = "examples/innovations/simple-framework-stress-demo.rs"
 
 [features]
-default = []
+default = ["tracing-subscriber"]
 otel-stdout = ["opentelemetry-stdout"]
 otel-logs = ["opentelemetry", "opentelemetry_sdk"]
 otel-traces = [
