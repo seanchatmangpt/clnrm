@@ -102,12 +102,12 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
     }).await?;
 
     // Write different data to each container
-    env.execute_in_container(&container_a, ["sh", "-c", "echo 'data-a' > /tmp/shared.txt"]).await?;
-    env.execute_in_container(&container_b, ["sh", "-c", "echo 'data-b' > /tmp/shared.txt"]).await?;
+    env.execute_in_container(&container_a, &["sh".to_string(), "-c".to_string(), "echo 'data-a' > /tmp/shared.txt".to_string()]).await?;
+    env.execute_in_container(&container_b, &["sh".to_string(), "-c".to_string(), "echo 'data-b' > /tmp/shared.txt".to_string()]).await?;
 
     // Verify isolation - each container should have its own data
-    let result_a = env.execute_in_container(&container_a, ["cat", "/tmp/shared.txt"]).await?;
-    let result_b = env.execute_in_container(&container_b, ["cat", "/tmp/shared.txt"]).await?;
+    let result_a = env.execute_in_container(&container_a, &["cat".to_string(), "/tmp/shared.txt".to_string()]).await?;
+    let result_b = env.execute_in_container(&container_b, &["cat".to_string(), "/tmp/shared.txt".to_string()]).await?;
 
     assert_eq!(result_a.stdout.trim(), "data-a");
     assert_eq!(result_b.stdout.trim(), "data-b");

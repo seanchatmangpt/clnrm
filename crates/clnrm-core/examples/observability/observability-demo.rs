@@ -30,8 +30,8 @@ async fn test_observability_framework_self_test() -> Result<()> {
     }).await?;
 
     // Execute commands that should generate traces
-    let _result1 = env.execute_in_container(&container, vec!["echo".to_string(), "trace-test-1".to_string()]).await?;
-    let _result2 = env.execute_in_container(&container, vec!["echo".to_string(), "trace-test-2".to_string()]).await?;
+    let _result1 = env.execute_in_container(&container, &["echo".to_string(), "trace-test-1".to_string()]).await?;
+    let _result2 = env.execute_in_container(&container, &["echo".to_string(), "trace-test-2".to_string()]).await?;
 
     // Get tracing data
     let traces = env.get_traces().await?;
@@ -95,7 +95,7 @@ async fn test_observability_framework_self_test() -> Result<()> {
         Ok::<String, clnrm_core::CleanroomError>("zero-config-container".to_string())
     }).await?;
 
-    let _simple_result = simple_env.execute_in_container(&_simple_container, vec!["echo".to_string(), "zero-config-test".to_string()]).await?;
+    let _simple_result = simple_env.execute_in_container(&_simple_container, &["echo".to_string(), "zero-config-test".to_string()]).await?;
 
     // Even without explicit setup, observability should work
     let simple_traces = simple_env.get_traces().await?;
@@ -141,12 +141,12 @@ async fn test_comprehensive_observability() -> Result<()> {
                 Ok::<String, clnrm_core::CleanroomError>(format!("perf-container-{}", i))
             }).await?;
 
-            let result = env.execute_in_container(&container, vec!["sh".to_string(), "-c".to_string(), "echo 'perf work' && sleep 0.05".to_string()]).await?;
+            let result = env.execute_in_container(&container, &["sh".to_string(), "-c".to_string(), "echo 'perf work' && sleep 0.05".to_string()]).await?;
             Ok::<_, clnrm_core::CleanroomError>((container, result))
         }
     });
 
-    let containers: Vec<_> = futures::future::try_join_all(containers).await?;
+    let containers: Vec<_> = futures_util::future::try_join_all(containers).await?;
 
     let perf_duration = perf_start.elapsed();
     println!("⏱️  Complex scenario completed in {:?}", perf_duration);

@@ -355,6 +355,38 @@ pub trait ServicePlugin: Send + Sync {
 
 These rules ensure FAANG-level code quality, reliability, and maintainability while following the core team's established patterns and best practices.
 
+## 🚨 ANTI-FALSE-POSITIVE RULES - CRITICAL
+
+### ❌ NEVER fake implementation with Ok(()) stubs
+```rust
+// ❌ Bad: Fake success without doing work
+pub fn execute_test(&self) -> Result<()> {
+    println!("Test executed successfully");  // LYING!
+    Ok(())  // Returns success but did nothing
+}
+
+// ✅ Good: Honest about incomplete implementation
+pub fn execute_test(&self) -> Result<()> {
+    unimplemented!("execute_test: needs container execution, output capture, and result validation")
+}
+
+// ✅ Good: Actually implemented
+pub fn execute_test(&self) -> Result<()> {
+    let container = self.start_container()?;
+    let output = container.exec(&self.command)?;
+    self.validate_output(&output)?;
+    Ok(())  // Now legitimately successful
+}
+```
+
+### ✅ Rules for Production Code
+1. If a method body is incomplete, it MUST call `unimplemented!("Feature X: what's missing")`
+2. NEVER return `Ok(())` without actually doing the work described by the method name
+3. NEVER print "success" when nothing happened
+4. CLI commands that don't work MUST throw `unimplemented!()`, not pretend to succeed
+5. Methods must either work end-to-end OR throw unimplemented
+6. No middle ground - no "partial" implementations that lie about success
+
 ## ✅ Definition of Done - Core Team Standards
 
 ### Before any code is considered complete, ALL of these must be true:
@@ -367,6 +399,7 @@ These rules ensure FAANG-level code quality, reliability, and maintainability wh
 6. **✅ No Linting Errors**: Zero linting errors or warnings
 7. **✅ Proper Error Handling**: All functions use Result types with meaningful errors
 8. **✅ Async/Sync Patterns**: Proper use of async for I/O, sync for computation
+9. **✅ No False Positives**: No fake Ok(()) returns from incomplete implementations
 
 ### Validation Checklist:
 - [ ] `cargo test` passes completely
@@ -376,5 +409,6 @@ These rules ensure FAANG-level code quality, reliability, and maintainability wh
 - [ ] No breaking changes to public APIs
 - [ ] All error paths use proper Result types
 - [ ] Async operations use proper async/await patterns
+- [ ] No fake implementations - incomplete features call `unimplemented!()`
 
 ### If ANY of these fail, the code is NOT ready for production.

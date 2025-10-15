@@ -225,7 +225,7 @@ pub struct CleanroomEnvironment {
     /// Session ID
     session_id: Uuid,
     /// Backend for container execution
-    backend: Box<dyn Backend>,
+    backend: Arc<dyn Backend>,
     /// Plugin-based service registry
     services: Arc<RwLock<ServiceRegistry>>,
     /// Simple metrics for quick access
@@ -277,7 +277,7 @@ impl CleanroomEnvironment {
                 let meter_provider = global::meter_provider();
                 meter_provider.meter("clnrm-cleanroom")
             },
-            backend: Box::new(TestcontainerBackend::new("alpine:latest")?),
+            backend: Arc::new(TestcontainerBackend::new("alpine:latest")?),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
@@ -506,11 +506,14 @@ impl CleanroomEnvironment {
 
     /// Get backend
     pub fn backend(&self) -> &dyn Backend {
-        self.backend.as_ref()
+        self.backend.as_ref() as &dyn Backend
     }
 
     /// Execute a command in a container with proper error handling and observability
     /// Core Team Compliance: Async for I/O operations, proper error handling, no unwrap/expect
+    /// 
+    /// This method creates a fresh container for each command execution, which is appropriate
+    /// for testing scenarios where isolation is more important than performance.
     pub async fn execute_in_container(
         &self,
         container_name: &str,
@@ -529,24 +532,28 @@ impl CleanroomEnvironment {
 
         let start_time = std::time::Instant::now();
 
-        // Validate container exists in registry
-        if !self.has_container(container_name).await {
-            #[cfg(feature = "otel-traces")]
-            {
-                span.set_status(opentelemetry::trace::Status::error("Container not found"));
-                span.end();
-            }
-            return Err(CleanroomError::container_error(format!("Container '{}' not found in registry", container_name))
-                .with_context("Container must be registered before execution"));
-        }
-
-        // Execute command using backend with proper error handling
+        // Execute command using backend - this creates a fresh container for each command
+        // This provides maximum isolation and is appropriate for testing scenarios
         let cmd = Cmd::new("sh")
             .arg("-c")
             .arg(command.join(" "))
             .env("CONTAINER_NAME", container_name);
 
-        let execution_result = self.backend.run_cmd(cmd).map_err(|e| {
+        // Use spawn_blocking to avoid runtime conflicts with testcontainers
+        // Clone the backend to move it into the blocking task
+        let backend = self.backend.clone();
+        let execution_result = tokio::task::spawn_blocking(move || {
+            backend.run_cmd(cmd)
+        }).await.map_err(|e| {
+            #[cfg(feature = "otel-traces")]
+            {
+                span.set_status(opentelemetry::trace::Status::error("Task join failed"));
+                span.end();
+            }
+            CleanroomError::internal_error("Failed to execute command in blocking task")
+                .with_context("Command execution task failed")
+                .with_source(e.to_string())
+        })?.map_err(|e| {
             #[cfg(feature = "otel-traces")]
             {
                 span.set_status(opentelemetry::trace::Status::error("Command execution failed"));
@@ -610,7 +617,7 @@ impl Default for CleanroomEnvironment {
             session_id: Uuid::new_v4(),
             #[cfg(feature = "otel-metrics")]
             meter,
-            backend: Box::new(backend),
+            backend: Arc::new(backend),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),

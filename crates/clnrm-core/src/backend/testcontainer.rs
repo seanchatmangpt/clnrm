@@ -8,6 +8,8 @@ use crate::error::{BackendError, Result};
 use crate::policy::Policy;
 use std::time::{Duration, Instant};
 use testcontainers::{core::ExecCommand, runners::SyncRunner, GenericImage, ImageExt};
+use tokio::io::AsyncReadExt;
+use futures_util::TryFutureExt;
 
 #[cfg(feature = "otel-traces")]
 use tracing::{info, warn, instrument};

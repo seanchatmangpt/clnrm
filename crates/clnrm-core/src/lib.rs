@@ -32,6 +32,7 @@ pub use cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, ServiceR
 pub use macros::{with_database, with_cache, with_message_queue, with_web_server};
 pub use assertions::{database, cache, email_service, UserAssertions};
 pub use services::surrealdb::SurrealDbPlugin;
+pub use services::generic::GenericContainerPlugin;
 pub use config::{
     TestConfig, ScenarioConfig, StepConfig, parse_toml_config, load_config_from_file,
     CleanroomConfig, load_cleanroom_config, load_cleanroom_config_from_file

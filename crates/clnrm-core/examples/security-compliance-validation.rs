@@ -94,7 +94,7 @@ async fn validate_container_security() -> Result<String, CleanroomError> {
     let result = env.execute_in_container(&container_a, &[
         "sh".to_string(),
         "-c".to_string(),
-        "echo 'Testing resource limits' && ulimit -a | head -5"
+        "echo 'Testing resource limits' && ulimit -a | head -5".to_string()
     ]).await?;
 
     if result.exit_code == 0 {
@@ -107,7 +107,7 @@ async fn validate_container_security() -> Result<String, CleanroomError> {
     let fs_test_result = env.execute_in_container(&container_a, &[
         "sh".to_string(),
         "-c".to_string(),
-        "echo 'test data' > /tmp/security-test.txt && cat /tmp/security-test.txt"
+        "echo 'test data' > /tmp/security-test.txt && cat /tmp/security-test.txt".to_string()
     ]).await?;
 
     if fs_test_result.exit_code == 0 && fs_test_result.stdout.contains("test data") {
@@ -134,7 +134,7 @@ async fn validate_network_security() -> Result<String, CleanroomError> {
     let network_test = env.execute_in_container(&network_container, &[
         "sh".to_string(),
         "-c".to_string(),
-        "ping -c 1 8.8.8.8 || echo 'Network access restricted'"
+        "ping -c 1 8.8.8.8 || echo 'Network access restricted'".to_string()
     ]).await?;
 
     // Should either succeed with ping or fail gracefully (both are acceptable)
@@ -148,7 +148,7 @@ async fn validate_network_security() -> Result<String, CleanroomError> {
     let port_test = env.execute_in_container(&network_container, &[
         "sh".to_string(),
         "-c".to_string(),
-        "netstat -tuln | grep LISTEN | wc -l"
+        "netstat -tuln | grep LISTEN | wc -l".to_string()
     ]).await?;
 
     if port_test.exit_code == 0 {
@@ -189,7 +189,7 @@ async fn validate_access_control() -> Result<String, CleanroomError> {
     let perms_check = env.execute_in_container(&user_container, &[
         "sh".to_string(),
         "-c".to_string(),
-        "touch /tmp/access-test && ls -la /tmp/access-test"
+        "touch /tmp/access-test && ls -la /tmp/access-test".to_string()
     ]).await?;
 
     if perms_check.exit_code == 0 {
@@ -216,7 +216,7 @@ async fn validate_compliance_requirements() -> Result<String, CleanroomError> {
     let audit_ops = env.execute_in_container(&audit_container, &[
         "sh".to_string(),
         "-c".to_string(),
-        "echo 'Compliance audit operation' && date && whoami"
+        "echo 'Compliance audit operation' && date && whoami".to_string()
     ]).await?;
 
     if audit_ops.exit_code == 0 {
@@ -229,7 +229,7 @@ async fn validate_compliance_requirements() -> Result<String, CleanroomError> {
     let retention_test = env.execute_in_container(&audit_container, &[
         "sh".to_string(),
         "-c".to_string(),
-        "find /tmp -name '*audit*' -type f | wc -l"
+        "find /tmp -name '*audit*' -type f | wc -l".to_string()
     ]).await?;
 
     if retention_test.exit_code == 0 {
