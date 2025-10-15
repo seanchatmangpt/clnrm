@@ -161,6 +161,56 @@ run_test \
     "./target/debug/clnrm run toml-self-validation-innovation.toml" \
     "Test.*completed successfully"
 
+# Test 11: AI Self-Improvement Loop Innovation
+echo ""
+echo -e "${YELLOW}🤖 Test 11: AI Self-Improvement Loop Innovation${NC}"
+echo "============================================="
+
+run_test \
+    "AI self-improvement loop innovation" \
+    "cargo run --example ai-self-improvement-loop" \
+    "AI SELF-IMPROVEMENT LOOP COMPLETE"
+
+# Test 12: Distributed Validation Network Innovation
+echo ""
+echo -e "${YELLOW}🌐 Test 12: Distributed Validation Network Innovation${NC}"
+echo "=================================================="
+
+run_test \
+    "Distributed validation network innovation" \
+    "cargo run --example distributed-validation-network" \
+    "DISTRIBUTED VALIDATION NETWORK COMPLETE"
+
+# Test 13: Quantum Superposition Testing Innovation
+echo ""
+echo -e "${YELLOW}⚛️ Test 13: Quantum Superposition Testing Innovation${NC}"
+echo "================================================="
+
+run_test \
+    "Quantum superposition testing innovation" \
+    "cargo run --example quantum-superposition-testing" \
+    "QUANTUM SUPERPOSITION TESTING COMPLETE"
+
+# Test 14: Security & Compliance Self-Validation
+echo ""
+echo -e "${YELLOW}🔒 Test 14: Security & Compliance Self-Validation${NC}"
+echo "==============================================="
+
+run_test \
+    "Security compliance validation innovation" \
+    "cargo run --example security-compliance-validation" \
+    "SECURITY & COMPLIANCE SELF-VALIDATION COMPLETE"
+
+# Test 15: Observability Self-Validation
+echo ""
+echo -e "${YELLOW}📊 Test 15: Observability Self-Validation${NC}"
+echo "========================================"
+
+run_test \
+    "Observability self-validation innovation" \
+    "cargo run --example observability-self-validation" \
+    "OBSERVABILITY SELF-VALIDATION COMPLETE"
+
 echo ""
 echo -e "${GREEN}🎉 DOGFOOD INNOVATION VALIDATION COMPLETE${NC}"
 echo "==========================================="
@@ -179,6 +229,11 @@ echo "   • Performance benchmark self-testing: ✅ Working"
 echo "   • CLI functionality self-testing: ✅ Working"
 echo "   • TOML execution innovation: ✅ Working"
 echo "   • Observability integration: ✅ Working"
+echo "   • AI self-improvement loop: ✅ Working"
+echo "   • Distributed validation network: ✅ Working"
+echo "   • Quantum superposition testing: ✅ Working"
+echo "   • Security & compliance validation: ✅ Working"
+echo "   • Observability self-validation: ✅ Working"
 echo ""
 echo -e "${YELLOW}🚀 This demonstrates that the framework not only claims to 'eat its own dog food'${NC}"
 echo -e "${YELLOW}   but actually does so in innovative and comprehensive ways!${NC}"
