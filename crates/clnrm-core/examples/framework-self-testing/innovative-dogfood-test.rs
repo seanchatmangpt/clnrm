@@ -4,14 +4,13 @@
 //! using its own features to validate its own implementation claims.
 //! This is the ultimate "eat your own dog food" demonstration.
 
-use clnrm_core::{CleanroomEnvironment, ExecutionResult};
-use clnrm_core::error::Result;
+use clnrm_core::{CleanroomEnvironment, CleanroomError};
 use std::time::{Duration, Instant};
 use tracing::{info, debug, warn, error};
 
 /// Innovative framework self-testing that uses the framework to test itself
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), CleanroomError> {
     println!("🚀 Innovative Framework Self-Testing: Eating Our Own Dog Food");
     println!("============================================================");
     println!();
@@ -47,7 +46,7 @@ async fn main() -> Result<()> {
 
     let regex_test_result = env.execute_in_container(
         container_name,
-        &["echo", "Framework regex validation working correctly"].iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        &["echo".to_string(), "Framework regex validation working correctly".to_string()],
     ).await?;
 
     println!("✅ Container execution test: {}", if regex_test_result.succeeded() { "PASSED" } else { "FAILED" });
@@ -103,7 +102,7 @@ async fn main() -> Result<()> {
     println!("===================================");
 
     // Test error handling by trying to execute in non-existent container
-    match env.execute_in_container("non_existent_container", &["echo", "test"].iter().map(|s| s.to_string()).collect::<Vec<_>>()).await {
+    match env.execute_in_container("non_existent_container", &["echo".to_string(), "test".to_string()]).await {
         Ok(_) => println!("❌ Should have failed for non-existent container"),
         Err(e) => {
             println!("✅ Error handling working - proper error for non-existent container: {}", e);
@@ -117,7 +116,7 @@ async fn main() -> Result<()> {
     // Test timeout by executing a command that should complete quickly
     let timeout_test = env.execute_in_container(
         container_name,
-        &["sh", "-c", "echo 'Timeout test completed' && sleep 0.1"].iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        &["sh".to_string(), "-c".to_string(), "echo 'Timeout test completed' && sleep 0.1".to_string()],
     ).await?;
 
     println!("⏱️  Timeout test completed in: {:?}", timeout_test.duration);
@@ -158,8 +157,10 @@ impl clnrm_core::ServicePlugin for FrameworkSelfTestPlugin {
         &self.name
     }
 
-    fn start(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<clnrm_core::ServiceHandle>> + Send + '_>> {
+    fn start(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<clnrm_core::ServiceHandle, clnrm_core::CleanroomError>> + Send + '_>> {
         Box::pin(async move {
+            // Simulate startup time without blocking the runtime
+            tokio::task::yield_now().await;
             Ok(clnrm_core::ServiceHandle {
                 id: format!("framework_test_{}", uuid::Uuid::new_v4()),
                 service_name: "framework_self_test".to_string(),
@@ -172,9 +173,9 @@ impl clnrm_core::ServicePlugin for FrameworkSelfTestPlugin {
         })
     }
 
-    fn stop(&self, _handle: clnrm_core::ServiceHandle) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
+    fn stop(&self, _handle: clnrm_core::ServiceHandle) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), clnrm_core::CleanroomError>> + Send + '_>> {
         Box::pin(async move {
-            println!("🛑 Framework self-test plugin stopped");
+            tokio::task::yield_now().await;
             Ok(())
         })
     }

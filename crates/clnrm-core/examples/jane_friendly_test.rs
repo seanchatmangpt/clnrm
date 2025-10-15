@@ -41,7 +41,7 @@ async fn main() -> Result<(), CleanroomError> {
     println!("\n📊 Test 2: Metrics Collection Validation");
     println!("--------------------------------------");
 
-    let metrics = env.get_metrics().await?;
+    let metrics = env.get_metrics().await;
     println!("📊 Collected Metrics:");
     println!("   Tests Executed: {}", metrics.tests_executed);
     println!("   Tests Passed: {}", metrics.tests_passed);
@@ -113,7 +113,7 @@ async fn main() -> Result<(), CleanroomError> {
     println!("\n📊 Test 5: Final Metrics Validation");
     println!("---------------------------------");
 
-    let final_metrics = env.get_metrics().await?;
+    let final_metrics = env.get_metrics().await;
     println!("📊 Final Session Metrics:");
     println!("   Tests Executed: {}", final_metrics.tests_executed);
     println!("   Tests Passed: {}", final_metrics.tests_passed);
@@ -164,7 +164,7 @@ async fn main() -> Result<(), CleanroomError> {
     let perf_duration = perf_start.elapsed();
     println!("⏱️  Performance test with observability: {}ms for 5 tests", perf_duration.as_millis());
 
-    let perf_metrics = env.get_metrics().await?;
+    let perf_metrics = env.get_metrics().await;
     println!("📊 Performance test metrics:");
     println!("   Tests Executed: {}", perf_metrics.tests_executed);
     println!("   Average Test Duration: {:.2}ms",
