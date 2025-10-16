@@ -806,7 +806,7 @@ async fn generate_real_ai_insights(
 
             if insights.is_empty() {
                 warn!("⚠️ AI response was empty, using fallback");
-                generate_ai_insights(ai_service.as_ref().copied(), results, success_rate, performance_score, reliability_score)
+                generate_ai_insights(Some(ai_service), results, success_rate, performance_score, reliability_score)
                     .await
             } else {
                 Ok(insights)
@@ -814,7 +814,7 @@ async fn generate_real_ai_insights(
         }
         Err(e) => {
             warn!("⚠️ Real AI insights failed, using fallback: {}", e);
-            generate_ai_insights(ai_service.as_ref().copied(), results, success_rate, performance_score, reliability_score).await
+            generate_ai_insights(Some(ai_service), results, success_rate, performance_score, reliability_score).await
         }
     }
 }

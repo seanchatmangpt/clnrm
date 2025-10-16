@@ -92,7 +92,7 @@ pub async fn ai_predict_analytics(
     let predictive_insights = if use_real_ai {
         generate_real_predictive_insights(&ai_service).await?
     } else {
-        generate_predictive_insights(ai_service.as_ref().copied()).await?
+        generate_predictive_insights(Some(&ai_service)).await?
     };
     display_predictive_insights(&predictive_insights, &format).await?;
 
@@ -227,14 +227,14 @@ async fn generate_real_predictive_insights(
 
             if insights.is_empty() {
                 warn!("⚠️ AI response was empty, using fallback");
-                generate_predictive_insights(ai_service.as_ref().copied()).await
+                generate_predictive_insights(Some(ai_service)).await
             } else {
                 Ok(insights)
             }
         }
         Err(e) => {
             warn!("⚠️ Real AI insights failed, using fallback: {}", e);
-            generate_predictive_insights(ai_service.as_ref().copied()).await
+            generate_predictive_insights(Some(ai_service)).await
         }
     }
 }
