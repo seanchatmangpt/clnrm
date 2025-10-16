@@ -3,6 +3,10 @@ resolver = "2"
 
 members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared", "crates/clnrm-ai"]
 
+# Default members exclude experimental AI crate
+# Use `cargo test -p clnrm-ai` to test AI features separately
+default-members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared"]
+
 [workspace.package]
 version = "0.4.0"
 edition = "2021"
