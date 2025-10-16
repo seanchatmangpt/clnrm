@@ -7,15 +7,15 @@ authors.workspace = true
 repository.workspace = true
 description = "Cleanroom Testing Framework - CLI tool"
 readme = "../../README.md"
-keywords = ["testing", "integration", "containers", "hermetic", "ai", "ollama"]
-categories = ["development-tools", "testing"]
+keywords = ["testing", "integration", "containers", "hermetic", "ai"]
+categories = ["development-tools"]
 
 [[bin]]
 name = "clnrm"
 path = "src/main.rs"
 
 [dependencies]
-clnrm-core = { path = "../clnrm-core", features = ["otel"] }
+clnrm-core = { version = "0.4.0", features = ["otel"] }
 tokio = { workspace = true }
 clap = { workspace = true }
 env_logger = { workspace = true }

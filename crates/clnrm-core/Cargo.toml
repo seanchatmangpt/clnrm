@@ -7,8 +7,8 @@ authors.workspace = true
 repository.workspace = true
 description = "Cleanroom Testing Framework - Core library"
 readme = "../../README.md"
-keywords = ["testing", "integration", "containers", "hermetic", "ai", "ollama"]
-categories = ["development-tools", "testing"]
+keywords = ["testing", "integration", "containers", "hermetic", "ai"]
+categories = ["development-tools"]
 
 [lib]
 name = "clnrm_core"
