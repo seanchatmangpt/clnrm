@@ -4,18 +4,25 @@ import {
   MetricsData,
   StaticCorpData,
   STATIC_CORP_DATA,
+  VirtueHistory,
 } from "./types";
 
 // In-memory event store
 let events: TelemetryEvent[] = [];
-let abBuckets: Record<"A" | "B", { views: number; clicks: number }> = {
-  A: { views: 0, clicks: 0 },
-  B: { views: 0, clicks: 0 },
+let abBuckets: Record<
+  "A" | "B",
+  { variant: "A" | "B"; views: number; clicks: number }
+> = {
+  A: { variant: "A", views: 0, clicks: 0 },
+  B: { variant: "B", views: 0, clicks: 0 },
 };
+
+// Virtue history storage
+let virtueHistory: VirtueHistory[] = [];
 
 export function trackEvent(
   event: EventType,
-  payload: Record<string, any> = {}
+  payload: Record<string, unknown> = {}
 ) {
   const telemetryEvent: TelemetryEvent = {
     id: crypto.randomUUID(),
@@ -43,7 +50,60 @@ export function getEvents(): TelemetryEvent[] {
 
 export function clearEvents() {
   events = [];
-  abBuckets = { A: { views: 0, clicks: 0 }, B: { views: 0, clicks: 0 } };
+  abBuckets = {
+    A: { variant: "A", views: 0, clicks: 0 },
+    B: { variant: "B", views: 0, clicks: 0 },
+  };
+  virtueHistory = [];
+}
+
+// Virtue history tracking
+export function trackVirtue(virtue: string, achievement: string) {
+  const historyEntry: VirtueHistory = {
+    id: crypto.randomUUID(),
+    virtue,
+    timestamp: Date.now(),
+    achievement,
+  };
+
+  virtueHistory.push(historyEntry);
+  trackEvent("virtue_detected", { virtue, achievement });
+
+  console.log("🏆 Virtue tracked:", historyEntry);
+}
+
+export function getVirtueHistory(): VirtueHistory[] {
+  return [...virtueHistory];
+}
+
+export function getVirtueCount(): Record<string, number> {
+  return virtueHistory.reduce((acc, item) => {
+    acc[item.virtue] = (acc[item.virtue] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+}
+
+// Reward tracking
+export function trackRewardView(virtue: string, variant: "A" | "B") {
+  trackEvent("reward_view", { virtue, variant });
+}
+
+export function getRewardMetrics() {
+  const views = events.filter((e) => e.event === "reward_view").length;
+  const clicks = events.filter((e) => e.event === "reward_click").length;
+  const conversions = events.filter(
+    (e) =>
+      e.event === "purchase" &&
+      (e.payload as any).type === "reward_conversion"
+  ).length;
+
+  return {
+    views,
+    clicks,
+    conversions,
+    ctr: views > 0 ? (clicks / views) * 100 : 0,
+    conversionRate: clicks > 0 ? (conversions / clicks) * 100 : 0,
+  };
 }
 
 export function getMetrics(): MetricsData {

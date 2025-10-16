@@ -90,6 +90,16 @@ pub async fn run_cli() -> Result<()> {
                 restart_service(&service).await?;
                 Ok(())
             }
+            ServiceCommands::AiManage {
+                auto_scale,
+                predict_load,
+                optimize_resources,
+                horizon_minutes,
+                service,
+            } => {
+                ai_manage(auto_scale, predict_load, optimize_resources, horizon_minutes, service).await?;
+                Ok(())
+            }
         },
 
         Commands::Report { input, output, format } => {
@@ -147,9 +157,39 @@ pub async fn run_cli() -> Result<()> {
             }
         }
 
+        Commands::Health { verbose } => {
+            system_health_check(verbose).await
+        }
+
+        Commands::AiMonitor {
+            interval,
+            anomaly_threshold,
+            ai_alerts,
+            anomaly_detection,
+            proactive_healing,
+            webhook_url,
+        } => {
+            if !anomaly_detection && !ai_alerts && !proactive_healing {
+                println!("🤖 AI-Powered Autonomous Monitoring System");
+                println!("\nUsage:");
+                println!("  --anomaly-detection     Enable AI-powered anomaly detection");
+                println!("  --ai-alerts            Enable intelligent alerting");
+                println!("  --proactive-healing    Enable automatic self-healing");
+                println!("  --interval <seconds>   Monitoring interval (default: 30)");
+                println!("  --anomaly-threshold <0.0-1.0>  Detection sensitivity (default: 0.7)");
+                println!("  --webhook-url <url>    Webhook for notifications");
+                println!("\nExample:");
+                println!("  clnrm ai-monitor --anomaly-detection --ai-alerts --proactive-healing");
+                return Ok(());
+            }
+
+            let monitor_interval = std::time::Duration::from_secs(interval);
+            ai_monitor(monitor_interval, anomaly_threshold, ai_alerts, proactive_healing, webhook_url).await
+        }
+
         Commands::Marketplace { command } => {
-            let config = crate::marketplace::MarketplaceConfig::default();
-            crate::marketplace::commands::execute_marketplace_command(&config, command).await
+            let marketplace = crate::marketplace::Marketplace::default().await?;
+            crate::marketplace::commands::execute_marketplace_command(&marketplace, command).await
         }
     };
 

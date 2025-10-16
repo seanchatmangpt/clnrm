@@ -1,0 +1,177 @@
+# Optimus Prime Platform - Service Management Integration Test
+# ==============================================================
+#
+# This test validates comprehensive service management capabilities:
+# - Multi-service orchestration
+# - Service lifecycle management
+# - Health monitoring and status checks
+# - Resource allocation and optimization
+# - Inter-service communication
+# - AI-powered service management
+
+[test.metadata]
+name = "optimus_prime_service_management"
+description = "Comprehensive service management test with multiple service types"
+timeout = "300s"
+tags = ["service-management", "integration", "multi-service", "ai-powered"]
+
+# Service 1: Database Service (PostgreSQL simulation)
+[services.database]
+type = "generic_container"
+plugin = "postgres"
+image = "postgres:15-alpine"
+environment = { POSTGRES_PASSWORD = "testpass", POSTGRES_DB = "testdb", POSTGRES_USER = "testuser" }
+ports = [5432]
+
+# Service 2: Redis Cache Service
+[services.cache]
+type = "generic_container"
+plugin = "redis"
+image = "redis:7-alpine"
+ports = [6379]
+
+# Service 3: Node.js Application Service
+[services.app]
+type = "generic_container"
+plugin = "node"
+image = "node:20-alpine"
+environment = { NODE_ENV = "test", PORT = "3000" }
+ports = [3000]
+depends_on = ["database", "cache"]
+
+# Service 4: Nginx Reverse Proxy
+[services.proxy]
+type = "generic_container"
+plugin = "nginx"
+image = "nginx:alpine"
+ports = [8080]
+depends_on = ["app"]
+
+# Test Steps
+
+[[steps]]
+name = "verify_database_startup"
+service = "database"
+command = ["pg_isready", "-U", "testuser", "-d", "testdb"]
+expected_exit_code = 0
+expected_output_regex = "accepting connections"
+retry = { max_attempts = 5, delay = "2s" }
+
+[[steps]]
+name = "verify_cache_startup"
+service = "cache"
+command = ["redis-cli", "ping"]
+expected_exit_code = 0
+expected_output_regex = "PONG"
+
+[[steps]]
+name = "test_database_connection"
+service = "database"
+command = ["psql", "-U", "testuser", "-d", "testdb", "-c", "SELECT version();"]
+expected_exit_code = 0
+expected_output_regex = "PostgreSQL"
+
+[[steps]]
+name = "test_redis_set_operation"
+service = "cache"
+command = ["redis-cli", "SET", "test_key", "service_management_test"]
+expected_exit_code = 0
+expected_output_regex = "OK"
+
+[[steps]]
+name = "test_redis_get_operation"
+service = "cache"
+command = ["redis-cli", "GET", "test_key"]
+expected_exit_code = 0
+expected_output_regex = "service_management_test"
+
+[[steps]]
+name = "create_database_table"
+service = "database"
+command = ["psql", "-U", "testuser", "-d", "testdb", "-c", "CREATE TABLE IF NOT EXISTS services (id SERIAL PRIMARY KEY, name VARCHAR(100), status VARCHAR(50));"]
+expected_exit_code = 0
+
+[[steps]]
+name = "insert_service_record"
+service = "database"
+command = ["psql", "-U", "testuser", "-d", "testdb", "-c", "INSERT INTO services (name, status) VALUES ('optimus-prime', 'active');"]
+expected_exit_code = 0
+
+[[steps]]
+name = "query_service_record"
+service = "database"
+command = ["psql", "-U", "testuser", "-d", "testdb", "-t", "-c", "SELECT name, status FROM services WHERE name = 'optimus-prime';"]
+expected_exit_code = 0
+expected_output_regex = "optimus-prime.*active"
+
+[[steps]]
+name = "test_cache_expiry"
+service = "cache"
+command = ["sh", "-c", "redis-cli SETEX temp_key 5 'expires_soon' && redis-cli GET temp_key"]
+expected_exit_code = 0
+expected_output_regex = "expires_soon"
+
+[[steps]]
+name = "verify_nginx_config"
+service = "proxy"
+command = ["nginx", "-t"]
+expected_exit_code = 0
+expected_output_regex = "syntax is ok"
+
+[[steps]]
+name = "test_multi_service_coordination"
+service = "database"
+command = ["sh", "-c", "psql -U testuser -d testdb -c \"INSERT INTO services (name, status) VALUES ('cache', 'running'), ('proxy', 'running'), ('app', 'running');\" && psql -U testuser -d testdb -t -c \"SELECT COUNT(*) FROM services;\""]
+expected_exit_code = 0
+expected_output_regex = "4"
+
+[[steps]]
+name = "stress_test_database"
+service = "database"
+command = ["sh", "-c", "for i in $(seq 1 10); do psql -U testuser -d testdb -c \"INSERT INTO services (name, status) VALUES ('service_$i', 'testing');\"; done && psql -U testuser -d testdb -t -c \"SELECT COUNT(*) FROM services WHERE status = 'testing';\""]
+expected_exit_code = 0
+expected_output_regex = "10"
+
+[[steps]]
+name = "stress_test_cache"
+service = "cache"
+command = ["sh", "-c", "for i in $(seq 1 100); do redis-cli SET key_$i value_$i > /dev/null; done && redis-cli DBSIZE"]
+expected_exit_code = 0
+expected_output_regex = "[0-9]+"
+
+[[steps]]
+name = "cleanup_database"
+service = "database"
+command = ["psql", "-U", "testuser", "-d", "testdb", "-c", "DROP TABLE IF EXISTS services;"]
+expected_exit_code = 0
+
+[[steps]]
+name = "cleanup_cache"
+service = "cache"
+command = ["redis-cli", "FLUSHALL"]
+expected_exit_code = 0
+expected_output_regex = "OK"
+
+# Assertions
+[assertions]
+all_services_should_start = true
+all_health_checks_should_pass = true
+services_should_communicate = true
+no_service_failures = true
+resource_limits_respected = true
+
+# Performance Metrics
+[metrics]
+track_startup_time = true
+track_response_time = true
+track_resource_usage = true
+track_error_rate = true
+
+# AI Service Management Configuration
+[ai_management]
+auto_scale = true
+predict_load = true
+optimize_resources = true
+anomaly_detection = true
+proactive_healing = true
+confidence_threshold = 0.75

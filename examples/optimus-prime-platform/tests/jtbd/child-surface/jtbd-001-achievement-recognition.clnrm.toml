@@ -1,0 +1,132 @@
+[test.metadata]
+name = "jtbd_001_achievement_recognition"
+description = "JTBD-001: Child receives recognition for achievement with appropriate response and virtue detection"
+timeout = "90s"
+tags = ["jtbd", "child-surface", "core-feature", "achievement", "recognition"]
+version = "1.0.0"
+
+# Success Criteria:
+# - Response time < 2.5s P95
+# - Virtue detected and returned in headers
+# - Optimus Prime character voice maintained
+# - Positive, leadership-focused recognition
+# - Appropriate emotional encouragement
+
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+# Step 1: Wait for services
+[[steps]]
+name = "wait_for_services"
+command = ["sh", "-c", "sleep 5 && curl -f http://ollama_ai:11434/api/version && curl -f http://nextjs_app:3000"]
+timeout = "60s"
+expected_output_regex = "version"
+retry_on_failure = true
+max_retries = 5
+
+# Step 2: Pull AI model
+[[steps]]
+name = "pull_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen2.5-coder:3b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# Step 3: Test teamwork achievement recognition
+[[steps]]
+name = "test_teamwork_achievement"
+command = ["sh", "-c", "START=$(date +%s%3N); curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I helped my team win the game today!\",\"timestamp\":1234567890}]}' -i; END=$(date +%s%3N); ELAPSED=$((END-START)); echo \"Response time: ${ELAPSED}ms\"; [ $ELAPSED -lt 2500 ]"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(teamwork|leadership|cooperation)"
+retry_on_failure = false
+
+# Step 4: Validate response time < 2.5s
+[[steps]]
+name = "validate_response_time_teamwork"
+command = ["sh", "-c", "START=$(date +%s%3N); curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I helped my team\",\"timestamp\":1234567890}]}' > /dev/null 2>&1; END=$(date +%s%3N); ELAPSED=$((END-START)); echo \"Elapsed: ${ELAPSED}ms\"; test $ELAPSED -lt 2500"]
+timeout = "10s"
+expected_output_regex = "Elapsed:.*ms"
+retry_on_failure = false
+
+# Step 5: Test courage achievement recognition
+[[steps]]
+name = "test_courage_achievement"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I stood up for what was right even though I was scared\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(courage|bravery|brave)"
+retry_on_failure = false
+
+# Step 6: Test compassion achievement recognition
+[[steps]]
+name = "test_compassion_achievement"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I helped someone who was feeling sad\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(compassion|kindness|caring)"
+retry_on_failure = false
+
+# Step 7: Test wisdom achievement recognition
+[[steps]]
+name = "test_wisdom_achievement"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I thought carefully before making a difficult decision\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(wisdom|thoughtful|discernment)"
+retry_on_failure = false
+
+# Step 8: Test honesty achievement recognition
+[[steps]]
+name = "test_honesty_achievement"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I told the truth even when it was hard\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(honesty|truthful|integrity)"
+retry_on_failure = false
+
+# Step 9: Validate Optimus Prime character voice
+[[steps]]
+name = "validate_optimus_voice"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I demonstrated leadership today\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(noble|Autobot|leader|courage|strength|wisdom|freedom|right)"
+retry_on_failure = false
+
+# Step 10: Test negative case - no achievement mentioned
+[[steps]]
+name = "test_no_achievement_handling"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What's the weather like?\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "200|response"
+retry_on_failure = false
+
+# Step 11: Validate telemetry tracking
+[[steps]]
+name = "validate_telemetry_tracking"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "5s"
+expected_output_regex = "(events|virtues|sessions)"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.95
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

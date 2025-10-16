@@ -1,0 +1,154 @@
+[test.metadata]
+name = "jtbd_005_kpi_queries"
+description = "JTBD-005: Executive asks natural language KPI questions and receives accurate numeric analytics"
+timeout = "90s"
+tags = ["jtbd", "executive-surface", "analytics", "kpi", "nlp"]
+version = "1.0.0"
+
+# Success Criteria:
+# - Response time < 3s P95
+# - Accurate numeric answers from telemetry
+# - Support for multiple KPI types
+# - Natural language understanding
+# - Time period filtering (last 7 days, etc.)
+
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+[[steps]]
+name = "setup_services"
+command = ["sh", "-c", "sleep 5 && curl -f http://ollama_ai:11434/api/version"]
+timeout = "60s"
+expected_output_regex = "version"
+retry_on_failure = true
+max_retries = 5
+
+[[steps]]
+name = "pull_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen2.5-coder:3b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# Seed test data
+[[steps]]
+name = "seed_telemetry_data"
+command = ["sh", "-c", "for i in {1..10}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"session_start\",\"metadata\":{}}'; curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"virtue_detected\",\"metadata\":{\"virtue\":\"courage\"}}'; curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"reward_shown\",\"metadata\":{}}'; done"]
+timeout = "60s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Test KPI query: Total sessions
+[[steps]]
+name = "test_kpi_total_sessions"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"How many total sessions?\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "[0-9]+"
+retry_on_failure = false
+
+# Test KPI query: Response time validation
+[[steps]]
+name = "test_kpi_response_time"
+command = ["sh", "-c", "START=$(date +%s%3N); curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Total sessions?\",\"timestamp\":1234567890}]}' > /dev/null 2>&1; END=$(date +%s%3N); ELAPSED=$((END-START)); echo \"Elapsed: ${ELAPSED}ms\"; test $ELAPSED -lt 3000"]
+timeout = "10s"
+expected_output_regex = "Elapsed:.*ms"
+retry_on_failure = false
+
+# Test KPI query: Premium CTR by variant
+[[steps]]
+name = "test_kpi_premium_ctr"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is the premium CTR by variant?\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(variant|ctr|%|percent)"
+retry_on_failure = false
+
+# Test KPI query: Total revenue
+[[steps]]
+name = "test_kpi_total_revenue"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is total revenue last 7 days?\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "([0-9]+|revenue|\\$)"
+retry_on_failure = false
+
+# Test KPI query: Virtue distribution
+[[steps]]
+name = "test_kpi_virtue_distribution"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is the distribution of virtues detected?\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(courage|teamwork|honesty|compassion|wisdom)"
+retry_on_failure = false
+
+# Test KPI query: Reward CTR
+[[steps]]
+name = "test_kpi_reward_ctr"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is the reward click-through rate?\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(ctr|%|click|rate)"
+retry_on_failure = false
+
+# Test KPI query: Time period filtering
+[[steps]]
+name = "test_kpi_time_filtering"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Show me sessions from the last 24 hours\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "[0-9]+"
+retry_on_failure = false
+
+# Test KPI query: Comparison queries
+[[steps]]
+name = "test_kpi_comparison"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Compare premium CTR for variant A vs variant B\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(variant|vs|versus|compared)"
+retry_on_failure = false
+
+# Test KPI query: Multiple metrics
+[[steps]]
+name = "test_kpi_multiple_metrics"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Give me total sessions, revenue, and premium CTR\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(sessions|revenue|ctr)"
+retry_on_failure = false
+
+# Validate metrics endpoint data
+[[steps]]
+name = "validate_metrics_data"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "5s"
+expected_output_regex = "(totals|events|sessions|virtues)"
+retry_on_failure = false
+
+# Test numeric accuracy
+[[steps]]
+name = "test_numeric_accuracy"
+command = ["sh", "-c", "METRICS=$(curl -s http://nextjs_app:3000/api/metrics); echo \"$METRICS\" | grep -E '[0-9]+'"]
+timeout = "10s"
+expected_output_regex = "[0-9]+"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.90
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

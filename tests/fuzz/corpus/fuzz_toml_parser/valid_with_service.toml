@@ -1,0 +1,14 @@
+[test.metadata]
+name = "service_test"
+description = "Test with service"
+timeout = "120s"
+
+[services.db]
+type = "generic_container"
+plugin = "postgres"
+image = "postgres:15"
+
+[[steps]]
+name = "connect_db"
+command = ["psql", "-c", "SELECT 1"]
+service = "db"

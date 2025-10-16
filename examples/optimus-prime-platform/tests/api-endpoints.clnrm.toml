@@ -1,0 +1,120 @@
+[test.metadata]
+name = "api_endpoints_comprehensive_test"
+description = "Test all Optimus Prime API endpoints: chat, metrics, telemetry"
+timeout = "180s"
+tags = ["api", "endpoints", "integration"]
+version = "1.0.0"
+
+# Service: Ollama AI for LLM generation
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+# Service: Next.js application server
+[services.nextjs_server]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+# Step 1: Wait for Ollama to be ready
+[[steps]]
+name = "wait_for_ollama"
+command = ["sh", "-c", "sleep 5 && curl -f http://ollama_ai:11434/api/version || exit 1"]
+timeout = "60s"
+expected_output_regex = "version"
+retry_on_failure = true
+max_retries = 5
+
+# Step 2: Pull AI model
+[[steps]]
+name = "pull_ollama_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen3-coder:30b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# Step 3: Wait for Next.js server to be ready
+[[steps]]
+name = "wait_for_nextjs"
+command = ["sh", "-c", "sleep 10 && curl -f http://nextjs_server:3000 || exit 1"]
+timeout = "120s"
+expected_output_regex = "."
+retry_on_failure = true
+max_retries = 10
+
+# Step 4: Test /api/chat endpoint - Child mode
+[[steps]]
+name = "test_chat_api_child_mode"
+command = ["curl", "-X", "POST", "http://nextjs_server:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I helped my team solve a difficult problem today!\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "response|courage|leadership|teamwork"
+retry_on_failure = false
+
+# Step 5: Test /api/chat endpoint - Executive mode
+[[steps]]
+name = "test_chat_api_executive_mode"
+command = ["curl", "-X", "POST", "http://nextjs_server:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is our current revenue?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "revenue|\\$|USD|metrics"
+retry_on_failure = false
+
+# Step 6: Test /api/metrics endpoint
+[[steps]]
+name = "test_metrics_api"
+command = ["curl", "-X", "GET", "http://nextjs_server:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "totals|revenue|events|ab"
+retry_on_failure = false
+
+# Step 7: Test /api/telemetry endpoint
+[[steps]]
+name = "test_telemetry_api_post"
+command = ["curl", "-X", "POST", "http://nextjs_server:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"test_event\",\"payload\":{\"test\":\"data\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 8: Test invalid chat mode
+[[steps]]
+name = "test_chat_api_invalid_mode"
+command = ["curl", "-X", "POST", "http://nextjs_server:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"invalid\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"test\",\"timestamp\":1234567890}]}", "-w", "%{http_code}"]
+timeout = "30s"
+expected_output_regex = "500|error"
+retry_on_failure = false
+
+# Step 9: Test missing telemetry payload
+[[steps]]
+name = "test_telemetry_api_missing_payload"
+command = ["curl", "-X", "POST", "http://nextjs_server:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"test_event\"}", "-w", "%{http_code}"]
+timeout = "30s"
+expected_output_regex = "400|error"
+retry_on_failure = false
+
+# Step 10: Teardown - Stop services
+[[steps]]
+name = "teardown_services"
+command = ["sh", "-c", "echo 'Tests completed successfully'"]
+timeout = "10s"
+expected_output_regex = "completed"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.9
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

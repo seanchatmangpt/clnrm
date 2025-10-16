@@ -1,0 +1,139 @@
+[test.metadata]
+name = "jtbd_006_dashboard_visualization"
+description = "JTBD-006: Executive views real-time analytics dashboard with Chart.js visualizations"
+timeout = "90s"
+tags = ["jtbd", "executive-surface", "dashboard", "visualization", "charts"]
+version = "1.0.0"
+
+# Success Criteria:
+# - Dashboard endpoint accessible
+# - Chart data properly formatted
+# - Real-time data updates
+# - Multiple chart types (line, bar, pie)
+# - Responsive rendering
+
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+[[steps]]
+name = "setup_services"
+command = ["sh", "-c", "sleep 5 && curl -f http://nextjs_app:3000"]
+timeout = "60s"
+expected_output_regex = "."
+retry_on_failure = true
+max_retries = 5
+
+# Test dashboard page accessibility
+[[steps]]
+name = "test_dashboard_accessible"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/admin/dashboard"]
+timeout = "10s"
+expected_output_regex = "(dashboard|chart|analytics)"
+retry_on_failure = false
+
+# Test metrics API endpoint
+[[steps]]
+name = "test_metrics_endpoint"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "10s"
+expected_output_regex = "(events|totals|virtues)"
+retry_on_failure = false
+
+# Seed dashboard data
+[[steps]]
+name = "seed_dashboard_data"
+command = ["sh", "-c", "for i in {1..20}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"session_start\",\"metadata\":{}}'; curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"virtue_detected\",\"metadata\":{\"virtue\":\"courage\"}}'; curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_impression\",\"metadata\":{\"variant\":\"A\"}}'; done"]
+timeout = "120s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Test chart data format - sessions over time
+[[steps]]
+name = "test_sessions_chart_data"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -o 'sessions' | head -1"]
+timeout = "10s"
+expected_output_regex = "sessions"
+retry_on_failure = false
+
+# Test chart data format - virtue distribution
+[[steps]]
+name = "test_virtue_distribution_data"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -E '(courage|teamwork|honesty|compassion|wisdom)'"]
+timeout = "10s"
+expected_output_regex = "(courage|teamwork|honesty|compassion|wisdom)"
+retry_on_failure = false
+
+# Test chart data format - A/B test results
+[[steps]]
+name = "test_ab_test_chart_data"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -E '(variantA|variantB)'"]
+timeout = "10s"
+expected_output_regex = "(variant)"
+retry_on_failure = false
+
+# Test chart data format - revenue tracking
+[[steps]]
+name = "test_revenue_chart_data"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -o 'revenue\\|total' | head -1"]
+timeout = "10s"
+expected_output_regex = "(revenue|total)"
+retry_on_failure = false
+
+# Test real-time data updates
+[[steps]]
+name = "test_realtime_updates"
+command = ["sh", "-c", "BEFORE=$(curl -s http://nextjs_app:3000/api/metrics); curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"session_start\",\"metadata\":{}}'; sleep 1; AFTER=$(curl -s http://nextjs_app:3000/api/metrics); [ \"$BEFORE\" != \"$AFTER\" ] && echo 'Data updated'"]
+timeout = "15s"
+expected_output_regex = "(updated|events|totals)"
+retry_on_failure = false
+
+# Test dashboard performance
+[[steps]]
+name = "test_dashboard_load_time"
+command = ["sh", "-c", "START=$(date +%s%3N); curl -s http://nextjs_app:3000/admin/dashboard > /dev/null; END=$(date +%s%3N); ELAPSED=$((END-START)); echo \"Load time: ${ELAPSED}ms\"; test $ELAPSED -lt 5000"]
+timeout = "10s"
+expected_output_regex = "Load time:.*ms"
+retry_on_failure = false
+
+# Test metrics API performance
+[[steps]]
+name = "test_metrics_api_performance"
+command = ["sh", "-c", "START=$(date +%s%3N); curl -s http://nextjs_app:3000/api/metrics > /dev/null; END=$(date +%s%3N); ELAPSED=$((END-START)); echo \"API time: ${ELAPSED}ms\"; test $ELAPSED -lt 1000"]
+timeout = "10s"
+expected_output_regex = "API time:.*ms"
+retry_on_failure = false
+
+# Test data aggregation accuracy
+[[steps]]
+name = "test_aggregation_accuracy"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -E '[0-9]+' | head -5"]
+timeout = "10s"
+expected_output_regex = "[0-9]+"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.95
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

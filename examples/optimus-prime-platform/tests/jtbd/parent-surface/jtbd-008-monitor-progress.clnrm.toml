@@ -1,0 +1,163 @@
+[test.metadata]
+name = "jtbd_008_monitor_progress"
+description = "JTBD-008: Parent monitors child's virtue development and progress over time"
+timeout = "90s"
+tags = ["jtbd", "parent-surface", "monitoring", "progress", "virtues"]
+version = "1.0.0"
+
+# Success Criteria:
+# - Virtue history tracked over time
+# - Progress metrics accessible
+# - Multiple children supported
+# - Privacy controls in place
+# - Summary reports available
+
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+[[steps]]
+name = "setup_services"
+command = ["sh", "-c", "sleep 5 && curl -f http://nextjs_app:3000"]
+timeout = "60s"
+expected_output_regex = "."
+retry_on_failure = true
+max_retries = 5
+
+# Seed child activity data - Day 1
+[[steps]]
+name = "seed_child_activity_day1"
+command = ["sh", "-c", "for i in {1..5}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"virtue_detected\",\"metadata\":{\"virtue\":\"courage\",\"child_id\":\"child1\",\"day\":1}}'; done"]
+timeout = "30s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Seed child activity data - Day 2
+[[steps]]
+name = "seed_child_activity_day2"
+command = ["sh", "-c", "for i in {1..3}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"virtue_detected\",\"metadata\":{\"virtue\":\"teamwork\",\"child_id\":\"child1\",\"day\":2}}'; done"]
+timeout = "30s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Seed child activity data - Day 3
+[[steps]]
+name = "seed_child_activity_day3"
+command = ["sh", "-c", "for i in {1..4}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"virtue_detected\",\"metadata\":{\"virtue\":\"honesty\",\"child_id\":\"child1\",\"day\":3}}'; done"]
+timeout = "30s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Test parent metrics access
+[[steps]]
+name = "test_parent_metrics_access"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "10s"
+expected_output_regex = "(virtues|sessions|events)"
+retry_on_failure = false
+
+# Test virtue history tracking
+[[steps]]
+name = "test_virtue_history"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -E '(courage|teamwork|honesty|compassion|wisdom)' | wc -l | xargs test 1 -le"]
+timeout = "10s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Test progress over time
+[[steps]]
+name = "test_progress_over_time"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -i virtue"]
+timeout = "10s"
+expected_output_regex = "virtue"
+retry_on_failure = false
+
+# Test virtue distribution summary
+[[steps]]
+name = "test_virtue_distribution"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Show me the distribution of virtues detected\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(courage|teamwork|honesty|compassion|wisdom)"
+retry_on_failure = false
+
+# Test session frequency tracking
+[[steps]]
+name = "test_session_frequency"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -i session"]
+timeout = "10s"
+expected_output_regex = "session"
+retry_on_failure = false
+
+# Test achievement milestones
+[[steps]]
+name = "test_achievement_milestones"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -oE '[0-9]+' | head -5"]
+timeout = "10s"
+expected_output_regex = "[0-9]+"
+retry_on_failure = false
+
+# Test parent dashboard access
+[[steps]]
+name = "test_parent_dashboard"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/admin/dashboard"]
+timeout = "10s"
+expected_output_regex = "(dashboard|metrics|analytics)"
+retry_on_failure = false
+
+# Test growth trends
+[[steps]]
+name = "test_growth_trends"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Show me virtue detection trends over time\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(trend|growth|over time)"
+retry_on_failure = false
+
+# Test engagement metrics
+[[steps]]
+name = "test_engagement_metrics"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -E '(sessions|interactions|responses)'"]
+timeout = "10s"
+expected_output_regex = "(sessions|events)"
+retry_on_failure = false
+
+# Test data privacy - no PII exposure
+[[steps]]
+name = "test_data_privacy"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -viE '(email|password|ssn|address)' | wc -l | xargs test 1 -le"]
+timeout = "10s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Test summary report generation
+[[steps]]
+name = "test_summary_report"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Generate a summary report of child progress\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(summary|report|progress|virtue)"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.90
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

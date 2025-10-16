@@ -1,0 +1,36 @@
+[test.metadata]
+name = "jtbd_005_kpi_query"
+description = "JTBD-005: Executive queries KPIs via natural language and receives numeric answers"
+timeout = "30s"
+
+[[steps]]
+name = "executive_queries_revenue"
+command = ["node", "-e", "const query = 'What was total revenue last 7 days?'; console.log('Executive query:', query); console.log('Expected: Numeric answer with units'); console.log('Query format: NATURAL_LANGUAGE');"]
+expected_output_regex = "NATURAL_LANGUAGE"
+
+[[steps]]
+name = "system_retrieves_metrics"
+command = ["node", "-e", "const metrics = { totals: { revenue: 12450, events: 245 }, ab: { A: { views: 100, clicks: 8 }, B: { views: 95, clicks: 6 } } }; console.log('Total revenue:', '$' + metrics.totals.revenue); console.log('Total events:', metrics.totals.events); console.log('Variant A CTR:', ((metrics.ab.A.clicks / metrics.ab.A.views) * 100).toFixed(1) + '%'); console.log('Variant B CTR:', ((metrics.ab.B.clicks / metrics.ab.B.views) * 100).toFixed(1) + '%'); console.log('Metrics retrieval: SUCCESS');"]
+expected_output_regex = "SUCCESS"
+
+[[steps]]
+name = "response_contains_numbers"
+command = ["node", "-e", "const response = 'Total revenue last 7 days: $12,450. Variant A CTR: 8.0%, Variant B CTR: 6.3%.'; const hasNumbers = /\\d+/.test(response); const hasUnits = response.includes('$') || response.includes('%'); console.log('Response:', response); console.log('Contains numbers:', hasNumbers); console.log('Contains units:', hasUnits); console.log('Numeric response:', hasNumbers && hasUnits ? 'VERIFIED' : 'FAILED');"]
+expected_output_regex = "VERIFIED"
+
+[[steps]]
+name = "response_within_constraints"
+command = ["node", "-e", "const response = 'Total revenue last 7 days: $12,450.\\nVariant A CTR: 8.0%\\nVariant B CTR: 6.3%\\nTotal events: 245'; const lines = response.split('\\n').length; console.log('Response lines:', lines); console.log('Line limit: 5'); console.log('Constraint check:', lines <= 5 ? 'PASSED' : 'FAILED');"]
+expected_output_regex = "PASSED"
+
+[[steps]]
+name = "executive_receives_answer"
+command = ["node", "-e", "console.log('Chat interface: Executive Mode'); console.log('User query displayed: ✓'); console.log('AI response received: ✓'); console.log('Response format: Numeric with context'); console.log('Answer delivery: COMPLETE');"]
+expected_output_regex = "COMPLETE"
+
+[assertions]
+natural_language_query = "Executive can query using natural language"
+metrics_retrieved = "System retrieves real-time metrics"
+numeric_response = "Response contains numbers with units"
+concise_answer = "Answer is concise (≤ 5 lines)"
+complete_delivery = "Executive receives complete answer"

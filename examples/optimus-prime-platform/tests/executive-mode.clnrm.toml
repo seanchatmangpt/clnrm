@@ -1,0 +1,160 @@
+[test.metadata]
+name = "executive_mode_analytics_test"
+description = "Comprehensive test of executive mode analytics engine with KPI queries"
+timeout = "240s"
+tags = ["executive-mode", "analytics", "metrics", "kpi"]
+version = "1.0.0"
+
+# Service: Ollama AI for LLM generation
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+# Service: Next.js application server
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+# Step 1: Wait for Ollama
+[[steps]]
+name = "wait_for_ollama"
+command = ["sh", "-c", "sleep 5 && curl -f http://ollama_ai:11434/api/version"]
+timeout = "60s"
+expected_output_regex = "version"
+retry_on_failure = true
+max_retries = 5
+
+# Step 2: Pull AI model
+[[steps]]
+name = "pull_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen3-coder:30b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# Step 3: Wait for Next.js
+[[steps]]
+name = "wait_for_nextjs"
+command = ["sh", "-c", "sleep 10 && curl -f http://nextjs_app:3000"]
+timeout = "120s"
+expected_output_regex = "."
+retry_on_failure = true
+max_retries = 10
+
+# Step 4: Test revenue query
+[[steps]]
+name = "test_revenue_query"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is our total revenue for the last 7 days?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "revenue|\\$|USD|dollar"
+retry_on_failure = false
+
+# Step 5: Test CTR query
+[[steps]]
+name = "test_ctr_query"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is the premium CTR for variant A vs B?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "CTR|click|variant|A|B|%"
+retry_on_failure = false
+
+# Step 6: Test events query
+[[steps]]
+name = "test_events_query"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"How many total events have we tracked?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "events|total|tracked"
+retry_on_failure = false
+
+# Step 7: Test targets comparison
+[[steps]]
+name = "test_targets_comparison"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Are we meeting our monthly revenue target?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "target|revenue|monthly|\\$"
+retry_on_failure = false
+
+# Step 8: Test retention query
+[[steps]]
+name = "test_retention_query"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is our D7 retention target?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "retention|D7|%|target"
+retry_on_failure = false
+
+# Step 9: Test A/B performance query
+[[steps]]
+name = "test_ab_performance_query"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Which A/B variant is performing better for premium CTR?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "variant|A|B|better|performing|CTR"
+retry_on_failure = false
+
+# Step 10: Test unknown data handling
+[[steps]]
+name = "test_unknown_data_handling"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is the customer lifetime value?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "insufficient|data|unknown|not available"
+retry_on_failure = false
+
+# Step 11: Test response conciseness (under 5 lines)
+[[steps]]
+name = "test_response_conciseness"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Summarize our key metrics\",\"timestamp\":1234567890}]}' | grep -o 'response' | wc -l"]
+timeout = "90s"
+expected_output_regex = "[0-9]+"
+retry_on_failure = false
+
+# Step 12: Test metrics endpoint integration
+[[steps]]
+name = "test_metrics_endpoint"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "totals.*revenue.*events.*ab"
+retry_on_failure = false
+
+# Step 13: Test context-based responses
+[[steps]]
+name = "test_context_based_responses"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Give me specific numbers with units\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "\\$|%|USD|events"
+retry_on_failure = false
+
+# Step 14: Test streaming response
+[[steps]]
+name = "test_streaming_response"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is our revenue?\",\"timestamp\":1234567890}]}' --no-buffer | head -c 100"]
+timeout = "90s"
+expected_output_regex = "response|model"
+retry_on_failure = false
+
+# Step 15: Cleanup
+[[steps]]
+name = "cleanup"
+command = ["sh", "-c", "echo 'Executive mode tests completed successfully'"]
+timeout = "10s"
+expected_output_regex = "completed"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.9
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

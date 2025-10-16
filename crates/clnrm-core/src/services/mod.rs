@@ -6,3 +6,4 @@ pub mod tgi;
 pub mod chaos_engine;
 pub mod ai_test_generator;
 pub mod ai_intelligence;
+pub mod service_manager;

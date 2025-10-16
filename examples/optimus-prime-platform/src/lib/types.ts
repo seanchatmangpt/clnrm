@@ -24,7 +24,7 @@ export interface TelemetryEvent {
   id: string;
   ts: number;
   event: EventType;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
 }
 
 export type EventType =
@@ -32,9 +32,17 @@ export type EventType =
   | "message_sent"
   | "virtue_detected"
   | "reward_click"
+  | "reward_view"
   | "premium_view"
   | "premium_click"
   | "purchase";
+
+export interface VirtueHistory {
+  id: string;
+  virtue: string;
+  timestamp: number;
+  achievement: string;
+}
 
 export interface ABVariant {
   variant: "A" | "B";

@@ -1,0 +1,220 @@
+[test.metadata]
+name = "performance_benchmarks_test"
+description = "Performance and load testing for Optimus Prime platform with benchmarks"
+timeout = "360s"
+tags = ["performance", "benchmarks", "load-testing", "stress-testing"]
+version = "1.0.0"
+
+# Service: Ollama AI for LLM generation
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+resources = { cpu_limit = "4", memory_limit = "8G" }
+
+# Service: Next.js application server
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "production", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+resources = { cpu_limit = "2", memory_limit = "2G" }
+
+# Step 1: Setup services
+[[steps]]
+name = "setup_services"
+command = ["sh", "-c", "sleep 10 && curl -f http://nextjs_app:3000 && curl -f http://ollama_ai:11434/api/version"]
+timeout = "120s"
+expected_output_regex = "."
+retry_on_failure = true
+max_retries = 10
+
+# Step 2: Pull model
+[[steps]]
+name = "setup_pull_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen3-coder:30b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# === API RESPONSE TIME BENCHMARKS ===
+
+# Step 3: Benchmark - Chat API response time (child mode)
+[[steps]]
+name = "benchmark_chat_child_response_time"
+command = ["sh", "-c", "time curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was brave today\",\"timestamp\":1}]}' -w '\nTime: %{time_total}s\n'"]
+timeout = "120s"
+expected_output_regex = "response|Time.*[0-9]+"
+retry_on_failure = false
+
+# Step 4: Benchmark - Chat API response time (executive mode)
+[[steps]]
+name = "benchmark_chat_executive_response_time"
+command = ["sh", "-c", "time curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is our revenue?\",\"timestamp\":1}]}' -w '\nTime: %{time_total}s\n'"]
+timeout = "120s"
+expected_output_regex = "response|Time.*[0-9]+"
+retry_on_failure = false
+
+# Step 5: Benchmark - Metrics API response time
+[[steps]]
+name = "benchmark_metrics_response_time"
+command = ["sh", "-c", "time curl -X GET http://nextjs_app:3000/api/metrics -w '\nTime: %{time_total}s\n'"]
+timeout = "30s"
+expected_output_regex = "Time.*0\\.[0-9]+"
+retry_on_failure = false
+
+# Step 6: Benchmark - Telemetry API response time
+[[steps]]
+name = "benchmark_telemetry_response_time"
+command = ["sh", "-c", "time curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"event\":\"test\",\"payload\":{}}' -w '\nTime: %{time_total}s\n'"]
+timeout = "30s"
+expected_output_regex = "Time.*0\\.[0-9]+"
+retry_on_failure = false
+
+# === CONCURRENT LOAD TESTING ===
+
+# Step 7: Load test - 10 concurrent chat requests
+[[steps]]
+name = "load_test_10_concurrent_chats"
+command = ["sh", "-c", "for i in {1..10}; do curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"test\",\"timestamp\":1}]}' & done; wait"]
+timeout = "180s"
+expected_output_regex = "."
+retry_on_failure = false
+
+# Step 8: Load test - 20 concurrent metrics requests
+[[steps]]
+name = "load_test_20_concurrent_metrics"
+command = ["sh", "-c", "for i in {1..20}; do curl -X GET http://nextjs_app:3000/api/metrics & done; wait"]
+timeout = "60s"
+expected_output_regex = "."
+retry_on_failure = false
+
+# Step 9: Load test - 50 concurrent telemetry events
+[[steps]]
+name = "load_test_50_concurrent_telemetry"
+command = ["sh", "-c", "for i in {1..50}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"event\":\"load_test\",\"payload\":{\"iteration\":'$i'}}' & done; wait"]
+timeout = "60s"
+expected_output_regex = "."
+retry_on_failure = false
+
+# === THROUGHPUT BENCHMARKS ===
+
+# Step 10: Throughput - Chat requests per second
+[[steps]]
+name = "throughput_chat_requests_per_second"
+command = ["sh", "-c", "start=$(date +%s); for i in {1..5}; do curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"test\",\"timestamp\":1}]}' > /dev/null 2>&1; done; end=$(date +%s); echo \"Completed 5 requests in $((end-start)) seconds\""]
+timeout = "300s"
+expected_output_regex = "Completed.*seconds"
+retry_on_failure = false
+
+# Step 11: Throughput - Metrics requests per second
+[[steps]]
+name = "throughput_metrics_requests_per_second"
+command = ["sh", "-c", "start=$(date +%s); for i in {1..100}; do curl -X GET http://nextjs_app:3000/api/metrics > /dev/null 2>&1; done; end=$(date +%s); echo \"Completed 100 requests in $((end-start)) seconds\""]
+timeout = "60s"
+expected_output_regex = "Completed.*seconds"
+retry_on_failure = false
+
+# Step 12: Throughput - Telemetry events per second
+[[steps]]
+name = "throughput_telemetry_events_per_second"
+command = ["sh", "-c", "start=$(date +%s); for i in {1..200}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"event\":\"throughput_test\",\"payload\":{\"iteration\":'$i'}}' > /dev/null 2>&1; done; end=$(date +%s); echo \"Completed 200 requests in $((end-start)) seconds\""]
+timeout = "60s"
+expected_output_regex = "Completed.*seconds"
+retry_on_failure = false
+
+# === STREAMING PERFORMANCE ===
+
+# Step 13: Streaming - Test initial response latency
+[[steps]]
+name = "streaming_initial_response_latency"
+command = ["sh", "-c", "time (curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"test\",\"timestamp\":1}]}' --no-buffer | head -c 10)"]
+timeout = "120s"
+expected_output_regex = "."
+retry_on_failure = false
+
+# Step 14: Streaming - Test full response completion time
+[[steps]]
+name = "streaming_full_response_time"
+command = ["sh", "-c", "time curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Tell me about leadership\",\"timestamp\":1}]}' -w '\nTime: %{time_total}s\n'"]
+timeout = "120s"
+expected_output_regex = "Time.*[0-9]+"
+retry_on_failure = false
+
+# === MEMORY AND RESOURCE USAGE ===
+
+# Step 15: Resource - Test memory stability under load
+[[steps]]
+name = "resource_memory_stability"
+command = ["sh", "-c", "for i in {1..20}; do curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is our revenue?\",\"timestamp\":1}]}' > /dev/null 2>&1; done && echo 'Memory test completed'"]
+timeout = "240s"
+expected_output_regex = "completed"
+retry_on_failure = false
+
+# === ERROR RATE UNDER LOAD ===
+
+# Step 16: Error rate - Test stability with rapid requests
+[[steps]]
+name = "error_rate_rapid_requests"
+command = ["sh", "-c", "success=0; fail=0; for i in {1..30}; do if curl -X GET http://nextjs_app:3000/api/metrics > /dev/null 2>&1; then success=$((success+1)); else fail=$((fail+1)); fi; done; echo \"Success: $success, Fail: $fail\""]
+timeout = "60s"
+expected_output_regex = "Success.*[2-3][0-9]"
+retry_on_failure = false
+
+# === BENCHMARKS VERIFICATION ===
+
+# Step 17: Verify metrics remain consistent after load
+[[steps]]
+name = "verify_metrics_consistency"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "totals.*revenue.*events"
+retry_on_failure = false
+
+# Step 18: Verify services still healthy after load
+[[steps]]
+name = "verify_services_health"
+command = ["sh", "-c", "curl -f http://nextjs_app:3000 && curl -f http://ollama_ai:11434/api/version"]
+timeout = "30s"
+expected_output_regex = "."
+retry_on_failure = false
+
+# Step 19: Final performance summary
+[[steps]]
+name = "performance_summary"
+command = ["sh", "-c", "echo 'Performance tests completed. Check response times, throughput, and error rates above.'"]
+timeout = "10s"
+expected_output_regex = "completed"
+retry_on_failure = false
+
+# Step 20: Cleanup
+[[steps]]
+name = "cleanup"
+command = ["sh", "-c", "echo 'Performance benchmarks completed successfully'"]
+timeout = "10s"
+expected_output_regex = "completed"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = false
+require_service_health = true
+minimum_success_rate = 0.85
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true
+
+[test.benchmarks]
+max_response_time_ms = 5000
+max_error_rate_percent = 5
+min_requests_per_second = 10

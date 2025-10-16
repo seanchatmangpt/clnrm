@@ -7,12 +7,13 @@ name = "ollama_ai_integration_enhanced"
 description = "Enhanced comprehensive test of Ollama AI provider functionality through CLNRM with plugin integration"
 timeout = "300s"
 
-# AI Service Configuration - Using Ollama plugin for structured AI testing
+# AI Service Configuration - Using generic container plugin for Ollama testing
 [services.ai_service]
-type = "ollama"
+type = "generic_container"
 plugin = "ollama"
+image = "ollama/ollama:latest"
+model = "qwen3-coder:30b"
 endpoint = "http://localhost:11434"
-default_model = "qwen3-coder:30b"
 timeout = "60s"
 
 # Test Steps - Using curl from network_tools plugin for consistent HTTP testing

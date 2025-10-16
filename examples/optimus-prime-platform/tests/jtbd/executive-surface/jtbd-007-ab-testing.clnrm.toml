@@ -1,0 +1,155 @@
+[test.metadata]
+name = "jtbd_007_ab_testing"
+description = "JTBD-007: Executive monitors A/B test performance for premium CTA variants"
+timeout = "90s"
+tags = ["jtbd", "executive-surface", "ab-testing", "analytics", "optimization"]
+version = "1.0.0"
+
+# Success Criteria:
+# - Both variants tracked separately
+# - CTR calculated accurately for each variant
+# - Statistical significance detectable
+# - Conversion funnel tracked
+# - Winner determination possible
+
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+[[steps]]
+name = "setup_services"
+command = ["sh", "-c", "sleep 5 && curl -f http://nextjs_app:3000"]
+timeout = "60s"
+expected_output_regex = "."
+retry_on_failure = true
+max_retries = 5
+
+# Seed A/B test data - Variant A
+[[steps]]
+name = "seed_variant_a_impressions"
+command = ["sh", "-c", "for i in {1..50}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_impression\",\"metadata\":{\"variant\":\"A\"}}'; done"]
+timeout = "60s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Seed A/B test data - Variant A clicks
+[[steps]]
+name = "seed_variant_a_clicks"
+command = ["sh", "-c", "for i in {1..5}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_click\",\"metadata\":{\"variant\":\"A\"}}'; done"]
+timeout = "30s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Seed A/B test data - Variant B
+[[steps]]
+name = "seed_variant_b_impressions"
+command = ["sh", "-c", "for i in {1..50}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_impression\",\"metadata\":{\"variant\":\"B\"}}'; done"]
+timeout = "60s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Seed A/B test data - Variant B clicks
+[[steps]]
+name = "seed_variant_b_clicks"
+command = ["sh", "-c", "for i in {1..3}; do curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_click\",\"metadata\":{\"variant\":\"B\"}}'; done"]
+timeout = "30s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Test variant separation in metrics
+[[steps]]
+name = "test_variant_separation"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -E '(variantA|variantB)' | wc -l | xargs test 2 -le"]
+timeout = "10s"
+expected_output_regex = ".*"
+retry_on_failure = false
+
+# Test CTR calculation for Variant A
+[[steps]]
+name = "test_variant_a_ctr"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -i 'variantA' -A 5 | grep -E '(ctr|impressions|clicks)'"]
+timeout = "10s"
+expected_output_regex = "(ctr|impressions|clicks)"
+retry_on_failure = false
+
+# Test CTR calculation for Variant B
+[[steps]]
+name = "test_variant_b_ctr"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -i 'variantB' -A 5 | grep -E '(ctr|impressions|clicks)'"]
+timeout = "10s"
+expected_output_regex = "(ctr|impressions|clicks)"
+retry_on_failure = false
+
+# Test executive query for A/B results
+[[steps]]
+name = "test_executive_ab_query"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Compare premium CTR for variant A vs B\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(variant|ctr|%|versus)"
+retry_on_failure = false
+
+# Test conversion funnel tracking
+[[steps]]
+name = "test_conversion_funnel"
+command = ["sh", "-c", "curl -s http://nextjs_app:3000/api/metrics | grep -E '(impression|click|conversion)'"]
+timeout = "10s"
+expected_output_regex = "(impression|click)"
+retry_on_failure = false
+
+# Test winner determination
+[[steps]]
+name = "test_winner_determination"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"Which premium CTA variant is performing better?\",\"timestamp\":1234567890}]}"]
+timeout = "10s"
+expected_output_regex = "(variant|better|higher|winning|performing)"
+retry_on_failure = false
+
+# Test sample size tracking
+[[steps]]
+name = "test_sample_size"
+command = ["sh", "-c", "METRICS=$(curl -s http://nextjs_app:3000/api/metrics); echo \"$METRICS\" | grep -oE '[0-9]+' | awk '{sum+=$1} END {print sum; if(sum>=100) exit 0; else exit 1}'"]
+timeout = "10s"
+expected_output_regex = "[0-9]+"
+retry_on_failure = false
+
+# Test dashboard visualization of A/B results
+[[steps]]
+name = "test_ab_dashboard_view"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/admin/dashboard"]
+timeout = "10s"
+expected_output_regex = "(variant|ab|test|ctr)"
+retry_on_failure = false
+
+# Test real-time A/B metrics update
+[[steps]]
+name = "test_ab_realtime_update"
+command = ["sh", "-c", "BEFORE=$(curl -s http://nextjs_app:3000/api/metrics); curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_click\",\"metadata\":{\"variant\":\"A\"}}'; sleep 1; AFTER=$(curl -s http://nextjs_app:3000/api/metrics); [ \"$BEFORE\" != \"$AFTER\" ] && echo 'A/B data updated'"]
+timeout = "15s"
+expected_output_regex = "(updated|click|variant)"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.95
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

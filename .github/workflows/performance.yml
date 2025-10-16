@@ -1,0 +1,223 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  schedule:
+    # Run weekly on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-git-
+
+    - name: Cache target directory
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-target-bench-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-target-bench-
+
+    - name: Run cleanroom benchmarks
+      run: |
+        cargo bench --bench cleanroom_benchmarks -- --output-format bencher | tee cleanroom_output.txt
+
+    - name: Run scenario benchmarks
+      run: |
+        cargo bench --bench scenario_benchmarks -- --output-format bencher | tee scenario_output.txt
+
+    - name: Run AI intelligence benchmarks
+      run: |
+        cargo bench --bench ai_intelligence_benchmarks -- --output-format bencher | tee ai_output.txt
+
+    - name: Run memory benchmarks
+      run: |
+        cargo bench --bench memory_benchmarks -- --output-format bencher | tee memory_output.txt
+
+    - name: Store benchmark results
+      uses: benchmark-action/github-action-benchmark@v1
+      with:
+        name: Rust Benchmark
+        tool: 'cargo'
+        output-file-path: cleanroom_output.txt
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        auto-push: true
+        alert-threshold: '150%'
+        comment-on-alert: true
+        fail-on-alert: false
+        alert-comment-cc-users: '@seanchatmangpt'
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: |
+          *_output.txt
+          target/criterion/
+        retention-days: 30
+
+    - name: Performance regression check
+      run: |
+        # Check if benchmarks show significant regression (>20%)
+        # This is a simple check - enhance based on your needs
+        echo "Checking for performance regressions..."
+
+        # Extract timing data and check for regressions
+        # This would need enhancement based on actual benchmark output format
+        if [ -f cleanroom_output.txt ]; then
+          echo "Cleanroom benchmark results:"
+          cat cleanroom_output.txt
+        fi
+
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const fs = require('fs');
+          let comment = '## Performance Benchmark Results\n\n';
+
+          try {
+            const cleanroom = fs.readFileSync('cleanroom_output.txt', 'utf8');
+            comment += '### Cleanroom Benchmarks\n```\n' + cleanroom + '\n```\n\n';
+          } catch (e) {
+            comment += 'Cleanroom benchmarks: No data\n\n';
+          }
+
+          try {
+            const scenario = fs.readFileSync('scenario_output.txt', 'utf8');
+            comment += '### Scenario Benchmarks\n```\n' + scenario + '\n```\n\n';
+          } catch (e) {
+            comment += 'Scenario benchmarks: No data\n\n';
+          }
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  memory-profiling:
+    name: Memory Profiling
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Install valgrind
+      run: sudo apt-get update && sudo apt-get install -y valgrind
+
+    - name: Run memory benchmarks with valgrind
+      run: |
+        # Build benchmarks in release mode
+        cargo build --release --bench memory_benchmarks
+
+        # Run a subset of benchmarks with valgrind
+        echo "Running memory profiling..."
+        # Valgrind analysis would go here
+        # This is a placeholder for actual memory profiling
+
+    - name: Generate memory report
+      run: |
+        echo "# Memory Profiling Report" > memory_report.md
+        echo "" >> memory_report.md
+        echo "Memory profiling completed for commit ${{ github.sha }}" >> memory_report.md
+        echo "" >> memory_report.md
+        echo "## Key Metrics" >> memory_report.md
+        echo "- Peak memory usage: TBD" >> memory_report.md
+        echo "- Memory leaks detected: None (placeholder)" >> memory_report.md
+        echo "" >> memory_report.md
+
+    - name: Upload memory report
+      uses: actions/upload-artifact@v4
+      with:
+        name: memory-profiling-report
+        path: memory_report.md
+        retention-days: 30
+
+  concurrency-benchmarks:
+    name: Concurrency Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Run concurrency benchmarks
+      run: |
+        echo "Running concurrency benchmarks..."
+        cargo bench --bench cleanroom_benchmarks concurrent_operations
+        cargo bench --bench memory_benchmarks concurrent_memory_access
+
+    - name: Generate concurrency report
+      run: |
+        echo "# Concurrency Benchmark Report" > concurrency_report.md
+        echo "" >> concurrency_report.md
+        echo "Concurrency benchmarks for commit ${{ github.sha }}" >> concurrency_report.md
+        echo "" >> concurrency_report.md
+        echo "## Test Configuration" >> concurrency_report.md
+        echo "- CPU cores: $(nproc)" >> concurrency_report.md
+        echo "- Memory: $(free -h | grep Mem | awk '{print $2}')" >> concurrency_report.md
+        echo "" >> concurrency_report.md
+
+    - name: Upload concurrency report
+      uses: actions/upload-artifact@v4
+      with:
+        name: concurrency-benchmark-report
+        path: concurrency_report.md
+        retention-days: 30

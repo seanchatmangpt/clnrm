@@ -1,0 +1,7 @@
+[test.metadata]
+name = ""
+description = "Empty name test"
+
+[[steps]]
+name = "step1"
+command = ["echo", "test"]

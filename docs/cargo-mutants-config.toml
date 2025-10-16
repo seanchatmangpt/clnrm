@@ -1,0 +1,93 @@
+# cargo-mutants configuration file
+# Documentation: https://mutants.rs/
+
+# Mutation testing timeout configuration
+# Each mutant test gets base_timeout * timeout_multiplier
+timeout_multiplier = 3.0
+
+# Parallelism - number of concurrent test runs
+# Use 'auto' or a number
+jobs = 4
+
+# Exit on first failure (useful for CI)
+# Set to false for comprehensive analysis
+fail_fast = false
+
+# Skip mutants that call unsafe code
+# This avoids potential undefined behavior
+skip_calls_unsafe = true
+
+# Additional test arguments
+test_args = ["--all-features", "--workspace"]
+
+# Files or directories to exclude from mutation
+exclude_globs = [
+    "*/tests/*",
+    "*/examples/*",
+    "*/benches/*",
+    "**/bin.rs",
+    "**/main.rs",
+    "**/*_test.rs"
+]
+
+# Regex patterns for function names to skip
+exclude_re = [
+    "test_.*",
+    ".*_test",
+    "main",
+    "fmt",
+    "clone",
+    "default",
+    "new",
+    "drop",
+    "eq",
+    "partial_cmp",
+    "cmp"
+]
+
+# Baseline file for comparing mutation scores
+baseline = "docs/mutation-reports/rust-baseline.json"
+
+# Output format options
+[output]
+# Generate JSON report
+json = true
+# Generate HTML report
+html = true
+# Output directory
+dir = "docs/mutation-reports/rust"
+
+# Specific mutation types to enable/disable
+[mutations]
+# Arithmetic operators: +, -, *, /, %
+arithmetic = true
+# Logical operators: &&, ||
+logical = true
+# Comparison operators: <, >, <=, >=, ==, !=
+comparison = true
+# Boolean literals: true, false
+bool_literal = true
+# Numeric literals
+numeric_literal = true
+# String literals
+string_literal = false  # Often creates too many mutants
+# Return values
+return_value = true
+# Remove function calls
+remove_call = true
+
+# Per-crate configuration
+[[crate]]
+name = "clnrm-core"
+enabled = true
+min_mutation_score = 80.0
+
+[[crate]]
+name = "clnrm-shared"
+enabled = true
+min_mutation_score = 75.0
+
+[[crate]]
+name = "clnrm"
+enabled = true
+min_mutation_score = 70.0

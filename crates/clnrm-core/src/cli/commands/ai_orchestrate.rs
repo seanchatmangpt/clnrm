@@ -2,15 +2,18 @@
 //!
 //! Implements intelligent test orchestration with predictive failure analysis,
 //! autonomous optimization, and adaptive resource management.
+//!
+//! This command uses REAL Ollama AI integration for genuine AI-powered analysis.
 
 use crate::error::{CleanroomError, Result};
-use crate::cleanroom::CleanroomEnvironment;
+use crate::cleanroom::{CleanroomEnvironment, ServicePlugin};
 use crate::cli::types::{CliConfig, PredictionFormat};
+use crate::services::ai_intelligence::AIIntelligenceService;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use tracing::{info, debug, warn};
 
-/// AI-powered test orchestration with predictive analytics
+/// AI-powered test orchestration with predictive analytics using REAL Ollama AI
 pub async fn ai_orchestrate_tests(
     paths: Option<Vec<PathBuf>>,
     predict_failures: bool,
@@ -18,7 +21,8 @@ pub async fn ai_orchestrate_tests(
     confidence_threshold: f64,
     max_workers: usize,
 ) -> Result<()> {
-    info!("🤖 Starting AI-powered test orchestration");
+    info!("🤖 Starting REAL AI-powered test orchestration");
+    info!("🧠 Using Ollama AI for genuine intelligence");
     info!("🔮 Predictive failure analysis: {}", if predict_failures { "enabled" } else { "disabled" });
     info!("⚡ Autonomous optimization: {}", if auto_optimize { "enabled" } else { "disabled" });
     info!("🎯 AI confidence threshold: {:.1}%", confidence_threshold * 100.0);
@@ -29,6 +33,20 @@ pub async fn ai_orchestrate_tests(
         .map_err(|e| CleanroomError::internal_error("Failed to create AI orchestration environment")
             .with_context("AI orchestration requires cleanroom environment")
             .with_source(e.to_string()))?;
+
+    // Initialize AI Intelligence Service with fallback
+    let ai_service = AIIntelligenceService::new();
+    let ai_handle = match ai_service.start().await {
+        Ok(handle) => {
+            info!("✅ Real AI service initialized with Ollama");
+            Some(handle)
+        },
+        Err(e) => {
+            warn!("⚠️ Ollama unavailable, using simulated AI: {}", e);
+            info!("💡 To enable real AI, ensure Ollama is running at http://localhost:11434");
+            None
+        }
+    };
 
     // Phase 1: Intelligent test discovery and analysis
     info!("📊 Phase 1: Intelligent Test Discovery & Analysis");
@@ -56,11 +74,87 @@ pub async fn ai_orchestrate_tests(
 
     // Phase 5: AI-powered results analysis
     info!("🧠 Phase 5: AI-Powered Results Analysis");
-    let analysis_results = analyze_results_with_ai(&execution_results).await?;
+    let analysis_results = analyze_results_with_ai(&execution_results, &ai_service, ai_handle.is_some()).await?;
     display_ai_analysis(&analysis_results).await?;
+
+    // Clean up AI service if it was started
+    if let Some(handle) = ai_handle {
+        info!("🧹 Cleaning up AI service");
+        ai_service.stop(handle).await?;
+    }
 
     info!("🎉 AI orchestration completed successfully!");
     Ok(())
+}
+
+/// Query Ollama AI with fallback to simulated analysis
+async fn query_ollama_with_fallback(
+    ai_service: &AIIntelligenceService,
+    use_real_ai: bool,
+    prompt: &str,
+) -> Result<String> {
+    if use_real_ai {
+        match query_ollama_direct(prompt).await {
+            Ok(response) => {
+                info!("🧠 Real AI response received");
+                Ok(response)
+            },
+            Err(e) => {
+                warn!("⚠️ Real AI query failed, using fallback: {}", e);
+                Ok(format!("Simulated AI response: {}", prompt))
+            }
+        }
+    } else {
+        Ok(format!("Simulated AI response: {}", prompt))
+    }
+}
+
+/// Direct Ollama query
+async fn query_ollama_direct(prompt: &str) -> Result<String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e)))?;
+
+    let url = "http://localhost:11434/api/generate";
+    let payload = serde_json::json!({
+        "model": "llama3.2:3b",
+        "prompt": prompt,
+        "stream": false,
+        "options": {
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "max_tokens": 500
+        }
+    });
+
+    let response = client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| CleanroomError::service_error(format!("Failed to query Ollama: {}", e)))?;
+
+    if response.status().is_success() {
+        let ollama_response: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| CleanroomError::service_error(format!("Failed to parse Ollama response: {}", e)))?;
+
+        let response_text = ollama_response["response"]
+            .as_str()
+            .ok_or_else(|| CleanroomError::service_error("Invalid Ollama response format"))?;
+
+        Ok(response_text.to_string())
+    } else {
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+
+        Err(CleanroomError::service_error(format!("Ollama API error: {}", error_text)))
+    }
 }
 
 /// Discover and analyze test files for AI orchestration
@@ -566,12 +660,16 @@ async fn execute_single_test_intelligently(
     Ok(())
 }
 
-/// Analyze results with AI
-async fn analyze_results_with_ai(results: &[TestExecutionResult]) -> Result<AIAnalysisResults> {
+/// Analyze results with REAL AI
+async fn analyze_results_with_ai(
+    results: &[TestExecutionResult],
+    ai_service: &AIIntelligenceService,
+    use_real_ai: bool,
+) -> Result<AIAnalysisResults> {
     let total_tests = results.len();
     let passed_tests = results.iter().filter(|r| r.passed).count();
     let failed_tests = total_tests - passed_tests;
-    
+
     let total_duration: u64 = results.iter().map(|r| r.duration_ms).sum();
     let avg_duration = if total_tests > 0 { total_duration / total_tests as u64 } else { 0 };
 
@@ -580,8 +678,12 @@ async fn analyze_results_with_ai(results: &[TestExecutionResult]) -> Result<AIAn
     let performance_score = calculate_performance_score(results).await?;
     let reliability_score = calculate_reliability_score(results).await?;
 
-    // Generate AI insights
-    let insights = generate_ai_insights(results, success_rate, performance_score, reliability_score).await?;
+    // Generate AI insights using REAL Ollama AI
+    let insights = if use_real_ai {
+        generate_real_ai_insights(results, success_rate, performance_score, reliability_score).await?
+    } else {
+        generate_ai_insights(results, success_rate, performance_score, reliability_score).await?
+    };
 
     Ok(AIAnalysisResults {
         total_tests,
@@ -594,6 +696,55 @@ async fn analyze_results_with_ai(results: &[TestExecutionResult]) -> Result<AIAn
         reliability_score,
         insights,
     })
+}
+
+/// Generate insights using REAL Ollama AI
+async fn generate_real_ai_insights(
+    results: &[TestExecutionResult],
+    success_rate: f64,
+    performance_score: f64,
+    reliability_score: f64,
+) -> Result<Vec<String>> {
+    let prompt = format!(
+        "Analyze this test execution data and provide 3-5 actionable insights:\n\
+        - Total tests: {}\n\
+        - Success rate: {:.1}%\n\
+        - Performance score: {:.2}/1.0\n\
+        - Reliability score: {:.2}/1.0\n\
+        - Average execution time: {:.0}ms\n\
+        - Failed tests: {}\n\n\
+        Provide specific, actionable insights for improving test reliability and performance. \
+        Be concise and practical. Focus on the most impactful improvements.",
+        results.len(),
+        success_rate * 100.0,
+        performance_score,
+        reliability_score,
+        results.iter().map(|r| r.duration_ms).sum::<u64>() as f64 / results.len() as f64,
+        results.iter().filter(|r| !r.passed).count()
+    );
+
+    match query_ollama_direct(&prompt).await {
+        Ok(ai_response) => {
+            info!("🧠 Real AI insights generated");
+            let insights: Vec<String> = ai_response
+                .lines()
+                .filter(|line| !line.trim().is_empty() && line.trim().len() > 20)
+                .take(5)
+                .map(|line| line.trim().to_string())
+                .collect();
+
+            if insights.is_empty() {
+                warn!("⚠️ AI response was empty, using fallback");
+                generate_ai_insights(results, success_rate, performance_score, reliability_score).await
+            } else {
+                Ok(insights)
+            }
+        },
+        Err(e) => {
+            warn!("⚠️ Real AI insights failed, using fallback: {}", e);
+            generate_ai_insights(results, success_rate, performance_score, reliability_score).await
+        }
+    }
 }
 
 /// Calculate performance score using AI

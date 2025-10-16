@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useChat } from "@ai-sdk/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Message } from "@/lib/types";
 import { trackEvent } from "@/lib/telemetry";
 
@@ -54,7 +52,7 @@ export function ExecutiveChat() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
-      let assistantMessage: Message = {
+      const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
         content: "",
@@ -70,7 +68,7 @@ export function ExecutiveChat() {
 
           const chunk = decoder.decode(value);
           // Parse Ollama streaming format
-          const lines = chunk.split('\n').filter(line => line.trim());
+          const lines = chunk.split("\n").filter((line) => line.trim());
           for (const line of lines) {
             try {
               const data = JSON.parse(line);
@@ -106,11 +104,6 @@ export function ExecutiveChat() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
-  };
-
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    handleSubmit(e);
   };
 
   return (
@@ -165,7 +158,7 @@ export function ExecutiveChat() {
       {/* Input Form */}
       <Card className="executive-panel">
         <CardContent className="p-4">
-          <form onSubmit={handleFormSubmit} className="flex gap-2">
+          <form onSubmit={handleSubmit} className="flex gap-2">
             <Input
               value={input}
               onChange={handleInputChange}

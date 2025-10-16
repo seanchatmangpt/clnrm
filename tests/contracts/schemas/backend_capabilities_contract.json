@@ -1,0 +1,193 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://clnrm.dev/schemas/backend_capabilities_contract.json",
+  "title": "Backend Capabilities API Contract",
+  "description": "Contract definition for backend capabilities API",
+  "type": "object",
+  "definitions": {
+    "Capability": {
+      "type": "object",
+      "required": ["name", "description", "version", "category"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Execution", "ResourceManagement", "Security", "Monitoring", "Networking", "Storage", "Custom"]
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CapabilityRequirement"
+          }
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CapabilityFeature"
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CapabilityRequirement": {
+      "type": "object",
+      "required": ["name", "requirement_type", "value", "description", "mandatory"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requirement_type": {
+          "type": "string",
+          "enum": ["System", "Library", "Configuration", "Feature", "Performance"]
+        },
+        "value": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mandatory": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CapabilityFeature": {
+      "type": "object",
+      "required": ["name", "description", "feature_type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "feature_type": {
+          "type": "string",
+          "enum": ["Boolean", "String", "Numeric", "Enum", "Custom"]
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "default_value": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "HealthStatus": {
+      "type": "string",
+      "enum": ["Healthy", "Unhealthy", "Unknown"]
+    }
+  },
+  "properties": {
+    "register_capability": {
+      "type": "object",
+      "description": "Contract for registering a capability",
+      "required": ["request", "response"],
+      "properties": {
+        "request": {
+          "$ref": "#/definitions/Capability"
+        },
+        "response": {
+          "type": "object",
+          "required": ["success", "error"],
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "error": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      }
+    },
+    "get_capability": {
+      "type": "object",
+      "description": "Contract for retrieving a capability",
+      "required": ["request", "response"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "required": ["capability"],
+          "properties": {
+            "capability": {
+              "oneOf": [
+                {"$ref": "#/definitions/Capability"},
+                {"type": "null"}
+              ]
+            }
+          }
+        }
+      }
+    },
+    "validate_capability_set": {
+      "type": "object",
+      "description": "Contract for validating a set of capabilities",
+      "required": ["request", "response"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "required": ["capabilities"],
+          "properties": {
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "required": ["valid", "errors"],
+          "properties": {
+            "valid": {
+              "type": "boolean"
+            },
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

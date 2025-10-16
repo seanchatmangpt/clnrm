@@ -1,0 +1,242 @@
+[test.metadata]
+name = "integration_full_platform_test"
+description = "Full end-to-end integration test covering all platform features and user flows"
+timeout = "360s"
+tags = ["integration", "e2e", "full-platform", "comprehensive"]
+version = "1.0.0"
+
+# Service: Ollama AI for LLM generation
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+# Service: Next.js application server
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+# === SETUP PHASE ===
+
+# Step 1: Wait for Ollama
+[[steps]]
+name = "setup_wait_for_ollama"
+command = ["sh", "-c", "sleep 5 && curl -f http://ollama_ai:11434/api/version"]
+timeout = "60s"
+expected_output_regex = "version"
+retry_on_failure = true
+max_retries = 5
+
+# Step 2: Pull AI model
+[[steps]]
+name = "setup_pull_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen3-coder:30b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# Step 3: Wait for Next.js
+[[steps]]
+name = "setup_wait_for_nextjs"
+command = ["sh", "-c", "sleep 10 && curl -f http://nextjs_app:3000"]
+timeout = "120s"
+expected_output_regex = "."
+retry_on_failure = true
+max_retries = 10
+
+# === CHILD MODE USER FLOW ===
+
+# Step 4: Child mode - Session start
+[[steps]]
+name = "child_session_start"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"session_start\",\"payload\":{\"mode\":\"child\",\"variant\":\"A\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 5: Child mode - First message (courage)
+[[steps]]
+name = "child_message_courage"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was brave and spoke up in class today!\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "90s"
+expected_output_regex = "X-Virtue.*courage|brave|speak"
+retry_on_failure = false
+
+# Step 6: Child mode - Track virtue detection
+[[steps]]
+name = "child_track_virtue"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"virtue_detected\",\"payload\":{\"virtue\":\"courage\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 7: Child mode - Second message (teamwork)
+[[steps]]
+name = "child_message_teamwork"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"2\",\"role\":\"user\",\"content\":\"I helped my friend with their homework\",\"timestamp\":1234567891}]}", "-i"]
+timeout = "90s"
+expected_output_regex = "X-Virtue.*teamwork|help|friend"
+retry_on_failure = false
+
+# Step 8: Child mode - Track premium view
+[[steps]]
+name = "child_track_premium_view"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"premium_view\",\"payload\":{\"variant\":\"A\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 9: Child mode - Track reward click
+[[steps]]
+name = "child_track_reward_click"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"reward_click\",\"payload\":{\"virtue\":\"courage\",\"variant\":\"A\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# === EXECUTIVE MODE USER FLOW ===
+
+# Step 10: Executive mode - Session start
+[[steps]]
+name = "executive_session_start"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"session_start\",\"payload\":{\"mode\":\"executive\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 11: Executive mode - Query revenue
+[[steps]]
+name = "executive_query_revenue"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What is our total revenue?\",\"timestamp\":1234567890}]}"]
+timeout = "90s"
+expected_output_regex = "revenue|\\$|USD"
+retry_on_failure = false
+
+# Step 12: Executive mode - Query CTR
+[[steps]]
+name = "executive_query_ctr"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"2\",\"role\":\"user\",\"content\":\"What is the premium CTR for each variant?\",\"timestamp\":1234567891}]}"]
+timeout = "90s"
+expected_output_regex = "CTR|variant|%"
+retry_on_failure = false
+
+# Step 13: Executive mode - Query events
+[[steps]]
+name = "executive_query_events"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"executive\",\"messages\":[{\"id\":\"3\",\"role\":\"user\",\"content\":\"How many events have we tracked?\",\"timestamp\":1234567892}]}"]
+timeout = "90s"
+expected_output_regex = "events|tracked|total"
+retry_on_failure = false
+
+# === ADMIN DASHBOARD FLOW ===
+
+# Step 14: Admin - Load dashboard
+[[steps]]
+name = "admin_load_dashboard"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/admin/dashboard"]
+timeout = "30s"
+expected_output_regex = "dashboard|admin|metrics"
+retry_on_failure = false
+
+# Step 15: Admin - Fetch metrics
+[[steps]]
+name = "admin_fetch_metrics"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "totals.*revenue.*events.*ab"
+retry_on_failure = false
+
+# Step 16: Admin - Verify revenue tracked
+[[steps]]
+name = "admin_verify_revenue"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "revenue.*[0-9]+"
+retry_on_failure = false
+
+# Step 17: Admin - Verify A/B metrics
+[[steps]]
+name = "admin_verify_ab_metrics"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "ab.*A.*views.*[0-9]+"
+retry_on_failure = false
+
+# === CROSS-CUTTING CONCERNS ===
+
+# Step 18: Test concurrent users (child + executive)
+[[steps]]
+name = "test_concurrent_users"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"test\",\"timestamp\":1}]}' & curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"executive\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"test\",\"timestamp\":1}]}' & wait"]
+timeout = "120s"
+expected_output_regex = "."
+retry_on_failure = false
+
+# Step 19: Test multiple virtues in sequence
+[[steps]]
+name = "test_multiple_virtues"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was brave\",\"timestamp\":1}]}' -i && curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"2\",\"role\":\"user\",\"content\":\"I told the truth\",\"timestamp\":2}]}' -i"]
+timeout = "120s"
+expected_output_regex = "X-Virtue"
+retry_on_failure = false
+
+# Step 20: Test A/B variant switching
+[[steps]]
+name = "test_ab_variant_switching"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"event\":\"premium_view\",\"payload\":{\"variant\":\"A\"}}' && curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"event\":\"premium_view\",\"payload\":{\"variant\":\"B\"}}'"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 21: Test data persistence across requests
+[[steps]]
+name = "test_data_persistence"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"event\":\"test_event\",\"payload\":{\"test\":\"persistence\"}}' && sleep 2 && curl -X GET http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "events"
+retry_on_failure = false
+
+# Step 22: Test all virtue types
+[[steps]]
+name = "test_all_virtues"
+command = ["sh", "-c", "for virtue in courage teamwork honesty compassion wisdom; do curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d \"{\\\"mode\\\":\\\"child\\\",\\\"messages\\\":[{\\\"id\\\":\\\"1\\\",\\\"role\\\":\\\"user\\\",\\\"content\\\":\\\"I showed $virtue\\\",\\\"timestamp\\\":1}]}\" -i | grep -i X-Virtue; done"]
+timeout = "300s"
+expected_output_regex = "X-Virtue"
+retry_on_failure = false
+
+# Step 23: Verify final metrics state
+[[steps]]
+name = "verify_final_metrics"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "totals.*revenue.*events.*ab.*A.*B"
+retry_on_failure = false
+
+# Step 24: Cleanup
+[[steps]]
+name = "cleanup"
+command = ["sh", "-c", "echo 'Full integration test completed successfully'"]
+timeout = "10s"
+expected_output_regex = "completed"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.95
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

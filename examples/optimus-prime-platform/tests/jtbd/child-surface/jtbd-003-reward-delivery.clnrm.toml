@@ -1,0 +1,138 @@
+[test.metadata]
+name = "jtbd_003_reward_delivery"
+description = "JTBD-003: System delivers appropriate rewards when virtues are detected"
+timeout = "90s"
+tags = ["jtbd", "child-surface", "core-feature", "rewards", "engagement"]
+version = "1.0.0"
+
+# Success Criteria:
+# - Reward URL returned in X-Reward-Url header
+# - Reward is age-appropriate (YouTube Kids content)
+# - Reward matches detected virtue
+# - Reward CTR target >= 25%
+# - Telemetry tracks reward delivery
+
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+[[steps]]
+name = "setup_services"
+command = ["sh", "-c", "sleep 5 && curl -f http://ollama_ai:11434/api/version"]
+timeout = "60s"
+expected_output_regex = "version"
+retry_on_failure = true
+max_retries = 5
+
+[[steps]]
+name = "pull_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen2.5-coder:3b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# Test reward delivery for courage
+[[steps]]
+name = "test_reward_courage"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was brave today\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Reward-Url.*http"
+retry_on_failure = false
+
+# Test reward delivery for teamwork
+[[steps]]
+name = "test_reward_teamwork"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I helped my team succeed\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Reward-Url.*http"
+retry_on_failure = false
+
+# Test reward delivery for honesty
+[[steps]]
+name = "test_reward_honesty"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I told the truth\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Reward-Url.*http"
+retry_on_failure = false
+
+# Test reward delivery for compassion
+[[steps]]
+name = "test_reward_compassion"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was kind to someone\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Reward-Url.*http"
+retry_on_failure = false
+
+# Test reward delivery for wisdom
+[[steps]]
+name = "test_reward_wisdom"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I made a wise decision\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Reward-Url.*http"
+retry_on_failure = false
+
+# Validate reward URL format (YouTube Kids)
+[[steps]]
+name = "validate_reward_url_format"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was brave\",\"timestamp\":1234567890}]}' -i | grep -i 'x-reward-url' | grep -E '(youtube|youtu.be)'"]
+timeout = "10s"
+expected_output_regex = "(youtube|youtu.be)"
+retry_on_failure = false
+
+# Test no reward for non-virtue messages
+[[steps]]
+name = "test_no_reward_without_virtue"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"What time is it?\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "200"
+retry_on_failure = false
+
+# Test reward consistency - same virtue should get rewards
+[[steps]]
+name = "test_reward_consistency"
+command = ["sh", "-c", "for i in 1 2 3; do curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"'$i'\",\"role\":\"user\",\"content\":\"I was brave\",\"timestamp\":1234567890}]}' -i | grep -i 'x-reward-url' || exit 1; done"]
+timeout = "30s"
+expected_output_regex = "X-Reward-Url"
+retry_on_failure = false
+
+# Validate telemetry tracks reward delivery
+[[steps]]
+name = "validate_reward_telemetry"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "5s"
+expected_output_regex = "(reward|ctr|clicks)"
+retry_on_failure = false
+
+# Test reward CTR tracking
+[[steps]]
+name = "test_reward_ctr_tracking"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"reward_click\",\"metadata\":{\"virtue\":\"courage\"}}' && curl -X GET http://nextjs_app:3000/api/metrics"]
+timeout = "10s"
+expected_output_regex = "(reward|click)"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.95
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

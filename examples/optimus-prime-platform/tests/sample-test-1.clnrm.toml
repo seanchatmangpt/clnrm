@@ -1,0 +1,29 @@
+# Sample Test 1 - Basic Functionality Test
+# Used for AI orchestration testing
+
+[test.metadata]
+name = "Sample Test 1 - Basic Operations"
+description = "Basic test for AI orchestration analysis"
+author = "Test Engineer"
+version = "1.0.0"
+tags = ["sample", "basic", "orchestration"]
+timeout = "30s"
+
+[[steps]]
+name = "step_1"
+command = "echo 'Executing sample test step 1'"
+expected_exit_code = 0
+
+[[steps]]
+name = "step_2"
+command = "echo 'Executing sample test step 2'"
+expected_exit_code = 0
+
+[[steps]]
+name = "step_3"
+command = "sleep 1 && echo 'Completed'"
+expected_exit_code = 0
+
+[[assertions]]
+type = "success"
+description = "Test should complete successfully"

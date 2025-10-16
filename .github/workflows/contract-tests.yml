@@ -1,0 +1,175 @@
+name: Contract Tests
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'crates/**'
+      - 'tests/contracts/**'
+      - '.github/workflows/contract-tests.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'crates/**'
+      - 'tests/contracts/**'
+      - '.github/workflows/contract-tests.yml'
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  contract-tests:
+    name: Run Contract Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install jq for schema validation
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Validate JSON schemas
+        run: |
+          echo "Validating JSON schemas..."
+          for schema in tests/contracts/schemas/*.json; do
+            echo "  Checking: $(basename $schema)"
+            jq empty "$schema" || exit 1
+          done
+
+      - name: Run API contract tests
+        run: |
+          cargo test --package clnrm-core --test '*' -- api_contracts --nocapture
+
+      - name: Run service contract tests
+        run: |
+          cargo test --package clnrm-core --test '*' -- service_contracts --nocapture
+
+      - name: Run consumer contract tests
+        run: |
+          cargo test --package clnrm-core --test '*' -- consumer_contracts --nocapture
+
+      - name: Run event contract tests
+        run: |
+          cargo test --package clnrm-core --test '*' -- event_contracts --nocapture
+
+      - name: Run database contract tests
+        run: |
+          cargo test --package clnrm-core --test '*' -- database_contracts --nocapture
+
+      - name: Generate contract test report
+        if: always()
+        run: |
+          mkdir -p target/contract-test-results
+          bash tests/contracts/ci_integration.sh
+
+      - name: Upload contract test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: contract-test-results
+          path: target/contract-test-results/
+          retention-days: 30
+
+      - name: Check for contract breaking changes
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Checking for contract breaking changes..."
+          # Compare current schemas with base branch
+          git fetch origin ${{ github.base_ref }}
+
+          # Check if any contract schemas were modified
+          CHANGED_SCHEMAS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep 'tests/contracts/schemas/' || true)
+
+          if [ -n "$CHANGED_SCHEMAS" ]; then
+            echo "⚠️ Contract schemas were modified:"
+            echo "$CHANGED_SCHEMAS"
+            echo ""
+            echo "Please ensure backward compatibility or update API version!"
+            # In production, you might want to fail here or require manual approval
+          fi
+
+      - name: Comment on PR with contract test results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'target/contract-test-results/contract_test_report.md';
+
+            if (fs.existsSync(reportPath)) {
+              const report = fs.readFileSync(reportPath, 'utf8');
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## Contract Test Results\n\n${report}`
+              });
+            }
+
+  contract-coverage:
+    name: Contract Coverage Analysis
+    runs-on: ubuntu-latest
+    needs: contract-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Analyze contract coverage
+        run: |
+          echo "Analyzing contract coverage..."
+
+          # Count total APIs/interfaces
+          TOTAL_APIS=0
+          COVERED_APIS=0
+
+          # Check CleanroomEnvironment API coverage
+          if grep -q "start_service" tests/contracts/api_contracts.rs; then
+            COVERED_APIS=$((COVERED_APIS + 1))
+          fi
+          TOTAL_APIS=$((TOTAL_APIS + 1))
+
+          if grep -q "stop_service" tests/contracts/api_contracts.rs; then
+            COVERED_APIS=$((COVERED_APIS + 1))
+          fi
+          TOTAL_APIS=$((TOTAL_APIS + 1))
+
+          if grep -q "execute_in_container" tests/contracts/api_contracts.rs; then
+            COVERED_APIS=$((COVERED_APIS + 1))
+          fi
+          TOTAL_APIS=$((TOTAL_APIS + 1))
+
+          # Calculate coverage percentage
+          COVERAGE=$((COVERED_APIS * 100 / TOTAL_APIS))
+
+          echo "Contract Coverage: $COVERAGE% ($COVERED_APIS/$TOTAL_APIS APIs)"
+
+          # Create coverage badge
+          mkdir -p target/badges
+          echo "{\"schemaVersion\": 1, \"label\": \"contract coverage\", \"message\": \"$COVERAGE%\", \"color\": \"green\"}" > target/badges/contract-coverage.json
+
+      - name: Upload coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v3
+        with:
+          name: contract-coverage-badge
+          path: target/badges/contract-coverage.json

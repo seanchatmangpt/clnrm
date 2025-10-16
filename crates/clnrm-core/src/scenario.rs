@@ -170,6 +170,7 @@ impl std::fmt::Display for StepSource {
 }
 
 /// Scenario builder for multi-step test orchestration
+#[derive(Debug)]
 pub struct Scenario {
     /// Scenario name
     #[allow(dead_code)]

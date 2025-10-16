@@ -13,7 +13,6 @@ pub mod policy;
 pub mod scenario;
 pub mod cleanroom;
 pub mod cli;
-pub mod testing;
 pub mod utils;
 pub mod telemetry;
 pub mod macros;
@@ -21,6 +20,9 @@ pub mod assertions;
 pub mod services;
 pub mod config;
 pub mod marketplace;
+
+// Testing utilities (includes property-based test generators)
+pub mod testing;
 
 pub use error::{CleanroomError, Result};
 pub use policy::{Policy, SecurityLevel, SecurityPolicy};

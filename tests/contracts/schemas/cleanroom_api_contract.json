@@ -1,0 +1,251 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://clnrm.dev/schemas/cleanroom_api_contract.json",
+  "title": "Cleanroom Environment API Contract",
+  "description": "Contract definition for cleanroom environment API",
+  "type": "object",
+  "definitions": {
+    "SessionId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+      "description": "UUID v4 format"
+    },
+    "ServiceHandle": {
+      "type": "object",
+      "required": ["id", "service_name", "metadata"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "service_name": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ExecutionResult": {
+      "type": "object",
+      "required": ["exit_code", "stdout", "stderr", "duration", "command", "container_name"],
+      "properties": {
+        "exit_code": {
+          "type": "integer"
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "object",
+          "required": ["secs", "nanos"],
+          "properties": {
+            "secs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "nanos": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 999999999
+            }
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "container_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "SimpleMetrics": {
+      "type": "object",
+      "required": [
+        "session_id",
+        "tests_executed",
+        "tests_passed",
+        "tests_failed",
+        "total_duration_ms",
+        "active_containers",
+        "active_services",
+        "containers_created",
+        "containers_reused"
+      ],
+      "properties": {
+        "session_id": {
+          "$ref": "#/definitions/SessionId"
+        },
+        "tests_executed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tests_passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tests_failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active_containers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active_services": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "containers_created": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "containers_reused": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "properties": {
+    "start_service": {
+      "type": "object",
+      "description": "Contract for starting a service",
+      "required": ["request", "response", "errors"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "required": ["service_name"],
+          "properties": {
+            "service_name": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "response": {
+          "$ref": "#/definitions/ServiceHandle"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ServiceNotFound", "ServiceStartFailed", "Timeout"]
+          }
+        }
+      }
+    },
+    "stop_service": {
+      "type": "object",
+      "description": "Contract for stopping a service",
+      "required": ["request", "response", "errors"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "required": ["handle_id"],
+          "properties": {
+            "handle_id": {
+              "type": "string"
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean"
+            }
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ServiceNotFound", "ServiceStopFailed"]
+          }
+        }
+      }
+    },
+    "execute_in_container": {
+      "type": "object",
+      "description": "Contract for executing commands in containers",
+      "required": ["request", "response", "errors"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "required": ["container_name", "command"],
+          "properties": {
+            "container_name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "command": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "response": {
+          "$ref": "#/definitions/ExecutionResult"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ContainerNotFound", "ExecutionFailed", "Timeout"]
+          }
+        }
+      }
+    },
+    "get_metrics": {
+      "type": "object",
+      "description": "Contract for retrieving metrics",
+      "required": ["request", "response"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "properties": {}
+        },
+        "response": {
+          "$ref": "#/definitions/SimpleMetrics"
+        }
+      }
+    },
+    "check_health": {
+      "type": "object",
+      "description": "Contract for health checks",
+      "required": ["request", "response"],
+      "properties": {
+        "request": {
+          "type": "object",
+          "properties": {}
+        },
+        "response": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["Healthy", "Unhealthy", "Unknown"]
+          }
+        }
+      }
+    }
+  }
+}

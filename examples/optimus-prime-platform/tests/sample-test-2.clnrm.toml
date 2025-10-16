@@ -1,0 +1,44 @@
+# Sample Test 2 - Complex Operations
+# Higher complexity for AI analysis
+
+[test.metadata]
+name = "Sample Test 2 - Complex Operations"
+description = "Complex test with multiple steps for AI analysis"
+author = "Test Engineer"
+version = "1.0.0"
+tags = ["sample", "complex", "orchestration"]
+timeout = "60s"
+
+[[steps]]
+name = "complex_step_1"
+command = "echo 'Complex operation 1'"
+expected_exit_code = 0
+
+[[steps]]
+name = "complex_step_2"
+command = "echo 'Complex operation 2'"
+expected_exit_code = 0
+
+[[steps]]
+name = "complex_step_3"
+command = "sleep 2 && echo 'Long running operation'"
+expected_exit_code = 0
+
+[[steps]]
+name = "complex_step_4"
+command = "echo 'Validation step'"
+expected_exit_code = 0
+
+[[steps]]
+name = "complex_step_5"
+command = "echo 'Final verification'"
+expected_exit_code = 0
+
+[[assertions]]
+type = "success"
+description = "Complex test should complete"
+
+[[assertions]]
+type = "performance"
+max_duration_ms = 5000
+description = "Should complete within 5 seconds"

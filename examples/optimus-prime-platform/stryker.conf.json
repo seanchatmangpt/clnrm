@@ -1,0 +1,82 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Stryker Mutation Testing Configuration for Optimus Prime Platform",
+
+  "packageManager": "npm",
+  "reporters": [
+    "html",
+    "json",
+    "clear-text",
+    "progress",
+    "dashboard"
+  ],
+
+  "testRunner": "jest",
+  "coverageAnalysis": "perTest",
+
+  "mutate": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    "!src/**/*.spec.ts",
+    "!src/**/*.spec.tsx",
+    "!src/**/__tests__/**",
+    "!src/**/types.ts",
+    "!src/**/*.d.ts"
+  ],
+
+  "mutator": {
+    "plugins": [
+      "@stryker-mutator/typescript-checker"
+    ],
+    "excludedMutations": [
+      "StringLiteral",
+      "RegexLiteral"
+    ]
+  },
+
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 50
+  },
+
+  "timeoutMS": 60000,
+  "timeoutFactor": 1.5,
+  "maxConcurrentTestRunners": 4,
+
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": true,
+
+  "htmlReporter": {
+    "fileName": "../../docs/mutation-reports/typescript/optimus-prime-platform.html"
+  },
+
+  "jsonReporter": {
+    "fileName": "../../docs/mutation-reports/typescript/optimus-prime-platform.json"
+  },
+
+  "dashboard": {
+    "project": "github.com/seanchatmangpt/clnrm",
+    "version": "optimus-prime-platform",
+    "module": "examples/optimus-prime-platform"
+  },
+
+  "checkers": [
+    "typescript"
+  ],
+
+  "tsconfigFile": "tsconfig.json",
+
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    ".next",
+    "coverage",
+    ".stryker-tmp"
+  ],
+
+  "concurrency": 4,
+  "inPlace": false
+}

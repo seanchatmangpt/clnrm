@@ -1,0 +1,159 @@
+[test.metadata]
+name = "admin_dashboard_test"
+description = "Test admin dashboard functionality including metrics display and real-time updates"
+timeout = "180s"
+tags = ["admin", "dashboard", "ui", "metrics"]
+version = "1.0.0"
+
+# Service: Ollama AI for backend
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+# Service: Next.js application server
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+# Step 1: Wait for services
+[[steps]]
+name = "wait_for_services"
+command = ["sh", "-c", "sleep 10 && curl -f http://nextjs_app:3000"]
+timeout = "120s"
+expected_output_regex = "."
+retry_on_failure = true
+max_retries = 10
+
+# Step 2: Test admin dashboard page loads
+[[steps]]
+name = "test_admin_dashboard_page"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/admin/dashboard"]
+timeout = "30s"
+expected_output_regex = "dashboard|admin|metrics|Analytics"
+retry_on_failure = false
+
+# Step 3: Test metrics API response structure
+[[steps]]
+name = "test_metrics_structure"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "\\{.*totals.*revenue.*events.*ab.*\\}"
+retry_on_failure = false
+
+# Step 4: Test revenue metrics present
+[[steps]]
+name = "test_revenue_metrics"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "revenue.*[0-9]+"
+retry_on_failure = false
+
+# Step 5: Test events count present
+[[steps]]
+name = "test_events_count"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "events.*[0-9]+"
+retry_on_failure = false
+
+# Step 6: Test A/B testing metrics
+[[steps]]
+name = "test_ab_metrics"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "ab.*A.*B.*views.*clicks"
+retry_on_failure = false
+
+# Step 7: Generate test event data
+[[steps]]
+name = "generate_test_event_data"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"test_dashboard_event\",\"payload\":{\"source\":\"admin_test\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 8: Verify event was tracked
+[[steps]]
+name = "verify_event_tracked"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "events.*[0-9]+"
+retry_on_failure = false
+
+# Step 9: Test premium CTR variant A
+[[steps]]
+name = "test_premium_ctr_variant_a"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"event\":\"premium_view\",\"payload\":{\"variant\":\"A\"}}' && sleep 2 && curl -X GET http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "ab.*A.*views"
+retry_on_failure = false
+
+# Step 10: Test premium CTR variant B
+[[steps]]
+name = "test_premium_ctr_variant_b"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"event\":\"premium_view\",\"payload\":{\"variant\":\"B\"}}' && sleep 2 && curl -X GET http://nextjs_app:3000/api/metrics"]
+timeout = "30s"
+expected_output_regex = "ab.*B.*views"
+retry_on_failure = false
+
+# Step 11: Test session start tracking
+[[steps]]
+name = "test_session_start_tracking"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"session_start\",\"payload\":{\"mode\":\"child\",\"variant\":\"A\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 12: Test virtue detection tracking
+[[steps]]
+name = "test_virtue_tracking"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/telemetry", "-H", "Content-Type: application/json", "-d", "{\"event\":\"virtue_detected\",\"payload\":{\"virtue\":\"courage\"}}"]
+timeout = "30s"
+expected_output_regex = "success"
+retry_on_failure = false
+
+# Step 13: Test dashboard data consistency
+[[steps]]
+name = "test_dashboard_consistency"
+command = ["sh", "-c", "curl -X GET http://nextjs_app:3000/api/metrics | grep -E 'totals|revenue|events|ab'"]
+timeout = "30s"
+expected_output_regex = "totals.*revenue.*events.*ab"
+retry_on_failure = false
+
+# Step 14: Test multiple concurrent metric reads
+[[steps]]
+name = "test_concurrent_reads"
+command = ["sh", "-c", "curl -X GET http://nextjs_app:3000/api/metrics & curl -X GET http://nextjs_app:3000/api/metrics & wait"]
+timeout = "30s"
+expected_output_regex = "."
+retry_on_failure = false
+
+# Step 15: Cleanup
+[[steps]]
+name = "cleanup"
+command = ["sh", "-c", "echo 'Admin dashboard tests completed successfully'"]
+timeout = "10s"
+expected_output_regex = "completed"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.9
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

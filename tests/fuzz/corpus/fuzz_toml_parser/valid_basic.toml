@@ -1,0 +1,9 @@
+[test.metadata]
+name = "basic_test"
+description = "A basic test"
+timeout = "60s"
+
+[[steps]]
+name = "echo_test"
+command = ["echo", "hello"]
+expected_output_regex = "hello"

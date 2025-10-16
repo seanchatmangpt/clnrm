@@ -4,7 +4,7 @@ import { trackEvent } from "@/lib/telemetry";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { event, payload, ts } = body;
+    const { event, payload } = body;
 
     if (!event || !payload) {
       return NextResponse.json(

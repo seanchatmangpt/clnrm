@@ -1,0 +1,121 @@
+# Mutation Testing Configuration for CLNRM Project
+# This file defines mutation testing strategies and configurations
+
+[mutation_testing]
+name = "CLNRM Mutation Testing Suite"
+version = "1.0.0"
+description = "Comprehensive mutation testing for Rust and TypeScript components"
+
+# Rust Mutation Testing with cargo-mutants
+[rust]
+enabled = true
+tool = "cargo-mutants"
+min_mutation_score = 75.0
+
+[rust.config]
+# Mutation operators to apply
+operators = [
+    "arithmetic",      # +, -, *, /, % mutations
+    "logical",         # &&, ||, ! mutations
+    "relational",      # <, >, <=, >=, ==, != mutations
+    "conditional",     # if/else branch mutations
+    "return_value",    # return value mutations
+    "assignment",      # variable assignment mutations
+]
+
+# Test execution settings
+[rust.execution]
+timeout_multiplier = 3.0
+parallel_jobs = 4
+fail_fast = false
+skip_calls_unsafe = true
+
+# Targets to mutate
+[rust.targets]
+crates = [
+    "clnrm-core",
+    "clnrm-shared",
+    "clnrm"
+]
+
+# Exclude patterns
+exclude_files = [
+    "*/tests/*",
+    "*/examples/*",
+    "*/bin.rs",
+    "*/main.rs"
+]
+
+exclude_functions = [
+    "test_*",
+    "*_test",
+    "main",
+    "fmt",
+    "clone",
+    "default"
+]
+
+# JavaScript/TypeScript Mutation Testing with Stryker
+[typescript]
+enabled = true
+tool = "stryker"
+min_mutation_score = 70.0
+
+[typescript.config]
+# Mutation operators
+mutators = [
+    "ArithmeticOperator",
+    "ArrayDeclaration",
+    "ArrowFunction",
+    "BlockStatement",
+    "BooleanLiteral",
+    "ConditionalExpression",
+    "EqualityOperator",
+    "LogicalOperator",
+    "MethodExpression",
+    "ObjectLiteral",
+    "OptionalChaining",
+    "StringLiteral",
+    "UnaryOperator",
+    "UpdateOperator"
+]
+
+[typescript.execution]
+timeout_factor = 1.5
+max_concurrent_test_runners = 4
+temp_dir_name = ".stryker-tmp"
+
+[typescript.targets]
+projects = [
+    "examples/optimus-prime-platform",
+    "examples/clnrm-case-study"
+]
+
+# Coverage thresholds
+[coverage_thresholds]
+# Minimum mutation scores by component type
+core_modules = 85.0
+utilities = 75.0
+cli_commands = 70.0
+examples = 60.0
+
+# Quality gates
+[quality_gates]
+block_on_score_below = 50.0
+warn_on_score_below = 70.0
+excellent_score_above = 90.0
+
+# Reporting configuration
+[reporting]
+formats = ["html", "json", "markdown"]
+output_dir = "docs/mutation-reports"
+include_survivors = true
+include_killed = true
+show_test_details = true
+
+# CI/CD Integration
+[ci_integration]
+run_on_pr = true
+fail_build_on_low_score = true
+comment_on_pr = true
+compare_with_baseline = true

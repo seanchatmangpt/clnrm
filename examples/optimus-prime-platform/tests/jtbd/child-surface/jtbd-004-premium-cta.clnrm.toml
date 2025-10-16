@@ -1,0 +1,138 @@
+[test.metadata]
+name = "jtbd_004_premium_cta"
+description = "JTBD-004: Child sees premium upgrade CTA with A/B tested variants"
+timeout = "90s"
+tags = ["jtbd", "child-surface", "monetization", "ab-testing", "premium"]
+version = "1.0.0"
+
+# Success Criteria:
+# - Premium CTA headers present (X-Premium-Title, X-Premium-Link)
+# - A/B variant assigned (X-Premium-Variant)
+# - CTR target >= 8% across variants
+# - Variant A vs B performance tracked
+# - CTA shown after virtue detection
+
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+[[steps]]
+name = "setup_services"
+command = ["sh", "-c", "sleep 5 && curl -f http://ollama_ai:11434/api/version"]
+timeout = "60s"
+expected_output_regex = "version"
+retry_on_failure = true
+max_retries = 5
+
+[[steps]]
+name = "pull_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen2.5-coder:3b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# Test premium CTA presence
+[[steps]]
+name = "test_premium_cta_present"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I showed leadership today\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Premium-Title"
+retry_on_failure = false
+
+# Test premium link header
+[[steps]]
+name = "test_premium_link_header"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was brave\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Premium-Link"
+retry_on_failure = false
+
+# Test A/B variant assignment
+[[steps]]
+name = "test_ab_variant_assignment"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I helped my team\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Premium-Variant.*(A|B)"
+retry_on_failure = false
+
+# Test variant distribution - multiple requests
+[[steps]]
+name = "test_variant_distribution"
+command = ["sh", "-c", "for i in {1..10}; do curl -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"'$i'\",\"role\":\"user\",\"content\":\"I was brave\",\"timestamp\":1234567890}]}' -i | grep -i 'x-premium-variant'; done | sort | uniq"]
+timeout = "60s"
+expected_output_regex = "(Variant.*A|Variant.*B)"
+retry_on_failure = false
+
+# Test CTA only shown with virtue
+[[steps]]
+name = "test_cta_requires_virtue"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I demonstrated courage\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Premium-Title.*X-Virtue"
+retry_on_failure = false
+
+# Test Variant A copy
+[[steps]]
+name = "test_variant_a_copy"
+command = ["sh", "-c", "for i in {1..20}; do RESPONSE=$(curl -s -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"'$i'\",\"role\":\"user\",\"content\":\"I was brave\",\"timestamp\":1234567890}]}' -i); if echo \"$RESPONSE\" | grep -q 'X-Premium-Variant: A'; then echo \"$RESPONSE\" | grep 'X-Premium-Title' && break; fi; done"]
+timeout = "120s"
+expected_output_regex = "X-Premium-Title"
+retry_on_failure = false
+
+# Test Variant B copy
+[[steps]]
+name = "test_variant_b_copy"
+command = ["sh", "-c", "for i in {1..20}; do RESPONSE=$(curl -s -X POST http://nextjs_app:3000/api/chat -H 'Content-Type: application/json' -d '{\"mode\":\"child\",\"messages\":[{\"id\":\"'$i'\",\"role\":\"user\",\"content\":\"I was brave\",\"timestamp\":1234567890}]}' -i); if echo \"$RESPONSE\" | grep -q 'X-Premium-Variant: B'; then echo \"$RESPONSE\" | grep 'X-Premium-Title' && break; fi; done"]
+timeout = "120s"
+expected_output_regex = "X-Premium-Title"
+retry_on_failure = false
+
+# Test CTA click tracking
+[[steps]]
+name = "test_cta_click_tracking"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_click\",\"metadata\":{\"variant\":\"A\"}}' && curl -X GET http://nextjs_app:3000/api/metrics | grep -i premium"]
+timeout = "10s"
+expected_output_regex = "(premium|variant|ctr)"
+retry_on_failure = false
+
+# Validate A/B test metrics
+[[steps]]
+name = "validate_ab_test_metrics"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "5s"
+expected_output_regex = "(variantA|variantB|ctr|clicks)"
+retry_on_failure = false
+
+# Test CTR calculation
+[[steps]]
+name = "test_ctr_calculation"
+command = ["sh", "-c", "curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_impression\",\"metadata\":{\"variant\":\"A\"}}' && curl -X POST http://nextjs_app:3000/api/telemetry -H 'Content-Type: application/json' -d '{\"type\":\"premium_click\",\"metadata\":{\"variant\":\"A\"}}' && curl -X GET http://nextjs_app:3000/api/metrics"]
+timeout = "15s"
+expected_output_regex = "(ctr|impressions|clicks)"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.95
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

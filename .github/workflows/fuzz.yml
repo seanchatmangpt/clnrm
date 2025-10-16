@@ -1,0 +1,215 @@
+name: Fuzz Testing
+
+on:
+  # Run on schedule (daily)
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC daily
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Fuzzing duration in seconds per target'
+        required: false
+        default: '300'
+
+  # Run on pull requests (quick smoke test)
+  pull_request:
+    paths:
+      - 'crates/clnrm-core/src/config.rs'
+      - 'crates/clnrm-core/src/scenario.rs'
+      - 'crates/clnrm-core/src/error.rs'
+      - 'crates/clnrm-core/src/cli/**'
+      - 'tests/fuzz/**'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  fuzz:
+    name: Fuzz Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      matrix:
+        fuzz_target:
+          - fuzz_toml_parser
+          - fuzz_scenario_dsl
+          - fuzz_cli_args
+          - fuzz_error_handling
+          - fuzz_regex_patterns
+
+      # Don't cancel other targets if one fails
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache fuzz corpus
+        uses: actions/cache@v3
+        with:
+          path: tests/fuzz/corpus/${{ matrix.fuzz_target }}
+          key: fuzz-corpus-${{ matrix.fuzz_target }}-${{ github.sha }}
+          restore-keys: |
+            fuzz-corpus-${{ matrix.fuzz_target }}-
+
+      - name: Run fuzz target (PR - quick smoke test)
+        if: github.event_name == 'pull_request'
+        working-directory: tests/fuzz
+        run: |
+          cargo +nightly fuzz run ${{ matrix.fuzz_target }} -- \
+            -max_total_time=30 \
+            -rss_limit_mb=2048 \
+            -timeout=5
+
+      - name: Run fuzz target (Scheduled - thorough)
+        if: github.event_name == 'schedule'
+        working-directory: tests/fuzz
+        run: |
+          cargo +nightly fuzz run ${{ matrix.fuzz_target }} -- \
+            -max_total_time=1800 \
+            -rss_limit_mb=4096 \
+            -timeout=10
+
+      - name: Run fuzz target (Manual)
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: tests/fuzz
+        run: |
+          cargo +nightly fuzz run ${{ matrix.fuzz_target }} -- \
+            -max_total_time=${{ github.event.inputs.duration }} \
+            -rss_limit_mb=2048 \
+            -timeout=5
+
+      - name: Minimize corpus
+        if: always()
+        working-directory: tests/fuzz
+        run: |
+          cargo +nightly fuzz cmin ${{ matrix.fuzz_target }} || true
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-crashes-${{ matrix.fuzz_target }}
+          path: tests/fuzz/artifacts/${{ matrix.fuzz_target }}/
+          retention-days: 90
+
+      - name: Upload corpus
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-corpus-${{ matrix.fuzz_target }}
+          path: tests/fuzz/corpus/${{ matrix.fuzz_target }}/
+          retention-days: 30
+
+  # Run crash reproduction tests
+  crash-reproduction:
+    name: Crash Reproduction Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run crash reproduction tests
+        working-directory: tests/fuzz
+        run: cargo test --lib crash_reproduction_tests
+
+  # Generate coverage report
+  coverage:
+    name: Fuzz Coverage Report
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-fuzz and grcov
+        run: |
+          cargo install cargo-fuzz
+          cargo install grcov
+
+      - name: Generate coverage for TOML parser
+        working-directory: tests/fuzz
+        run: |
+          cargo +nightly fuzz coverage fuzz_toml_parser -- -max_total_time=300
+
+      - name: Generate coverage report
+        run: |
+          grcov . --binary-path ./tests/fuzz/target -s . \
+            -t html --branch --ignore-not-existing \
+            -o ./coverage/
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzz-coverage-report
+          path: coverage/
+          retention-days: 30
+
+  # Security scanning for fuzzing artifacts
+  security-scan:
+    name: Security Scan Artifacts
+    runs-on: ubuntu-latest
+    needs: fuzz
+    if: failure()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all crash artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: fuzz-crashes/
+
+      - name: Scan for security issues
+        run: |
+          echo "Scanning crash artifacts for security vulnerabilities..."
+
+          # Check for specific patterns in crashes
+          if grep -r "SEGFAULT" fuzz-crashes/ 2>/dev/null; then
+            echo "::warning::Found SEGFAULT in crash artifacts - potential memory safety issue"
+          fi
+
+          if grep -r "stack overflow" fuzz-crashes/ 2>/dev/null; then
+            echo "::warning::Found stack overflow - potential DoS vector"
+          fi
+
+          # Count crashes
+          CRASH_COUNT=$(find fuzz-crashes/ -type f | wc -l)
+          echo "Total crashes found: $CRASH_COUNT"
+
+          if [ "$CRASH_COUNT" -gt 0 ]; then
+            echo "::warning::Fuzzing discovered $CRASH_COUNT crashes. Review artifacts."
+          fi

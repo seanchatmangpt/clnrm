@@ -1,0 +1,7 @@
+[test.metadata]
+name = "测试用例🚀"
+description = "Unicode test with émojis 🎯"
+
+[[steps]]
+name = "unicode_step_ñ"
+command = ["echo", "日本語"]

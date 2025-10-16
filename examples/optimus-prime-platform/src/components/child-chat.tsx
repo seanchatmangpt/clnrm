@@ -5,18 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Message,
-  detectVirtue,
-  REWARD_URLS,
-  PREMIUM_CTA_VARIANTS,
-} from "@/lib/types";
+import { Message } from "@/lib/types";
 import {
   trackEvent,
   getABVariant,
   trackPremiumView,
   trackPremiumClick,
+  getVirtueCount,
+  getVirtueHistory,
+  trackRewardView,
 } from "@/lib/telemetry";
+import { VirtueHistory } from "@/lib/types";
 
 export function ChildChat() {
   const [virtue, setVirtue] = useState<string>("");
@@ -28,6 +27,13 @@ export function ChildChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Virtue tracking state
+  const [virtueCount, setVirtueCount] = useState<Record<string, number>>({});
+  const [virtueHistoryList, setVirtueHistoryList] = useState<VirtueHistory[]>(
+    []
+  );
+  const [showHistory, setShowHistory] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -66,8 +72,19 @@ export function ChildChat() {
       const premiumTitleHeader = response.headers.get("X-Premium-Title");
       const premiumLinkHeader = response.headers.get("X-Premium-Link");
 
-      if (virtueHeader) setVirtue(virtueHeader);
-      if (rewardHeader) setRewardUrl(rewardHeader);
+      if (virtueHeader) {
+        setVirtue(virtueHeader);
+        // Update virtue tracking
+        setVirtueCount(getVirtueCount());
+        setVirtueHistoryList(getVirtueHistory());
+      }
+      if (rewardHeader) {
+        setRewardUrl(rewardHeader);
+        // Track reward view when it appears
+        if (virtueHeader) {
+          trackRewardView(virtueHeader, abVariant);
+        }
+      }
       if (premiumTitleHeader) setPremiumTitle(premiumTitleHeader);
       if (premiumLinkHeader) setPremiumLink(premiumLinkHeader);
 
@@ -75,7 +92,7 @@ export function ChildChat() {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
-      let assistantMessage: Message = {
+      const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
         content: "",
@@ -91,7 +108,7 @@ export function ChildChat() {
 
           const chunk = decoder.decode(value);
           // Parse Ollama streaming format
-          const lines = chunk.split('\n').filter(line => line.trim());
+          const lines = chunk.split("\n").filter((line) => line.trim());
           for (const line of lines) {
             try {
               const data = JSON.parse(line);
@@ -134,6 +151,10 @@ export function ChildChat() {
     const variant = getABVariant();
     setAbVariant(variant);
     trackEvent("session_start", { mode: "child", variant });
+
+    // Load virtue history on mount
+    setVirtueCount(getVirtueCount());
+    setVirtueHistoryList(getVirtueHistory());
   }, []);
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -159,11 +180,24 @@ export function ChildChat() {
       {/* Header */}
       <Card className="child-panel">
         <CardHeader>
-          <CardTitle className="text-2xl text-[hsl(var(--autobot-red))] flex items-center gap-3">
-            <div className="w-8 h-8 bg-[hsl(var(--autobot-red))] rounded-full flex items-center justify-center text-white font-bold">
-              O
+          <CardTitle className="text-2xl text-[hsl(var(--autobot-red))] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-[hsl(var(--autobot-red))] rounded-full flex items-center justify-center text-white font-bold">
+                O
+              </div>
+              Optimus Prime
             </div>
-            Optimus Prime
+            {/* Virtue Counter Badge */}
+            {Object.keys(virtueCount).length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHistory(!showHistory)}
+                className="text-xs"
+              >
+                Virtues: {Object.values(virtueCount).reduce((a, b) => a + b, 0)}
+              </Button>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -171,8 +205,60 @@ export function ChildChat() {
             Share your achievements and let Optimus Prime recognize your
             leadership qualities!
           </p>
+
+          {/* Virtue Counter Details */}
+          {Object.keys(virtueCount).length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {Object.entries(virtueCount).map(([virtue, count]) => (
+                <Badge
+                  key={virtue}
+                  variant="secondary"
+                  className="bg-[hsl(var(--energon))]/20 text-[hsl(var(--gunmetal))]"
+                >
+                  {virtue.charAt(0).toUpperCase() + virtue.slice(1)}: {count}
+                </Badge>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Virtue History Panel */}
+      {showHistory && virtueHistoryList.length > 0 && (
+        <Card className="bg-gradient-to-r from-[hsl(var(--energon))]/10 to-[hsl(var(--autobot-red))]/10 border-[hsl(var(--energon))]">
+          <CardHeader>
+            <CardTitle className="text-lg text-[hsl(var(--autobot-red))]">
+              Your Leadership Journey
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {virtueHistoryList
+                .slice()
+                .reverse()
+                .map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-start gap-3 p-3 bg-white/50 rounded-md"
+                  >
+                    <Badge className="bg-[hsl(var(--energon))] text-[hsl(var(--gunmetal))] font-semibold shrink-0">
+                      {entry.virtue.charAt(0).toUpperCase() +
+                        entry.virtue.slice(1)}
+                    </Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[hsl(var(--gunmetal))]">
+                        {entry.achievement}
+                      </p>
+                      <p className="text-xs text-[hsl(var(--steel))] mt-1">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Chat Messages */}
       <div className="space-y-4">

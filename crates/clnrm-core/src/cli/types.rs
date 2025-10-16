@@ -193,6 +193,46 @@ pub enum Commands {
         analyze: bool,
     },
 
+    /// AI-powered autonomous monitoring system
+    AiMonitor {
+        /// Monitoring interval in seconds
+        #[arg(long, default_value = "30")]
+        interval: u64,
+
+        /// Anomaly detection threshold (0.0-1.0)
+        #[arg(long, default_value = "0.7")]
+        anomaly_threshold: f64,
+
+        /// Enable AI-powered alerting
+        #[arg(long)]
+        ai_alerts: bool,
+
+        /// Enable proactive anomaly detection
+        #[arg(long)]
+        anomaly_detection: bool,
+
+        /// Enable automatic self-healing
+        #[arg(long)]
+        proactive_healing: bool,
+
+        /// Webhook URL for notifications
+        #[arg(long)]
+        webhook_url: Option<String>,
+    },
+
+    /// System health check
+    Health {
+        /// Show verbose health information
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Plugin marketplace operations
+    Marketplace {
+        #[command(subcommand)]
+        command: crate::marketplace::MarketplaceSubcommands,
+    },
+
 }
 
 #[derive(Subcommand)]
@@ -214,6 +254,29 @@ pub enum ServiceCommands {
     Restart {
         /// Service name
         service: String,
+    },
+
+    /// AI-driven service lifecycle management
+    AiManage {
+        /// Enable auto-scaling based on load prediction
+        #[arg(long)]
+        auto_scale: bool,
+
+        /// Enable load prediction
+        #[arg(long)]
+        predict_load: bool,
+
+        /// Enable resource optimization
+        #[arg(long)]
+        optimize_resources: bool,
+
+        /// Prediction horizon in minutes
+        #[arg(long, default_value = "5")]
+        horizon_minutes: u32,
+
+        /// Filter services by name
+        #[arg(short, long)]
+        service: Option<String>,
     },
 }
 

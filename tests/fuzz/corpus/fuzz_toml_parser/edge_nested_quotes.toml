@@ -1,0 +1,7 @@
+[test.metadata]
+name = "quote\"test"
+description = "Test with 'nested' \"quotes\""
+
+[[steps]]
+name = "step1"
+command = ["sh", "-c", "echo \"nested 'quotes'\""]

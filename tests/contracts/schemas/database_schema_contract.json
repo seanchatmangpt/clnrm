@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://clnrm.dev/schemas/database_schema_contract.json",
+  "title": "Database Schema Contract",
+  "description": "Contract definition for database schema validation in CLNRM",
+  "type": "object",
+  "definitions": {
+    "Table": {
+      "type": "object",
+      "required": ["name", "columns", "primary_key"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 1,
+          "maxLength": 63
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Column"
+          },
+          "minItems": 1
+        },
+        "primary_key": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "indexes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Index"
+          }
+        },
+        "foreign_keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ForeignKey"
+          }
+        }
+      }
+    },
+    "Column": {
+      "type": "object",
+      "required": ["name", "data_type", "nullable"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 1,
+          "maxLength": 63
+        },
+        "data_type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "int",
+            "bigint",
+            "float",
+            "double",
+            "boolean",
+            "datetime",
+            "uuid",
+            "json",
+            "text"
+          ]
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "default_value": {
+          "type": ["string", "number", "boolean", "null"]
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "unique": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "Index": {
+      "type": "object",
+      "required": ["name", "columns", "unique"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^idx_[a-z0-9_]+$"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "unique": {
+          "type": "boolean"
+        },
+        "index_type": {
+          "type": "string",
+          "enum": ["btree", "hash", "gin", "gist"]
+        }
+      }
+    },
+    "ForeignKey": {
+      "type": "object",
+      "required": ["name", "columns", "referenced_table", "referenced_columns"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^fk_[a-z0-9_]+$"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "referenced_table": {
+          "type": "string"
+        },
+        "referenced_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "on_delete": {
+          "type": "string",
+          "enum": ["CASCADE", "SET NULL", "RESTRICT", "NO ACTION"]
+        },
+        "on_update": {
+          "type": "string",
+          "enum": ["CASCADE", "SET NULL", "RESTRICT", "NO ACTION"]
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the database schema"
+    },
+    "tables": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Table"
+      },
+      "minItems": 1
+    },
+    "migrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["version", "description", "timestamp"],
+        "properties": {
+          "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checksum": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": ["schema_version", "tables"]
+}

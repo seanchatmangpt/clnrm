@@ -1,0 +1,7 @@
+[test.metadata
+name = "malformed"
+description = "Unclosed bracket"
+
+[[steps]
+name = "step1"
+command = ["echo", "test"]

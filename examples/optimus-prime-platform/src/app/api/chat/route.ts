@@ -1,11 +1,10 @@
 import {
   ChatRequest,
-  ChatResponse,
   detectVirtue,
   REWARD_URLS,
   PREMIUM_CTA_VARIANTS,
 } from "@/lib/types";
-import { trackEvent } from "@/lib/telemetry";
+import { trackEvent, trackVirtue } from "@/lib/telemetry";
 
 export async function POST(request: Request) {
   try {
@@ -37,11 +36,12 @@ export async function POST(request: Request) {
 
 async function handleChildChat(
   userInput: string,
-  headers: Headers
+  _headers: Headers
 ): Promise<Response> {
   const virtue = detectVirtue(userInput);
 
-  trackEvent("virtue_detected", { virtue });
+  // Track virtue with achievement text for history
+  trackVirtue(virtue, userInput);
 
   const systemPrompt = `You are Optimus Prime, leader of the Autobots. Speak with noble leadership. Do not mirror the user's words. Recognize the virtue: ${virtue}. Provide one to two sentences. Encourage forward action.`;
 

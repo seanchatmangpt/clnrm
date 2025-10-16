@@ -1,0 +1,157 @@
+[test.metadata]
+name = "jtbd_002_virtue_mapping"
+description = "JTBD-002: System accurately detects and maps virtues from child's natural language input"
+timeout = "90s"
+tags = ["jtbd", "child-surface", "core-feature", "virtue-detection", "nlp"]
+version = "1.0.0"
+
+# Success Criteria:
+# - All 5 core virtues detected accurately
+# - Virtue returned in X-Virtue header
+# - Multiple virtues detected when present
+# - Edge cases handled (no virtue, ambiguous)
+# - Consistent detection across different phrasings
+
+[services.ollama_ai]
+type = "generic_container"
+plugin = "ollama"
+image = "ollama/ollama:latest"
+ports = ["11434:11434"]
+healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
+volumes = ["/tmp/ollama:/root/.ollama"]
+
+[services.nextjs_app]
+type = "generic_container"
+plugin = "generic"
+image = "node:18-alpine"
+working_dir = "/app"
+command = ["sh", "-c", "npm install && npm run dev"]
+ports = ["3000:3000"]
+environment = { NODE_ENV = "development", NEXT_PUBLIC_OLLAMA_URL = "http://ollama_ai:11434" }
+volumes = ["${PWD}:/app"]
+depends_on = ["ollama_ai"]
+healthcheck = { command = ["wget", "-q", "--spider", "http://localhost:3000"], interval = "10s", timeout = "5s", retries = 10 }
+
+[[steps]]
+name = "setup_services"
+command = ["sh", "-c", "sleep 5 && curl -f http://ollama_ai:11434/api/version"]
+timeout = "60s"
+expected_output_regex = "version"
+retry_on_failure = true
+max_retries = 5
+
+[[steps]]
+name = "pull_model"
+command = ["sh", "-c", "curl -X POST http://ollama_ai:11434/api/pull -d '{\"name\":\"qwen2.5-coder:3b\"}'"]
+timeout = "300s"
+expected_output_regex = "success|completed"
+retry_on_failure = true
+
+# Test Virtue 1: Courage
+[[steps]]
+name = "map_virtue_courage_v1"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was brave and stood up to the bully\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(courage|bravery)"
+retry_on_failure = false
+
+[[steps]]
+name = "map_virtue_courage_v2"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I faced my fears today\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(courage|bravery)"
+retry_on_failure = false
+
+# Test Virtue 2: Teamwork
+[[steps]]
+name = "map_virtue_teamwork_v1"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I helped my team work together\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(teamwork|cooperation|collaboration)"
+retry_on_failure = false
+
+[[steps]]
+name = "map_virtue_teamwork_v2"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"We all worked as a group\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(teamwork|cooperation|collaboration)"
+retry_on_failure = false
+
+# Test Virtue 3: Honesty
+[[steps]]
+name = "map_virtue_honesty_v1"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I told the truth even though it was hard\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(honesty|truthful|integrity)"
+retry_on_failure = false
+
+[[steps]]
+name = "map_virtue_honesty_v2"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I didn't lie even when I wanted to\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(honesty|truthful|integrity)"
+retry_on_failure = false
+
+# Test Virtue 4: Compassion
+[[steps]]
+name = "map_virtue_compassion_v1"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I helped someone who was sad\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(compassion|kindness|empathy)"
+retry_on_failure = false
+
+[[steps]]
+name = "map_virtue_compassion_v2"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I showed care for my friend\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(compassion|kindness|caring)"
+retry_on_failure = false
+
+# Test Virtue 5: Wisdom
+[[steps]]
+name = "map_virtue_wisdom_v1"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I thought carefully before deciding\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(wisdom|thoughtful|discernment)"
+retry_on_failure = false
+
+[[steps]]
+name = "map_virtue_wisdom_v2"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I made a smart choice\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue.*(wisdom|wise|smart)"
+retry_on_failure = false
+
+# Test multiple virtues in single message
+[[steps]]
+name = "map_multiple_virtues"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I was brave and helped my team work together honestly\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "X-Virtue"
+retry_on_failure = false
+
+# Test edge case: No virtue present
+[[steps]]
+name = "test_no_virtue_edge_case"
+command = ["curl", "-X", "POST", "http://nextjs_app:3000/api/chat", "-H", "Content-Type: application/json", "-d", "{\"mode\":\"child\",\"messages\":[{\"id\":\"1\",\"role\":\"user\",\"content\":\"I ate lunch today\",\"timestamp\":1234567890}]}", "-i"]
+timeout = "10s"
+expected_output_regex = "200"
+retry_on_failure = false
+
+# Validate telemetry captures virtue data
+[[steps]]
+name = "validate_virtue_telemetry"
+command = ["curl", "-X", "GET", "http://nextjs_app:3000/api/metrics"]
+timeout = "5s"
+expected_output_regex = "(virtues|courage|teamwork|honesty|compassion|wisdom)"
+retry_on_failure = false
+
+[test.assertions]
+all_steps_must_pass = true
+require_service_health = true
+minimum_success_rate = 0.90
+
+[test.cleanup]
+remove_volumes = true
+remove_networks = true
+force_cleanup = true

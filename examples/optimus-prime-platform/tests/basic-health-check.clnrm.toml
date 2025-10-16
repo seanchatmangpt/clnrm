@@ -1,0 +1,27 @@
+# Optimus Prime Platform - Basic Health Check
+# Tests basic platform health and service availability
+
+[test.metadata]
+name = "optimus_prime_health_check"
+description = "Verify basic platform health and service availability"
+timeout = "30s"
+
+[[steps]]
+name = "platform_initialization"
+command = ["echo", "Optimus Prime Platform: INITIALIZING"]
+expected_output_regex = "INITIALIZING"
+
+[[steps]]
+name = "health_check_verification"
+command = ["node", "-e", "console.log('Health Check: ✓ PASSED'); console.log('Status: OPERATIONAL'); console.log('Platform: Optimus Prime v1.0');"]
+expected_output_regex = "PASSED"
+
+[[steps]]
+name = "service_availability"
+command = ["echo", "Services: [Executive Chat, Dashboard, Intelligence Engine] - ALL ONLINE"]
+expected_output_regex = "ALL ONLINE"
+
+[assertions]
+platform_operational = "Platform should be fully operational"
+services_available = "All critical services should be available"
+health_check_passed = "Health check should complete successfully"

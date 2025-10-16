@@ -1,0 +1,54 @@
+[package]
+name = "clnrm-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+clnrm-core = { path = "../../crates/clnrm-core" }
+arbitrary = { version = "1.3", features = ["derive"] }
+
+# Workspace dependencies needed for fuzzing
+tokio = { version = "1.40", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+[[bin]]
+name = "fuzz_toml_parser"
+path = "fuzz_targets/fuzz_toml_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_scenario_dsl"
+path = "fuzz_targets/fuzz_scenario_dsl.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_cli_args"
+path = "fuzz_targets/fuzz_cli_args.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_error_handling"
+path = "fuzz_targets/fuzz_error_handling.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_regex_patterns"
+path = "fuzz_targets/fuzz_regex_patterns.rs"
+test = false
+doc = false
+bench = false
