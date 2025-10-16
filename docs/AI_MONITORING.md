@@ -350,7 +350,7 @@ Metrics Collection → Buffer Storage → Anomaly Detection
 
 ## Related Documentation
 
-- [AUTONOMIC_HYPER_INTELLIGENCE_GAPS.md](../AUTONOMIC_HYPER_INTELLIGENCE_GAPS.md) - System architecture and gaps
+- [AUTONOMIC_HYPER_INTELLIGENCE_GAPS.md](./AUTONOMIC_HYPER_INTELLIGENCE_GAPS.md) - System architecture and gaps
 - [README.md](../README.md) - Project overview
 - [AI_INTELLIGENCE.md](AI_INTELLIGENCE.md) - AI integration details
 
