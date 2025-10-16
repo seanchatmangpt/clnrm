@@ -4,7 +4,7 @@ resolver = "2"
 members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared"]
 
 [workspace.package]
-version = "0.3.0"
+version = "0.3.2"
 edition = "2021"
 license = "MIT"
 authors = ["Sean Chatman <seanchatmangpt@gmail.com>"]
