@@ -133,47 +133,43 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
 
     // Exporter (traces).
     let span_exporter = match cfg.export {
-        Export::OtlpHttp { endpoint: _ } => {
-            // OTLP HTTP exporter - API compatibility issue with 0.31
-            // Fallback to stdout for now, with proper error handling
-            tracing::warn!("OTLP HTTP export not yet compatible with opentelemetry-otlp 0.31, falling back to stdout");
-            #[cfg(feature = "otel-stdout")]
-            {
-                SpanExporterType::Stdout(opentelemetry_stdout::SpanExporter::default())
-            }
-            #[cfg(not(feature = "otel-stdout"))]
-            {
-                return Err(CleanroomError::internal_error(
-                    "OTLP HTTP export requires opentelemetry-otlp API compatibility fix. Use stdout export for now."
-                ));
-            }
+        Export::OtlpHttp { endpoint } => {
+            // OTLP HTTP exporter - use environment variables for configuration
+            std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint);
+            let exporter = opentelemetry_otlp::SpanExporter::builder()
+                .with_http()
+                .build()
+                .map_err(|e| {
+                    CleanroomError::internal_error(format!("Failed to create OTLP HTTP exporter: {}", e))
+                })?;
+            SpanExporterType::Otlp(exporter)
         }
-        Export::OtlpGrpc { endpoint: _ } => {
-            // OTLP gRPC exporter - API compatibility issue with 0.31
-            // Fallback to stdout for now, with proper error handling
-            tracing::warn!("OTLP gRPC export not yet compatible with opentelemetry-otlp 0.31, falling back to stdout");
-            #[cfg(feature = "otel-stdout")]
-            {
-                SpanExporterType::Stdout(opentelemetry_stdout::SpanExporter::default())
-            }
-            #[cfg(not(feature = "otel-stdout"))]
-            {
-                return Err(CleanroomError::internal_error(
-                    "OTLP gRPC export requires opentelemetry-otlp API compatibility fix. Use stdout export for now."
-                ));
-            }
+        Export::OtlpGrpc { endpoint } => {
+            // OTLP gRPC exporter - use environment variables for configuration
+            std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint);
+            let exporter = opentelemetry_otlp::SpanExporter::builder()
+                .with_tonic()
+                .build()
+                .map_err(|e| {
+                    CleanroomError::internal_error(format!("Failed to create OTLP gRPC exporter: {}", e))
+                })?;
+            SpanExporterType::Otlp(exporter)
         }
         #[cfg(feature = "otel-stdout")]
         Export::Stdout => SpanExporterType::Stdout(opentelemetry_stdout::SpanExporter::default()),
         #[cfg(not(feature = "otel-stdout"))]
-        Export::Stdout => panic!("Stdout export requires 'otel-stdout' feature"),
+        Export::Stdout => {
+            return Err(CleanroomError::internal_error(
+                "Stdout export requires 'otel-stdout' feature"
+            ));
+        }
     };
 
     // Tracer provider with batch exporter.
     let tp = opentelemetry_sdk::trace::SdkTracerProvider::builder()
         .with_batch_exporter(span_exporter)
         .with_sampler(sampler)
-        .with_resource(resource)
+        .with_resource(resource.clone())
         .build();
 
     // Layer OTel tracer into tracing registry.
@@ -196,16 +192,35 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     // Initialize metrics provider if enabled
     #[cfg(feature = "otel-metrics")]
     let meter_provider = {
-        // Simplified metrics setup - just create a basic provider
-        Some(SdkMeterProvider::builder().build())
+        use opentelemetry_sdk::metrics::SdkMeterProvider;
+        // Basic metrics provider - stdout only for now
+        // OTLP metrics export can be added later when API stabilizes
+        let provider = SdkMeterProvider::builder()
+            .with_resource(resource.clone())
+            .build();
+        Some(provider)
     };
 
     // Initialize logs provider if enabled
     #[cfg(feature = "otel-logs")]
     let logger_provider = {
-        // Simplified logs setup - just create a basic provider
-        Some(opentelemetry_sdk::logs::SdkLoggerProvider::builder().build())
+        use opentelemetry_sdk::logs::SdkLoggerProvider;
+        // Basic logs provider - will use tracing integration
+        // OTLP logs export can be added later when API stabilizes
+        let provider = SdkLoggerProvider::builder()
+            .with_resource(resource.clone())
+            .build();
+        Some(provider)
     };
+
+    // Set global meter provider if metrics are enabled
+    #[cfg(feature = "otel-metrics")]
+    if let Some(ref mp) = meter_provider {
+        global::set_meter_provider(mp.clone());
+    }
+
+    // Note: For logs, we use the logger provider through the OtelGuard
+    // The global logger provider is set when needed through specific log operations
 
     Ok(OtelGuard {
         tracer_provider: tp,
@@ -214,6 +229,75 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
         #[cfg(feature = "otel-logs")]
         logger_provider,
     })
+}
+
+/// Helper functions for metrics following core team best practices
+#[cfg(feature = "otel-metrics")]
+pub mod metrics {
+    use opentelemetry::{global, KeyValue};
+
+    /// Increment a counter metric
+    /// Following core team standards - no unwrap() in production code
+    pub fn increment_counter(name: &str, value: u64, attributes: Vec<KeyValue>) {
+        let meter = global::meter("clnrm");
+        let counter = meter.u64_counter(name.to_string()).build();
+        counter.add(value, &attributes);
+    }
+
+    /// Record a histogram value
+    pub fn record_histogram(name: &str, value: f64, attributes: Vec<KeyValue>) {
+        let meter = global::meter("clnrm");
+        let histogram = meter.f64_histogram(name.to_string()).build();
+        histogram.record(value, &attributes);
+    }
+
+    /// Record test execution duration
+    pub fn record_test_duration(test_name: &str, duration_ms: f64, success: bool) {
+        let meter = global::meter("clnrm");
+        let histogram = meter
+            .f64_histogram("test.duration_ms")
+            .with_description("Test execution duration in milliseconds")
+            .build();
+
+        let attributes = vec![
+            KeyValue::new("test.name", test_name.to_string()),
+            KeyValue::new("test.success", success),
+        ];
+
+        histogram.record(duration_ms, &attributes);
+    }
+
+    /// Record container operation
+    pub fn record_container_operation(operation: &str, duration_ms: f64, container_type: &str) {
+        let meter = global::meter("clnrm");
+        let histogram = meter
+            .f64_histogram("container.operation_duration_ms")
+            .with_description("Container operation duration in milliseconds")
+            .build();
+
+        let attributes = vec![
+            KeyValue::new("container.operation", operation.to_string()),
+            KeyValue::new("container.type", container_type.to_string()),
+        ];
+
+        histogram.record(duration_ms, &attributes);
+    }
+
+    /// Increment test counter
+    pub fn increment_test_counter(test_name: &str, result: &str) {
+        let meter = global::meter("clnrm");
+        let counter = meter
+            .u64_counter("test.executions")
+            .with_description("Number of test executions")
+            .build();
+
+        let attributes = vec![
+            KeyValue::new("test.name", test_name.to_string()),
+            KeyValue::new("test.result", result.to_string()),
+        ];
+
+        counter.add(1, &attributes);
+    }
 }
 
 /// Add OTel logs layer for tracing events -> OTel LogRecords

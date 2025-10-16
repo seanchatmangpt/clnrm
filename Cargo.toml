@@ -42,10 +42,24 @@ notify = "6.0"
 # OpenTelemetry dependencies
 opentelemetry = { version = "0.31", default-features = false, features = [
   "trace",
+  "metrics",
+  "logs",
 ] }
-opentelemetry_sdk = { version = "0.31", default-features = false }
-opentelemetry-stdout = "0.31"
-opentelemetry-otlp = "0.31"
+opentelemetry_sdk = { version = "0.31", default-features = false, features = [
+  "trace",
+  "metrics",
+  "logs",
+  "rt-tokio",
+] }
+opentelemetry-stdout = { version = "0.31", features = ["trace", "metrics", "logs"] }
+opentelemetry-otlp = { version = "0.31", default-features = false, features = [
+  "trace",
+  "metrics",
+  "logs",
+  "http-proto",
+  "grpc-tonic",
+  "reqwest-client",
+] }
 tracing-opentelemetry = "0.32"
 tracing-subscriber = { version = "0.3.20", features = [
   "fmt",
