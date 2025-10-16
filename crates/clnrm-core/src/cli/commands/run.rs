@@ -11,8 +11,25 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
 
+// Import span helpers for OTEL instrumentation
+#[cfg(feature = "otel-traces")]
+use crate::telemetry::spans;
+
 /// Run tests from TOML files
 pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
+    // Create root span for entire test run (OTEL self-testing)
+    #[cfg(feature = "otel-traces")]
+    let run_span = {
+        let config_path = paths.first()
+            .and_then(|p| p.to_str())
+            .unwrap_or("multiple_paths");
+        spans::run_span(config_path, paths.len())
+    };
+
+    // Execute within span context
+    #[cfg(feature = "otel-traces")]
+    let _guard = run_span.enter();
+
     info!("Running cleanroom tests (framework self-testing)");
     debug!("Test paths: {:?}", paths);
     debug!("Config: parallel={}, jobs={}", config.parallel, config.jobs);
@@ -489,7 +506,13 @@ async fn load_services_from_config(
         env.register_service(plugin).await?;
         info!("📦 Registered service plugin: {}", service_name);
 
-        // Start service and collect handle
+        // Start service and collect handle (with OTEL span for self-testing)
+        #[cfg(feature = "otel-traces")]
+        let service_span = spans::service_start_span(service_name, &service_config.r#type);
+
+        #[cfg(feature = "otel-traces")]
+        let _service_guard = service_span.enter();
+
         let handle = env.start_service(service_name).await.map_err(|e| {
             CleanroomError::service_error(format!("Failed to start service '{}'", service_name))
                 .with_context("Service startup failed")
@@ -514,6 +537,7 @@ async fn load_services_from_config(
 /// - ✅ Proper error handling with CleanroomError
 /// - ✅ No unwrap() or expect() calls
 /// - ✅ Use tracing for structured logging
+#[cfg_attr(feature = "otel-traces", tracing::instrument(name = "clnrm.test", skip(_config), fields(test.hermetic = true)))]
 pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> {
     use tracing::{debug, info, warn};
 
@@ -523,6 +547,10 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
 
     let test_config: crate::config::TestConfig = toml::from_str(&content)
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
+
+    // Record test name in span
+    #[cfg(feature = "otel-traces")]
+    tracing::Span::current().record("test.name", &test_config.test.metadata.name);
 
     println!("🚀 Executing test: {}", test_config.test.metadata.name);
     info!("🚀 Executing test: {}", test_config.test.metadata.name);
@@ -562,40 +590,49 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
         println!("🔧 Executing: {}", step.command.join(" "));
         info!("🔧 Executing: {}", step.command.join(" "));
 
-        let stdout = if let Some(service_name) = &step.service {
-            // Execute plugin-based command
-            execute_plugin_command(&environment, service_name, &step.command).await?
-        } else {
-            // Execute shell command
-            let output = std::process::Command::new(&step.command[0])
-                .args(&step.command[1..])
-                .output()
-                .map_err(|e| {
-                    CleanroomError::internal_error(format!(
-                        "Failed to execute command '{}': {}",
-                        step.command.join(" "),
-                        e
-                    ))
-                })?;
+        // Create span for command execution (OTEL self-testing)
+        #[cfg(feature = "otel-traces")]
+        let command_span = spans::command_execute_span(&step.command.join(" "));
 
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
+        #[cfg(feature = "otel-traces")]
+        let _command_guard = command_span.enter();
 
-            if !stderr.is_empty() {
-                println!("⚠️  Stderr: {}", stderr.trim());
-                info!("⚠️  Stderr: {}", stderr.trim());
+        let stdout = {
+            if let Some(service_name) = &step.service {
+                // Execute plugin-based command
+                execute_plugin_command(&environment, service_name, &step.command).await?
+            } else {
+                // Execute shell command
+                let output = std::process::Command::new(&step.command[0])
+                    .args(&step.command[1..])
+                    .output()
+                    .map_err(|e| {
+                        CleanroomError::internal_error(format!(
+                            "Failed to execute command '{}': {}",
+                            step.command.join(" "),
+                            e
+                        ))
+                    })?;
+
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+
+                if !stderr.is_empty() {
+                    println!("⚠️  Stderr: {}", stderr.trim());
+                    info!("⚠️  Stderr: {}", stderr.trim());
+                }
+
+                // Check exit status
+                if !output.status.success() {
+                    return Err(CleanroomError::validation_error(format!(
+                        "Step '{}' failed with exit code: {}",
+                        step.name,
+                        output.status.code().unwrap_or(-1)
+                    )));
+                }
+
+                stdout.to_string()
             }
-
-            // Check exit status
-            if !output.status.success() {
-                return Err(CleanroomError::validation_error(format!(
-                    "Step '{}' failed with exit code: {}",
-                    step.name,
-                    output.status.code().unwrap_or(-1)
-                )));
-            }
-
-            stdout.to_string()
         };
 
         println!("📤 Output: {}", stdout.trim());
@@ -763,6 +800,13 @@ pub async fn validate_test_assertions(
     use tracing::{info, warn};
 
     for (assertion_key, assertion_value) in assertions {
+        // Create span for assertion validation (OTEL self-testing)
+        #[cfg(feature = "otel-traces")]
+        let assertion_span = spans::assertion_span(assertion_key);
+
+        #[cfg(feature = "otel-traces")]
+        let _assertion_guard = assertion_span.enter();
+
         match assertion_key.as_str() {
             "container_should_have_executed_commands" => {
                 if let Some(expected_count) = assertion_value.as_integer() {

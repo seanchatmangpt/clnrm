@@ -861,10 +861,10 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "clnrm"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "clap",
- "clnrm-core",
+ "clnrm-core 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger",
  "log",
  "tokio",
@@ -875,7 +875,7 @@ name = "clnrm-ai"
 version = "0.4.0"
 dependencies = [
  "chrono",
- "clnrm-core",
+ "clnrm-core 0.4.1",
  "rand 0.8.5",
  "reqwest",
  "serde",
@@ -890,7 +890,7 @@ dependencies = [
 
 [[package]]
 name = "clnrm-core"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -925,8 +925,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "clnrm-core"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "730487f1b20f47f57e905c5eae161ab31cb46bbec12b977eff85236655d98871"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "env_logger",
+ "futures-util",
+ "junit-report",
+ "log",
+ "notify",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-stdout",
+ "opentelemetry_sdk",
+ "rand 0.8.5",
+ "regex",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "surrealdb",
+ "tempfile",
+ "testcontainers",
+ "testcontainers-modules",
+ "tokio",
+ "toml 0.9.8",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
 name = "clnrm-shared"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "serde",
  "serde_json",
