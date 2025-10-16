@@ -5,8 +5,8 @@
 //!
 //! This command uses REAL Ollama AI integration for genuine optimization recommendations.
 
-use crate::cleanroom::{CleanroomEnvironment, ServicePlugin};
-use crate::error::{CleanroomError, Result};
+use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin};
+use clnrm_core::error::{CleanroomError, Result};
 use crate::services::ai_intelligence::AIIntelligenceService;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
@@ -373,7 +373,7 @@ async fn analyze_test_file(path: &std::path::PathBuf) -> Result<TestAnalysis> {
         .map_err(|e| CleanroomError::config_error(format!("Failed to read test file: {}", e)))?;
 
     // Parse TOML configuration
-    let test_config: crate::config::TestConfig = toml::from_str(&content)
+    let test_config: clnrm_core::config::TestConfig = toml::from_str(&content)
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
 
     // Analyze test characteristics
@@ -398,7 +398,7 @@ async fn analyze_test_file(path: &std::path::PathBuf) -> Result<TestAnalysis> {
 }
 
 /// Calculate test complexity score
-fn calculate_test_complexity(test_config: &crate::config::TestConfig) -> f64 {
+fn calculate_test_complexity(test_config: &clnrm_core::config::TestConfig) -> f64 {
     let mut complexity = 0.0;
 
     // Base complexity from step count
@@ -426,7 +426,7 @@ fn calculate_test_complexity(test_config: &crate::config::TestConfig) -> f64 {
 }
 
 /// Estimate resource requirements for a test
-fn estimate_resource_requirements(test_config: &crate::config::TestConfig) -> ResourceRequirements {
+fn estimate_resource_requirements(test_config: &clnrm_core::config::TestConfig) -> ResourceRequirements {
     let mut cpu_cores = 1.0;
     let mut memory_mb = 512.0;
     let mut network_io = 0;
@@ -472,7 +472,7 @@ fn estimate_resource_requirements(test_config: &crate::config::TestConfig) -> Re
 }
 
 /// Estimate execution time for a test
-fn estimate_execution_time(test_config: &crate::config::TestConfig) -> u64 {
+fn estimate_execution_time(test_config: &clnrm_core::config::TestConfig) -> u64 {
     let mut estimated_time: u64 = 0;
 
     // Base time per step
@@ -522,7 +522,7 @@ fn parse_duration(duration_str: &str) -> Result<std::time::Duration> {
 }
 
 /// Analyze test dependencies
-fn analyze_test_dependencies(test_config: &crate::config::TestConfig) -> Vec<String> {
+fn analyze_test_dependencies(test_config: &clnrm_core::config::TestConfig) -> Vec<String> {
     let mut dependencies = Vec::new();
 
     // Service dependencies
@@ -543,7 +543,7 @@ fn analyze_test_dependencies(test_config: &crate::config::TestConfig) -> Vec<Str
 }
 
 /// Calculate parallelization potential for a test
-fn calculate_parallelization_potential(test_config: &crate::config::TestConfig) -> f64 {
+fn calculate_parallelization_potential(test_config: &clnrm_core::config::TestConfig) -> f64 {
     let mut potential = 0.0;
 
     // Independent steps can be parallelized
@@ -565,7 +565,7 @@ fn calculate_parallelization_potential(test_config: &crate::config::TestConfig) 
 
 /// Calculate optimization priority for a test
 fn calculate_optimization_priority(
-    test_config: &crate::config::TestConfig,
+    test_config: &clnrm_core::config::TestConfig,
 ) -> OptimizationPriority {
     let complexity = calculate_test_complexity(test_config);
     let resource_requirements = estimate_resource_requirements(test_config);

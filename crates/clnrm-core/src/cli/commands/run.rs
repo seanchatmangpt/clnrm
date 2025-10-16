@@ -290,22 +290,11 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
                     info!("📦 Chaos Engine plugin registered: {}", service_name);
                 }
                 "ai_test_generator" => {
-                    use crate::services::ai_test_generator::{
-                        AITestGeneratorConfig, AITestGeneratorPlugin, TestGenerationStrategy,
-                    };
-                    let ai_config = AITestGeneratorConfig {
-                        model: "qwen3-coder:30b".to_string(),
-                        strategy: TestGenerationStrategy::CodeAnalysis,
-                        coverage_target: 0.85,
-                        max_test_cases: 100,
-                        include_edge_cases: true,
-                        include_negative_tests: true,
-                        custom_prompts: vec![],
-                    };
-                    let plugin =
-                        Box::new(AITestGeneratorPlugin::with_config(service_name, ai_config));
-                    environment.register_service(plugin).await?;
-                    info!("📦 AI Test Generator plugin registered: {}", service_name);
+                    // Note: AI Test Generator moved to clnrm-ai crate
+                    warn!("ai_test_generator service type is now in clnrm-ai crate - skipping");
+                    return Err(CleanroomError::validation_error(
+                        "ai_test_generator service requires clnrm-ai crate (experimental feature)"
+                    ));
                 }
                 "generic_container" => {
                     use crate::services::generic::GenericContainerPlugin;

@@ -3,9 +3,9 @@
 //! Combines SurrealDB for data persistence and Ollama for AI processing
 //! to provide actual intelligent functionality for the testing framework.
 
-use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
-use crate::error::{CleanroomError, Result};
-use crate::services::{
+use clnrm_core::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
+use clnrm_core::error::{CleanroomError, Result};
+use clnrm_core::services::{
     ollama::{OllamaConfig, OllamaPlugin},
     surrealdb::SurrealDbPlugin,
 };

@@ -5,9 +5,9 @@
 //!
 //! This command uses REAL Ollama AI integration for genuine AI-powered analysis.
 
-use crate::cleanroom::{CleanroomEnvironment, ServicePlugin};
-use crate::cli::types::{CliConfig, PredictionFormat};
-use crate::error::{CleanroomError, Result};
+use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin};
+use clnrm_core::cli::types::{CliConfig, PredictionFormat};
+use clnrm_core::error::{CleanroomError, Result};
 use crate::services::ai_intelligence::AIIntelligenceService;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -204,7 +204,7 @@ async fn analyze_test_file(path: &PathBuf) -> Result<TestFileAnalysis> {
         .map_err(|e| CleanroomError::config_error(format!("Failed to read test file: {}", e)))?;
 
     // Parse TOML configuration
-    let test_config: crate::config::TestConfig = toml::from_str(&content)
+    let test_config: clnrm_core::config::TestConfig = toml::from_str(&content)
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
 
     // Analyze test complexity and characteristics
@@ -225,7 +225,7 @@ async fn analyze_test_file(path: &PathBuf) -> Result<TestFileAnalysis> {
 }
 
 /// Calculate test complexity score for AI orchestration
-fn calculate_test_complexity(test_config: &crate::config::TestConfig) -> f64 {
+fn calculate_test_complexity(test_config: &clnrm_core::config::TestConfig) -> f64 {
     let mut complexity = 0.0;
 
     // Base complexity from step count
@@ -253,7 +253,7 @@ fn calculate_test_complexity(test_config: &crate::config::TestConfig) -> f64 {
 }
 
 /// Estimate resource requirements for AI orchestration
-fn estimate_resource_requirements(test_config: &crate::config::TestConfig) -> ResourceRequirements {
+fn estimate_resource_requirements(test_config: &clnrm_core::config::TestConfig) -> ResourceRequirements {
     let mut cpu_cores = 1.0;
     let mut memory_mb = 512.0;
     let mut network_io = 0;
@@ -299,7 +299,7 @@ fn estimate_resource_requirements(test_config: &crate::config::TestConfig) -> Re
 }
 
 /// Estimate execution time for AI orchestration
-fn estimate_execution_time(test_config: &crate::config::TestConfig) -> u64 {
+fn estimate_execution_time(test_config: &clnrm_core::config::TestConfig) -> u64 {
     let mut estimated_time: u64 = 0;
 
     // Base time per step

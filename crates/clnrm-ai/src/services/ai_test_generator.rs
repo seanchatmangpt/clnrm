@@ -3,8 +3,8 @@
 //! Revolutionary AI-powered test generation that creates comprehensive
 //! test cases, edge cases, and failure scenarios automatically.
 
-use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
-use crate::error::{CleanroomError, Result};
+use clnrm_core::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
+use clnrm_core::error::{CleanroomError, Result};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::future::Future;

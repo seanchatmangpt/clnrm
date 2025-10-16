@@ -4,8 +4,8 @@
 //! proactive failure prediction, and automatic healing triggers.
 //! This fulfills Gap #6: "Intelligent monitoring with AI-powered anomaly detection"
 
-use crate::cleanroom::{CleanroomEnvironment, ServicePlugin};
-use crate::error::{CleanroomError, Result};
+use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin};
+use clnrm_core::error::{CleanroomError, Result};
 use crate::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};

@@ -19,8 +19,8 @@ pub fn list_plugins() -> Result<()> {
     println!("✅ vllm (high-performance LLM inference)");
     println!("✅ tgi (Hugging Face text generation inference)");
 
-    // List revolutionary plugins
-    println!("\n🚀 Revolutionary Plugins:");
+    // List experimental plugins
+    println!("\n🧪 Experimental Plugins (clnrm-ai crate):");
     println!("🎭 chaos_engine (controlled failure injection, network partitions)");
     println!("🤖 ai_test_generator (AI-powered test case generation)");
 
@@ -34,8 +34,8 @@ pub fn list_plugins() -> Result<()> {
     println!("    ◦ Ollama (local development)");
     println!("    ◦ vLLM (production inference)");
     println!("    ◦ TGI (Hugging Face optimized)");
-    println!("  • Chaos engineering & resilience testing");
-    println!("  • AI-powered test generation");
+    println!("  • Chaos engineering (experimental - clnrm-ai crate)");
+    println!("  • AI-powered test generation (experimental - clnrm-ai crate)");
     println!("  • Custom service plugins");
 
     println!("\n💡 Usage:");

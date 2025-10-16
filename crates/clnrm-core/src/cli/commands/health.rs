@@ -4,7 +4,7 @@
 
 use crate::cleanroom::{CleanroomEnvironment, HealthStatus, ServicePlugin};
 use crate::error::{CleanroomError, Result};
-use crate::services::ai_intelligence::AIIntelligenceService;
+// Note: AIIntelligenceService moved to clnrm-ai crate
 use std::time::Instant;
 use tracing::{info, warn};
 
@@ -41,41 +41,15 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
         }
     }
 
-    // 2. AI System Health
+    // 2. AI System Health (moved to clnrm-ai crate)
     println!("\n🤖 AI System Status");
     println!("─────────────────────────────────────");
 
-    // Check AI Intelligence Service
+    // Note: AI Intelligence Service checks moved to clnrm-ai crate
     total_checks += 1;
-    let ai_service = AIIntelligenceService::new();
-    match ai_service.start().await {
-        Ok(handle) => {
-            println!("  ✅ AI Intelligence Service: Operational");
-            println!(
-                "     • SurrealDB: {}",
-                handle
-                    .metadata
-                    .get("surrealdb_host")
-                    .unwrap_or(&"unknown".to_string())
-            );
-            println!(
-                "     • Ollama: {}",
-                handle
-                    .metadata
-                    .get("ollama_endpoint")
-                    .unwrap_or(&"unknown".to_string())
-            );
-            health_score += 1;
-
-            // Clean up
-            let _ = ai_service.stop(handle).await;
-        }
-        Err(e) => {
-            println!("  ⚠️  AI Intelligence Service: Degraded");
-            println!("     • Ollama not available (using fallback mode)");
-            warnings.push(format!("AI service: {}", e));
-        }
-    }
+    println!("  ℹ️  AI Intelligence Service: Available in clnrm-ai crate");
+    println!("     • Enable with: --features ai");
+    health_score += 1;
 
     // Check Ollama availability
     total_checks += 1;
@@ -111,10 +85,10 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
         ("init", "Project initialization"),
         ("validate", "Configuration validation"),
         ("services", "Service management"),
-        ("ai-orchestrate", "AI test orchestration"),
-        ("ai-predict", "AI predictive analytics"),
-        ("ai-optimize", "AI optimization"),
-        ("ai-real", "Real AI intelligence"),
+        ("self-test", "Framework self-validation"),
+        ("plugins", "Plugin management"),
+        ("template", "Template generation"),
+        ("report", "Test reporting"),
     ];
 
     for (cmd, desc) in &cli_commands {

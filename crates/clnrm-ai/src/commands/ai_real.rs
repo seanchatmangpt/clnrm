@@ -3,8 +3,8 @@
 //! Uses actual SurrealDB and Ollama integration for genuine AI-powered analysis
 //! and predictions based on real test execution data.
 
-use crate::cleanroom::{CleanroomEnvironment, ServicePlugin};
-use crate::error::{CleanroomError, Result};
+use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin};
+use clnrm_core::error::{CleanroomError, Result};
 use crate::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
 use tracing::info;
 

@@ -5,9 +5,9 @@
 //!
 //! This command uses REAL Ollama AI integration for genuine predictive analysis.
 
-use crate::cleanroom::ServicePlugin;
-use crate::cli::types::PredictionFormat;
-use crate::error::{CleanroomError, Result};
+use clnrm_core::cleanroom::ServicePlugin;
+use clnrm_core::cli::types::PredictionFormat;
+use clnrm_core::error::{CleanroomError, Result};
 use crate::services::ai_intelligence::AIIntelligenceService;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};

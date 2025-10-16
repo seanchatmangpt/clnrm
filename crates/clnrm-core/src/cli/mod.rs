@@ -91,21 +91,16 @@ pub async fn run_cli() -> Result<()> {
                 Ok(())
             }
             ServiceCommands::AiManage {
-                auto_scale,
-                predict_load,
-                optimize_resources,
-                horizon_minutes,
-                service,
+                auto_scale: _,
+                predict_load: _,
+                optimize_resources: _,
+                horizon_minutes: _,
+                service: _,
             } => {
-                ai_manage(
-                    auto_scale,
-                    predict_load,
-                    optimize_resources,
-                    horizon_minutes,
-                    service,
-                )
-                .await?;
-                Ok(())
+                Err(crate::error::CleanroomError::validation_error(
+                    "AI service management is an experimental feature in the clnrm-ai crate.\n\
+                     To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
+                ))
             }
         },
 
@@ -130,87 +125,63 @@ pub async fn run_cli() -> Result<()> {
         }
 
         Commands::AiOrchestrate {
-            paths,
-            predict_failures,
-            auto_optimize,
-            confidence_threshold,
-            max_workers,
+            paths: _,
+            predict_failures: _,
+            auto_optimize: _,
+            confidence_threshold: _,
+            max_workers: _,
         } => {
-            ai_orchestrate_tests(
-                paths,
-                predict_failures,
-                auto_optimize,
-                confidence_threshold,
-                max_workers,
-            )
-            .await
+            Err(crate::error::CleanroomError::validation_error(
+                "AI orchestration is an experimental feature in the clnrm-ai crate.\n\
+                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
+            ))
         }
 
         Commands::AiPredict {
-            analyze_history,
-            predict_failures,
-            recommendations,
-            format,
-        } => ai_predict_analytics(analyze_history, predict_failures, recommendations, format).await,
-
-        Commands::AiOptimize {
-            execution_order,
-            resource_allocation,
-            parallel_execution,
-            auto_apply,
+            analyze_history: _,
+            predict_failures: _,
+            recommendations: _,
+            format: _,
         } => {
-            ai_optimize_tests(
-                execution_order,
-                resource_allocation,
-                parallel_execution,
-                auto_apply,
-            )
-            .await
+            Err(crate::error::CleanroomError::validation_error(
+                "AI predictive analytics is an experimental feature in the clnrm-ai crate.\n\
+                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
+            ))
         }
 
-        Commands::AiReal { analyze } => {
-            if analyze {
-                ai_real_analysis().await
-            } else {
-                println!("🤖 Real AI Intelligence Command");
-                println!("Use --analyze to run real AI analysis with SurrealDB and Ollama");
-                Ok(())
-            }
+        Commands::AiOptimize {
+            execution_order: _,
+            resource_allocation: _,
+            parallel_execution: _,
+            auto_apply: _,
+        } => {
+            Err(crate::error::CleanroomError::validation_error(
+                "AI test optimization is an experimental feature in the clnrm-ai crate.\n\
+                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
+            ))
+        }
+
+        Commands::AiReal { analyze: _ } => {
+            Err(crate::error::CleanroomError::validation_error(
+                "AI real-time analysis is an experimental feature in the clnrm-ai crate.\n\
+                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
+            ))
         }
 
         Commands::Health { verbose } => system_health_check(verbose).await,
 
         Commands::AiMonitor {
-            interval,
-            anomaly_threshold,
-            ai_alerts,
-            anomaly_detection,
-            proactive_healing,
-            webhook_url,
+            interval: _,
+            anomaly_threshold: _,
+            ai_alerts: _,
+            anomaly_detection: _,
+            proactive_healing: _,
+            webhook_url: _,
         } => {
-            if !anomaly_detection && !ai_alerts && !proactive_healing {
-                println!("🤖 AI-Powered Autonomous Monitoring System");
-                println!("\nUsage:");
-                println!("  --anomaly-detection     Enable AI-powered anomaly detection");
-                println!("  --ai-alerts            Enable intelligent alerting");
-                println!("  --proactive-healing    Enable automatic self-healing");
-                println!("  --interval <seconds>   Monitoring interval (default: 30)");
-                println!("  --anomaly-threshold <0.0-1.0>  Detection sensitivity (default: 0.7)");
-                println!("  --webhook-url <url>    Webhook for notifications");
-                println!("\nExample:");
-                println!("  clnrm ai-monitor --anomaly-detection --ai-alerts --proactive-healing");
-                return Ok(());
-            }
-
-            let monitor_interval = std::time::Duration::from_secs(interval);
-            ai_monitor(
-                monitor_interval,
-                anomaly_threshold,
-                ai_alerts,
-                proactive_healing,
-                webhook_url,
-            )
-            .await
+            Err(crate::error::CleanroomError::validation_error(
+                "AI monitoring is an experimental feature in the clnrm-ai crate.\n\
+                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
+            ))
         }
 
         Commands::Marketplace { command } => {
