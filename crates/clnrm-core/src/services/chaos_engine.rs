@@ -82,6 +82,7 @@ impl Default for ChaosConfig {
 }
 
 /// Chaos engineering service plugin
+#[derive(Debug)]
 pub struct ChaosEnginePlugin {
     name: String,
     config: ChaosConfig,

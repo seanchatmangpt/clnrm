@@ -13,6 +13,7 @@ use testcontainers::{GenericImage, ImageExt};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct GenericContainerPlugin {
     name: String,
     image: String,
@@ -117,7 +118,7 @@ impl ServicePlugin for GenericContainerPlugin {
 
                 // Add volume mounts
                 for mount in &self.volumes {
-                    use testcontainers::core::{Mount, AccessMode};
+                    use testcontainers::core::{AccessMode, Mount};
 
                     let access_mode = if mount.is_read_only() {
                         AccessMode::ReadOnly

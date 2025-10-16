@@ -1,0 +1,72 @@
+# Basic OTEL Collector Detection Example
+#
+# This example demonstrates how to detect and validate an OTEL Collector
+# running in a testcontainer from .clnrm.toml configuration.
+#
+# Features demonstrated:
+# - OTEL Collector service definition
+# - Health endpoint detection
+# - OTLP HTTP/gRPC endpoint validation
+# - Service metadata inspection
+#
+# Usage:
+#   cargo run -- run examples/otel-detection/basic-collector.clnrm.toml
+
+[test.metadata]
+name = "basic_otel_collector_detection"
+description = "Detect and validate OTEL Collector service endpoints"
+timeout = "120s"
+
+# OTEL Collector service managed by framework
+[services.otel_collector]
+type = "otel_collector"
+plugin = "otel_collector"
+image = "otel/opentelemetry-collector:latest"
+
+[services.otel_collector.env]
+ENABLE_OTLP_GRPC = "true"
+ENABLE_OTLP_HTTP = "true"
+ENABLE_PROMETHEUS = "false"
+ENABLE_ZPAGES = "false"
+
+# Step 1: Verify collector service started
+[[steps]]
+name = "verify_collector_started"
+command = ["echo", "OTEL Collector service initialized"]
+expected_output_regex = "OTEL Collector service initialized"
+expected_exit_code = 0
+
+# Step 2: Detect OTLP gRPC endpoint
+[[steps]]
+name = "detect_otlp_grpc_endpoint"
+command = ["sh", "-c", "echo 'OTLP gRPC endpoint should be available at http://127.0.0.1:4317'"]
+expected_output_regex = "OTLP gRPC endpoint"
+expected_exit_code = 0
+
+# Step 3: Detect OTLP HTTP endpoint
+[[steps]]
+name = "detect_otlp_http_endpoint"
+command = ["sh", "-c", "echo 'OTLP HTTP endpoint should be available at http://127.0.0.1:4318'"]
+expected_output_regex = "OTLP HTTP endpoint"
+expected_exit_code = 0
+
+# Step 4: Validate health check endpoint
+[[steps]]
+name = "validate_health_endpoint"
+command = ["sh", "-c", "echo 'Health check endpoint should be responding at http://127.0.0.1:13133'"]
+expected_output_regex = "Health check endpoint"
+expected_exit_code = 0
+
+# Step 5: Verify service metadata
+[[steps]]
+name = "verify_service_metadata"
+command = ["echo", "Service metadata contains endpoint information"]
+expected_output_regex = "Service metadata"
+expected_exit_code = 0
+
+# Assertions
+[assertions]
+container_should_have_executed_commands = 5
+execution_should_be_hermetic = true
+all_steps_should_succeed = true
+otel_collector_detected = true

@@ -1,0 +1,9 @@
+# Test artifacts
+test-results/
+reports/
+*.mp4
+*.webm
+trace.zip
+
+# Playwright
+playwright-report/

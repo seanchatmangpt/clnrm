@@ -3,8 +3,8 @@
 //! Provides testcontainers-rs integration for hermetic, isolated execution
 //! with automatic container lifecycle management.
 
-use crate::backend::{Backend, Cmd, RunResult};
 use crate::backend::volume::{VolumeMount, VolumeValidator};
+use crate::backend::{Backend, Cmd, RunResult};
 use crate::error::{BackendError, Result};
 use crate::policy::Policy;
 use std::sync::Arc;
@@ -235,7 +235,7 @@ impl TestcontainerBackend {
 
         // Add volume mounts from backend storage
         for mount in &self.volume_mounts {
-            use testcontainers::core::{Mount, AccessMode};
+            use testcontainers::core::{AccessMode, Mount};
 
             let access_mode = if mount.is_read_only() {
                 AccessMode::ReadOnly
@@ -426,12 +426,18 @@ mod volume_tests {
                 CleanroomError::internal_error("Invalid host path - contains non-UTF8 characters")
             })?,
             "/container/path",
-            false
+            false,
         )?;
 
         // Assert
         assert_eq!(backend_with_volume.volume_mounts.len(), 1);
-        assert_eq!(backend_with_volume.volume_mounts[0].container_path().to_str().unwrap_or("invalid"), "/container/path");
+        assert_eq!(
+            backend_with_volume.volume_mounts[0]
+                .container_path()
+                .to_str()
+                .unwrap_or("invalid"),
+            "/container/path"
+        );
 
         std::fs::remove_dir(&host_path)?;
         Ok(())
@@ -453,9 +459,27 @@ mod volume_tests {
 
         // Act
         let backend_with_volumes = backend
-            .with_volume(data_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid data path"))?, "/data", false)?
-            .with_volume(config_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid config path"))?, "/config", false)?
-            .with_volume(output_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid output path"))?, "/output", false)?;
+            .with_volume(
+                data_path.to_str().ok_or_else(|| {
+                    crate::error::CleanroomError::internal_error("Invalid data path")
+                })?,
+                "/data",
+                false,
+            )?
+            .with_volume(
+                config_path.to_str().ok_or_else(|| {
+                    crate::error::CleanroomError::internal_error("Invalid config path")
+                })?,
+                "/config",
+                false,
+            )?
+            .with_volume(
+                output_path.to_str().ok_or_else(|| {
+                    crate::error::CleanroomError::internal_error("Invalid output path")
+                })?,
+                "/output",
+                false,
+            )?;
 
         // Assert
         assert_eq!(backend_with_volumes.volume_mounts.len(), 3);
@@ -479,11 +503,20 @@ mod volume_tests {
             .with_env("TEST_VAR", "test_value");
 
         // Act
-        let backend_with_volume = backend.with_volume(test_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid test path"))?, "/test", false)?;
+        let backend_with_volume = backend.with_volume(
+            test_path
+                .to_str()
+                .ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid test path"))?,
+            "/test",
+            false,
+        )?;
 
         // Assert
         assert_eq!(backend_with_volume.timeout, timeout);
-        assert_eq!(backend_with_volume.env_vars.get("TEST_VAR"), Some(&"test_value".to_string()));
+        assert_eq!(
+            backend_with_volume.env_vars.get("TEST_VAR"),
+            Some(&"test_value".to_string())
+        );
         assert_eq!(backend_with_volume.volume_mounts.len(), 1);
 
         std::fs::remove_dir(&test_path)?;
@@ -504,10 +537,18 @@ mod volume_tests {
         let backend = TestcontainerBackend::new("alpine:latest")?;
 
         // Act
-        let backend_with_volume = backend.with_volume(abs_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid absolute path"))?, "/container/path", false)?;
+        let backend_with_volume = backend.with_volume(
+            abs_path.to_str().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Invalid absolute path")
+            })?,
+            "/container/path",
+            false,
+        )?;
 
         // Assert
-        assert!(backend_with_volume.volume_mounts[0].host_path().is_absolute());
+        assert!(backend_with_volume.volume_mounts[0]
+            .host_path()
+            .is_absolute());
 
         std::fs::remove_dir(&abs_path)?;
         Ok(())
@@ -520,7 +561,13 @@ mod volume_tests {
         let backend = TestcontainerBackend::new("alpine:latest")?;
 
         // Act - Container paths must be absolute now
-        let result = backend.with_volume(temp_dir.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid temp dir path"))?, "relative/container/path", false);
+        let result = backend.with_volume(
+            temp_dir.to_str().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Invalid temp dir path")
+            })?,
+            "relative/container/path",
+            false,
+        );
 
         // Assert - Should fail validation
         assert!(result.is_err());
@@ -538,9 +585,11 @@ mod volume_tests {
 
         // Act - Paths with dashes, underscores
         let backend_with_volume = backend.with_volume(
-            special_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid special path"))?,
+            special_path.to_str().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Invalid special path")
+            })?,
             "/container/test-data/v1.0",
-            false
+            false,
         )?;
 
         // Assert
@@ -578,8 +627,13 @@ mod volume_tests {
             .with_policy(Policy::default())
             .with_timeout(Duration::from_secs(60))
             .with_env("ENV_VAR", "value")
-            .with_volume(data_path.to_str()
-                .ok_or_else(|| CleanroomError::internal_error("Invalid path for volume mount"))?, "/data", false)?
+            .with_volume(
+                data_path.to_str().ok_or_else(|| {
+                    CleanroomError::internal_error("Invalid path for volume mount")
+                })?,
+                "/data",
+                false,
+            )?
             .with_memory_limit(512)
             .with_cpu_limit(1.0);
 
@@ -605,13 +659,28 @@ mod volume_tests {
         let backend1 = TestcontainerBackend::new("alpine:latest")?;
 
         // Act
-        let backend2 = backend1.clone().with_volume(test1_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid test1 path"))?, "/test1", false)?;
-        let backend3 = backend1.clone().with_volume(test2_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid test2 path"))?, "/test2", false)?;
+        let backend2 = backend1.clone().with_volume(
+            test1_path.to_str().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Invalid test1 path")
+            })?,
+            "/test1",
+            false,
+        )?;
+        let backend3 = backend1.clone().with_volume(
+            test2_path.to_str().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Invalid test2 path")
+            })?,
+            "/test2",
+            false,
+        )?;
 
         // Assert - Each chain creates independent backend
         assert_eq!(backend2.volume_mounts.len(), 1);
         assert_eq!(backend3.volume_mounts.len(), 1);
-        assert_ne!(backend2.volume_mounts[0].container_path(), backend3.volume_mounts[0].container_path());
+        assert_ne!(
+            backend2.volume_mounts[0].container_path(),
+            backend3.volume_mounts[0].container_path()
+        );
 
         std::fs::remove_dir(&test1_path)?;
         std::fs::remove_dir(&test2_path)?;
@@ -633,8 +702,20 @@ mod volume_tests {
 
         // Act - Same mount added twice
         let backend_with_volumes = backend
-            .with_volume(data_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid data path"))?, "/data", false)?
-            .with_volume(data_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid data path"))?, "/data", false)?;
+            .with_volume(
+                data_path.to_str().ok_or_else(|| {
+                    crate::error::CleanroomError::internal_error("Invalid data path")
+                })?,
+                "/data",
+                false,
+            )?
+            .with_volume(
+                data_path.to_str().ok_or_else(|| {
+                    crate::error::CleanroomError::internal_error("Invalid data path")
+                })?,
+                "/data",
+                false,
+            )?;
 
         // Assert - Both mounts are added (Docker will handle duplicates)
         assert_eq!(backend_with_volumes.volume_mounts.len(), 2);
@@ -656,8 +737,20 @@ mod volume_tests {
 
         // Act - Different host paths to same container path
         let backend_with_volumes = backend
-            .with_volume(data1_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid data1 path"))?, "/shared", false)?
-            .with_volume(data2_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid data2 path"))?, "/shared", false)?;
+            .with_volume(
+                data1_path.to_str().ok_or_else(|| {
+                    crate::error::CleanroomError::internal_error("Invalid data1 path")
+                })?,
+                "/shared",
+                false,
+            )?
+            .with_volume(
+                data2_path.to_str().ok_or_else(|| {
+                    crate::error::CleanroomError::internal_error("Invalid data2 path")
+                })?,
+                "/shared",
+                false,
+            )?;
 
         // Assert - Both mounts are added (last one wins in Docker)
         assert_eq!(backend_with_volumes.volume_mounts.len(), 2);
@@ -678,10 +771,23 @@ mod volume_tests {
         let backend = TestcontainerBackend::new("alpine:latest")?;
 
         // Act
-        let backend_with_volume = backend.with_volume(long_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid long path"))?, "/data", false)?;
+        let backend_with_volume = backend.with_volume(
+            long_path
+                .to_str()
+                .ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid long path"))?,
+            "/data",
+            false,
+        )?;
 
         // Assert
-        assert!(backend_with_volume.volume_mounts[0].host_path().to_str().unwrap_or("").len() > 100);
+        assert!(
+            backend_with_volume.volume_mounts[0]
+                .host_path()
+                .to_str()
+                .unwrap_or("")
+                .len()
+                > 100
+        );
 
         std::fs::remove_dir(&long_path)?;
         Ok(())
@@ -699,9 +805,11 @@ mod volume_tests {
 
         // Act - Unicode characters in paths
         let backend_with_volume = backend.with_volume(
-            unicode_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid unicode path"))?,
+            unicode_path.to_str().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Invalid unicode path")
+            })?,
             "/container/データ",
-            false
+            false,
         )?;
 
         // Assert
@@ -724,15 +832,28 @@ mod volume_tests {
         std::fs::create_dir_all(&backend1_path)?;
         std::fs::create_dir_all(&backend2_path)?;
 
-        let backend1 = TestcontainerBackend::new("alpine:latest")?
-            .with_volume(backend1_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid backend1 path"))?, "/data", false)?;
-        let backend2 = TestcontainerBackend::new("alpine:latest")?
-            .with_volume(backend2_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid backend2 path"))?, "/data", false)?;
+        let backend1 = TestcontainerBackend::new("alpine:latest")?.with_volume(
+            backend1_path.to_str().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Invalid backend1 path")
+            })?,
+            "/data",
+            false,
+        )?;
+        let backend2 = TestcontainerBackend::new("alpine:latest")?.with_volume(
+            backend2_path.to_str().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Invalid backend2 path")
+            })?,
+            "/data",
+            false,
+        )?;
 
         // Assert - Each backend has independent volume configuration
         assert_eq!(backend1.volume_mounts.len(), 1);
         assert_eq!(backend2.volume_mounts.len(), 1);
-        assert_ne!(backend1.volume_mounts[0].host_path(), backend2.volume_mounts[0].host_path());
+        assert_ne!(
+            backend1.volume_mounts[0].host_path(),
+            backend2.volume_mounts[0].host_path()
+        );
 
         std::fs::remove_dir(&backend1_path)?;
         std::fs::remove_dir(&backend2_path)?;
@@ -750,11 +871,19 @@ mod volume_tests {
         let host_path = temp_dir.join("storage_test");
         std::fs::create_dir_all(&host_path)?;
 
-        let backend = TestcontainerBackend::new("alpine:latest")?
-            .with_volume(host_path.to_str().ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid host path"))?, "/container/path", false)?;
+        let backend = TestcontainerBackend::new("alpine:latest")?.with_volume(
+            host_path
+                .to_str()
+                .ok_or_else(|| crate::error::CleanroomError::internal_error("Invalid host path"))?,
+            "/container/path",
+            false,
+        )?;
 
         // Assert - Verify internal storage format (VolumeMount)
-        assert_eq!(backend.volume_mounts[0].container_path(), std::path::Path::new("/container/path"));
+        assert_eq!(
+            backend.volume_mounts[0].container_path(),
+            std::path::Path::new("/container/path")
+        );
 
         std::fs::remove_dir(&host_path)?;
         Ok(())

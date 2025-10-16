@@ -195,9 +195,11 @@ mod tests {
         assert!(temp_dir.path().join("cleanroom.toml").exists());
 
         // Verify cleanroom.toml content
-        let config_content = fs::read_to_string(temp_dir.path().join("cleanroom.toml")).map_err(|e| {
-            CleanroomError::internal_error("Failed to read config file").with_source(e.to_string())
-        })?;
+        let config_content =
+            fs::read_to_string(temp_dir.path().join("cleanroom.toml")).map_err(|e| {
+                CleanroomError::internal_error("Failed to read config file")
+                    .with_source(e.to_string())
+            })?;
         assert!(config_content.contains("[project]"));
         assert!(config_content.contains("name = \"my-project\""));
 

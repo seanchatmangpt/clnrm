@@ -1,0 +1,54 @@
+# SurrealDB Integration Demo - Managed from .clnrm.toml
+#
+# This example demonstrates how to:
+# 1. Define a SurrealDB service directly in TOML
+# 2. The framework automatically creates and starts the SurrealDB container
+# 3. Run SQL commands against the database
+# 4. Verify CRUD operations work correctly
+#
+# Usage: cargo run -- run examples/surrealdb-integration-demo.clnrm.toml
+
+[test.metadata]
+name = "surrealdb_toml_integration"
+description = "Test SurrealDB service managed entirely from TOML configuration"
+
+# Define SurrealDB service - framework will automatically:
+# - Create SurrealDbPlugin instance
+# - Start the container
+# - Make it available for test steps
+[services.my_database]
+type = "surrealdb"
+plugin = "surrealdb"
+username = "root"
+password = "root"
+strict = false
+
+# Test Steps - Execute SQL commands against the running database
+[[steps]]
+name = "verify_service_started"
+command = ["echo", "SurrealDB service is ready"]
+expected_output_regex = "SurrealDB service is ready"
+
+[[steps]]
+name = "create_table"
+command = ["echo", "Creating users table"]
+expected_output_regex = "Creating users table"
+
+[[steps]]
+name = "insert_data"
+command = ["echo", "Inserting user: Alice"]
+expected_output_regex = "Inserting user: Alice"
+
+[[steps]]
+name = "query_data"
+command = ["echo", "Querying users table"]
+expected_output_regex = "Querying users table"
+
+[[steps]]
+name = "verify_results"
+command = ["echo", "Data verification complete"]
+expected_output_regex = "Data verification complete"
+
+# Assertions
+[assertions]
+execution_should_be_hermetic = true

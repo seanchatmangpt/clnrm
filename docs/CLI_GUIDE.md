@@ -15,7 +15,7 @@ brew install clnrm
 
 # Verify installation
 clnrm --version
-# Output: clnrm 0.3.0
+# Output: clnrm 0.4.0
 ```
 
 ### Direct Installation
@@ -26,7 +26,7 @@ curl -fsSL https://install.clnrm.dev | sh
 
 # Verify installation
 clnrm --version
-# Output: clnrm 0.3.0
+# Output: clnrm 0.4.0
 ```
 
 ### Build from Source

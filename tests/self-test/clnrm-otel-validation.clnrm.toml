@@ -1,0 +1,216 @@
+[test.metadata]
+name = "clnrm_self_test_via_otel"
+description = "Validate clnrm functionality by examining OpenTelemetry spans from a nested test execution"
+timeout = "180s"
+tags = ["self-test", "observability", "otel", "validation"]
+
+# OTEL Collector service with file exporter for span validation
+[services.otel_collector]
+type = "generic_container"
+image = "otel/opentelemetry-collector-contrib:0.91.0"
+ports = ["4318:4318", "4317:4317", "55679:55679"]
+environment = {
+    "OTEL_LOG_LEVEL" = "debug"
+}
+volumes = [
+    "./tests/self-test/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro",
+    "./tests/self-test/otel-output:/tmp/otel-output:rw"
+]
+command = ["--config=/etc/otel-collector-config.yaml"]
+health_check = {
+    test = ["CMD", "wget", "--spider", "-q", "http://localhost:55679/debug/tracez"],
+    interval = "5s",
+    timeout = "3s",
+    retries = 5
+}
+
+# clnrm container that will run a simple test while exporting spans
+[services.clnrm_container]
+type = "generic_container"
+image = "rust:1.75-alpine"
+depends_on = ["otel_collector"]
+environment = {
+    "OTEL_EXPORTER_OTLP_ENDPOINT" = "http://otel_collector:4318",
+    "OTEL_SERVICE_NAME" = "clnrm-nested-test",
+    "OTEL_TRACES_EXPORTER" = "otlp",
+    "OTEL_METRICS_EXPORTER" = "otlp",
+    "OTEL_LOGS_EXPORTER" = "otlp",
+    "RUST_LOG" = "info,clnrm=debug"
+}
+volumes = [
+    ".:/workspace:ro",
+    "./tests/self-test/nested-test:/nested-test:ro"
+]
+working_dir = "/workspace"
+command = ["tail", "-f", "/dev/null"]
+
+# Step 1: Wait for OTEL collector to be healthy
+[[steps]]
+name = "wait_for_otel_collector"
+description = "Ensure OTEL collector is ready to receive spans"
+service = "otel_collector"
+command = ["wget", "--spider", "-q", "http://localhost:55679/debug/tracez"]
+timeout = "30s"
+retry = { max_attempts = 10, delay = "3s" }
+expected_exit_code = 0
+
+# Step 2: Install dependencies in clnrm container
+[[steps]]
+name = "install_dependencies"
+description = "Install required packages in the clnrm container"
+service = "clnrm_container"
+command = ["sh", "-c", "apk add --no-cache gcc musl-dev openssl-dev docker-cli"]
+timeout = "60s"
+expected_exit_code = 0
+
+# Step 3: Build clnrm with OTEL features
+[[steps]]
+name = "build_clnrm_with_otel"
+description = "Build clnrm binary with OpenTelemetry support"
+service = "clnrm_container"
+command = ["cargo", "build", "--release", "--features", "otel"]
+timeout = "120s"
+expected_exit_code = 0
+expected_output_regex = "Finished.*release"
+
+# Step 4: Create a simple nested test configuration
+[[steps]]
+name = "create_nested_test"
+description = "Create a simple test that clnrm will execute"
+service = "clnrm_container"
+command = ["sh", "-c", "cat > /tmp/nested.clnrm.toml << 'EOF'\n[test.metadata]\nname = \"nested_test\"\ndescription = \"Simple test for OTEL validation\"\n\n[services.alpine]\ntype = \"generic_container\"\nimage = \"alpine:latest\"\n\n[[steps]]\nname = \"echo_hello\"\nservice = \"alpine\"\ncommand = [\"echo\", \"Hello from nested test\"]\nexpected_output_regex = \"Hello from nested\"\n\n[[steps]]\nname = \"check_hostname\"\nservice = \"alpine\"\ncommand = [\"hostname\"]\nexpected_exit_code = 0\n\n[[steps]]\nname = \"list_files\"\nservice = \"alpine\"\ncommand = [\"ls\", \"-la\", \"/\"]\nexpected_exit_code = 0\nEOF"]
+timeout = "5s"
+expected_exit_code = 0
+
+# Step 5: Execute clnrm with the nested test
+[[steps]]
+name = "execute_clnrm_nested_test"
+description = "Run clnrm with OTEL enabled to generate spans"
+service = "clnrm_container"
+command = ["sh", "-c", "cd /workspace && ./target/release/clnrm run /tmp/nested.clnrm.toml --format json"]
+timeout = "60s"
+expected_exit_code = 0
+expected_output_regex = "\"status\".*\"success\""
+
+# Step 6: Wait for spans to be flushed to collector
+[[steps]]
+name = "wait_for_span_flush"
+description = "Allow time for spans to be exported and written"
+service = "otel_collector"
+command = ["sleep", "5"]
+timeout = "10s"
+expected_exit_code = 0
+
+# Step 7: Verify spans file exists
+[[steps]]
+name = "verify_spans_file_exists"
+description = "Check that OTEL collector wrote spans to file"
+service = "otel_collector"
+command = ["sh", "-c", "ls -lh /tmp/otel-output/traces.json"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "traces\\.json"
+
+# Step 8: Validate test.execute span exists
+[[steps]]
+name = "validate_test_execute_span"
+description = "Verify the main test execution span was created"
+service = "otel_collector"
+command = ["sh", "-c", "cat /tmp/otel-output/traces.json | grep -o 'test.execute' | head -1"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "test\\.execute"
+
+# Step 9: Validate service.start span exists
+[[steps]]
+name = "validate_service_start_span"
+description = "Verify service startup spans were created"
+service = "otel_collector"
+command = ["sh", "-c", "cat /tmp/otel-output/traces.json | grep -o 'service.start' | head -1"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "service\\.start"
+
+# Step 10: Validate step.execute span exists
+[[steps]]
+name = "validate_step_execute_span"
+description = "Verify step execution spans were created"
+service = "otel_collector"
+command = ["sh", "-c", "cat /tmp/otel-output/traces.json | grep -o 'step.execute' | head -1"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "step\\.execute"
+
+# Step 11: Validate service name attribute
+[[steps]]
+name = "validate_service_name_attribute"
+description = "Verify spans contain correct service name"
+service = "otel_collector"
+command = ["sh", "-c", "cat /tmp/otel-output/traces.json | grep -o 'clnrm-nested-test' | head -1"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "clnrm-nested-test"
+
+# Step 12: Validate test name attribute
+[[steps]]
+name = "validate_test_name_attribute"
+description = "Verify spans contain test name attribute"
+service = "otel_collector"
+command = ["sh", "-c", "cat /tmp/otel-output/traces.json | grep -o 'nested_test' | head -1"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "nested_test"
+
+# Step 13: Count total spans generated
+[[steps]]
+name = "count_total_spans"
+description = "Verify sufficient spans were generated (at least 5)"
+service = "otel_collector"
+command = ["sh", "-c", "cat /tmp/otel-output/traces.json | grep -c '\"name\"' || true"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "[5-9]|[1-9][0-9]+"
+
+# Step 14: Validate span status attributes
+[[steps]]
+name = "validate_span_status"
+description = "Verify spans have status attributes"
+service = "otel_collector"
+command = ["sh", "-c", "cat /tmp/otel-output/traces.json | grep -o '\"status\"' | head -1"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "status"
+
+# Step 15: Validate hermetic execution
+[[steps]]
+name = "validate_hermetic_execution"
+description = "Verify nested test executed in isolation"
+service = "clnrm_container"
+command = ["sh", "-c", "cat /tmp/nested.clnrm.toml | grep -c 'alpine'"]
+timeout = "5s"
+expected_exit_code = 0
+expected_output_regex = "1"
+
+# Assertions to validate the entire test flow
+[assertions]
+container_should_have_executed_commands = 15
+execution_should_be_hermetic = true
+services_should_start_successfully = true
+spans_should_be_captured = true
+
+# Additional metadata for CI/CD integration
+[test.ci]
+required_for_merge = true
+timeout_multiplier = 1.5
+parallel_safe = false  # Uses shared OTEL collector output
+
+[test.requirements]
+min_docker_version = "20.10.0"
+min_memory_mb = 2048
+requires_network = true
+
+# Cleanup configuration
+[test.cleanup]
+always_cleanup = true
+preserve_on_failure = true
+export_artifacts = ["./tests/self-test/otel-output/traces.json"]

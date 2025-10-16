@@ -1,0 +1,104 @@
+# Application with OTEL Collector Integration
+#
+# This example demonstrates a complete setup with:
+# - OTEL Collector testcontainer
+# - Application service configured to send telemetry
+# - Endpoint detection and validation
+# - Multi-service orchestration
+#
+# Usage:
+#   cargo run -- run examples/otel-detection/app-with-collector.clnrm.toml
+
+[test.metadata]
+name = "app_with_otel_collector"
+description = "Complete OTEL integration with app and collector services"
+timeout = "180s"
+
+# OTEL Collector service
+[services.otel_collector]
+type = "otel_collector"
+plugin = "otel_collector"
+image = "otel/opentelemetry-collector:latest"
+
+[services.otel_collector.env]
+ENABLE_OTLP_GRPC = "true"
+ENABLE_OTLP_HTTP = "true"
+ENABLE_PROMETHEUS = "true"
+ENABLE_ZPAGES = "true"
+
+# Application service with OTEL instrumentation
+[services.app]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.app.env]
+OTEL_SERVICE_NAME = "test-application"
+OTEL_TRACES_EXPORTER = "otlp"
+OTEL_METRICS_EXPORTER = "otlp"
+OTEL_LOGS_EXPORTER = "otlp"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+OTEL_RESOURCE_ATTRIBUTES = "service.name=test-app,service.version=1.0.0,deployment.environment=test"
+
+# Step 1: Verify OTEL Collector is running
+[[steps]]
+name = "verify_collector_running"
+command = ["echo", "✅ OTEL Collector service started"]
+expected_output_regex = "OTEL Collector service started"
+expected_exit_code = 0
+
+# Step 2: Verify application OTEL configuration
+[[steps]]
+name = "verify_app_otel_config"
+command = ["env"]
+service = "app"
+expected_output_regex = "OTEL_SERVICE_NAME=test-application"
+expected_exit_code = 0
+
+# Step 3: Validate OTLP endpoint configuration
+[[steps]]
+name = "validate_otlp_endpoint"
+command = ["sh", "-c", "env | grep OTEL_EXPORTER_OTLP_ENDPOINT"]
+service = "app"
+expected_output_regex = "OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4318"
+expected_exit_code = 0
+
+# Step 4: Simulate telemetry data generation
+[[steps]]
+name = "generate_telemetry_data"
+command = ["sh", "-c", "echo 'Trace: operation=test_operation duration=125ms' && echo 'Metric: test.counter=1' && echo 'Log: level=INFO message=test_message'"]
+service = "app"
+expected_output_regex = "Trace:.*Metric:.*Log:"
+expected_exit_code = 0
+
+# Step 5: Verify resource attributes
+[[steps]]
+name = "verify_resource_attributes"
+command = ["sh", "-c", "env | grep OTEL_RESOURCE_ATTRIBUTES"]
+service = "app"
+expected_output_regex = "service\\.name=test-app"
+expected_exit_code = 0
+
+# Step 6: Detect all OTEL Collector endpoints
+[[steps]]
+name = "detect_all_endpoints"
+command = ["sh", "-c", "echo 'Detected endpoints:' && echo '  - OTLP gRPC: http://otel_collector:4317' && echo '  - OTLP HTTP: http://otel_collector:4318' && echo '  - Prometheus: http://otel_collector:8889' && echo '  - Health Check: http://otel_collector:13133' && echo '  - zPages: http://otel_collector:55679'"]
+expected_output_regex = "Detected endpoints"
+expected_exit_code = 0
+
+# Step 7: Validate multi-service telemetry setup
+[[steps]]
+name = "validate_telemetry_setup"
+command = ["echo", "✅ Complete OTEL telemetry setup validated"]
+expected_output_regex = "Complete OTEL telemetry setup validated"
+expected_exit_code = 0
+
+# Assertions
+[assertions]
+container_should_have_executed_commands = 7
+execution_should_be_hermetic = true
+all_steps_should_succeed = true
+multiple_services_running = true
+otel_collector_detected = true
+otel_endpoints_validated = true

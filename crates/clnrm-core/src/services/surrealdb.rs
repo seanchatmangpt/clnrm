@@ -17,6 +17,7 @@ use testcontainers_modules::surrealdb::{SurrealDb, SURREALDB_PORT};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub struct SurrealDbPlugin {
     name: String,
     container_id: Arc<RwLock<Option<String>>>,
@@ -44,6 +45,11 @@ impl SurrealDbPlugin {
             password: password.to_string(),
             strict: false,
         }
+    }
+
+    pub fn with_name(mut self, name: &str) -> Self {
+        self.name = name.to_string();
+        self
     }
 
     pub fn with_strict(mut self, strict: bool) -> Self {

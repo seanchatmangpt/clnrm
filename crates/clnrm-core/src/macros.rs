@@ -212,6 +212,7 @@ impl TestContext {
 }
 
 /// Database service plugin implementation
+#[derive(Debug)]
 pub struct DatabaseServicePlugin {
     name: String,
     image: String,
@@ -258,6 +259,7 @@ impl ServicePlugin for DatabaseServicePlugin {
 }
 
 /// Cache service plugin implementation
+#[derive(Debug)]
 pub struct CacheServicePlugin {
     name: String,
     image: String,
@@ -300,6 +302,7 @@ impl ServicePlugin for CacheServicePlugin {
 }
 
 /// Message queue service plugin implementation
+#[derive(Debug)]
 pub struct MessageQueueServicePlugin {
     name: String,
     image: String,
@@ -342,6 +345,7 @@ impl ServicePlugin for MessageQueueServicePlugin {
 }
 
 /// Web server service plugin implementation
+#[derive(Debug)]
 pub struct WebServerServicePlugin {
     name: String,
     image: String,

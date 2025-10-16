@@ -124,6 +124,7 @@ pub enum TestPriority {
 }
 
 /// AI test generator service plugin
+#[derive(Debug)]
 pub struct AITestGeneratorPlugin {
     name: String,
     config: AITestGeneratorConfig,
@@ -607,7 +608,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_generate_tests_for_component() -> Result<(), CleanroomError> {
+    async fn test_generate_tests_for_component() -> Result<()> {
         let plugin = AITestGeneratorPlugin::new("test");
         let tests = plugin
             .generate_tests_for_component("UserService", "User management service")

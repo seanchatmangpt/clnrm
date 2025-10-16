@@ -1,0 +1,221 @@
+# SurrealDB Data Persistence Test
+#
+# This test verifies data persistence across container restarts:
+# - Data is written to SurrealDB
+# - Container is stopped
+# - Container is restarted with same volume
+# - Data persists and is still accessible
+#
+# NOTE: This test uses volume mounting for persistence.
+# The actual persistence mechanism depends on the container backend implementation.
+
+[test.metadata]
+name = "surrealdb_data_persistence"
+description = "Verify data persists across container restarts with volumes"
+timeout_seconds = 120
+
+[services.surrealdb]
+type = "surrealdb"
+username = "root"
+password = "root"
+# Volume configuration for persistence
+# volumes = ["/tmp/surrealdb-data:/data"]
+
+# ARRANGE: Create initial database structure
+[[steps]]
+name = "setup_database"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "INFO FOR DB;"
+]
+expected_output_regex = "DEFINE"
+service = "surrealdb"
+
+# ACT: Insert persistent data
+[[steps]]
+name = "insert_persistent_data"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "CREATE transaction:tx001 SET amount = 1500.00, currency = 'USD', merchant = 'Amazon', timestamp = time::now(), status = 'completed';"
+]
+expected_output_regex = "transaction:tx001"
+service = "surrealdb"
+
+# ACT: Insert more critical data
+[[steps]]
+name = "insert_critical_records"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "CREATE transaction:tx002 SET amount = 299.99, currency = 'USD', merchant = 'Apple Store', timestamp = time::now(), status = 'completed'; CREATE transaction:tx003 SET amount = 89.50, currency = 'USD', merchant = 'Starbucks', timestamp = time::now(), status = 'pending';"
+]
+expected_output_regex = "transaction:(tx002|tx003)"
+service = "surrealdb"
+
+# ACT: Create complex record with nested data
+[[steps]]
+name = "insert_complex_record"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "CREATE user:john SET name = 'John Doe', email = 'john@example.com', profile = { age: 35, city: 'San Francisco', interests: ['technology', 'travel', 'music'] }, created_at = time::now();"
+]
+expected_output_regex = "user:john"
+service = "surrealdb"
+
+# ASSERT: Verify all data was inserted
+[[steps]]
+name = "verify_initial_data_count"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "SELECT COUNT() FROM transaction GROUP ALL;"
+]
+expected_output_regex = "count.*3"
+service = "surrealdb"
+
+# ASSERT: Verify complex record structure
+[[steps]]
+name = "verify_complex_record"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "SELECT * FROM user:john;"
+]
+expected_output_regex = "San Francisco.*technology"
+service = "surrealdb"
+
+# ASSERT: Calculate and verify transaction totals
+[[steps]]
+name = "verify_transaction_totals"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "SELECT math::sum(amount) AS total_amount FROM transaction GROUP ALL;"
+]
+expected_output_regex = "1889\\.49"
+service = "surrealdb"
+
+# ACT: Query by status to verify filtering works
+[[steps]]
+name = "query_by_status"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "SELECT * FROM transaction WHERE status = 'completed' ORDER BY amount DESC;"
+]
+expected_output_regex = "Amazon.*Apple Store"
+service = "surrealdb"
+
+# ASSERT: Verify specific transaction details
+[[steps]]
+name = "verify_specific_transaction"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "SELECT amount, merchant FROM transaction:tx001;"
+]
+expected_output_regex = "1500.*Amazon"
+service = "surrealdb"
+
+# ACT: Update a record to test persistence of modifications
+[[steps]]
+name = "update_transaction_status"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "UPDATE transaction:tx003 SET status = 'completed', processed_at = time::now();"
+]
+expected_output_regex = "completed"
+service = "surrealdb"
+
+# ASSERT: Verify update was applied
+[[steps]]
+name = "verify_status_update"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "SELECT status FROM transaction:tx003;"
+]
+expected_output_regex = "completed"
+service = "surrealdb"
+
+# FINAL ASSERT: Verify complete data set before potential restart
+[[steps]]
+name = "final_data_verification"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "persistence_test",
+    "--db", "main",
+    "--pretty",
+    "--command", "SELECT COUNT() FROM transaction WHERE status = 'completed' GROUP ALL;"
+]
+expected_output_regex = "count.*3"
+service = "surrealdb"
+
+[assertions]
+service_should_start = "surrealdb"
+execution_should_be_hermetic = true
+data_should_persist = true
+# Note: Actual container restart testing would require additional
+# framework support for container lifecycle management

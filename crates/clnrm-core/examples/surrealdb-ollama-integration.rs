@@ -33,7 +33,9 @@ async fn main() -> Result<()> {
     let surrealdb_plugin = SurrealDbPlugin::new();
     let db_handle = surrealdb_plugin.start()?;
 
-    let host = db_handle.metadata.get("host")
+    let host = db_handle
+        .metadata
+        .get("host")
         .ok_or_else(|| CleanroomError::internal_error("Missing host in SurrealDB metadata"))?;
     let port = db_handle
         .metadata

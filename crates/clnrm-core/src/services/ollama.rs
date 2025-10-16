@@ -23,6 +23,7 @@ pub struct OllamaConfig {
 }
 
 /// Ollama AI service plugin
+#[derive(Debug)]
 pub struct OllamaPlugin {
     name: String,
     config: OllamaConfig,

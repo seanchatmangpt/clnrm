@@ -3,7 +3,6 @@
 //! This module provides proptest strategies for generating valid instances
 //! of CLNRM domain types with controlled randomness and shrinking behavior.
 
-
 use crate::error::Result;
 use crate::policy::{
     ComplianceStandard, ExecutionPolicy, Policy, PolicyValidationAction, PolicyValidationRule,
@@ -428,21 +427,39 @@ mod tests {
 
         // Test policy generator
         let policy_strategy = arb_policy();
-        let policy = policy_strategy.new_tree(&mut runner)
-            .map_err(|e| crate::error::CleanroomError::internal_error(format!("Policy generation failed: {}", e)))?
+        let policy = policy_strategy
+            .new_tree(&mut runner)
+            .map_err(|e| {
+                crate::error::CleanroomError::internal_error(format!(
+                    "Policy generation failed: {}",
+                    e
+                ))
+            })?
             .current();
         assert!(policy.security.allowed_ports.len() > 0);
 
         // Test scenario generator
         let scenario_strategy = arb_scenario();
-        let _scenario = scenario_strategy.new_tree(&mut runner)
-            .map_err(|e| crate::error::CleanroomError::internal_error(format!("Scenario generation failed: {}", e)))?
+        let _scenario = scenario_strategy
+            .new_tree(&mut runner)
+            .map_err(|e| {
+                crate::error::CleanroomError::internal_error(format!(
+                    "Scenario generation failed: {}",
+                    e
+                ))
+            })?
             .current();
 
         // Test regex generator
         let regex_strategy = arb_safe_regex();
-        let pattern = regex_strategy.new_tree(&mut runner)
-            .map_err(|e| crate::error::CleanroomError::internal_error(format!("Regex generation failed: {}", e)))?
+        let pattern = regex_strategy
+            .new_tree(&mut runner)
+            .map_err(|e| {
+                crate::error::CleanroomError::internal_error(format!(
+                    "Regex generation failed: {}",
+                    e
+                ))
+            })?
             .current();
         assert!(!pattern.is_empty());
         Ok(())

@@ -21,6 +21,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// AI Intelligence service that combines SurrealDB and Ollama
+#[derive(Debug)]
 pub struct AIIntelligenceService {
     name: String,
     surrealdb_plugin: SurrealDbPlugin,

@@ -604,8 +604,9 @@ mod tests {
             history.add_metrics(metrics);
         }
 
-        let avg = history.average_metrics(5)
-            .ok_or_else(|| CleanroomError::internal_error("No metrics available for average calculation"))?;
+        let avg = history.average_metrics(5).ok_or_else(|| {
+            CleanroomError::internal_error("No metrics available for average calculation")
+        })?;
         assert!((avg.cpu_usage - 70.0).abs() < 1.0);
         Ok(())
     }
@@ -623,8 +624,8 @@ mod tests {
 
         let predicted = history.predict_load(5);
         assert!(predicted.is_some());
-        let pred = predicted
-            .ok_or_else(|| CleanroomError::internal_error("Load prediction failed"))?;
+        let pred =
+            predicted.ok_or_else(|| CleanroomError::internal_error("Load prediction failed"))?;
         assert!(pred.cpu_usage > 50.0);
         Ok(())
     }
@@ -668,8 +669,9 @@ mod tests {
         assert_eq!(pool.in_use.len(), 1);
         assert_eq!(pool.available.len(), 0);
 
-        pool.release(acquired
-            .ok_or_else(|| CleanroomError::internal_error("Failed to acquire resource from pool"))?);
+        pool.release(acquired.ok_or_else(|| {
+            CleanroomError::internal_error("Failed to acquire resource from pool")
+        })?);
         assert_eq!(pool.available.len(), 1);
         assert_eq!(pool.in_use.len(), 0);
         Ok(())

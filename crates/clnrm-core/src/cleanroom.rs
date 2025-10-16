@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// Plugin-based service registry (no hardcoded postgres/redis)
-pub trait ServicePlugin: Send + Sync {
+pub trait ServicePlugin: Send + Sync + std::fmt::Debug {
     /// Get service name
     fn name(&self) -> &str;
 
@@ -58,7 +58,7 @@ pub enum HealthStatus {
 }
 
 /// Plugin-based service registry
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ServiceRegistry {
     /// Registered service plugins
     plugins: HashMap<String, Box<dyn ServicePlugin>>,
@@ -311,6 +311,7 @@ impl ExecutionResult {
 
 /// Simple environment wrapper around existing infrastructure
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct CleanroomEnvironment {
     /// Session ID
     session_id: Uuid,
@@ -753,6 +754,7 @@ impl CleanroomEnvironment {
 /// Example custom service plugin implementation
 ///
 /// This demonstrates how to create custom services without hardcoded dependencies
+#[derive(Debug)]
 pub struct MockDatabasePlugin {
     name: String,
     container_id: Arc<RwLock<Option<String>>>,
@@ -781,7 +783,7 @@ impl ServicePlugin for MockDatabasePlugin {
     fn start(&self) -> Result<ServiceHandle> {
         // For testing, create a simple mock handle without actual container
         // In production, this would use proper async container startup
-        
+
         // Build metadata with mock connection details
         let mut metadata = HashMap::new();
         metadata.insert("host".to_string(), "127.0.0.1".to_string());
@@ -829,11 +831,11 @@ mod tests {
 
         // Test that we can call methods on the trait object
         assert_eq!(plugin.name(), "mock_database");
-        
+
         // Test that we can store multiple plugins in a collection
         let mut plugins: Vec<Arc<dyn ServicePlugin>> = Vec::new();
         plugins.push(plugin);
-        
+
         // Test that we can iterate over them
         for plugin in &plugins {
             assert_eq!(plugin.name(), "mock_database");

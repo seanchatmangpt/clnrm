@@ -181,10 +181,7 @@ impl VolumeValidator {
 impl Default for VolumeValidator {
     /// Create default validator with common safe directories
     fn default() -> Self {
-        let mut whitelist = vec![
-            PathBuf::from("/tmp"),
-            PathBuf::from("/var/tmp"),
-        ];
+        let mut whitelist = vec![PathBuf::from("/tmp"), PathBuf::from("/var/tmp")];
 
         // Add system temp directory (varies by OS)
         whitelist.push(std::env::temp_dir());

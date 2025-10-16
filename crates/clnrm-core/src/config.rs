@@ -112,6 +112,12 @@ pub struct ServiceConfig {
     pub volumes: Option<Vec<VolumeConfig>>,
     /// Service health check
     pub health_check: Option<HealthCheckConfig>,
+    /// SurrealDB username (optional, defaults to root)
+    pub username: Option<String>,
+    /// SurrealDB password (optional, defaults to root)
+    pub password: Option<String>,
+    /// SurrealDB strict mode (optional, defaults to false)
+    pub strict: Option<bool>,
 }
 
 /// Volume configuration

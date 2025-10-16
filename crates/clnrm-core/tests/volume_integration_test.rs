@@ -1,8 +1,8 @@
 //! Integration tests for volume mounting support
 
 use clnrm_core::backend::testcontainer::TestcontainerBackend;
-use clnrm_core::backend::{Backend, Cmd};
 use clnrm_core::backend::volume::{VolumeMount, VolumeValidator};
+use clnrm_core::backend::{Backend, Cmd};
 use clnrm_core::config::VolumeConfig;
 use clnrm_core::error::Result;
 use std::fs;
@@ -19,8 +19,11 @@ fn test_volume_mount_end_to_end() -> Result<()> {
     fs::write(&test_file, "Hello from host!")?;
 
     // Create backend with volume mount
-    let backend = TestcontainerBackend::new("alpine:latest")?
-        .with_volume(host_dir.to_str().unwrap(), "/data", false)?;
+    let backend = TestcontainerBackend::new("alpine:latest")?.with_volume(
+        host_dir.to_str().unwrap(),
+        "/data",
+        false,
+    )?;
 
     // Act - Execute command that reads from mounted volume
     let cmd = Cmd::new("cat").arg("/data/test.txt");

@@ -1,0 +1,107 @@
+# =============================================================================
+# Stage 1: Builder - Compile clnrm with release optimizations
+# =============================================================================
+FROM rust:1.75-slim-bookworm AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory for build
+WORKDIR /build
+
+# Copy workspace configuration and manifests first (leverage Docker cache)
+COPY Cargo.toml Cargo.lock ./
+COPY crates/clnrm/Cargo.toml ./crates/clnrm/
+COPY crates/clnrm-core/Cargo.toml ./crates/clnrm-core/
+COPY crates/clnrm-shared/Cargo.toml ./crates/clnrm-shared/
+
+# Create dummy source files to cache dependencies
+RUN mkdir -p crates/clnrm/src crates/clnrm-core/src crates/clnrm-shared/src && \
+    echo "fn main() {}" > crates/clnrm/src/main.rs && \
+    echo "pub fn dummy() {}" > crates/clnrm-core/src/lib.rs && \
+    echo "pub fn dummy() {}" > crates/clnrm-shared/src/lib.rs
+
+# Build dependencies only (cached layer)
+RUN cargo build --release --bin clnrm && \
+    rm -rf crates/*/src
+
+# Copy actual source code
+COPY crates/ ./crates/
+
+# Build production binary with OTEL features
+# NOTE: This invalidates cache when source changes but not dependencies
+RUN cargo build --release --bin clnrm --features otel && \
+    strip target/release/clnrm
+
+# =============================================================================
+# Stage 2: Runtime - Minimal image with clnrm binary only
+# =============================================================================
+FROM debian:bookworm-slim AS runtime
+
+# Install minimal runtime dependencies
+# - ca-certificates: For HTTPS connections to OTEL collectors
+# - libssl3: OpenSSL runtime (required by clnrm)
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user for security
+RUN groupadd -r clnrm --gid=1000 && \
+    useradd -r -g clnrm --uid=1000 --home-dir=/home/clnrm --shell=/bin/bash clnrm && \
+    mkdir -p /home/clnrm /tests && \
+    chown -R clnrm:clnrm /home/clnrm /tests
+
+# Copy compiled binary from builder
+COPY --from=builder /build/target/release/clnrm /usr/local/bin/clnrm
+
+# Ensure binary is executable
+RUN chmod +x /usr/local/bin/clnrm
+
+# Switch to non-root user
+USER clnrm
+
+# Set working directory for test files
+WORKDIR /tests
+
+# Configure OpenTelemetry environment variables
+# These can be overridden at runtime via docker run -e
+ENV OTEL_SERVICE_NAME=clnrm-self-test \
+    OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
+    RUST_LOG=info \
+    RUST_BACKTRACE=1
+
+# Health check to verify clnrm binary is functional
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/usr/local/bin/clnrm", "--version"]
+
+# Set entrypoint to clnrm CLI
+# Usage: docker run -v ./tests:/tests clnrm-self-test run /tests
+ENTRYPOINT ["/usr/local/bin/clnrm"]
+
+# Default command shows help
+CMD ["--help"]
+
+# =============================================================================
+# Build Instructions:
+# =============================================================================
+# docker build -f Dockerfile.clnrm-self-test -t clnrm-self-test:latest .
+#
+# Run Examples:
+# docker run --rm clnrm-self-test:latest --version
+# docker run --rm -v $(pwd)/tests:/tests clnrm-self-test:latest run /tests
+# docker run --rm -v $(pwd)/tests:/tests \
+#   -e OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 \
+#   clnrm-self-test:latest run --format junit /tests
+#
+# Security Notes:
+# - Runs as non-root user (uid=1000, gid=1000)
+# - No Docker socket mounted (hermetic testing)
+# - Minimal attack surface with debian-slim base
+# - Stripped binary for smaller size
+# =============================================================================

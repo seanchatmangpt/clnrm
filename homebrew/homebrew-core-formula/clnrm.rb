@@ -5,13 +5,13 @@
 class Clnrm < Formula
   desc "Hermetic integration testing platform with container isolation"
   homepage "https://github.com/seanchatmangpt/clnrm"
-  url "https://github.com/seanchatmangpt/clnrm/archive/refs/tags/v0.3.0.tar.gz"
-  sha256 "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+  url "https://github.com/seanchatmangpt/clnrm/archive/refs/tags/v0.4.0.tar.gz"
+  sha256 "0677ed1c820997188b4012471e2d5ddbcbc9b86c63e752cdda6863b8f6f53a3d"
   license "MIT"
   head "https://github.com/seanchatmangpt/clnrm.git", branch: "master"
 
   bottle do
-    root_url "https://github.com/seanchatmangpt/clnrm/releases/download/v0.3.0"
+    root_url "https://github.com/seanchatmangpt/clnrm/releases/download/v0.4.0"
     sha256 cellar: :any_skip_relocation, arm64_sonoma: "b1c2d3e4f5a6789012345678901234567890abcdef1234567890abcdef123456"
     sha256 cellar: :any_skip_relocation, ventura: "c2d3e4f5a6b7890123456789012345678901234567890abcdef1234567890abcdef"
     sha256 cellar: :any_skip_relocation, monterey: "d3e4f5a6b7c8901234567890123456789012345678901234567890abcdef123456"

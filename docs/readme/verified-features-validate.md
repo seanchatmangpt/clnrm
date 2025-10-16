@@ -11,7 +11,7 @@ Based on comprehensive code verification, this document outlines what features s
 **Verification:** `./target/release/clnrm --help` works
 **Commands that work:**
 - `clnrm --help` - Shows complete help
-- `clnrm --version` - Shows version 0.3.0
+- `clnrm --version` - Shows version 0.4.0
 - `clnrm plugins` - Lists 2 available plugins (GenericContainerPlugin, SurrealDbPlugin)
 - `clnrm validate --help` - Shows validation help
 - `clnrm run --help` - Shows run command help
@@ -152,7 +152,7 @@ Based on comprehensive code verification, this document outlines what features s
 ```markdown
 # Cleanroom Testing Framework
 
-[![Version](https://img.shields.io/badge/version-0.3.0--dev-blue.svg)](https://github.com/seanchatmangpt/clnrm)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![Build Status](https://img.shields.io/badge/build-passing-green.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -202,7 +202,7 @@ cargo build --release
 ### Verify Installation
 ```bash
 ./target/release/clnrm --version
-# Should output: clnrm 0.3.0
+# Should output: clnrm 0.4.0
 ```
 ```
 

@@ -1,0 +1,183 @@
+# SurrealDB CRUD Operations Test
+#
+# This test verifies the core 80/20 CRUD operations:
+# - CREATE: Insert records into tables
+# - READ: Query records with SELECT
+# - UPDATE: Modify existing records
+# - DELETE: Remove records
+# All operations use realistic e-commerce data
+
+[test.metadata]
+name = "surrealdb_crud_operations"
+description = "Verify complete CRUD lifecycle with SurrealDB"
+timeout_seconds = 90
+
+[services.surrealdb]
+type = "surrealdb"
+username = "root"
+password = "root"
+
+# ARRANGE: Set up namespace and database
+[[steps]]
+name = "setup_namespace_database"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "INFO FOR DB;"
+]
+expected_output_regex = "DEFINE"
+service = "surrealdb"
+
+# ACT: CREATE - Insert product records
+[[steps]]
+name = "create_products"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "CREATE product:laptop SET name = 'ThinkPad X1', price = 1299.99, stock = 50, category = 'electronics'; CREATE product:mouse SET name = 'Logitech MX Master', price = 99.99, stock = 200, category = 'accessories'; CREATE product:keyboard SET name = 'Keychron K8', price = 89.99, stock = 150, category = 'accessories';"
+]
+expected_output_regex = "product:(laptop|mouse|keyboard)"
+service = "surrealdb"
+
+# ACT: READ - Query all products
+[[steps]]
+name = "read_all_products"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "SELECT * FROM product ORDER BY name;"
+]
+expected_output_regex = "ThinkPad X1.*Logitech MX Master.*Keychron K8"
+service = "surrealdb"
+
+# ACT: READ - Query with WHERE clause
+[[steps]]
+name = "read_filtered_products"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "SELECT * FROM product WHERE category = 'accessories';"
+]
+expected_output_regex = "accessories"
+service = "surrealdb"
+
+# ACT: UPDATE - Modify product price
+[[steps]]
+name = "update_product_price"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "UPDATE product:laptop SET price = 1199.99, discount = true;"
+]
+expected_output_regex = "1199\\.99"
+service = "surrealdb"
+
+# ASSERT: Verify update was applied
+[[steps]]
+name = "verify_update"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "SELECT price, discount FROM product:laptop;"
+]
+expected_output_regex = "1199\\.99.*true"
+service = "surrealdb"
+
+# ACT: UPDATE - Increment stock count
+[[steps]]
+name = "update_stock_increment"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "UPDATE product:mouse SET stock = stock + 50;"
+]
+expected_output_regex = "250"
+service = "surrealdb"
+
+# ACT: DELETE - Remove single product
+[[steps]]
+name = "delete_product"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "DELETE product:keyboard;"
+]
+expected_output_regex = "\\[\\]"
+service = "surrealdb"
+
+# ASSERT: Verify product was deleted
+[[steps]]
+name = "verify_deletion"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "SELECT COUNT() FROM product GROUP ALL;"
+]
+expected_output_regex = "count.*2"
+service = "surrealdb"
+
+# ASSERT: Verify remaining products
+[[steps]]
+name = "verify_remaining_products"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "ecommerce",
+    "--db", "products",
+    "--pretty",
+    "--command", "SELECT name FROM product ORDER BY name;"
+]
+expected_output_regex = "Logitech MX Master.*ThinkPad X1"
+service = "surrealdb"
+
+[assertions]
+service_should_start = "surrealdb"
+execution_should_be_hermetic = true
+steps_should_execute_in_order = true

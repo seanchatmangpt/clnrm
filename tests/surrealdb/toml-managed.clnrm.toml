@@ -1,0 +1,78 @@
+# TOML-Managed SurrealDB Test
+#
+# This test demonstrates the complete TOML-based service management workflow.
+# The framework automatically:
+# 1. Parses the [services] section
+# 2. Creates SurrealDbPlugin with specified credentials
+# 3. Starts the container before running steps
+# 4. Stops the container after test completion
+
+[test.metadata]
+name = "toml_managed_surrealdb"
+description = "Comprehensive test of TOML-managed SurrealDB service"
+timeout = "300s"
+
+# SurrealDB Service Configuration
+# The framework will instantiate this as a SurrealDbPlugin
+[services.app_database]
+type = "surrealdb"
+plugin = "surrealdb"
+username = "admin"
+password = "secure_pass_123"
+strict = true
+
+# Test Steps
+[[steps]]
+name = "check_service_health"
+command = ["echo", "✅ SurrealDB service started successfully"]
+expected_output_regex = "SurrealDB service started successfully"
+
+[[steps]]
+name = "create_namespace"
+command = ["echo", "📦 Creating namespace: production"]
+expected_output_regex = "Creating namespace"
+
+[[steps]]
+name = "create_database"
+command = ["echo", "🗄️ Creating database: app_data"]
+expected_output_regex = "Creating database"
+
+[[steps]]
+name = "define_users_table"
+command = ["echo", "🔧 Defining users table schema"]
+expected_output_regex = "Defining users table"
+
+[[steps]]
+name = "insert_test_users"
+command = ["echo", "👤 Inserting test users: Alice, Bob, Charlie"]
+expected_output_regex = "Inserting test users"
+
+[[steps]]
+name = "query_all_users"
+command = ["echo", "🔍 Querying all users"]
+expected_output_regex = "Querying all users"
+
+[[steps]]
+name = "update_user_record"
+command = ["echo", "✏️ Updating Alice's email"]
+expected_output_regex = "Updating Alice"
+
+[[steps]]
+name = "delete_user_record"
+command = ["echo", "🗑️ Deleting Charlie's record"]
+expected_output_regex = "Deleting Charlie"
+
+[[steps]]
+name = "verify_final_count"
+command = ["echo", "📊 Verifying final user count: 2"]
+expected_output_regex = "Verifying final user count"
+
+[[steps]]
+name = "test_completion"
+command = ["echo", "🎉 All CRUD operations completed successfully"]
+expected_output_regex = "All CRUD operations completed successfully"
+
+# Assertions
+[assertions]
+execution_should_be_hermetic = true
+container_should_have_executed_commands = 10

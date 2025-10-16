@@ -233,6 +233,280 @@ pub async fn run_tests_parallel(paths: &[PathBuf], config: &CliConfig) -> Result
     }
 }
 
+/// Load services from configuration and register them with the environment
+///
+/// This function creates service plugins from TOML configuration and starts them.
+/// Services are started before test steps and stopped after test completion.
+///
+/// Core Team Compliance:
+/// - ✅ Async function for I/O operations
+/// - ✅ Proper error handling with CleanroomError
+/// - ✅ No unwrap() or expect() calls
+/// - ✅ Use tracing for structured logging
+async fn load_services_from_config(
+    env: &CleanroomEnvironment,
+    services: &HashMap<String, crate::config::ServiceConfig>,
+) -> Result<HashMap<String, crate::cleanroom::ServiceHandle>> {
+    use tracing::{debug, info};
+
+    let mut service_handles = HashMap::new();
+
+    for (service_name, service_config) in services {
+        debug!(
+            "Loading service: {} (type: {}, plugin: {})",
+            service_name, service_config.r#type, service_config.plugin
+        );
+
+        // Create plugin based on service type
+        let plugin: Box<dyn crate::cleanroom::ServicePlugin> = match service_config.plugin.as_str()
+        {
+            "surrealdb" => {
+                use crate::services::surrealdb::SurrealDbPlugin;
+
+                // Extract SurrealDB-specific configuration
+                let username = service_config.username.as_deref().unwrap_or("root");
+                let password = service_config.password.as_deref().unwrap_or("root");
+                let strict = service_config.strict.unwrap_or(false);
+
+                let plugin = SurrealDbPlugin::with_credentials(username, password)
+                    .with_name(service_name)
+                    .with_strict(strict);
+
+                Box::new(plugin)
+            }
+            "generic_container" => {
+                use crate::services::generic::GenericContainerPlugin;
+
+                let image = service_config.image.as_deref().ok_or_else(|| {
+                    CleanroomError::validation_error(format!(
+                        "Service '{}': generic_container requires 'image' field",
+                        service_name
+                    ))
+                })?;
+
+                let mut plugin = GenericContainerPlugin::new(service_name, image);
+
+                // Add environment variables if provided
+                if let Some(env_vars) = &service_config.env {
+                    for (key, value) in env_vars {
+                        plugin = plugin.with_env(key, value);
+                    }
+                }
+
+                // Add ports if provided
+                if let Some(ports) = &service_config.ports {
+                    for port in ports {
+                        plugin = plugin.with_port(*port);
+                    }
+                }
+
+                // Add volumes if provided
+                if let Some(volumes) = &service_config.volumes {
+                    for volume in volumes {
+                        plugin = plugin
+                            .with_volume(
+                                &volume.host_path,
+                                &volume.container_path,
+                                volume.read_only.unwrap_or(false),
+                            )
+                            .map_err(|e| {
+                                CleanroomError::validation_error(format!(
+                                    "Service '{}': invalid volume configuration: {}",
+                                    service_name, e
+                                ))
+                            })?;
+                    }
+                }
+
+                Box::new(plugin)
+            }
+            "chaos_engine" => {
+                use crate::services::chaos_engine::{ChaosConfig, ChaosEnginePlugin};
+
+                // Use default chaos config for now
+                // TODO: Add chaos-specific configuration fields to ServiceConfig
+                let chaos_config = ChaosConfig {
+                    failure_rate: 0.2,
+                    latency_ms: 500,
+                    network_partition_rate: 0.1,
+                    memory_pressure_mb: 100,
+                    cpu_stress_percent: 50,
+                    scenarios: vec![],
+                };
+
+                Box::new(ChaosEnginePlugin::with_config(service_name, chaos_config))
+            }
+            "ollama" => {
+                use crate::services::ollama::{OllamaConfig, OllamaPlugin};
+
+                let endpoint = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("OLLAMA_ENDPOINT"))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "http://localhost:11434".to_string());
+
+                let default_model = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("OLLAMA_MODEL"))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "qwen3-coder:30b".to_string());
+
+                let config = OllamaConfig {
+                    endpoint,
+                    default_model,
+                    timeout_seconds: 60,
+                };
+
+                Box::new(OllamaPlugin::new(service_name, config))
+            }
+            "vllm" => {
+                use crate::services::vllm::{VllmConfig, VllmPlugin};
+
+                let endpoint = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("VLLM_ENDPOINT"))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "http://localhost:8000".to_string());
+
+                let model = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("VLLM_MODEL"))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "microsoft/DialoGPT-medium".to_string());
+
+                let config = VllmConfig {
+                    endpoint,
+                    model,
+                    max_num_seqs: Some(100),
+                    max_model_len: Some(2048),
+                    tensor_parallel_size: Some(1),
+                    gpu_memory_utilization: Some(0.9),
+                    enable_prefix_caching: Some(true),
+                    timeout_seconds: 60,
+                };
+
+                Box::new(VllmPlugin::new(service_name, config))
+            }
+            "tgi" => {
+                use crate::services::tgi::{TgiConfig, TgiPlugin};
+
+                let endpoint = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("TGI_ENDPOINT"))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "http://localhost:8080".to_string());
+
+                let model_id = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("TGI_MODEL"))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "microsoft/DialoGPT-medium".to_string());
+
+                let config = TgiConfig {
+                    endpoint,
+                    model_id,
+                    max_total_tokens: Some(2048),
+                    max_input_length: Some(1024),
+                    max_batch_prefill_tokens: Some(4096),
+                    max_concurrent_requests: Some(32),
+                    max_batch_total_tokens: Some(8192),
+                    timeout_seconds: 60,
+                };
+
+                Box::new(TgiPlugin::new(service_name, config))
+            }
+            "otel_collector" => {
+                use crate::services::otel_collector::{OtelCollectorConfig, OtelCollectorPlugin};
+
+                // Extract OTEL Collector configuration from service config
+                let enable_otlp_grpc = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("ENABLE_OTLP_GRPC"))
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(true);
+
+                let enable_otlp_http = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("ENABLE_OTLP_HTTP"))
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(true);
+
+                let enable_prometheus = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("ENABLE_PROMETHEUS"))
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(false);
+
+                let enable_zpages = service_config
+                    .env
+                    .as_ref()
+                    .and_then(|e| e.get("ENABLE_ZPAGES"))
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(false);
+
+                let image = service_config
+                    .image
+                    .as_deref()
+                    .unwrap_or("otel/opentelemetry-collector:latest");
+
+                let mut config = OtelCollectorConfig {
+                    image: image.to_string(),
+                    enable_otlp_grpc,
+                    enable_otlp_http,
+                    enable_health_check: true,
+                    enable_prometheus,
+                    enable_zpages,
+                    config_file: None,
+                    env_vars: service_config.env.clone().unwrap_or_default(),
+                };
+
+                // Remove plugin control vars from env_vars
+                config.env_vars.remove("ENABLE_OTLP_GRPC");
+                config.env_vars.remove("ENABLE_OTLP_HTTP");
+                config.env_vars.remove("ENABLE_PROMETHEUS");
+                config.env_vars.remove("ENABLE_ZPAGES");
+
+                Box::new(OtelCollectorPlugin::with_config(service_name, config))
+            }
+            _ => {
+                return Err(CleanroomError::validation_error(format!(
+                    "Unknown service plugin: {}",
+                    service_config.plugin
+                )));
+            }
+        };
+
+        // Register plugin with environment
+        env.register_service(plugin).await?;
+        info!("📦 Registered service plugin: {}", service_name);
+
+        // Start service and collect handle
+        let handle = env.start_service(service_name).await.map_err(|e| {
+            CleanroomError::service_error(format!("Failed to start service '{}'", service_name))
+                .with_context("Service startup failed")
+                .with_source(e.to_string())
+        })?;
+
+        info!(
+            "✅ Service '{}' started successfully (handle: {})",
+            service_name, handle.id
+        );
+
+        service_handles.insert(service_name.clone(), handle);
+    }
+
+    Ok(service_handles)
+}
+
 /// Run a single test file
 ///
 /// Core Team Compliance:
@@ -264,54 +538,13 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
             .with_source(e.to_string())
     })?;
 
-    // Register services from configuration
-    if let Some(services) = &test_config.services {
-        for (service_name, service_config) in services {
-            debug!(
-                "Registering service: {} ({})",
-                service_name, service_config.r#type
-            );
-
-            // Create and register the appropriate plugin based on service type
-            match service_config.r#type.as_str() {
-                "chaos_engine" => {
-                    use crate::services::chaos_engine::{ChaosConfig, ChaosEnginePlugin};
-                    let chaos_config = ChaosConfig {
-                        failure_rate: 0.2,
-                        latency_ms: 500,
-                        network_partition_rate: 0.1,
-                        memory_pressure_mb: 100,
-                        cpu_stress_percent: 50,
-                        scenarios: vec![],
-                    };
-                    let plugin =
-                        Box::new(ChaosEnginePlugin::with_config(service_name, chaos_config));
-                    environment.register_service(plugin).await?;
-                    info!("📦 Chaos Engine plugin registered: {}", service_name);
-                }
-                "ai_test_generator" => {
-                    // Note: AI Test Generator moved to clnrm-ai crate
-                    warn!("ai_test_generator service type is now in clnrm-ai crate - skipping");
-                    return Err(CleanroomError::validation_error(
-                        "ai_test_generator service requires clnrm-ai crate (experimental feature)",
-                    ));
-                }
-                "generic_container" => {
-                    use crate::services::generic::GenericContainerPlugin;
-                    let image = service_config.image.as_deref().unwrap_or("alpine:latest");
-                    let plugin = Box::new(GenericContainerPlugin::new(service_name, image));
-                    environment.register_service(plugin).await?;
-                    info!("📦 Generic Container plugin registered: {}", service_name);
-                }
-                _ => {
-                    return Err(CleanroomError::validation_error(format!(
-                        "Unknown service type: {}",
-                        service_config.r#type
-                    )));
-                }
-            }
-        }
-    }
+    // Load and start services from configuration BEFORE running test steps
+    // This replaces the old service registration code with a cleaner approach
+    let service_handles = if let Some(services) = &test_config.services {
+        load_services_from_config(&environment, services).await?
+    } else {
+        HashMap::new()
+    };
 
     // Execute test steps
     for (i, step) in test_config.steps.iter().enumerate() {
@@ -390,6 +623,21 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
         }
 
         info!("✅ Step '{}' completed successfully", step.name);
+    }
+
+    // Cleanup: Stop all services that were started (even if test steps failed)
+    // Services are stopped in reverse order of startup
+    let service_handles_vec: Vec<_> = service_handles.iter().collect();
+    for (service_name, handle) in service_handles_vec.iter().rev() {
+        match environment.stop_service(&handle.id).await {
+            Ok(()) => {
+                info!("🛑 Service '{}' stopped successfully", service_name);
+            }
+            Err(e) => {
+                // Log error but don't fail the test if cleanup fails
+                warn!("⚠️  Failed to stop service '{}': {}", service_name, e);
+            }
+        }
     }
 
     // Test completion

@@ -206,9 +206,11 @@ async fn main() -> Result<()> {
     }
 
     // Analyze performance trends
-    let first_round = perf_measurements.first()
+    let first_round = perf_measurements
+        .first()
         .ok_or_else(|| CleanroomError::internal_error("No performance measurements collected"))?;
-    let last_round = perf_measurements.last()
+    let last_round = perf_measurements
+        .last()
         .ok_or_else(|| CleanroomError::internal_error("No performance measurements collected"))?;
 
     let perf_degradation = if last_round > first_round {

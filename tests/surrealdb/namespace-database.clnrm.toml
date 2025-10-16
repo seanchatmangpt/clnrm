@@ -1,0 +1,231 @@
+# SurrealDB Namespace and Database Test
+#
+# This test verifies multi-tenancy capabilities:
+# - Multiple namespaces can be created
+# - Databases within namespaces are isolated
+# - Switching between namespaces works correctly
+# - Data isolation between namespaces is maintained
+
+[test.metadata]
+name = "surrealdb_namespace_database"
+description = "Verify namespace and database isolation in SurrealDB"
+timeout_seconds = 90
+
+[services.surrealdb]
+type = "surrealdb"
+username = "root"
+password = "root"
+
+# ARRANGE: Create first namespace and database (tenant_a)
+[[steps]]
+name = "create_tenant_a_namespace"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_a",
+    "--db", "production",
+    "--pretty",
+    "--command", "INFO FOR DB;"
+]
+expected_output_regex = "DEFINE"
+service = "surrealdb"
+
+# ACT: Insert data into tenant_a
+[[steps]]
+name = "insert_tenant_a_data"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_a",
+    "--db", "production",
+    "--pretty",
+    "--command", "CREATE customer:1 SET name = 'Acme Corp', plan = 'enterprise', revenue = 50000;"
+]
+expected_output_regex = "Acme Corp"
+service = "surrealdb"
+
+# ACT: Insert more data into tenant_a
+[[steps]]
+name = "insert_more_tenant_a_data"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_a",
+    "--db", "production",
+    "--pretty",
+    "--command", "CREATE customer:2 SET name = 'TechStart Inc', plan = 'startup', revenue = 5000;"
+]
+expected_output_regex = "TechStart Inc"
+service = "surrealdb"
+
+# ARRANGE: Create second namespace and database (tenant_b)
+[[steps]]
+name = "create_tenant_b_namespace"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_b",
+    "--db", "production",
+    "--pretty",
+    "--command", "INFO FOR DB;"
+]
+expected_output_regex = "DEFINE"
+service = "surrealdb"
+
+# ACT: Insert different data into tenant_b
+[[steps]]
+name = "insert_tenant_b_data"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_b",
+    "--db", "production",
+    "--pretty",
+    "--command", "CREATE customer:1 SET name = 'Global Solutions', plan = 'professional', revenue = 25000;"
+]
+expected_output_regex = "Global Solutions"
+service = "surrealdb"
+
+# ACT: Insert more data into tenant_b
+[[steps]]
+name = "insert_more_tenant_b_data"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_b",
+    "--db", "production",
+    "--pretty",
+    "--command", "CREATE customer:2 SET name = 'Innovation Labs', plan = 'startup', revenue = 3000;"
+]
+expected_output_regex = "Innovation Labs"
+service = "surrealdb"
+
+# ASSERT: Verify tenant_a data isolation
+[[steps]]
+name = "verify_tenant_a_data"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_a",
+    "--db", "production",
+    "--pretty",
+    "--command", "SELECT * FROM customer ORDER BY name;"
+]
+expected_output_regex = "Acme Corp.*TechStart Inc"
+service = "surrealdb"
+
+# ASSERT: Verify tenant_a does NOT see tenant_b data
+[[steps]]
+name = "verify_tenant_a_isolation"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_a",
+    "--db", "production",
+    "--pretty",
+    "--command", "SELECT COUNT() FROM customer GROUP ALL;"
+]
+expected_output_regex = "count.*2"
+service = "surrealdb"
+
+# ASSERT: Verify tenant_b data isolation
+[[steps]]
+name = "verify_tenant_b_data"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_b",
+    "--db", "production",
+    "--pretty",
+    "--command", "SELECT * FROM customer ORDER BY name;"
+]
+expected_output_regex = "Global Solutions.*Innovation Labs"
+service = "surrealdb"
+
+# ASSERT: Verify tenant_b does NOT see tenant_a data
+[[steps]]
+name = "verify_tenant_b_isolation"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_b",
+    "--db", "production",
+    "--pretty",
+    "--command", "SELECT COUNT() FROM customer GROUP ALL;"
+]
+expected_output_regex = "count.*2"
+service = "surrealdb"
+
+# ACT: Create multiple databases in same namespace
+[[steps]]
+name = "create_staging_database_tenant_a"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_a",
+    "--db", "staging",
+    "--pretty",
+    "--command", "CREATE customer:1 SET name = 'Staging Customer', environment = 'staging';"
+]
+expected_output_regex = "Staging Customer"
+service = "surrealdb"
+
+# ASSERT: Verify database isolation within same namespace
+[[steps]]
+name = "verify_database_isolation"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_a",
+    "--db", "staging",
+    "--pretty",
+    "--command", "SELECT COUNT() FROM customer GROUP ALL;"
+]
+expected_output_regex = "count.*1"
+service = "surrealdb"
+
+# ASSERT: Verify production database still has 2 customers
+[[steps]]
+name = "verify_production_unchanged"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "tenant_a",
+    "--db", "production",
+    "--pretty",
+    "--command", "SELECT COUNT() FROM customer GROUP ALL;"
+]
+expected_output_regex = "count.*2"
+service = "surrealdb"
+
+[assertions]
+service_should_start = "surrealdb"
+execution_should_be_hermetic = true
+data_isolation_should_be_enforced = true
+namespaces_should_be_independent = true

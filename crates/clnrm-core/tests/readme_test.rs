@@ -645,22 +645,26 @@ command = ["echo", "Container started successfully"]
     );
     assert!(parsed.get("steps").is_some(), "Should parse steps array");
 
-    let test_section = parsed.get("test")
+    let test_section = parsed
+        .get("test")
         .ok_or_else(|| CleanroomError::internal_error("Missing test section in parsed JSON"))?;
     assert_eq!(
-        test_section.get("name")
+        test_section
+            .get("name")
             .ok_or_else(|| CleanroomError::internal_error("Missing name in test section"))?
             .as_str(),
         Some("container_lifecycle_test")
     );
     assert_eq!(
-        test_section.get("description")
+        test_section
+            .get("description")
             .ok_or_else(|| CleanroomError::internal_error("Missing description in test section"))?
             .as_str(),
         Some("Test that containers start, execute commands, and cleanup properly")
     );
 
-    let steps = parsed.get("steps")
+    let steps = parsed
+        .get("steps")
         .ok_or_else(|| CleanroomError::internal_error("Missing steps in parsed JSON"))?
         .as_array()
         .ok_or_else(|| CleanroomError::internal_error("Steps is not an array"))?;
@@ -678,7 +682,7 @@ command = ["echo", "Container started successfully"]
             .ok_or_else(|| CleanroomError::internal_error("Missing command in step"))?
             .as_array()
             .ok_or_else(|| CleanroomError::internal_error("Command is not an array"))?
-            .len(), 
+            .len(),
         2
     );
 

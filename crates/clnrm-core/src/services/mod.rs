@@ -1,6 +1,8 @@
 pub mod chaos_engine;
+pub mod factory;
 pub mod generic;
 pub mod ollama;
+pub mod otel_collector;
 pub mod service_manager;
 pub mod surrealdb;
 pub mod tgi;

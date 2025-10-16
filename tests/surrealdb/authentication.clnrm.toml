@@ -1,0 +1,136 @@
+# SurrealDB Authentication Test
+#
+# This test verifies authentication mechanisms:
+# - Root user authentication succeeds
+# - Invalid credentials are rejected
+# - Authentication is enforced for operations
+
+[test.metadata]
+name = "surrealdb_authentication"
+description = "Verify SurrealDB authentication and authorization"
+timeout_seconds = 60
+
+[services.surrealdb]
+type = "surrealdb"
+username = "root"
+password = "root"
+
+# ARRANGE & ACT: Successful authentication with root user
+[[steps]]
+name = "authenticate_root_user"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "auth_test",
+    "--db", "test",
+    "--pretty",
+    "--command", "INFO FOR DB;"
+]
+expected_output_regex = "DEFINE"
+service = "surrealdb"
+
+# ACT: Create test data with valid credentials
+[[steps]]
+name = "create_data_with_auth"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "auth_test",
+    "--db", "test",
+    "--pretty",
+    "--command", "CREATE user:admin SET username = 'admin', role = 'administrator', active = true;"
+]
+expected_output_regex = "user:admin"
+service = "surrealdb"
+
+# ASSERT: Verify data was created
+[[steps]]
+name = "verify_data_creation"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "auth_test",
+    "--db", "test",
+    "--pretty",
+    "--command", "SELECT * FROM user:admin;"
+]
+expected_output_regex = "administrator"
+service = "surrealdb"
+
+# ACT: Test invalid password (should fail)
+[[steps]]
+name = "test_invalid_password"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "wrongpassword",
+    "--ns", "auth_test",
+    "--db", "test",
+    "--pretty",
+    "--command", "INFO FOR DB;"
+]
+expected_exit_code = 1
+expected_output_regex = "(authentication|credentials|signin|password|error)"
+service = "surrealdb"
+
+# ACT: Test invalid username (should fail)
+[[steps]]
+name = "test_invalid_username"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "invaliduser",
+    "--pass", "root",
+    "--ns", "auth_test",
+    "--db", "test",
+    "--pretty",
+    "--command", "INFO FOR DB;"
+]
+expected_exit_code = 1
+expected_output_regex = "(authentication|credentials|signin|username|error)"
+service = "surrealdb"
+
+# ACT: Test completely wrong credentials (should fail)
+[[steps]]
+name = "test_wrong_credentials"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "hacker",
+    "--pass", "hackme",
+    "--ns", "auth_test",
+    "--db", "test",
+    "--pretty",
+    "--command", "SELECT * FROM user;"
+]
+expected_exit_code = 1
+expected_output_regex = "(authentication|credentials|signin|error)"
+service = "surrealdb"
+
+# ASSERT: Verify original data still accessible with correct credentials
+[[steps]]
+name = "verify_data_still_accessible"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "auth_test",
+    "--db", "test",
+    "--pretty",
+    "--command", "SELECT COUNT() FROM user GROUP ALL;"
+]
+expected_output_regex = "count.*1"
+service = "surrealdb"
+
+[assertions]
+service_should_start = "surrealdb"
+execution_should_be_hermetic = true
+security_should_enforce_authentication = true

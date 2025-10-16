@@ -1,0 +1,78 @@
+# SurrealDB Basic Connection Test
+#
+# This test verifies the fundamental 80/20 use case:
+# - SurrealDB container starts successfully
+# - Service is reachable via WebSocket connection
+# - Metadata contains correct connection information
+# - Basic SQL commands can be executed
+
+[test.metadata]
+name = "surrealdb_basic_connection"
+description = "Verify SurrealDB container starts and accepts connections"
+timeout_seconds = 60
+
+[services.surrealdb]
+type = "surrealdb"
+username = "root"
+password = "root"
+
+# Step 1: Verify SurrealDB version (tests that surreal CLI is available)
+[[steps]]
+name = "verify_surreal_cli"
+command = ["surreal", "version"]
+expected_output_regex = "surrealdb [0-9]+\\.[0-9]+\\.[0-9]+"
+service = "surrealdb"
+
+# Step 2: Test connection to SurrealDB using SQL command
+# This verifies the connection string metadata is correct
+[[steps]]
+name = "test_connection"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "test",
+    "--db", "test",
+    "--pretty",
+    "--command", "INFO FOR DB;"
+]
+expected_output_regex = "DEFINE"
+service = "surrealdb"
+
+# Step 3: Verify we can execute a simple INFO statement
+[[steps]]
+name = "info_namespace"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "test",
+    "--db", "test",
+    "--pretty",
+    "--command", "INFO FOR NS;"
+]
+expected_output_regex = ".*"
+service = "surrealdb"
+
+# Step 4: Test basic SELECT query (even on empty database)
+[[steps]]
+name = "basic_select"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "root",
+    "--pass", "root",
+    "--ns", "test",
+    "--db", "test",
+    "--pretty",
+    "--command", "SELECT * FROM nonexistent LIMIT 1;"
+]
+expected_output_regex = ".*"
+service = "surrealdb"
+
+[assertions]
+service_should_start = "surrealdb"
+service_metadata_should_contain = ["host", "port", "connection_string", "username"]
+execution_should_be_hermetic = true

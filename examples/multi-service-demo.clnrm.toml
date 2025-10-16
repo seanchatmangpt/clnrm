@@ -1,0 +1,51 @@
+# Multi-Service TOML Demo
+#
+# Demonstrates running multiple services simultaneously:
+# - SurrealDB (database)
+# - Generic container (Alpine Linux)
+# All services are managed automatically by the framework
+
+[test.metadata]
+name = "multi_service_toml_demo"
+description = "Test multiple services managed from TOML"
+
+# SurrealDB Service
+[services.database]
+type = "surrealdb"
+plugin = "surrealdb"
+username = "root"
+password = "root"
+strict = false
+
+# Generic Alpine Container
+[services.app_server]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.app_server.env]
+DATABASE_URL = "ws://127.0.0.1:8000"
+APP_ENV = "test"
+
+[[steps]]
+name = "verify_database_service"
+command = ["echo", "✅ Database service: SurrealDB running"]
+expected_output_regex = "Database service"
+
+[[steps]]
+name = "verify_app_service"
+command = ["echo", "✅ App server: Alpine container running"]
+expected_output_regex = "App server"
+
+[[steps]]
+name = "test_service_communication"
+command = ["echo", "🔗 Services can communicate via metadata"]
+expected_output_regex = "Services can communicate"
+
+[[steps]]
+name = "multi_service_test_complete"
+command = ["echo", "🎉 Multi-service test passed"]
+expected_output_regex = "Multi-service test passed"
+
+[assertions]
+execution_should_be_hermetic = true

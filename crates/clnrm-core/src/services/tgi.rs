@@ -33,6 +33,7 @@ pub struct TgiConfig {
 }
 
 /// TGI service plugin
+#[derive(Debug)]
 pub struct TgiPlugin {
     name: String,
     config: TgiConfig,

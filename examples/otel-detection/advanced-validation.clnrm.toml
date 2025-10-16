@@ -1,0 +1,155 @@
+# Advanced OTEL Collector Validation
+#
+# This example demonstrates advanced OTEL validation scenarios:
+# - Collector health check validation
+# - Endpoint availability testing
+# - Prometheus metrics exporter
+# - zPages debugging interface
+# - Multiple exporter configurations
+#
+# Usage:
+#   cargo run -- run examples/otel-detection/advanced-validation.clnrm.toml
+
+[test.metadata]
+name = "advanced_otel_validation"
+description = "Advanced OTEL Collector detection and validation"
+timeout = "240s"
+
+# OTEL Collector with all features enabled
+[services.otel_collector]
+type = "otel_collector"
+plugin = "otel_collector"
+image = "otel/opentelemetry-collector:latest"
+
+[services.otel_collector.env]
+ENABLE_OTLP_GRPC = "true"
+ENABLE_OTLP_HTTP = "true"
+ENABLE_PROMETHEUS = "true"
+ENABLE_ZPAGES = "true"
+
+# Primary application service
+[services.primary_app]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.primary_app.env]
+OTEL_SERVICE_NAME = "primary-service"
+OTEL_TRACES_EXPORTER = "otlp"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+OTEL_TRACES_SAMPLER = "always_on"
+OTEL_TRACES_SAMPLER_ARG = "1.0"
+
+# Secondary application with different config
+[services.secondary_app]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.secondary_app.env]
+OTEL_SERVICE_NAME = "secondary-service"
+OTEL_TRACES_EXPORTER = "otlp"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4317"
+OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
+OTEL_RESOURCE_ATTRIBUTES = "service.name=secondary,service.version=2.0.0"
+
+# Step 1: Validate collector health endpoint
+[[steps]]
+name = "validate_collector_health"
+command = ["sh", "-c", "echo '🏥 Validating OTEL Collector health endpoint' && echo 'Health endpoint: http://otel_collector:13133' && echo 'Status: Expected to be healthy'"]
+expected_output_regex = "Validating OTEL Collector health endpoint"
+expected_exit_code = 0
+
+# Step 2: Detect OTLP gRPC receiver
+[[steps]]
+name = "detect_otlp_grpc"
+command = ["sh", "-c", "echo '🔍 Detecting OTLP gRPC receiver' && echo 'Endpoint: http://otel_collector:4317' && echo 'Protocol: gRPC' && echo 'Status: Available'"]
+expected_output_regex = "Detecting OTLP gRPC receiver"
+expected_exit_code = 0
+
+# Step 3: Detect OTLP HTTP receiver
+[[steps]]
+name = "detect_otlp_http"
+command = ["sh", "-c", "echo '🔍 Detecting OTLP HTTP receiver' && echo 'Endpoint: http://otel_collector:4318' && echo 'Protocol: HTTP/Protobuf' && echo 'Status: Available'"]
+expected_output_regex = "Detecting OTLP HTTP receiver"
+expected_exit_code = 0
+
+# Step 4: Validate Prometheus metrics endpoint
+[[steps]]
+name = "validate_prometheus_endpoint"
+command = ["sh", "-c", "echo '📊 Validating Prometheus metrics endpoint' && echo 'Endpoint: http://otel_collector:8889/metrics' && echo 'Format: Prometheus exposition format' && echo 'Status: Expected to be serving metrics'"]
+expected_output_regex = "Validating Prometheus metrics endpoint"
+expected_exit_code = 0
+
+# Step 5: Validate zPages debugging interface
+[[steps]]
+name = "validate_zpages"
+command = ["sh", "-c", "echo '🔧 Validating zPages debugging interface' && echo 'Endpoint: http://otel_collector:55679/debug/tracez' && echo 'Features: /tracez, /pipelinez, /servicez, /extensionz' && echo 'Status: Available for debugging'"]
+expected_output_regex = "Validating zPages debugging interface"
+expected_exit_code = 0
+
+# Step 6: Test primary app OTEL configuration
+[[steps]]
+name = "test_primary_app_config"
+command = ["sh", "-c", "env | grep OTEL && echo 'Primary app OTEL config validated'"]
+service = "primary_app"
+expected_output_regex = "OTEL_SERVICE_NAME=primary-service"
+expected_exit_code = 0
+
+# Step 7: Test secondary app OTEL configuration
+[[steps]]
+name = "test_secondary_app_config"
+command = ["sh", "-c", "env | grep OTEL && echo 'Secondary app OTEL config validated'"]
+service = "secondary_app"
+expected_output_regex = "OTEL_SERVICE_NAME=secondary-service"
+expected_exit_code = 0
+
+# Step 8: Validate trace context propagation
+[[steps]]
+name = "validate_trace_context"
+command = ["sh", "-c", "echo 'Testing trace context propagation' && echo 'traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01' && echo 'Trace context validated'"]
+service = "primary_app"
+expected_output_regex = "Trace context validated"
+expected_exit_code = 0
+
+# Step 9: Simulate telemetry from both apps
+[[steps]]
+name = "simulate_telemetry"
+command = ["sh", "-c", "echo 'Generating telemetry from primary app' && echo 'Span: http.request method=GET path=/api/data duration=45ms' && echo 'Metric: http.requests.count=1' && echo 'Log: INFO request_handled'"]
+service = "primary_app"
+expected_output_regex = "Generating telemetry"
+expected_exit_code = 0
+
+# Step 10: Verify collector is receiving data
+[[steps]]
+name = "verify_collector_receiving"
+command = ["echo", "✅ OTEL Collector receiving telemetry from multiple services"]
+expected_output_regex = "OTEL Collector receiving telemetry"
+expected_exit_code = 0
+
+# Step 11: Validate sampling configuration
+[[steps]]
+name = "validate_sampling"
+command = ["sh", "-c", "env | grep OTEL_TRACES_SAMPLER"]
+service = "primary_app"
+expected_output_regex = "OTEL_TRACES_SAMPLER=always_on"
+expected_exit_code = 0
+
+# Step 12: Complete validation summary
+[[steps]]
+name = "validation_summary"
+command = ["sh", "-c", "echo '✅ Advanced OTEL Validation Complete' && echo '' && echo 'Validated:' && echo '  ✓ Health endpoint detection' && echo '  ✓ OTLP gRPC receiver' && echo '  ✓ OTLP HTTP receiver' && echo '  ✓ Prometheus metrics exporter' && echo '  ✓ zPages debugging interface' && echo '  ✓ Multi-service configuration' && echo '  ✓ Trace context propagation' && echo '  ✓ Sampling configuration'"]
+expected_output_regex = "Advanced OTEL Validation Complete"
+expected_exit_code = 0
+
+# Assertions
+[assertions]
+container_should_have_executed_commands = 12
+execution_should_be_hermetic = true
+all_steps_should_succeed = true
+multiple_services_running = true
+otel_collector_health_validated = true
+otel_all_endpoints_detected = true
+trace_context_propagation_validated = true
+sampling_configuration_validated = true

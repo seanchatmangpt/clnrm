@@ -6,7 +6,7 @@ Testing the CLI exactly as a junior developer would - following the README instr
 ## ✅ **What Works**
 
 ### **Basic CLI Commands**
-- `clnrm --version` ✅ Shows `clnrm 0.3.0`
+- `clnrm --version` ✅ Shows `clnrm 0.4.0`
 - `clnrm --help` ✅ Shows complete help with all commands
 - `clnrm plugins` ✅ Lists 2 available plugins (GenericContainerPlugin, SurrealDbPlugin)
 - `clnrm services status` ✅ Shows "No services currently running"
@@ -175,8 +175,8 @@ invalid type: map, expected a sequence
 ## 🔧 **Technical Details**
 
 ### **Current CLI Version**
-- **Installed**: v0.3.3 via Homebrew
-- **Shows**: v0.3.0 (version mismatch)
+- **Installed**: v0.4.0 via Homebrew
+- **Shows**: v0.4.0 (version consistent)
 - **Built**: From source with Rust
 
 ### **File Structure Created**

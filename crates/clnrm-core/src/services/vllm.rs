@@ -33,6 +33,7 @@ pub struct VllmConfig {
 }
 
 /// vLLM service plugin
+#[derive(Debug)]
 pub struct VllmPlugin {
     name: String,
     config: VllmConfig,
