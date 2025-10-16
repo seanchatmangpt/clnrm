@@ -21,7 +21,6 @@ A testing framework for hermetic integration testing with container-based isolat
 - **GenericContainerPlugin** - Any Docker image with custom configuration
 - **SurrealDbPlugin** - SurrealDB database with WebSocket support
 - **NetworkToolsPlugin** - curl, wget, netcat for HTTP testing
-- **AI Plugins** 🔬 - Ollama, vLLM, TGI (experimental, require separate crate)
 
 ### ✅ **Service Management**
 - **`clnrm services status`** - Real-time service monitoring
@@ -103,9 +102,6 @@ $ clnrm plugins
 ✅ generic_container (alpine, ubuntu, debian)
 ✅ surreal_db (database integration)
 ✅ network_tools (curl, wget, netcat)
-✅ ollama (local AI model integration)
-✅ vllm (high-performance LLM inference)
-✅ tgi (Hugging Face text generation inference)
 ```
 
 ## 🏗️ Architecture
@@ -145,10 +141,6 @@ $ clnrm plugins
 | `clnrm template` | ✅ **Working** | Generate projects from templates |
 | `clnrm services` | ✅ **Working** | Service lifecycle management |
 | `clnrm report` | ✅ **Working** | Generate test reports |
-| `clnrm ai-orchestrate` | 🔬 **Experimental** | AI-powered test orchestration (requires clnrm-ai crate) |
-| `clnrm ai-predict` | 🔬 **Experimental** | AI failure prediction (requires clnrm-ai crate) |
-| `clnrm ai-optimize` | 🔬 **Experimental** | AI test optimization (requires clnrm-ai crate) |
-| `clnrm ai-monitor` | 🔬 **Experimental** | AI monitoring system (requires clnrm-ai crate) |
 
 ## 🚀 **Getting Started**
 
@@ -188,7 +180,7 @@ The framework tests itself through the "eat your own dog food" principle. Every 
 Unlike traditional testing frameworks, clnrm provides **true hermetic testing** where each test runs in completely isolated, real containers with no test interference.
 
 ### **Universal Test Definition**
-Single `.clnrm.toml` files can test any technology stack - databases, APIs, AI models, microservices - all through containerized execution.
+Single `.clnrm.toml` files can test any technology stack - databases, APIs, microservices - all through containerized execution.
 
 ## 📚 **Documentation**
 
