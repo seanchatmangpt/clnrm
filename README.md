@@ -1,10 +1,15 @@
 # Cleanroom Testing Framework
 
-[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![Build Status](https://img.shields.io/badge/build-passing-green.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > **🚀 Production Ready:** Hermetic integration testing that actually works end-to-end.
+>
+> **✨ Version 0.5.0 Highlights:**
+> - **Tera Templating**: Property-based testing with 50+ fake data generators
+> - **OTEL Validation**: Telemetry-only validation with zero flakiness
+> - **Advanced Validation**: Multi-dimensional validation framework for deterministic testing
 
 A testing framework for hermetic integration testing with container-based isolation and plugin architecture.
 
@@ -32,6 +37,21 @@ A testing framework for hermetic integration testing with container-based isolat
 - **Default Template** - Basic integration testing
 - **Database Template** - Database integration testing
 - **API Template** - API service testing
+
+### ✅ **Tera Templating** *(NEW in 0.5.0)*
+- **Property-based testing** with 50+ fake data generators
+- **Template files** (`.toml.tera` or `.tera`) for dynamic test generation
+- **Deterministic seeding** for reproducible property tests
+- **Matrix testing** for combinatorial scenario generation
+- **Load testing** with parametric test generation
+
+### ✅ **OTEL Validation System** *(NEW in 0.5.0)*
+- **Telemetry-only validation** - Correctness proven through OpenTelemetry spans exclusively
+- **Zero flakiness** - Deterministic validation across environments
+- **5-Dimensional validation** - Structural, temporal, cardinality, hermeticity, attribute validation
+- **Span validators** - Existence, count, attributes, hierarchy, events, duration
+- **Graph validators** - Parent-child relationships and cycle detection
+- **Hermeticity validators** - External service detection and resource attribute validation
 
 ## 🚀 Quick Start
 
@@ -70,6 +90,92 @@ clnrm plugins
 
 # ✅ Generic containers, databases, network tools
 ```
+
+## 🚀 **Version 0.5.0 New Features**
+
+### **Tera Templating for Property-Based Testing**
+
+Generate thousands of test scenarios with fake data using Tera templates:
+
+```toml
+# tests/load-test.clnrm.toml.tera
+{% for i in range(end=1000) %}
+[[steps]]
+name = "load_test_{{ i }}"
+command = ["curl", "http://api:8080/users",
+           "-d", '{"name":"{{ fake_name() }}","email":"{{ fake_email() }}"}']
+expected_output_regex = "success"
+{% endfor %}
+```
+
+**Key Features:**
+- **50+ fake data generators** - UUIDs, names, emails, timestamps, IPs, etc.
+- **Deterministic seeding** - Reproducible tests with `fake_uuid_seeded(seed=42)`
+- **Matrix testing** - Generate all combinations of parameters
+- **Property-based testing** - Validate properties across generated data
+
+**Example: 1000 unique API tests generated from 10 lines of template code!**
+
+### **Telemetry-Only Validation (OTEL)**
+
+Prove system correctness using OpenTelemetry spans exclusively:
+
+```toml
+# tests/otel-validation.clnrm.toml
+[services.otel_collector]
+plugin = "otel_collector"
+image = "otel/opentelemetry-collector:latest"
+
+[services.app_under_test]
+plugin = "generic_container"
+image = "myapp:latest"
+env.OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+
+[[scenario]]
+name = "otel_self_validation"
+service = "app_under_test"
+run = "myapp --otel-endpoint http://otel_collector:4318"
+
+# Validate spans prove correct behavior
+[[expect.span]]
+name = "myapp.request"
+kind = "server"
+duration_ms = { min = 10, max = 5000 }
+
+[[expect.span]]
+name = "myapp.db_query"
+parent = "myapp.request"
+kind = "client"
+
+[expect.graph]
+must_include = [["myapp.request", "myapp.db_query"]]
+acyclic = true
+
+[expect.hermeticity]
+no_external_services = true
+resource_attrs_must_match = { "service.name" = "myapp" }
+```
+
+**Key Features:**
+- **Zero flakiness** - Deterministic validation across environments
+- **5-Dimensional validation** - Structural, temporal, cardinality, hermeticity, attribute
+- **Span validators** - Existence, count, attributes, hierarchy, events, duration
+- **Graph validators** - Parent-child relationships and cycle detection
+- **Hermeticity validators** - External service detection and resource validation
+
+**Example: Framework validates itself using its own telemetry - 100% deterministic!**
+
+### **Advanced Validation Framework**
+
+The framework provides comprehensive validation across multiple dimensions:
+
+- **Structural Validation** - Span hierarchy and relationships
+- **Temporal Validation** - Execution time windows and containment
+- **Cardinality Validation** - Count constraints across execution paths
+- **Hermeticity Validation** - Isolation and contamination detection
+- **Attribute Validation** - Semantic metadata validation
+
+**Result:** Proven correctness with zero false positives.
 
 ## 🎯 **Real Evidence - Not Claims**
 
@@ -158,7 +264,7 @@ brew tap seanchatmangpt/clnrm
 brew install clnrm
 
 # Verify installation
-clnrm --version  # Should show: clnrm 0.4.0
+clnrm --version  # Should show: clnrm 0.5.0
 ```
 
 #### Via Cargo
@@ -226,6 +332,36 @@ clnrm self-test
 # Verify plugin ecosystem
 clnrm plugins
 ```
+
+## 📋 **Changelog**
+
+### **Version 0.5.0** *(2025-10-16)*
+**Major Release: Tera Templating & OTEL Validation**
+
+#### **🚀 New Features**
+- **Tera Templating System** - Property-based testing with 50+ fake data generators
+  - Template files (`.toml.tera`, `.tera`) for dynamic test generation
+  - Deterministic seeding for reproducible property tests
+  - Matrix testing for combinatorial scenario generation
+- **Comprehensive OTEL Validation** - Telemetry-only validation framework
+  - Zero flakiness - deterministic validation across environments
+  - Multi-dimensional validation: structural, temporal, cardinality, hermeticity, attribute
+  - Span validators, graph validators, hermeticity validators
+- **Advanced Validation Framework** - Robust foundation for deterministic testing
+
+#### **🔧 Improvements**
+- Enhanced self-testing with OTEL validation
+- Improved error messages and debugging
+- Better performance with span processing optimizations
+- Extended documentation and examples
+
+#### **📚 Documentation**
+- Complete Tera templating architecture guide
+- OTEL validation PRD and implementation details
+- Hyper-dimensional calculus PhD thesis
+- Updated README with 0.5.0 features
+
+**Breaking Changes:** None - all existing `.toml` files work unchanged.
 
 ---
 
