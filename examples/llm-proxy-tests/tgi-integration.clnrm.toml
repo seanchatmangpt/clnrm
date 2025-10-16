@@ -1,0 +1,80 @@
+# TGI (Text Generation Inference) Integration Test
+# Tests Hugging Face TGI optimized inference server deployment and performance
+
+[test.metadata]
+name = "tgi_integration_test"
+description = "Comprehensive test of TGI high-performance LLM inference server"
+timeout = "300s"
+
+# TGI Service Configuration
+[services.tgi_service]
+type = "tgi"
+plugin = "tgi"
+endpoint = "http://localhost:8080"
+model_id = "microsoft/DialoGPT-medium"
+max_total_tokens = 2048
+max_input_length = 1024
+max_batch_prefill_tokens = 4096
+max_concurrent_requests = 32
+max_batch_total_tokens = 8192
+timeout = "60s"
+
+# Test Steps
+[[steps]]
+name = "verify_tgi_health"
+command = ["curl", "-s", "http://localhost:8080/health"]
+expected_output_regex = "ok"
+
+[[steps]]
+name = "check_tgi_info"
+command = ["curl", "-s", "http://localhost:8080/info"]
+expected_output_regex = "model_id"
+
+[[steps]]
+name = "test_basic_generation"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:8080/generate",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"inputs": "Hello, how are you today?", "parameters": {"max_new_tokens": 50, "temperature": 0.7}}',
+]
+expected_output_regex = "generated_text"
+
+[[steps]]
+name = "test_batch_processing"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:8080/generate",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"inputs": "What is artificial intelligence?", "parameters": {"max_new_tokens": 30, "temperature": 0.8}}',
+]
+expected_output_regex = "generated_text"
+
+[[steps]]
+name = "test_performance_optimization"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:8080/generate",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"inputs": "Explain machine learning concepts", "parameters": {"max_new_tokens": 100, "temperature": 0.6}}',
+]
+expected_output_regex = "generated_text"
+
+# Test Assertions
+[assertions]
+tgi_health_check = "TGI service should respond to health checks"
+model_loading = "TGI should successfully load the specified model"
+batch_processing = "TGI should handle batch requests efficiently"
+performance_optimization = "TGI should demonstrate optimized inference performance"

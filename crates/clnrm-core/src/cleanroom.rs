@@ -76,20 +76,51 @@ impl ServiceRegistry {
 
     /// Initialize default plugins
     pub fn with_default_plugins(mut self) -> Self {
-        use crate::services::generic::GenericContainerPlugin;
+        use crate::services::{
+            generic::GenericContainerPlugin,
+            ollama::OllamaPlugin,
+            vllm::VllmPlugin,
+            tgi::TgiPlugin
+        };
 
         // Register core plugins
         let generic_plugin = Box::new(GenericContainerPlugin::new("generic_container", "alpine:latest"));
         self.register_plugin(generic_plugin);
 
-        // TODO: Register Ollama plugin for AI testing when implemented
-        // let ollama_config = crate::services::ollama::OllamaConfig {
-        //     endpoint: "http://localhost:11434".to_string(),
-        //     default_model: "qwen3-coder:30b".to_string(),
-        //     timeout_seconds: 60,
-        // };
-        // let ollama_plugin = Box::new(OllamaPlugin::new("ollama", ollama_config));
-        // self.register_plugin(ollama_plugin);
+        // Register AI/LLM proxy plugins for automated rollout testing
+        let ollama_config = crate::services::ollama::OllamaConfig {
+            endpoint: "http://localhost:11434".to_string(),
+            default_model: "qwen3-coder:30b".to_string(),
+            timeout_seconds: 60,
+        };
+        let ollama_plugin = Box::new(OllamaPlugin::new("ollama", ollama_config));
+        self.register_plugin(ollama_plugin);
+
+        let vllm_config = crate::services::vllm::VllmConfig {
+            endpoint: "http://localhost:8000".to_string(),
+            model: "microsoft/DialoGPT-medium".to_string(),
+            max_num_seqs: Some(100),
+            max_model_len: Some(2048),
+            tensor_parallel_size: Some(1),
+            gpu_memory_utilization: Some(0.9),
+            enable_prefix_caching: Some(true),
+            timeout_seconds: 60,
+        };
+        let vllm_plugin = Box::new(VllmPlugin::new("vllm", vllm_config));
+        self.register_plugin(vllm_plugin);
+
+        let tgi_config = crate::services::tgi::TgiConfig {
+            endpoint: "http://localhost:8080".to_string(),
+            model_id: "microsoft/DialoGPT-medium".to_string(),
+            max_total_tokens: Some(2048),
+            max_input_length: Some(1024),
+            max_batch_prefill_tokens: Some(4096),
+            max_concurrent_requests: Some(32),
+            max_batch_total_tokens: Some(8192),
+            timeout_seconds: 60,
+        };
+        let tgi_plugin = Box::new(TgiPlugin::new("tgi", tgi_config));
+        self.register_plugin(tgi_plugin);
 
         self
     }

@@ -1,0 +1,79 @@
+# vLLM High-Performance LLM Inference Integration Test
+# Tests vLLM deployment, configuration, and performance characteristics
+
+[test.metadata]
+name = "vllm_integration_test"
+description = "Comprehensive test of vLLM high-performance LLM inference server"
+timeout = "300s"
+
+# vLLM Service Configuration
+[services.vllm_service]
+type = "vllm"
+plugin = "vllm"
+endpoint = "http://localhost:8000"
+model = "microsoft/DialoGPT-medium"
+max_num_seqs = 100
+max_model_len = 2048
+tensor_parallel_size = 1
+gpu_memory_utilization = 0.9
+timeout = "60s"
+
+# Test Steps
+[[steps]]
+name = "verify_vllm_health"
+command = ["curl", "-s", "http://localhost:8000/health"]
+expected_output_regex = "ok"
+
+[[steps]]
+name = "check_vllm_models"
+command = ["curl", "-s", "http://localhost:8000/v1/models"]
+expected_output_regex = "data"
+
+[[steps]]
+name = "test_basic_completion"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:8000/v1/completions",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"model": "microsoft/DialoGPT-medium", "prompt": "Hello, how are you?", "max_tokens": 50}',
+]
+expected_output_regex = "text"
+
+[[steps]]
+name = "test_concurrent_requests"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:8000/v1/completions",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"model": "microsoft/DialoGPT-medium", "prompt": "What is machine learning?", "max_tokens": 30}',
+]
+expected_output_regex = "text"
+
+[[steps]]
+name = "test_performance_metrics"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:8000/v1/completions",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"model": "microsoft/DialoGPT-medium", "prompt": "Explain quantum computing", "max_tokens": 100}',
+]
+expected_output_regex = "text"
+
+# Test Assertions
+[assertions]
+vllm_health_check = "vLLM service should respond to health checks"
+model_availability = "vLLM should serve the configured model"
+concurrent_request_handling = "vLLM should handle concurrent requests efficiently"
+performance_acceptable = "vLLM response times should be acceptable for production use"

@@ -13,7 +13,11 @@ pub fn list_plugins() -> Result<()> {
     println!("✅ generic_container (alpine, ubuntu, debian)");
     println!("✅ surreal_db (database integration)");
     println!("✅ network_tools (curl, wget, netcat)");
-    println!("✅ ollama (AI model integration)");
+
+    // List AI/LLM proxy plugins for automated rollout
+    println!("✅ ollama (local AI model integration)");
+    println!("✅ vllm (high-performance LLM inference)");
+    println!("✅ tgi (Hugging Face text generation inference)");
 
     // List plugin capabilities
     println!("\n🔧 Plugin Capabilities:");
@@ -21,12 +25,19 @@ pub fn list_plugins() -> Result<()> {
     println!("  • Service health monitoring");
     println!("  • Network connectivity testing");
     println!("  • Database integration testing");
-    println!("  • AI model integration (Ollama)");
+    println!("  • AI/LLM proxy automated rollout & testing");
+    println!("    ◦ Ollama (local development)");
+    println!("    ◦ vLLM (production inference)");
+    println!("    ◦ TGI (Hugging Face optimized)");
     println!("  • Custom service plugins");
 
     println!("\n💡 Usage:");
     println!("  clnrm run tests/your-test.toml");
     println!("  # Plugins are automatically discovered and loaded");
+    println!("\n🚀 LLM Proxy Testing:");
+    println!("  # Test Ollama: endpoint=http://localhost:11434, model=qwen3-coder:30b");
+    println!("  # Test vLLM: endpoint=http://localhost:8000, model=microsoft/DialoGPT-medium");
+    println!("  # Test TGI: endpoint=http://localhost:8080, model_id=microsoft/DialoGPT-medium");
 
     Ok(())
 }
