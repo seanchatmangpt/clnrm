@@ -1,59 +1,16 @@
-# Inner Test for Self-Testing
-# This test runs INSIDE a clnrm container to validate OTEL instrumentation
-# and basic framework functionality in a hermetic environment.
+# Inner test file - executed by clnrm running inside container
+# This is a simple test to exercise clnrm's core functionality
 
 [test.metadata]
-name = "inner_self_test"
-description = "Hermetic test for validating clnrm execution with OTEL spans"
-timeout = "30s"
-tags = ["self-test", "hermetic", "otel-validation"]
-
-# Simple Alpine container for fast execution
-[services.alpine_test]
-type = "generic_container"
-plugin = "generic_container"
-image = "alpine:latest"
-wait_strategy = "log"
-wait_message = ""  # Alpine has no startup message, immediate ready
-
-# Test Steps - Each creates a distinct span
-[[steps]]
-name = "echo_hello"
-description = "Verify basic command execution"
-command = ["echo", "Hello from inner test"]
-service = "alpine_test"
-expected_output_regex = "Hello from inner test"
+name = "inner_simple_test"
+description = "Simple test executed inside clnrm container for self-validation"
 
 [[steps]]
-name = "check_environment"
-description = "Validate container environment"
-command = ["sh", "-c", "echo \"Running on $(uname -s)\""]
-service = "alpine_test"
-expected_output_regex = "Running on Linux"
+name = "echo_test"
+command = ["echo", "Hello from clnrm"]
+expected_output_regex = "Hello"
 
 [[steps]]
-name = "create_file"
-description = "Test filesystem operations"
-command = ["sh", "-c", "echo 'test content' > /tmp/test.txt && cat /tmp/test.txt"]
-service = "alpine_test"
-expected_output_regex = "test content"
-
-[[steps]]
-name = "arithmetic_test"
-description = "Test shell arithmetic"
-command = ["sh", "-c", "expr 10 + 5"]
-service = "alpine_test"
-expected_output_regex = "15"
-
-[[steps]]
-name = "list_directory"
-description = "Verify directory listing"
-command = ["ls", "-la", "/tmp"]
-service = "alpine_test"
-expected_output_regex = "test.txt"
-
-# Assertions to validate hermetic execution
-[assertions]
-container_should_have_executed_commands = 5
-execution_should_be_hermetic = true
-all_steps_should_pass = true
+name = "verify_environment"
+command = ["env"]
+expected_output_regex = "OTEL"

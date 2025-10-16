@@ -1,0 +1,192 @@
+# Optimus Prime Platform - OTEL Trace Validation in Testcontainers
+# Everything runs in containers - captures real OTEL traces and validates them
+
+[test.metadata]
+name = "optimus_prime_otel_traces"
+description = "Run Optimus Prime in testcontainer, capture OTEL traces, validate spans"
+
+# OTEL Collector - Captures traces from the app
+[services.otel_collector]
+type = "otel_collector"
+plugin = "otel_collector"
+image = "otel/opentelemetry-collector:latest"
+
+[services.otel_collector.env]
+ENABLE_OTLP_HTTP = "true"
+ENABLE_OTLP_GRPC = "true"
+
+# Mount custom collector config that exports to accessible file
+[[services.otel_collector.volumes]]
+host_path = "./tests/self-test/otel-collector-config.yaml"
+container_path = "/etc/otelcol/config.yaml"
+read_only = true
+
+# Optimus Prime App - Next.js in container
+[services.optimus_prime]
+type = "generic_container"
+plugin = "generic_container"
+image = "node:20-slim"
+workdir = "/app"
+
+[services.optimus_prime.env]
+# Point to OTEL collector
+OTEL_SERVICE_NAME = "optimus-prime-platform"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+OTEL_TRACES_EXPORTER = "otlp"
+OTEL_METRICS_EXPORTER = "otlp"
+NODE_ENV = "development"
+PORT = "3000"
+
+# Mount the app code
+[[services.optimus_prime.volumes]]
+host_path = "./examples/optimus-prime-platform"
+container_path = "/app"
+read_only = false
+
+# Expose port for testing
+[[services.optimus_prime.ports]]
+3000
+
+# Test Steps - Run in containers and capture traces
+
+[[steps]]
+name = "wait_for_collector"
+command = ["sleep", "3"]
+
+[[steps]]
+name = "install_dependencies"
+service = "optimus_prime"
+command = ["npm", "install"]
+
+[[steps]]
+name = "start_dev_server_background"
+service = "optimus_prime"
+command = ["sh", "-c", "npm run dev > /tmp/server.log 2>&1 &"]
+
+[[steps]]
+name = "wait_for_server_ready"
+command = ["sleep", "10"]
+
+[[steps]]
+name = "health_check"
+service = "optimus_prime"
+command = ["curl", "-f", "http://localhost:3000"]
+expected_output_regex = "<!DOCTYPE|Optimus"
+
+[[steps]]
+name = "send_child_mode_chat"
+service = "optimus_prime"
+command = [
+  "curl", "-X", "POST",
+  "http://localhost:3000/api/chat",
+  "-H", "Content-Type: application/json",
+  "-d", '{"mode":"child","messages":[{"role":"user","content":"I helped my friend with homework today"}]}'
+]
+
+[[steps]]
+name = "send_executive_mode_chat"
+service = "optimus_prime"
+command = [
+  "curl", "-X", "POST",
+  "http://localhost:3000/api/chat",
+  "-H", "Content-Type: application/json",
+  "-d", '{"mode":"executive","messages":[{"role":"user","content":"Analyze team performance metrics"}]}'
+]
+
+[[steps]]
+name = "check_metrics_endpoint"
+service = "optimus_prime"
+command = ["curl", "-f", "http://localhost:3000/api/metrics"]
+expected_output_regex = "events|sessions|metrics"
+
+[[steps]]
+name = "wait_for_traces_export"
+command = ["sleep", "5"]
+
+[[steps]]
+name = "retrieve_traces_from_collector"
+service = "otel_collector"
+command = ["cat", "/tmp/clnrm-spans.json"]
+expected_output_regex = "POST /api/chat|handleChildChat|optimus-prime"
+
+[[steps]]
+name = "copy_traces_to_host"
+service = "otel_collector"
+command = ["sh", "-c", "cat /tmp/clnrm-spans.json > /tmp/optimus-traces.json && echo 'Traces exported'"]
+expected_output_regex = "exported"
+
+# OTEL Validation - Validate the captured traces
+
+[otel_validation]
+enabled = true
+validate_spans = true
+validate_traces = true
+validate_performance = true
+max_overhead_ms = 500.0
+
+# Expected Spans from actual execution
+
+[[otel_validation.expected_spans]]
+name = "POST /api/chat"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"chat.mode" = "child"
+
+[[otel_validation.expected_spans]]
+name = "handleChildChat"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"chat.child.virtue" = "kindness"
+
+[[otel_validation.expected_spans]]
+name = "POST /api/chat"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"chat.mode" = "executive"
+
+[[otel_validation.expected_spans]]
+name = "event.message_sent"
+required = true
+
+[[otel_validation.expected_spans]]
+name = "event.virtue_detected"
+required = true
+
+# Trace validation - verify span hierarchy
+
+[[otel_validation.expected_traces]]
+span_names = ["POST /api/chat", "handleChildChat", "event.message_sent", "event.virtue_detected"]
+complete = true
+parent_child = [
+  ["POST /api/chat", "handleChildChat"],
+  ["handleChildChat", "event.message_sent"]
+]
+
+# Second trace for executive mode
+[[otel_validation.expected_traces]]
+span_names = ["POST /api/chat", "handleExecutiveChat"]
+complete = false
+
+# What This Proves (via real traces):
+
+# 1. App ran in container → Hermetic test environment
+# 2. OTEL collector captured spans → Telemetry pipeline works
+# 3. POST /api/chat span exists → API executed successfully
+# 4. handleChildChat span exists → Child mode processing worked
+# 5. Span attributes match → Correct data captured (virtue=kindness)
+# 6. Span hierarchy correct → Request flow orchestrated properly
+# 7. Multiple traces captured → Both modes (child/executive) worked
+
+# This is the REAL test:
+#   - Everything in containers (hermetic)
+#   - Real HTTP requests sent
+#   - Real OTEL spans captured
+#   - Real traces analyzed
+#   - Proves functionality without traditional assertions
+
+[assertions]
+execution_should_be_hermetic = true

@@ -1,0 +1,51 @@
+# OpenTelemetry Collector configuration for clnrm self-testing
+# This configuration exports spans to a JSON file for validation
+
+receivers:
+  # OTLP HTTP receiver - primary endpoint for clnrm
+  otlp/http:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # OTLP gRPC receiver - alternative endpoint
+  otlp/grpc:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  # Batch processor for performance
+  batch:
+    timeout: 1s
+    send_batch_size: 100
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+
+exporters:
+  # File exporter - outputs spans as NDJSON for validation
+  file:
+    path: /tmp/clnrm-spans.json
+    rotation:
+      max_megabytes: 10
+      max_days: 1
+      max_backups: 3
+      localtime: true
+
+  # Logging exporter for debugging (optional)
+  logging:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp/http, otlp/grpc]
+      processors: [memory_limiter, batch]
+      exporters: [file, logging]
+
+  telemetry:
+    logs:
+      level: info
