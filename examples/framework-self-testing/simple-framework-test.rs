@@ -6,7 +6,7 @@
 //!
 //! Users can copy and paste this code to verify the framework works.
 
-use clnrm_core::{CleanroomEnvironment, error::Result};
+use clnrm_core::{error::Result, CleanroomEnvironment};
 use std::time::Instant;
 
 /// Simple framework self-test that validates core README claims
@@ -25,7 +25,10 @@ async fn main() -> Result<()> {
     let start = Instant::now();
     let env = CleanroomEnvironment::new().await?;
     let creation_time = start.elapsed();
-    println!("✅ CleanroomEnvironment created successfully in {}ms", creation_time.as_millis());
+    println!(
+        "✅ CleanroomEnvironment created successfully in {}ms",
+        creation_time.as_millis()
+    );
 
     // Test 2: Session ID Generation (Hermetic Isolation)
     println!("\n📋 Test 2: Hermetic Isolation (Session IDs)");
@@ -33,12 +36,15 @@ async fn main() -> Result<()> {
     let session_id = env.session_id();
     println!("✅ Session ID generated: {}", session_id);
     assert!(!session_id.is_nil(), "Session ID should not be nil");
-    
+
     // Create second environment to verify isolation
     let env2 = CleanroomEnvironment::new().await?;
     let session_id2 = env2.session_id();
     println!("✅ Second session ID: {}", session_id2);
-    assert_ne!(session_id, session_id2, "Each environment should have unique session ID");
+    assert_ne!(
+        session_id, session_id2,
+        "Each environment should have unique session ID"
+    );
     println!("✅ Hermetic isolation verified - each environment has unique session");
 
     // Test 3: Metrics Collection
@@ -82,11 +88,13 @@ async fn main() -> Result<()> {
     // Test 7: Test Execution Framework
     println!("\n📋 Test 7: Test Execution Framework");
     println!("==================================");
-    let test_result = env.execute_test("framework_self_test", || {
-        // Simple test that validates the framework can execute tests
-        println!("   - Test execution framework working");
-        Ok::<String, clnrm_core::CleanroomError>("test_passed".to_string())
-    }).await?;
+    let test_result = env
+        .execute_test("framework_self_test", || {
+            // Simple test that validates the framework can execute tests
+            println!("   - Test execution framework working");
+            Ok::<String, clnrm_core::CleanroomError>("test_passed".to_string())
+        })
+        .await?;
     println!("✅ Test execution result: {}", test_result);
     println!("✅ Test execution framework functional");
 

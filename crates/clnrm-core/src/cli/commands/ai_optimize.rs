@@ -5,11 +5,11 @@
 //!
 //! This command uses REAL Ollama AI integration for genuine optimization recommendations.
 
-use crate::error::{CleanroomError, Result};
 use crate::cleanroom::{CleanroomEnvironment, ServicePlugin};
+use crate::error::{CleanroomError, Result};
 use crate::services::ai_intelligence::AIIntelligenceService;
 use std::collections::HashMap;
-use tracing::{info, debug, warn};
+use tracing::{debug, info, warn};
 
 /// AI-powered optimization for test execution using REAL Ollama AI
 pub async fn ai_optimize_tests(
@@ -20,16 +20,41 @@ pub async fn ai_optimize_tests(
 ) -> Result<()> {
     info!("⚡ Starting REAL AI-powered test optimization");
     info!("🧠 Using Ollama AI for genuine optimization");
-    info!("🔄 Execution order optimization: {}", if execution_order { "enabled" } else { "disabled" });
-    info!("💾 Resource allocation optimization: {}", if resource_allocation { "enabled" } else { "disabled" });
-    info!("👥 Parallel execution optimization: {}", if parallel_execution { "enabled" } else { "disabled" });
-    info!("🤖 Auto-apply optimizations: {}", if auto_apply { "enabled" } else { "disabled" });
+    info!(
+        "🔄 Execution order optimization: {}",
+        if execution_order {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
+    info!(
+        "💾 Resource allocation optimization: {}",
+        if resource_allocation {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
+    info!(
+        "👥 Parallel execution optimization: {}",
+        if parallel_execution {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
+    info!(
+        "🤖 Auto-apply optimizations: {}",
+        if auto_apply { "enabled" } else { "disabled" }
+    );
 
     // Create cleanroom environment for optimization
-    let environment = CleanroomEnvironment::new().await
-        .map_err(|e| CleanroomError::internal_error("Failed to create optimization environment")
+    let environment = CleanroomEnvironment::new().await.map_err(|e| {
+        CleanroomError::internal_error("Failed to create optimization environment")
             .with_context("AI optimization requires cleanroom environment")
-            .with_source(e.to_string()))?;
+            .with_source(e.to_string())
+    })?;
 
     // Initialize AI Intelligence Service with fallback
     let ai_service = AIIntelligenceService::new();
@@ -37,7 +62,7 @@ pub async fn ai_optimize_tests(
         Ok(handle) => {
             info!("✅ Real AI service initialized with Ollama");
             (true, Some(handle))
-        },
+        }
         Err(e) => {
             warn!("⚠️ Ollama unavailable, using simulated AI: {}", e);
             info!("💡 To enable real AI, ensure Ollama is running at http://localhost:11434");
@@ -55,7 +80,7 @@ pub async fn ai_optimize_tests(
         info!("🔄 Phase 2: Execution Order Optimization");
         let order_optimization = optimize_execution_order(&current_config).await?;
         display_execution_order_optimization(&order_optimization).await?;
-        
+
         if auto_apply {
             apply_execution_order_optimization(&order_optimization).await?;
         }
@@ -66,7 +91,7 @@ pub async fn ai_optimize_tests(
         info!("💾 Phase 3: Resource Allocation Optimization");
         let resource_optimization = optimize_resource_allocation(&current_config).await?;
         display_resource_optimization(&resource_optimization).await?;
-        
+
         if auto_apply {
             apply_resource_optimization(&resource_optimization).await?;
         }
@@ -77,7 +102,7 @@ pub async fn ai_optimize_tests(
         info!("👥 Phase 4: Parallel Execution Optimization");
         let parallel_optimization = optimize_parallel_execution(&current_config).await?;
         display_parallel_optimization(&parallel_optimization).await?;
-        
+
         if auto_apply {
             apply_parallel_optimization(&parallel_optimization).await?;
         }
@@ -86,9 +111,9 @@ pub async fn ai_optimize_tests(
     // Phase 5: Generate optimization report with REAL AI
     info!("📋 Phase 5: Generating Optimization Report");
     let optimization_report = if use_real_ai {
-        generate_real_optimization_report(&current_config).await?
+        generate_real_optimization_report(&ai_service, &current_config).await?
     } else {
-        generate_optimization_report(&current_config).await?
+        generate_optimization_report(&ai_service, &current_config).await?
     };
     display_optimization_report(&optimization_report).await?;
 
@@ -102,12 +127,23 @@ pub async fn ai_optimize_tests(
     Ok(())
 }
 
+/// Query real AI service using AI Intelligence Service
+async fn query_real_ai_service(ai_service: &AIIntelligenceService, prompt: &str) -> Result<String> {
+    // Use the real AI Intelligence Service for genuine AI processing
+    ai_service
+        .query_ollama(prompt)
+        .await
+        .map_err(|e| CleanroomError::service_error(format!("AI query failed: {}", e)))
+}
+
 /// Query Ollama AI directly
 async fn query_ollama_direct(prompt: &str) -> Result<String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(120))
         .build()
-        .map_err(|e| CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e)))?;
+        .map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e))
+        })?;
 
     let url = "http://localhost:11434/api/generate";
     let payload = serde_json::json!({
@@ -130,10 +166,9 @@ async fn query_ollama_direct(prompt: &str) -> Result<String> {
         .map_err(|e| CleanroomError::service_error(format!("Failed to query Ollama: {}", e)))?;
 
     if response.status().is_success() {
-        let ollama_response: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to parse Ollama response: {}", e)))?;
+        let ollama_response: serde_json::Value = response.json().await.map_err(|e| {
+            CleanroomError::service_error(format!("Failed to parse Ollama response: {}", e))
+        })?;
 
         let response_text = ollama_response["response"]
             .as_str()
@@ -146,12 +181,18 @@ async fn query_ollama_direct(prompt: &str) -> Result<String> {
             .await
             .unwrap_or_else(|_| "Unknown error".to_string());
 
-        Err(CleanroomError::service_error(format!("Ollama API error: {}", error_text)))
+        Err(CleanroomError::service_error(format!(
+            "Ollama API error: {}",
+            error_text
+        )))
     }
 }
 
 /// Generate optimization report using REAL Ollama AI
-async fn generate_real_optimization_report(config: &TestConfiguration) -> Result<OptimizationReport> {
+async fn generate_real_optimization_report(
+    ai_service: &AIIntelligenceService,
+    config: &TestConfiguration,
+) -> Result<OptimizationReport> {
     info!("📋 Generating comprehensive optimization report using REAL AI");
 
     let prompt = format!(
@@ -173,26 +214,38 @@ async fn generate_real_optimization_report(config: &TestConfiguration) -> Result
         config.current_parallel_workers
     );
 
-    match query_ollama_direct(&prompt).await {
+    match query_real_ai_service(&ai_service, &prompt).await {
         Ok(ai_response) => {
             info!("🧠 Real AI optimization report generated");
 
             // Parse AI response into structured recommendations
             let mut opportunities = Vec::new();
-            let lines: Vec<&str> = ai_response.lines()
+            let lines: Vec<&str> = ai_response
+                .lines()
                 .filter(|line| !line.trim().is_empty() && line.trim().len() > 30)
                 .collect();
 
             for (i, line) in lines.iter().enumerate().take(5) {
-                let category = if line.to_lowercase().contains("parallel") || line.to_lowercase().contains("concurrent") {
+                let category = if line.to_lowercase().contains("parallel")
+                    || line.to_lowercase().contains("concurrent")
+                {
                     "Performance"
-                } else if line.to_lowercase().contains("resource") || line.to_lowercase().contains("memory") || line.to_lowercase().contains("cpu") {
+                } else if line.to_lowercase().contains("resource")
+                    || line.to_lowercase().contains("memory")
+                    || line.to_lowercase().contains("cpu")
+                {
                     "Resource"
                 } else {
                     "Execution"
                 };
 
-                let (impact, effort) = if i == 0 { ("High", "Medium") } else if i < 3 { ("Medium", "Low") } else { ("Low", "Low") };
+                let (impact, effort) = if i == 0 {
+                    ("High", "Medium")
+                } else if i < 3 {
+                    ("Medium", "Low")
+                } else {
+                    ("Low", "Low")
+                };
 
                 opportunities.push(OptimizationOpportunity {
                     category: category.to_string(),
@@ -208,8 +261,10 @@ async fn generate_real_optimization_report(config: &TestConfiguration) -> Result
             let roadmap = generate_implementation_roadmap(config).await?;
 
             // Calculate metrics
-            let total_optimization_potential = calculate_total_optimization_potential(config).await?;
-            let expected_overall_improvement = calculate_expected_overall_improvement(config).await?;
+            let total_optimization_potential =
+                calculate_total_optimization_potential(config).await?;
+            let expected_overall_improvement =
+                calculate_expected_overall_improvement(config).await?;
             let risk_assessment = assess_optimization_risks(config).await?;
 
             Ok(OptimizationReport {
@@ -219,10 +274,13 @@ async fn generate_real_optimization_report(config: &TestConfiguration) -> Result
                 expected_overall_improvement,
                 risk_assessment,
             })
-        },
+        }
         Err(e) => {
-            warn!("⚠️ Real AI optimization report failed, using fallback: {}", e);
-            generate_optimization_report(config).await
+            warn!(
+                "⚠️ Real AI optimization report failed, using fallback: {}",
+                e
+            );
+            generate_optimization_report(&ai_service, config).await
         }
     }
 }
@@ -244,9 +302,15 @@ async fn analyze_current_configuration() -> Result<TestConfiguration> {
     let total_tests = tests.len();
     let total_steps: usize = tests.iter().map(|t| t.step_count).sum();
     let total_services: usize = tests.iter().map(|t| t.service_count).sum();
-    
-    let total_cpu_requirements: f64 = tests.iter().map(|t| t.resource_requirements.cpu_cores).sum();
-    let total_memory_requirements: f64 = tests.iter().map(|t| t.resource_requirements.memory_mb).sum();
+
+    let total_cpu_requirements: f64 = tests
+        .iter()
+        .map(|t| t.resource_requirements.cpu_cores)
+        .sum();
+    let total_memory_requirements: f64 = tests
+        .iter()
+        .map(|t| t.resource_requirements.memory_mb)
+        .sum();
     let total_execution_time: u64 = tests.iter().map(|t| t.estimated_execution_time).sum();
 
     Ok(TestConfiguration {
@@ -269,26 +333,26 @@ async fn analyze_current_configuration() -> Result<TestConfiguration> {
 /// Discover test files in the current directory
 async fn discover_test_files() -> Result<Vec<std::path::PathBuf>> {
     let mut test_files = Vec::new();
-    let current_dir = std::env::current_dir()
-        .map_err(|e| CleanroomError::config_error(format!("Failed to get current directory: {}", e)))?;
+    let current_dir = std::env::current_dir().map_err(|e| {
+        CleanroomError::config_error(format!("Failed to get current directory: {}", e))
+    })?;
 
     // Look for test files in common locations
-    let test_directories = vec![
-        current_dir.join("tests"),
-        current_dir.join("test"),
-    ];
+    let test_directories = vec![current_dir.join("tests"), current_dir.join("test")];
 
     for test_dir in test_directories {
         if test_dir.exists() && test_dir.is_dir() {
-            let entries = std::fs::read_dir(&test_dir)
-                .map_err(|e| CleanroomError::config_error(format!("Failed to read directory: {}", e)))?;
+            let entries = std::fs::read_dir(&test_dir).map_err(|e| {
+                CleanroomError::config_error(format!("Failed to read directory: {}", e))
+            })?;
 
             for entry in entries {
-                let entry = entry
-                    .map_err(|e| CleanroomError::config_error(format!("Failed to read directory entry: {}", e)))?;
-                
+                let entry = entry.map_err(|e| {
+                    CleanroomError::config_error(format!("Failed to read directory entry: {}", e))
+                })?;
+
                 let path = entry.path();
-                
+
                 if path.is_file() {
                     if let Some(extension) = path.extension() {
                         if extension == "toml" || extension == "clnrm.toml" {
@@ -346,7 +410,9 @@ fn calculate_test_complexity(test_config: &crate::config::TestConfig) -> f64 {
     }
 
     // Regex validation complexity
-    let regex_steps = test_config.steps.iter()
+    let regex_steps = test_config
+        .steps
+        .iter()
         .filter(|step| step.expected_output_regex.is_some())
         .count();
     complexity += regex_steps as f64 * 0.15;
@@ -430,22 +496,26 @@ fn estimate_execution_time(test_config: &crate::config::TestConfig) -> u64 {
 /// Parse duration string to Duration
 fn parse_duration(duration_str: &str) -> Result<std::time::Duration> {
     let duration_str = duration_str.trim();
-    
+
     if duration_str.ends_with('s') {
-        let seconds: u64 = duration_str[..duration_str.len()-1].parse()
+        let seconds: u64 = duration_str[..duration_str.len() - 1]
+            .parse()
             .map_err(|e| CleanroomError::config_error(format!("Invalid duration format: {}", e)))?;
         Ok(std::time::Duration::from_secs(seconds))
     } else if duration_str.ends_with('m') {
-        let minutes: u64 = duration_str[..duration_str.len()-1].parse()
+        let minutes: u64 = duration_str[..duration_str.len() - 1]
+            .parse()
             .map_err(|e| CleanroomError::config_error(format!("Invalid duration format: {}", e)))?;
         Ok(std::time::Duration::from_secs(minutes * 60))
     } else if duration_str.ends_with('h') {
-        let hours: u64 = duration_str[..duration_str.len()-1].parse()
+        let hours: u64 = duration_str[..duration_str.len() - 1]
+            .parse()
             .map_err(|e| CleanroomError::config_error(format!("Invalid duration format: {}", e)))?;
         Ok(std::time::Duration::from_secs(hours * 3600))
     } else {
         // Assume seconds if no unit
-        let seconds: u64 = duration_str.parse()
+        let seconds: u64 = duration_str
+            .parse()
             .map_err(|e| CleanroomError::config_error(format!("Invalid duration format: {}", e)))?;
         Ok(std::time::Duration::from_secs(seconds))
     }
@@ -494,7 +564,9 @@ fn calculate_parallelization_potential(test_config: &crate::config::TestConfig) 
 }
 
 /// Calculate optimization priority for a test
-fn calculate_optimization_priority(test_config: &crate::config::TestConfig) -> OptimizationPriority {
+fn calculate_optimization_priority(
+    test_config: &crate::config::TestConfig,
+) -> OptimizationPriority {
     let complexity = calculate_test_complexity(test_config);
     let resource_requirements = estimate_resource_requirements(test_config);
     let execution_time = estimate_execution_time(test_config);
@@ -510,11 +582,13 @@ fn calculate_optimization_priority(test_config: &crate::config::TestConfig) -> O
 }
 
 /// Optimize execution order using AI
-async fn optimize_execution_order(config: &TestConfiguration) -> Result<ExecutionOrderOptimization> {
+async fn optimize_execution_order(
+    config: &TestConfiguration,
+) -> Result<ExecutionOrderOptimization> {
     info!("🔄 Optimizing test execution order using AI");
 
     let mut tests = config.tests.clone();
-    
+
     // AI-driven sorting: prioritize by optimization potential and resource requirements
     tests.sort_by(|a, b| {
         // First, sort by optimization priority
@@ -524,7 +598,10 @@ async fn optimize_execution_order(config: &TestConfiguration) -> Result<Executio
         }
 
         // Then, sort by resource requirements (lower first for better resource utilization)
-        let resource_cmp = a.resource_requirements.cpu_cores.partial_cmp(&b.resource_requirements.cpu_cores)
+        let resource_cmp = a
+            .resource_requirements
+            .cpu_cores
+            .partial_cmp(&b.resource_requirements.cpu_cores)
             .unwrap_or(std::cmp::Ordering::Equal);
         if resource_cmp != std::cmp::Ordering::Equal {
             return resource_cmp;
@@ -535,12 +612,13 @@ async fn optimize_execution_order(config: &TestConfiguration) -> Result<Executio
     });
 
     let optimized_order: Vec<String> = tests.iter().map(|t| t.name.clone()).collect();
-    
+
     // Calculate expected improvement
     let current_total_time = config.total_execution_time;
     let optimized_total_time = calculate_optimized_execution_time(&tests).await?;
     let time_improvement = if current_total_time > 0 {
-        ((current_total_time - optimized_total_time) as f64 / current_total_time as f64 * 100.0).max(0.0)
+        ((current_total_time - optimized_total_time) as f64 / current_total_time as f64 * 100.0)
+            .max(0.0)
     } else {
         0.0
     };
@@ -563,18 +641,21 @@ async fn calculate_optimized_execution_time(tests: &[TestAnalysis]) -> Result<u6
     // Simulate optimized execution time calculation
     // In a real implementation, this would consider parallelization and resource optimization
     let total_time: u64 = tests.iter().map(|t| t.estimated_execution_time).sum();
-    
+
     // Apply optimization factors
     let parallelization_factor = 0.7; // 30% improvement from parallelization
     let resource_optimization_factor = 0.9; // 10% improvement from resource optimization
-    
-    let optimized_time = (total_time as f64 * parallelization_factor * resource_optimization_factor) as u64;
-    
+
+    let optimized_time =
+        (total_time as f64 * parallelization_factor * resource_optimization_factor) as u64;
+
     Ok(optimized_time)
 }
 
 /// Optimize resource allocation using AI
-async fn optimize_resource_allocation(config: &TestConfiguration) -> Result<ResourceAllocationOptimization> {
+async fn optimize_resource_allocation(
+    config: &TestConfiguration,
+) -> Result<ResourceAllocationOptimization> {
     info!("💾 Optimizing resource allocation using AI");
 
     // Analyze current resource usage
@@ -588,8 +669,12 @@ async fn optimize_resource_allocation(config: &TestConfiguration) -> Result<Reso
     let optimized_network_allocation = optimize_network_allocation(config).await?;
 
     // Calculate efficiency improvements
-    let cpu_efficiency = calculate_cpu_efficiency(current_cpu_usage, optimized_cpu_allocation.total_cpu);
-    let memory_efficiency = calculate_memory_efficiency(current_memory_usage, optimized_memory_allocation.total_memory);
+    let cpu_efficiency =
+        calculate_cpu_efficiency(current_cpu_usage, optimized_cpu_allocation.total_cpu);
+    let memory_efficiency = calculate_memory_efficiency(
+        current_memory_usage,
+        optimized_memory_allocation.total_memory,
+    );
     let overall_efficiency = (cpu_efficiency + memory_efficiency) / 2.0;
 
     Ok(ResourceAllocationOptimization {
@@ -620,15 +705,23 @@ async fn optimize_resource_allocation(config: &TestConfiguration) -> Result<Reso
 /// Optimize CPU allocation
 async fn optimize_cpu_allocation(config: &TestConfiguration) -> Result<ResourceAllocation> {
     let mut total_cpu = 0.0;
-    
+
     // AI-driven CPU allocation based on test characteristics
     for test in &config.tests {
         let base_cpu = test.resource_requirements.cpu_cores;
-        
+
         // Apply optimization factors
-        let complexity_factor = if test.complexity_score > 5.0 { 1.2 } else { 1.0 };
-        let parallelization_factor = if test.parallelization_potential > 0.5 { 0.8 } else { 1.0 };
-        
+        let complexity_factor = if test.complexity_score > 5.0 {
+            1.2
+        } else {
+            1.0
+        };
+        let parallelization_factor = if test.parallelization_potential > 0.5 {
+            0.8
+        } else {
+            1.0
+        };
+
         let optimized_cpu = base_cpu * complexity_factor * parallelization_factor;
         total_cpu += optimized_cpu;
     }
@@ -636,26 +729,26 @@ async fn optimize_cpu_allocation(config: &TestConfiguration) -> Result<ResourceA
     Ok(ResourceAllocation {
         total_cpu,
         total_memory: config.total_memory_requirements, // Will be optimized separately
-        total_network: 1000, // Will be optimized separately
+        total_network: 1000,                            // Will be optimized separately
     })
 }
 
 /// Optimize memory allocation
 async fn optimize_memory_allocation(config: &TestConfiguration) -> Result<ResourceAllocation> {
     let mut total_memory = 0.0;
-    
+
     // AI-driven memory allocation with pooling
     let mut memory_pools: HashMap<String, f64> = HashMap::new();
-    
+
     for test in &config.tests {
         let base_memory = test.resource_requirements.memory_mb;
-        
+
         // Group similar tests for memory pooling
         let pool_key = format!("complexity_{:.0}", test.complexity_score);
         let pooled_memory = memory_pools.entry(pool_key).or_insert(0.0);
         *pooled_memory = (*pooled_memory).max(base_memory);
     }
-    
+
     total_memory = memory_pools.values().sum();
 
     Ok(ResourceAllocation {
@@ -668,15 +761,15 @@ async fn optimize_memory_allocation(config: &TestConfiguration) -> Result<Resour
 /// Optimize network allocation
 async fn optimize_network_allocation(config: &TestConfiguration) -> Result<ResourceAllocation> {
     let mut total_network = 0;
-    
+
     // AI-driven network allocation based on service dependencies
     for test in &config.tests {
         let base_network = test.resource_requirements.network_io_mb;
-        
+
         // Apply optimization based on service count
         let service_factor = if test.service_count > 3 { 1.5 } else { 1.0 };
         let optimized_network = (base_network as f64 * service_factor) as u64;
-        
+
         total_network += optimized_network;
     }
 
@@ -706,7 +799,9 @@ fn calculate_memory_efficiency(current: f64, optimized: f64) -> f64 {
 }
 
 /// Optimize parallel execution using AI
-async fn optimize_parallel_execution(config: &TestConfiguration) -> Result<ParallelExecutionOptimization> {
+async fn optimize_parallel_execution(
+    config: &TestConfiguration,
+) -> Result<ParallelExecutionOptimization> {
     info!("👥 Optimizing parallel execution using AI");
 
     // Analyze tests for parallelization potential
@@ -723,14 +818,21 @@ async fn optimize_parallel_execution(config: &TestConfiguration) -> Result<Paral
 
     // AI-driven parallel execution strategy
     let optimal_workers = calculate_optimal_workers(config).await?;
-    let parallel_groups = group_tests_for_parallel_execution(&parallelizable_tests, optimal_workers).await?;
-    let execution_strategy = generate_execution_strategy(&parallel_groups, &sequential_tests).await?;
+    let parallel_groups =
+        group_tests_for_parallel_execution(&parallelizable_tests, optimal_workers).await?;
+    let execution_strategy =
+        generate_execution_strategy(&parallel_groups, &sequential_tests).await?;
 
     // Calculate expected improvements
     let current_sequential_time = config.total_execution_time;
-    let optimized_parallel_time = calculate_parallel_execution_time(&parallel_groups, &sequential_tests, optimal_workers).await?;
+    let optimized_parallel_time =
+        calculate_parallel_execution_time(&parallel_groups, &sequential_tests, optimal_workers)
+            .await?;
     let time_improvement = if current_sequential_time > 0 {
-        ((current_sequential_time - optimized_parallel_time) as f64 / current_sequential_time as f64 * 100.0).max(0.0)
+        ((current_sequential_time - optimized_parallel_time) as f64
+            / current_sequential_time as f64
+            * 100.0)
+            .max(0.0)
     } else {
         0.0
     };
@@ -743,7 +845,11 @@ async fn optimize_parallel_execution(config: &TestConfiguration) -> Result<Paral
         parallel_groups,
         execution_strategy,
         expected_time_improvement: time_improvement,
-        resource_utilization_improvement: calculate_resource_utilization_improvement(config, optimal_workers).await?,
+        resource_utilization_improvement: calculate_resource_utilization_improvement(
+            config,
+            optimal_workers,
+        )
+        .await?,
     })
 }
 
@@ -756,15 +862,19 @@ async fn calculate_optimal_workers(config: &TestConfiguration) -> Result<usize> 
 
     // AI-driven worker calculation based on resource constraints
     let cpu_based_workers = (available_cpu / total_cpu * config.total_tests as f64) as usize;
-    let memory_based_workers = (available_memory / total_memory * config.total_tests as f64) as usize;
-    
+    let memory_based_workers =
+        (available_memory / total_memory * config.total_tests as f64) as usize;
+
     let optimal_workers = cpu_based_workers.min(memory_based_workers).max(1).min(16);
 
     Ok(optimal_workers)
 }
 
 /// Group tests for parallel execution
-async fn group_tests_for_parallel_execution(tests: &[TestAnalysis], max_workers: usize) -> Result<Vec<ParallelGroup>> {
+async fn group_tests_for_parallel_execution(
+    tests: &[TestAnalysis],
+    max_workers: usize,
+) -> Result<Vec<ParallelGroup>> {
     let mut groups = Vec::new();
     let mut current_group = Vec::new();
     let mut current_group_cpu = 0.0;
@@ -775,14 +885,21 @@ async fn group_tests_for_parallel_execution(tests: &[TestAnalysis], max_workers:
         let test_memory = test.resource_requirements.memory_mb;
 
         // Check if adding this test would exceed resource limits
-        if current_group_cpu + test_cpu > 4.0 || current_group_memory + test_memory > 2048.0 || current_group.len() >= max_workers {
+        if current_group_cpu + test_cpu > 4.0
+            || current_group_memory + test_memory > 2048.0
+            || current_group.len() >= max_workers
+        {
             // Start a new group
             if !current_group.is_empty() {
                 groups.push(ParallelGroup {
                     tests: current_group.clone(),
                     total_cpu: current_group_cpu,
                     total_memory: current_group_memory,
-                    estimated_time: current_group.iter().map(|t| t.estimated_execution_time).max().unwrap_or(0),
+                    estimated_time: current_group
+                        .iter()
+                        .map(|t| t.estimated_execution_time)
+                        .max()
+                        .unwrap_or(0),
                 });
             }
             current_group = vec![test.clone()];
@@ -810,7 +927,10 @@ async fn group_tests_for_parallel_execution(tests: &[TestAnalysis], max_workers:
 }
 
 /// Generate execution strategy
-async fn generate_execution_strategy(parallel_groups: &[ParallelGroup], sequential_tests: &[TestAnalysis]) -> Result<ExecutionStrategy> {
+async fn generate_execution_strategy(
+    parallel_groups: &[ParallelGroup],
+    sequential_tests: &[TestAnalysis],
+) -> Result<ExecutionStrategy> {
     let mut phases = Vec::new();
 
     // Phase 1: Execute parallel groups
@@ -824,16 +944,25 @@ async fn generate_execution_strategy(parallel_groups: &[ParallelGroup], sequenti
                 cpu_cores: group.total_cpu,
                 memory_mb: group.total_memory,
                 network_io_mb: 0, // Will be calculated
-                disk_io_mb: 0, // Will be calculated
+                disk_io_mb: 0,    // Will be calculated
             },
         });
     }
 
     // Phase 2: Execute sequential tests
     if !sequential_tests.is_empty() {
-        let sequential_time: u64 = sequential_tests.iter().map(|t| t.estimated_execution_time).sum();
-        let sequential_cpu: f64 = sequential_tests.iter().map(|t| t.resource_requirements.cpu_cores).sum();
-        let sequential_memory: f64 = sequential_tests.iter().map(|t| t.resource_requirements.memory_mb).sum();
+        let sequential_time: u64 = sequential_tests
+            .iter()
+            .map(|t| t.estimated_execution_time)
+            .sum();
+        let sequential_cpu: f64 = sequential_tests
+            .iter()
+            .map(|t| t.resource_requirements.cpu_cores)
+            .sum();
+        let sequential_memory: f64 = sequential_tests
+            .iter()
+            .map(|t| t.resource_requirements.memory_mb)
+            .sum();
 
         phases.push(ExecutionPhase {
             phase_number: phases.len() + 1,
@@ -844,7 +973,7 @@ async fn generate_execution_strategy(parallel_groups: &[ParallelGroup], sequenti
                 cpu_cores: sequential_cpu,
                 memory_mb: sequential_memory,
                 network_io_mb: 0, // Will be calculated
-                disk_io_mb: 0, // Will be calculated
+                disk_io_mb: 0,    // Will be calculated
             },
         });
     }
@@ -857,18 +986,28 @@ async fn generate_execution_strategy(parallel_groups: &[ParallelGroup], sequenti
 }
 
 /// Calculate parallel execution time
-async fn calculate_parallel_execution_time(parallel_groups: &[ParallelGroup], sequential_tests: &[TestAnalysis], workers: usize) -> Result<u64> {
+async fn calculate_parallel_execution_time(
+    parallel_groups: &[ParallelGroup],
+    sequential_tests: &[TestAnalysis],
+    workers: usize,
+) -> Result<u64> {
     let parallel_time: u64 = parallel_groups.iter().map(|g| g.estimated_time).sum();
-    let sequential_time: u64 = sequential_tests.iter().map(|t| t.estimated_execution_time).sum();
-    
+    let sequential_time: u64 = sequential_tests
+        .iter()
+        .map(|t| t.estimated_execution_time)
+        .sum();
+
     Ok(parallel_time + sequential_time)
 }
 
 /// Calculate resource utilization improvement
-async fn calculate_resource_utilization_improvement(config: &TestConfiguration, optimal_workers: usize) -> Result<f64> {
+async fn calculate_resource_utilization_improvement(
+    config: &TestConfiguration,
+    optimal_workers: usize,
+) -> Result<f64> {
     let current_utilization = config.current_parallel_workers as f64 / config.total_tests as f64;
     let optimized_utilization = optimal_workers as f64 / config.total_tests as f64;
-    
+
     let improvement = if current_utilization > 0.0 {
         ((optimized_utilization - current_utilization) / current_utilization * 100.0).max(0.0)
     } else {
@@ -879,7 +1018,10 @@ async fn calculate_resource_utilization_improvement(config: &TestConfiguration, 
 }
 
 /// Generate optimization report
-async fn generate_optimization_report(config: &TestConfiguration) -> Result<OptimizationReport> {
+async fn generate_optimization_report(
+    ai_service: &AIIntelligenceService,
+    config: &TestConfiguration,
+) -> Result<OptimizationReport> {
     info!("📋 Generating comprehensive optimization report");
 
     let total_optimization_potential = calculate_total_optimization_potential(config).await?;
@@ -901,12 +1043,15 @@ async fn calculate_total_optimization_potential(config: &TestConfiguration) -> R
     let resource_optimization_potential = 0.25; // 25% improvement from resource optimization
     let parallelization_potential = 0.40; // 40% improvement from parallelization
 
-    let total_potential = execution_order_potential + resource_optimization_potential + parallelization_potential;
+    let total_potential =
+        execution_order_potential + resource_optimization_potential + parallelization_potential;
     Ok(total_potential * 100.0)
 }
 
 /// Identify key optimization opportunities
-async fn identify_key_optimization_opportunities(config: &TestConfiguration) -> Result<Vec<OptimizationOpportunity>> {
+async fn identify_key_optimization_opportunities(
+    config: &TestConfiguration,
+) -> Result<Vec<OptimizationOpportunity>> {
     let mut opportunities = Vec::new();
 
     // High-impact opportunities
@@ -962,7 +1107,8 @@ async fn generate_implementation_roadmap(config: &TestConfiguration) -> Result<V
     roadmap.push(RoadmapItem {
         phase: 2,
         title: "Optimize Resource Allocation".to_string(),
-        description: "Implement dynamic resource allocation based on test characteristics".to_string(),
+        description: "Implement dynamic resource allocation based on test characteristics"
+            .to_string(),
         estimated_effort: "1-2 days".to_string(),
         dependencies: vec!["Phase 1".to_string()],
         expected_benefit: "20-30% resource efficiency".to_string(),
@@ -987,8 +1133,11 @@ async fn calculate_expected_overall_improvement(config: &TestConfiguration) -> R
     let parallelization_improvement = 0.45; // 45% improvement
 
     // Combined improvement (not additive due to overlapping benefits)
-    let overall_improvement = 1.0 - (1.0 - execution_order_improvement) * (1.0 - resource_optimization_improvement) * (1.0 - parallelization_improvement);
-    
+    let overall_improvement = 1.0
+        - (1.0 - execution_order_improvement)
+            * (1.0 - resource_optimization_improvement)
+            * (1.0 - parallelization_improvement);
+
     Ok(overall_improvement * 100.0)
 }
 
@@ -1028,7 +1177,9 @@ async fn assess_optimization_risks(config: &TestConfiguration) -> Result<RiskAss
 }
 
 /// Apply execution order optimization
-async fn apply_execution_order_optimization(optimization: &ExecutionOrderOptimization) -> Result<()> {
+async fn apply_execution_order_optimization(
+    optimization: &ExecutionOrderOptimization,
+) -> Result<()> {
     info!("🔄 Applying execution order optimization");
     info!("✅ Execution order optimization applied successfully");
     Ok(())
@@ -1054,30 +1205,64 @@ async fn display_current_configuration(config: &TestConfiguration) -> Result<()>
     info!("🔢 Total Tests: {}", config.total_tests);
     info!("📋 Total Steps: {}", config.total_steps);
     info!("🔧 Total Services: {}", config.total_services);
-    info!("💻 Total CPU Requirements: {:.1} cores", config.total_cpu_requirements);
-    info!("💾 Total Memory Requirements: {:.0} MB", config.total_memory_requirements);
+    info!(
+        "💻 Total CPU Requirements: {:.1} cores",
+        config.total_cpu_requirements
+    );
+    info!(
+        "💾 Total Memory Requirements: {:.0} MB",
+        config.total_memory_requirements
+    );
     info!("⏱️ Total Execution Time: {}s", config.total_execution_time);
-    info!("👥 Current Parallel Workers: {}", config.current_parallel_workers);
+    info!(
+        "👥 Current Parallel Workers: {}",
+        config.current_parallel_workers
+    );
     Ok(())
 }
 
 /// Display execution order optimization
-async fn display_execution_order_optimization(optimization: &ExecutionOrderOptimization) -> Result<()> {
+async fn display_execution_order_optimization(
+    optimization: &ExecutionOrderOptimization,
+) -> Result<()> {
     info!("🔄 Execution Order Optimization:");
-    info!("📈 Expected Time Improvement: {:.1}%", optimization.expected_time_improvement);
-    info!("🎯 Optimization Strategy: {}", optimization.optimization_strategy);
+    info!(
+        "📈 Expected Time Improvement: {:.1}%",
+        optimization.expected_time_improvement
+    );
+    info!(
+        "🎯 Optimization Strategy: {}",
+        optimization.optimization_strategy
+    );
     info!("💡 Reasoning: {:?}", optimization.reasoning);
     Ok(())
 }
 
 /// Display resource optimization
-async fn display_resource_optimization(optimization: &ResourceAllocationOptimization) -> Result<()> {
+async fn display_resource_optimization(
+    optimization: &ResourceAllocationOptimization,
+) -> Result<()> {
     info!("💾 Resource Allocation Optimization:");
-    info!("📈 Efficiency Improvement: {:.1}%", optimization.efficiency_improvement);
-    info!("💻 CPU Savings: {:.1} cores", optimization.resource_savings.cpu_savings);
-    info!("💾 Memory Savings: {:.0} MB", optimization.resource_savings.memory_savings);
-    info!("🌐 Network Savings: {} MB", optimization.resource_savings.network_savings);
-    info!("🎯 Optimization Strategies: {:?}", optimization.optimization_strategies);
+    info!(
+        "📈 Efficiency Improvement: {:.1}%",
+        optimization.efficiency_improvement
+    );
+    info!(
+        "💻 CPU Savings: {:.1} cores",
+        optimization.resource_savings.cpu_savings
+    );
+    info!(
+        "💾 Memory Savings: {:.0} MB",
+        optimization.resource_savings.memory_savings
+    );
+    info!(
+        "🌐 Network Savings: {} MB",
+        optimization.resource_savings.network_savings
+    );
+    info!(
+        "🎯 Optimization Strategies: {:?}",
+        optimization.optimization_strategies
+    );
     Ok(())
 }
 
@@ -1085,30 +1270,55 @@ async fn display_resource_optimization(optimization: &ResourceAllocationOptimiza
 async fn display_parallel_optimization(optimization: &ParallelExecutionOptimization) -> Result<()> {
     info!("👥 Parallel Execution Optimization:");
     info!("👥 Optimized Workers: {}", optimization.optimized_workers);
-    info!("🔄 Parallelizable Tests: {}", optimization.parallelizable_tests);
+    info!(
+        "🔄 Parallelizable Tests: {}",
+        optimization.parallelizable_tests
+    );
     info!("📋 Sequential Tests: {}", optimization.sequential_tests);
-    info!("📈 Expected Time Improvement: {:.1}%", optimization.expected_time_improvement);
-    info!("📊 Resource Utilization Improvement: {:.1}%", optimization.resource_utilization_improvement);
+    info!(
+        "📈 Expected Time Improvement: {:.1}%",
+        optimization.expected_time_improvement
+    );
+    info!(
+        "📊 Resource Utilization Improvement: {:.1}%",
+        optimization.resource_utilization_improvement
+    );
     Ok(())
 }
 
 /// Display optimization report
 async fn display_optimization_report(report: &OptimizationReport) -> Result<()> {
     info!("📋 Optimization Report:");
-    info!("🎯 Total Optimization Potential: {:.1}%", report.total_optimization_potential);
-    info!("📈 Expected Overall Improvement: {:.1}%", report.expected_overall_improvement);
-    info!("⚠️ Overall Risk Level: {}", report.risk_assessment.overall_risk_level);
-    
+    info!(
+        "🎯 Total Optimization Potential: {:.1}%",
+        report.total_optimization_potential
+    );
+    info!(
+        "📈 Expected Overall Improvement: {:.1}%",
+        report.expected_overall_improvement
+    );
+    info!(
+        "⚠️ Overall Risk Level: {}",
+        report.risk_assessment.overall_risk_level
+    );
+
     info!("💡 Key Optimization Opportunities:");
     for opportunity in &report.key_optimization_opportunities {
-        info!("   • {}: {} ({} impact, {} effort)", 
-              opportunity.title, opportunity.estimated_improvement, opportunity.impact, opportunity.effort);
+        info!(
+            "   • {}: {} ({} impact, {} effort)",
+            opportunity.title,
+            opportunity.estimated_improvement,
+            opportunity.impact,
+            opportunity.effort
+        );
     }
 
     info!("🗺️ Implementation Roadmap:");
     for item in &report.implementation_roadmap {
-        info!("   Phase {}: {} ({} effort, {} benefit)", 
-              item.phase, item.title, item.estimated_effort, item.expected_benefit);
+        info!(
+            "   Phase {}: {} ({} effort, {} benefit)",
+            item.phase, item.title, item.estimated_effort, item.expected_benefit
+        );
     }
 
     Ok(())

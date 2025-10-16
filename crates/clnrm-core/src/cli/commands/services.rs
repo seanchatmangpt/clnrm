@@ -3,26 +3,27 @@
 //! Handles service management including status, logs, restart operations,
 //! and AI-driven autonomous service lifecycle management.
 
-use crate::error::{CleanroomError, Result};
 use crate::cleanroom::CleanroomEnvironment;
+use crate::error::{CleanroomError, Result};
 use crate::services::service_manager::{
-    ServiceManager, ServiceMetrics, AutoScaleConfig, CostRecommendation
+    AutoScaleConfig, CostRecommendation, ServiceManager, ServiceMetrics,
 };
-use tracing::{info, debug, warn};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tracing::{debug, info, warn};
 
 /// Show service status
 pub async fn show_service_status() -> Result<()> {
     println!("📊 Service Status:");
-    
+
     // Create a temporary environment to check for any active services
-    let environment = CleanroomEnvironment::new().await
-        .map_err(|e| CleanroomError::internal_error("Failed to create cleanroom environment")
+    let environment = CleanroomEnvironment::new().await.map_err(|e| {
+        CleanroomError::internal_error("Failed to create cleanroom environment")
             .with_context("Service status command initialization")
-            .with_source(e.to_string()))?;
+            .with_source(e.to_string())
+    })?;
     let services = environment.services().await;
-    
+
     if services.active_services().is_empty() {
         println!("✅ No services currently running");
         println!("💡 Run 'clnrm run <test_file>' to start services");
@@ -37,30 +38,32 @@ pub async fn show_service_status() -> Result<()> {
             }
         }
     }
-    
+
     Ok(())
 }
 
 /// Show service logs
 pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
     println!("📄 Service Logs for '{}':", service);
-    
+
     // Create a temporary environment to check for services
-    let environment = CleanroomEnvironment::new().await
-        .map_err(|e| CleanroomError::internal_error("Failed to create cleanroom environment")
+    let environment = CleanroomEnvironment::new().await.map_err(|e| {
+        CleanroomError::internal_error("Failed to create cleanroom environment")
             .with_context("Service logs command initialization")
-            .with_source(e.to_string()))?;
+            .with_source(e.to_string())
+    })?;
     let services = environment.services().await;
-    
+
     // Find the service by name
-    let service_handle = services.active_services()
+    let service_handle = services
+        .active_services()
         .values()
         .find(|handle| handle.service_name == service);
-    
+
     match service_handle {
         Some(handle) => {
             println!("Service found: {} (ID: {})", handle.service_name, handle.id);
-            
+
             // Try to retrieve logs from the service
             match environment.get_service_logs(&handle.id, lines).await {
                 Ok(logs) => {
@@ -75,10 +78,13 @@ pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
                 }
                 Err(e) => {
                     println!("⚠️  Could not retrieve logs: {}", e);
-                    println!("💡 Service '{}' is running but log access may not be available", service);
+                    println!(
+                        "💡 Service '{}' is running but log access may not be available",
+                        service
+                    );
                 }
             }
-            
+
             if !handle.metadata.is_empty() {
                 println!("Metadata:");
                 for (key, value) in &handle.metadata {
@@ -98,50 +104,54 @@ pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
             }
         }
     }
-    
+
     Ok(())
 }
 
 /// Restart a service
 pub async fn restart_service(service: &str) -> Result<()> {
     println!("🔄 Restarting service '{}':", service);
-    
+
     // Create a temporary environment to check for services
-    let environment = CleanroomEnvironment::new().await
-        .map_err(|e| CleanroomError::internal_error("Failed to create cleanroom environment")
+    let environment = CleanroomEnvironment::new().await.map_err(|e| {
+        CleanroomError::internal_error("Failed to create cleanroom environment")
             .with_context("Service restart command initialization")
-            .with_source(e.to_string()))?;
+            .with_source(e.to_string())
+    })?;
     let services = environment.services().await;
-    
+
     // Find the service by name
-    let service_handle = services.active_services()
+    let service_handle = services
+        .active_services()
         .values()
         .find(|handle| handle.service_name == service);
-    
+
     match service_handle {
         Some(handle) => {
             println!("Service found: {} (ID: {})", handle.service_name, handle.id);
-            
+
             // Stop the service
             println!("Stopping service...");
-            environment.stop_service(&handle.id).await
-                .map_err(|e| CleanroomError::internal_error("Failed to stop service")
+            environment.stop_service(&handle.id).await.map_err(|e| {
+                CleanroomError::internal_error("Failed to stop service")
                     .with_context(format!("Service: {}", service))
-                    .with_source(e.to_string()))?;
+                    .with_source(e.to_string())
+            })?;
             println!("Service stopped");
-            
+
             // Wait a moment for cleanup
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-            
+
             // Start the service again
             println!("Starting service...");
-            let new_handle = environment.start_service(service).await
-                .map_err(|e| CleanroomError::internal_error("Failed to restart service")
+            let new_handle = environment.start_service(service).await.map_err(|e| {
+                CleanroomError::internal_error("Failed to restart service")
                     .with_context(format!("Service: {}", service))
-                    .with_source(e.to_string()))?;
+                    .with_source(e.to_string())
+            })?;
             println!("Service restarted");
             println!("New service ID: {}", new_handle.id);
-            
+
             println!("✅ Service '{}' restarted successfully", service);
         }
         None => {
@@ -156,7 +166,7 @@ pub async fn restart_service(service: &str) -> Result<()> {
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -175,10 +185,11 @@ pub async fn ai_manage(
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Create a temporary environment to access services
-    let environment = CleanroomEnvironment::new().await
-        .map_err(|e| CleanroomError::internal_error("Failed to create cleanroom environment")
+    let environment = CleanroomEnvironment::new().await.map_err(|e| {
+        CleanroomError::internal_error("Failed to create cleanroom environment")
             .with_context("AI management initialization")
-            .with_source(e.to_string()))?;
+            .with_source(e.to_string())
+    })?;
 
     let services = environment.services().await;
 
@@ -214,8 +225,10 @@ pub async fn ai_manage(
         metrics.response_time_ms = 50.0 + (rand::random::<f64>() * 100.0);
         metrics.error_rate = rand::random::<f64>() * 0.05;
 
-        println!("  ✓ {} - CPU: {:.1}%, Memory: {:.0}MB, RPS: {:.1}",
-            handle.service_name, metrics.cpu_usage, metrics.memory_usage, metrics.request_rate);
+        println!(
+            "  ✓ {} - CPU: {:.1}%, Memory: {:.0}MB, RPS: {:.1}",
+            handle.service_name, metrics.cpu_usage, metrics.memory_usage, metrics.request_rate
+        );
 
         manager.record_metrics(metrics);
 
@@ -262,12 +275,21 @@ pub async fn ai_manage(
 
             if let Some(predicted) = manager.predict_load(&handle.id, horizon_minutes) {
                 println!("  📦 {}", handle.service_name);
-                println!("     CPU: {:.1}% → {:.1}%",
-                    predicted.cpu_usage - 10.0, predicted.cpu_usage);
-                println!("     Memory: {:.0}MB → {:.0}MB",
-                    predicted.memory_usage - 50.0, predicted.memory_usage);
-                println!("     RPS: {:.1} → {:.1}",
-                    predicted.request_rate - 5.0, predicted.request_rate);
+                println!(
+                    "     CPU: {:.1}% → {:.1}%",
+                    predicted.cpu_usage - 10.0,
+                    predicted.cpu_usage
+                );
+                println!(
+                    "     Memory: {:.0}MB → {:.0}MB",
+                    predicted.memory_usage - 50.0,
+                    predicted.memory_usage
+                );
+                println!(
+                    "     RPS: {:.1} → {:.1}",
+                    predicted.request_rate - 5.0,
+                    predicted.request_rate
+                );
                 println!("     Health Score: {:.1}/100", predicted.health_score());
 
                 // Predict health status
@@ -281,11 +303,17 @@ pub async fn ai_manage(
                         println!("     Predicted Health: {} {:?}", health_emoji, health);
                     }
                     Err(e) => {
-                        warn!("Failed to predict health for {}: {}", handle.service_name, e);
+                        warn!(
+                            "Failed to predict health for {}: {}",
+                            handle.service_name, e
+                        );
                     }
                 }
             } else {
-                println!("  ⚠️  {} - Insufficient data for prediction", handle.service_name);
+                println!(
+                    "  ⚠️  {} - Insufficient data for prediction",
+                    handle.service_name
+                );
             }
         }
     }
@@ -307,16 +335,27 @@ pub async fn ai_manage(
                     use crate::services::service_manager::ScalingAction;
                     match action {
                         ScalingAction::ScaleUp(count) => {
-                            println!("  📈 {} - Scale UP by {} instance(s)", handle.service_name, count);
+                            println!(
+                                "  📈 {} - Scale UP by {} instance(s)",
+                                handle.service_name, count
+                            );
                             println!("     Reason: High resource utilization detected");
-                            manager.update_instance_count(handle.id.clone(),
-                                *manager.service_instances.get(&handle.id).unwrap_or(&1) + count);
+                            manager.update_instance_count(
+                                handle.id.clone(),
+                                *manager.service_instances.get(&handle.id).unwrap_or(&1) + count,
+                            );
                         }
                         ScalingAction::ScaleDown(count) => {
-                            println!("  📉 {} - Scale DOWN by {} instance(s)", handle.service_name, count);
+                            println!(
+                                "  📉 {} - Scale DOWN by {} instance(s)",
+                                handle.service_name, count
+                            );
                             println!("     Reason: Low resource utilization detected");
                             let current = *manager.service_instances.get(&handle.id).unwrap_or(&1);
-                            manager.update_instance_count(handle.id.clone(), current.saturating_sub(count).max(1));
+                            manager.update_instance_count(
+                                handle.id.clone(),
+                                current.saturating_sub(count).max(1),
+                            );
                         }
                         ScalingAction::NoAction => {
                             println!("  ✓ {} - No scaling needed", handle.service_name);
@@ -324,7 +363,10 @@ pub async fn ai_manage(
                     }
                 }
                 Err(e) => {
-                    warn!("Failed to determine scaling action for {}: {}", handle.service_name, e);
+                    warn!(
+                        "Failed to determine scaling action for {}: {}",
+                        handle.service_name, e
+                    );
                 }
             }
         }
@@ -345,7 +387,11 @@ pub async fn ai_manage(
             // Setup resource pool
             let pool = manager.get_or_create_pool(handle.service_name.clone(), 5);
             println!("  📦 {} Resource Pool:", handle.service_name);
-            println!("     Size: {} available, {} in-use", pool.available.len(), pool.in_use.len());
+            println!(
+                "     Size: {} available, {} in-use",
+                pool.available.len(),
+                pool.in_use.len()
+            );
             println!("     Utilization: {:.1}%", pool.utilization() * 100.0);
 
             if pool.utilization() < 0.3 && pool.available.len() > 1 {
@@ -375,8 +421,13 @@ pub async fn ai_manage(
             println!("  ✓ No cost optimization recommendations at this time");
         } else {
             for (i, rec) in all_recommendations.iter().enumerate() {
-                println!("\n  {}. {} - {} (Priority: {}/5)",
-                    i + 1, rec.service_name, rec.recommendation_type, rec.priority);
+                println!(
+                    "\n  {}. {} - {} (Priority: {}/5)",
+                    i + 1,
+                    rec.service_name,
+                    rec.recommendation_type,
+                    rec.priority
+                );
                 println!("     {}", rec.description);
                 println!("     💰 Estimated savings: {:.0}%", rec.estimated_savings);
             }
@@ -410,10 +461,10 @@ mod tests {
     async fn test_show_service_status() -> Result<()> {
         // Act
         let result = show_service_status().await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 
@@ -421,10 +472,10 @@ mod tests {
     async fn test_show_service_logs() -> Result<()> {
         // Act
         let result = show_service_logs("test_service", 10).await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 
@@ -432,15 +483,15 @@ mod tests {
     async fn test_show_service_logs_with_different_line_counts() -> Result<()> {
         // Test different line count values
         let line_counts = vec![1, 10, 50, 100];
-        
+
         for lines in line_counts {
             // Act
             let result = show_service_logs("test_service", lines).await;
-            
+
             // Assert
             assert!(result.is_ok(), "Should handle {} lines", lines);
         }
-        
+
         Ok(())
     }
 
@@ -448,10 +499,10 @@ mod tests {
     async fn test_show_service_logs_empty_service_name() -> Result<()> {
         // Act
         let result = show_service_logs("", 10).await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 
@@ -459,10 +510,10 @@ mod tests {
     async fn test_restart_service() -> Result<()> {
         // Act
         let result = restart_service("test_service").await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 
@@ -470,10 +521,10 @@ mod tests {
     async fn test_restart_service_empty_name() -> Result<()> {
         // Act
         let result = restart_service("").await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 
@@ -481,10 +532,10 @@ mod tests {
     async fn test_restart_service_nonexistent_service() -> Result<()> {
         // Act
         let result = restart_service("nonexistent_service").await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 
@@ -498,17 +549,25 @@ mod tests {
             "service with spaces",
             "service@with#special$chars",
         ];
-        
+
         for service_name in service_names {
             // Test show_service_logs
             let logs_result = show_service_logs(service_name, 10).await;
-            assert!(logs_result.is_ok(), "show_service_logs should handle service name: {}", service_name);
-            
+            assert!(
+                logs_result.is_ok(),
+                "show_service_logs should handle service name: {}",
+                service_name
+            );
+
             // Test restart_service
             let restart_result = restart_service(service_name).await;
-            assert!(restart_result.is_ok(), "restart_service should handle service name: {}", service_name);
+            assert!(
+                restart_result.is_ok(),
+                "restart_service should handle service name: {}",
+                service_name
+            );
         }
-        
+
         Ok(())
     }
 
@@ -521,17 +580,25 @@ mod tests {
             "service-émojis",
             "service-中文",
         ];
-        
+
         for service_name in service_names {
             // Test show_service_logs
             let logs_result = show_service_logs(service_name, 10).await;
-            assert!(logs_result.is_ok(), "show_service_logs should handle unicode service name: {}", service_name);
-            
+            assert!(
+                logs_result.is_ok(),
+                "show_service_logs should handle unicode service name: {}",
+                service_name
+            );
+
             // Test restart_service
             let restart_result = restart_service(service_name).await;
-            assert!(restart_result.is_ok(), "restart_service should handle unicode service name: {}", service_name);
+            assert!(
+                restart_result.is_ok(),
+                "restart_service should handle unicode service name: {}",
+                service_name
+            );
         }
-        
+
         Ok(())
     }
 
@@ -539,10 +606,10 @@ mod tests {
     async fn test_show_service_status_creates_environment() -> Result<()> {
         // Act
         let result = show_service_status().await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         // The function should complete without panicking when creating CleanroomEnvironment
         Ok(())
     }
@@ -551,10 +618,10 @@ mod tests {
     async fn test_show_service_logs_creates_environment() -> Result<()> {
         // Act
         let result = show_service_logs("test", 10).await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         // The function should complete without panicking when creating CleanroomEnvironment
         Ok(())
     }
@@ -563,10 +630,10 @@ mod tests {
     async fn test_restart_service_creates_environment() -> Result<()> {
         // Act
         let result = restart_service("test").await;
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         // The function should complete without panicking when creating CleanroomEnvironment
         Ok(())
     }

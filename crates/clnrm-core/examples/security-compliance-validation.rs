@@ -63,7 +63,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("  ✅ Access control validated");
     println!("  ✅ Compliance requirements met");
     println!("  ✅ Vulnerability assessment completed");
-    println!("\n⏱️  Total validation time: {}ms", total_duration.as_millis());
+    println!(
+        "\n⏱️  Total validation time: {}ms",
+        total_duration.as_millis()
+    );
 
     Ok(())
 }
@@ -75,13 +78,17 @@ async fn validate_container_security() -> Result<String, CleanroomError> {
     let env = CleanroomEnvironment::new().await?;
 
     // Test 1: Container isolation
-    let container_a = env.get_or_create_container("security-isolation-a", || {
-        Ok::<String, CleanroomError>("secure-container-a".to_string())
-    }).await?;
+    let container_a = env
+        .get_or_create_container("security-isolation-a", || {
+            Ok::<String, CleanroomError>("secure-container-a".to_string())
+        })
+        .await?;
 
-    let container_b = env.get_or_create_container("security-isolation-b", || {
-        Ok::<String, CleanroomError>("secure-container-b".to_string())
-    }).await?;
+    let container_b = env
+        .get_or_create_container("security-isolation-b", || {
+            Ok::<String, CleanroomError>("secure-container-b".to_string())
+        })
+        .await?;
 
     // Verify containers are properly isolated
     if container_a != container_b {
@@ -91,29 +98,44 @@ async fn validate_container_security() -> Result<String, CleanroomError> {
     }
 
     // Test 2: Resource limits validation
-    let result = env.execute_in_container(&container_a, &[
-        "sh".to_string(),
-        "-c".to_string(),
-        "echo 'Testing resource limits' && ulimit -a | head -5".to_string()
-    ]).await?;
+    let result = env
+        .execute_in_container(
+            &container_a,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "echo 'Testing resource limits' && ulimit -a | head -5".to_string(),
+            ],
+        )
+        .await?;
 
     if result.succeeded() {
         println!("      ✅ Resource limits validated");
     } else {
-        return Err(CleanroomError::internal_error("Resource limits validation failed"));
+        return Err(CleanroomError::internal_error(
+            "Resource limits validation failed",
+        ));
     }
 
     // Test 3: File system isolation
-    let fs_test_result = env.execute_in_container(&container_a, &[
-        "sh".to_string(),
-        "-c".to_string(),
-        "echo 'test data' > /tmp/security-test.txt && cat /tmp/security-test.txt".to_string()
-    ]).await?;
+    let fs_test_result = env
+        .execute_in_container(
+            &container_a,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "echo 'test data' > /tmp/security-test.txt && cat /tmp/security-test.txt"
+                    .to_string(),
+            ],
+        )
+        .await?;
 
     if fs_test_result.exit_code == 0 && fs_test_result.stdout.contains("test data") {
         println!("      ✅ File system isolation validated");
     } else {
-        return Err(CleanroomError::internal_error("File system isolation failed"));
+        return Err(CleanroomError::internal_error(
+            "File system isolation failed",
+        ));
     }
 
     Ok("Container security validation: PASSED".to_string())
@@ -126,37 +148,54 @@ async fn validate_network_security() -> Result<String, CleanroomError> {
     let env = CleanroomEnvironment::new().await?;
 
     // Test 1: Network isolation
-    let network_container = env.get_or_create_container("network-security-test", || {
-        Ok::<String, CleanroomError>("network-security-container".to_string())
-    }).await?;
+    let network_container = env
+        .get_or_create_container("network-security-test", || {
+            Ok::<String, CleanroomError>("network-security-container".to_string())
+        })
+        .await?;
 
     // Test network connectivity (should be limited)
-    let network_test = env.execute_in_container(&network_container, &[
-        "sh".to_string(),
-        "-c".to_string(),
-        "ping -c 1 8.8.8.8 || echo 'Network access restricted'".to_string()
-    ]).await?;
+    let network_test = env
+        .execute_in_container(
+            &network_container,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "ping -c 1 8.8.8.8 || echo 'Network access restricted'".to_string(),
+            ],
+        )
+        .await?;
 
     // Should either succeed with ping or fail gracefully (both are acceptable)
     if network_test.exit_code == 0 || network_test.stderr.contains("Network access restricted") {
         println!("      ✅ Network isolation validated");
     } else {
-        return Err(CleanroomError::internal_error("Network security validation failed"));
+        return Err(CleanroomError::internal_error(
+            "Network security validation failed",
+        ));
     }
 
     // Test 2: Port exposure validation
-    let port_test = env.execute_in_container(&network_container, &[
-        "sh".to_string(),
-        "-c".to_string(),
-        "netstat -tuln | grep LISTEN | wc -l".to_string()
-    ]).await?;
+    let port_test = env
+        .execute_in_container(
+            &network_container,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "netstat -tuln | grep LISTEN | wc -l".to_string(),
+            ],
+        )
+        .await?;
 
     if port_test.exit_code == 0 {
         let listening_ports = port_test.stdout.trim().parse::<i32>().unwrap_or(0);
         if listening_ports == 0 {
             println!("      ✅ No unauthorized ports exposed");
         } else {
-            println!("      ⚠️  {} ports listening (may be acceptable)", listening_ports);
+            println!(
+                "      ⚠️  {} ports listening (may be acceptable)",
+                listening_ports
+            );
         }
     }
 
@@ -170,32 +209,43 @@ async fn validate_access_control() -> Result<String, CleanroomError> {
     let env = CleanroomEnvironment::new().await?;
 
     // Test 1: User isolation
-    let user_container = env.get_or_create_container("access-control-test", || {
-        Ok::<String, CleanroomError>("access-control-container".to_string())
-    }).await?;
+    let user_container = env
+        .get_or_create_container("access-control-test", || {
+            Ok::<String, CleanroomError>("access-control-container".to_string())
+        })
+        .await?;
 
     // Check that containers run as non-root users
-    let user_check = env.execute_in_container(&user_container, &[
-        "id".to_string()
-    ]).await?;
+    let user_check = env
+        .execute_in_container(&user_container, &["id".to_string()])
+        .await?;
 
     if user_check.exit_code == 0 {
         println!("      ✅ User context validated");
     } else {
-        return Err(CleanroomError::internal_error("User context validation failed"));
+        return Err(CleanroomError::internal_error(
+            "User context validation failed",
+        ));
     }
 
     // Test 2: File permissions
-    let perms_check = env.execute_in_container(&user_container, &[
-        "sh".to_string(),
-        "-c".to_string(),
-        "touch /tmp/access-test && ls -la /tmp/access-test".to_string()
-    ]).await?;
+    let perms_check = env
+        .execute_in_container(
+            &user_container,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "touch /tmp/access-test && ls -la /tmp/access-test".to_string(),
+            ],
+        )
+        .await?;
 
     if perms_check.exit_code == 0 {
         println!("      ✅ File permissions validated");
     } else {
-        return Err(CleanroomError::internal_error("File permissions validation failed"));
+        return Err(CleanroomError::internal_error(
+            "File permissions validation failed",
+        ));
     }
 
     Ok("Access control validation: PASSED".to_string())
@@ -208,34 +258,50 @@ async fn validate_compliance_requirements() -> Result<String, CleanroomError> {
     let env = CleanroomEnvironment::new().await?;
 
     // Test 1: Audit logging compliance
-    let audit_container = env.get_or_create_container("compliance-audit", || {
-        Ok::<String, CleanroomError>("audit-container".to_string())
-    }).await?;
+    let audit_container = env
+        .get_or_create_container("compliance-audit", || {
+            Ok::<String, CleanroomError>("audit-container".to_string())
+        })
+        .await?;
 
     // Perform auditable operations
-    let audit_ops = env.execute_in_container(&audit_container, &[
-        "sh".to_string(),
-        "-c".to_string(),
-        "echo 'Compliance audit operation' && date && whoami".to_string()
-    ]).await?;
+    let audit_ops = env
+        .execute_in_container(
+            &audit_container,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "echo 'Compliance audit operation' && date && whoami".to_string(),
+            ],
+        )
+        .await?;
 
     if audit_ops.exit_code == 0 {
         println!("      ✅ Audit logging compliance validated");
     } else {
-        return Err(CleanroomError::internal_error("Audit logging compliance failed"));
+        return Err(CleanroomError::internal_error(
+            "Audit logging compliance failed",
+        ));
     }
 
     // Test 2: Data retention compliance
-    let retention_test = env.execute_in_container(&audit_container, &[
-        "sh".to_string(),
-        "-c".to_string(),
-        "find /tmp -name '*audit*' -type f | wc -l".to_string()
-    ]).await?;
+    let retention_test = env
+        .execute_in_container(
+            &audit_container,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "find /tmp -name '*audit*' -type f | wc -l".to_string(),
+            ],
+        )
+        .await?;
 
     if retention_test.exit_code == 0 {
         println!("      ✅ Data retention compliance validated");
     } else {
-        return Err(CleanroomError::internal_error("Data retention compliance failed"));
+        return Err(CleanroomError::internal_error(
+            "Data retention compliance failed",
+        ));
     }
 
     Ok("Compliance requirements validation: PASSED".to_string())
@@ -248,9 +314,11 @@ async fn perform_vulnerability_assessment() -> Result<String, CleanroomError> {
     let env = CleanroomEnvironment::new().await?;
 
     // Test 1: Container image vulnerability scanning
-    let vuln_container = env.get_or_create_container("vulnerability-scan", || {
-        Ok::<String, CleanroomError>("vulnerability-scan-container".to_string())
-    }).await?;
+    let vuln_container = env
+        .get_or_create_container("vulnerability-scan", || {
+            Ok::<String, CleanroomError>("vulnerability-scan-container".to_string())
+        })
+        .await?;
 
     // Check for common vulnerabilities
     let vuln_checks = vec![
@@ -262,11 +330,19 @@ async fn perform_vulnerability_assessment() -> Result<String, CleanroomError> {
     for (cve, description) in vuln_checks {
         println!("      🔍 Checking: {} - {}", cve, description);
 
-        let check_result = env.execute_in_container(&vuln_container, &[
-            "sh".to_string(),
-            "-c".to_string(),
-            format!("echo 'Checking {} - {}' && echo 'NOT_VULNERABLE'", cve, description)
-        ]).await?;
+        let check_result = env
+            .execute_in_container(
+                &vuln_container,
+                &[
+                    "sh".to_string(),
+                    "-c".to_string(),
+                    format!(
+                        "echo 'Checking {} - {}' && echo 'NOT_VULNERABLE'",
+                        cve, description
+                    ),
+                ],
+            )
+            .await?;
 
         if check_result.exit_code == 0 && check_result.stdout.contains("NOT_VULNERABLE") {
             println!("         ✅ {} - No vulnerability detected", cve);
@@ -276,16 +352,23 @@ async fn perform_vulnerability_assessment() -> Result<String, CleanroomError> {
     }
 
     // Test 2: Configuration security validation
-    let config_check = env.execute_in_container(&vuln_container, &[
-        "sh".to_string(),
-        "-c".to_string(),
-        "echo 'Configuration security check' && echo 'SECURE_CONFIG'".to_string()
-    ]).await?;
+    let config_check = env
+        .execute_in_container(
+            &vuln_container,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "echo 'Configuration security check' && echo 'SECURE_CONFIG'".to_string(),
+            ],
+        )
+        .await?;
 
     if config_check.exit_code == 0 && config_check.stdout.contains("SECURE_CONFIG") {
         println!("      ✅ Configuration security validated");
     } else {
-        return Err(CleanroomError::internal_error("Configuration security validation failed"));
+        return Err(CleanroomError::internal_error(
+            "Configuration security validation failed",
+        ));
     }
 
     Ok("Vulnerability assessment: PASSED".to_string())

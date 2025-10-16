@@ -3,15 +3,15 @@
 //! Provides integration with vLLM (Very Large Language Model) inference server.
 //! vLLM is a high-throughput, memory-efficient inference engine for LLMs.
 
-use crate::cleanroom::{ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
+use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use serde_json::{json, Value};
-use std::future::Future;
-use std::pin::Pin;
 
 /// vLLM service configuration
 #[derive(Debug, Clone)]
@@ -56,7 +56,9 @@ impl VllmPlugin {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(self.config.timeout_seconds))
             .build()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e))
+            })?;
 
         Ok(client)
     }
@@ -71,11 +73,9 @@ impl VllmPlugin {
 
         let url = format!("{}/health", self.config.endpoint);
 
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to connect to vLLM: {}", e)))?;
+        let response = client.get(&url).send().await.map_err(|e| {
+            CleanroomError::service_error(format!("Failed to connect to vLLM: {}", e))
+        })?;
 
         if response.status().is_success() {
             Ok(())
@@ -85,7 +85,12 @@ impl VllmPlugin {
     }
 
     /// Generate text using vLLM API (OpenAI-compatible)
-    pub async fn generate_text(&self, prompt: &str, max_tokens: Option<u32>, temperature: Option<f32>) -> Result<VllmResponse> {
+    pub async fn generate_text(
+        &self,
+        prompt: &str,
+        max_tokens: Option<u32>,
+        temperature: Option<f32>,
+    ) -> Result<VllmResponse> {
         let mut client_guard = self.client.write().await;
         if client_guard.is_none() {
             *client_guard = Some(self.init_client().await?);
@@ -114,13 +119,14 @@ impl VllmPlugin {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to generate text: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::service_error(format!("Failed to generate text: {}", e))
+            })?;
 
         if response.status().is_success() {
-            let vllm_response: VllmResponse = response
-                .json()
-                .await
-                .map_err(|e| CleanroomError::service_error(format!("Failed to parse response: {}", e)))?;
+            let vllm_response: VllmResponse = response.json().await.map_err(|e| {
+                CleanroomError::service_error(format!("Failed to parse response: {}", e))
+            })?;
 
             Ok(vllm_response)
         } else {
@@ -129,7 +135,10 @@ impl VllmPlugin {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
 
-            Err(CleanroomError::service_error(format!("vLLM API error: {}", error_text)))
+            Err(CleanroomError::service_error(format!(
+                "vLLM API error: {}",
+                error_text
+            )))
         }
     }
 
@@ -143,21 +152,20 @@ impl VllmPlugin {
 
         let url = format!("{}/v1/models", self.config.endpoint);
 
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to get model info: {}", e)))?;
+        let response = client.get(&url).send().await.map_err(|e| {
+            CleanroomError::service_error(format!("Failed to get model info: {}", e))
+        })?;
 
         if response.status().is_success() {
-            let model_info: VllmModelInfo = response
-                .json()
-                .await
-                .map_err(|e| CleanroomError::service_error(format!("Failed to parse model info: {}", e)))?;
+            let model_info: VllmModelInfo = response.json().await.map_err(|e| {
+                CleanroomError::service_error(format!("Failed to parse model info: {}", e))
+            })?;
 
             Ok(model_info)
         } else {
-            Err(CleanroomError::service_error("Failed to retrieve model info"))
+            Err(CleanroomError::service_error(
+                "Failed to retrieve model info",
+            ))
         }
     }
 }
@@ -245,7 +253,10 @@ impl ServicePlugin for VllmPlugin {
             let mut metadata = HashMap::new();
             metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
             metadata.insert("model".to_string(), self.config.model.clone());
-            metadata.insert("timeout_seconds".to_string(), self.config.timeout_seconds.to_string());
+            metadata.insert(
+                "timeout_seconds".to_string(),
+                self.config.timeout_seconds.to_string(),
+            );
             metadata.insert("health_status".to_string(), format!("{:?}", health));
 
             if let Some(max_num_seqs) = self.config.max_num_seqs {
@@ -264,7 +275,10 @@ impl ServicePlugin for VllmPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             // HTTP-based service, no cleanup needed beyond dropping the client
             Ok(())

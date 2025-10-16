@@ -63,7 +63,11 @@ pub struct PluginCapability {
 }
 
 impl PluginCapability {
-    pub fn new(name: impl Into<String>, category: PluginCategory, description: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        category: PluginCategory,
+        description: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             category,
@@ -209,27 +213,37 @@ impl PluginMetadata {
     /// Validate metadata completeness
     pub fn validate(&self) -> Result<()> {
         if self.name.is_empty() {
-            return Err(CleanroomError::validation_error("Plugin name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Plugin name cannot be empty",
+            ));
         }
 
         if self.description.is_empty() {
-            return Err(CleanroomError::validation_error("Plugin description cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Plugin description cannot be empty",
+            ));
         }
 
         if self.author.is_empty() {
-            return Err(CleanroomError::validation_error("Plugin author cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Plugin author cannot be empty",
+            ));
         }
 
         if self.capabilities.is_empty() {
-            return Err(CleanroomError::validation_error("Plugin must have at least one capability"));
+            return Err(CleanroomError::validation_error(
+                "Plugin must have at least one capability",
+            ));
         }
 
         // Validate dependencies
         for dep in &self.dependencies {
-            semver::VersionReq::parse(&dep.version_constraint)
-                .map_err(|e| CleanroomError::validation_error(format!(
-                    "Invalid version constraint for dependency '{}': {}", dep.name, e
-                )))?;
+            semver::VersionReq::parse(&dep.version_constraint).map_err(|e| {
+                CleanroomError::validation_error(format!(
+                    "Invalid version constraint for dependency '{}': {}",
+                    dep.name, e
+                ))
+            })?;
         }
 
         Ok(())
@@ -240,27 +254,49 @@ impl PluginMetadata {
         let mut score = 0.0;
 
         // Documentation presence (25 points)
-        if self.homepage.is_some() { score += 8.0; }
-        if self.repository.is_some() { score += 8.0; }
-        if self.documentation.is_some() { score += 9.0; }
+        if self.homepage.is_some() {
+            score += 8.0;
+        }
+        if self.repository.is_some() {
+            score += 8.0;
+        }
+        if self.documentation.is_some() {
+            score += 9.0;
+        }
 
         // Metadata completeness (25 points)
-        if !self.keywords.is_empty() { score += 8.0; }
-        if !self.description.is_empty() && self.description.len() > 50 { score += 9.0; }
-        if !self.capabilities.is_empty() { score += 8.0; }
+        if !self.keywords.is_empty() {
+            score += 8.0;
+        }
+        if !self.description.is_empty() && self.description.len() > 50 {
+            score += 9.0;
+        }
+        if !self.capabilities.is_empty() {
+            score += 8.0;
+        }
 
         // Community engagement (25 points)
         score += (self.community.average_rating / 5.0) * 10.0;
-        if self.community.rating_count > 10 { score += 8.0; }
-        if self.community.download_count > 100 { score += 7.0; }
+        if self.community.rating_count > 10 {
+            score += 8.0;
+        }
+        if self.community.download_count > 100 {
+            score += 7.0;
+        }
 
         // Maintenance (25 points)
         let days_since_update = (chrono::Utc::now() - self.community.updated_at).num_days();
-        if days_since_update < 30 { score += 13.0; }
-        else if days_since_update < 90 { score += 9.0; }
-        else if days_since_update < 180 { score += 5.0; }
+        if days_since_update < 30 {
+            score += 13.0;
+        } else if days_since_update < 90 {
+            score += 9.0;
+        } else if days_since_update < 180 {
+            score += 5.0;
+        }
 
-        if !self.dependencies.is_empty() { score += 12.0; }
+        if !self.dependencies.is_empty() {
+            score += 12.0;
+        }
 
         score.min(100.0)
     }
@@ -334,8 +370,9 @@ pub mod standard_capabilities {
         PluginCapability::new(
             "database",
             PluginCategory::Database,
-            "Provides database connectivity and testing capabilities"
-        ).with_config_schema(schema)
+            "Provides database connectivity and testing capabilities",
+        )
+        .with_config_schema(schema)
     }
 
     pub fn cache_capability() -> PluginCapability {
@@ -346,8 +383,9 @@ pub mod standard_capabilities {
         PluginCapability::new(
             "cache",
             PluginCategory::Cache,
-            "Provides caching and session management capabilities"
-        ).with_config_schema(schema)
+            "Provides caching and session management capabilities",
+        )
+        .with_config_schema(schema)
     }
 
     pub fn ai_ml_capability() -> PluginCapability {
@@ -359,8 +397,9 @@ pub mod standard_capabilities {
         PluginCapability::new(
             "ai_ml",
             PluginCategory::AiMl,
-            "Provides AI/ML model testing and validation capabilities"
-        ).with_config_schema(schema)
+            "Provides AI/ML model testing and validation capabilities",
+        )
+        .with_config_schema(schema)
     }
 
     pub fn message_queue_capability() -> PluginCapability {
@@ -371,8 +410,9 @@ pub mod standard_capabilities {
         PluginCapability::new(
             "message_queue",
             PluginCategory::MessageQueue,
-            "Provides message queue and streaming capabilities"
-        ).with_config_schema(schema)
+            "Provides message queue and streaming capabilities",
+        )
+        .with_config_schema(schema)
     }
 }
 
@@ -382,12 +422,7 @@ mod tests {
 
     #[test]
     fn test_plugin_metadata_creation() -> Result<()> {
-        let metadata = PluginMetadata::new(
-            "test-plugin",
-            "1.0.0",
-            "A test plugin",
-            "Test Author"
-        )?;
+        let metadata = PluginMetadata::new("test-plugin", "1.0.0", "A test plugin", "Test Author")?;
 
         assert_eq!(metadata.name, "test-plugin");
         assert_eq!(metadata.version.to_string(), "1.0.0");
@@ -399,18 +434,16 @@ mod tests {
 
     #[test]
     fn test_plugin_validation() -> Result<()> {
-        let mut metadata = PluginMetadata::new(
-            "test-plugin",
-            "1.0.0",
-            "A test plugin",
-            "Test Author"
-        )?;
+        let mut metadata =
+            PluginMetadata::new("test-plugin", "1.0.0", "A test plugin", "Test Author")?;
 
         // Should fail without capabilities
         assert!(metadata.validate().is_err());
 
         // Add capability and validate again
-        metadata.capabilities.push(standard_capabilities::database_capability());
+        metadata
+            .capabilities
+            .push(standard_capabilities::database_capability());
         assert!(metadata.validate().is_ok());
 
         Ok(())
@@ -418,12 +451,7 @@ mod tests {
 
     #[test]
     fn test_version_compatibility() -> Result<()> {
-        let metadata = PluginMetadata::new(
-            "test-plugin",
-            "1.0.0",
-            "A test plugin",
-            "Test Author"
-        )?;
+        let metadata = PluginMetadata::new("test-plugin", "1.0.0", "A test plugin", "Test Author")?;
 
         let compatible_version = semver::Version::new(0, 3, 2);
         let incompatible_version = semver::Version::new(0, 2, 0);
@@ -440,10 +468,12 @@ mod tests {
             "test-plugin",
             "1.0.0",
             "A comprehensive test plugin with detailed description",
-            "Test Author"
+            "Test Author",
         )?;
 
-        metadata.capabilities.push(standard_capabilities::database_capability());
+        metadata
+            .capabilities
+            .push(standard_capabilities::database_capability());
         metadata.homepage = Some("https://example.com".to_string());
         metadata.repository = Some("https://github.com/example/plugin".to_string());
         metadata.keywords = vec!["test".to_string(), "plugin".to_string()];

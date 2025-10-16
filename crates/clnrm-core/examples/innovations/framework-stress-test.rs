@@ -12,9 +12,9 @@
 //! - Error recovery and resilience testing
 
 use clnrm_core::{CleanroomEnvironment, CleanroomError, Result};
+use futures_util::future;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
-use futures_util::future;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -39,13 +39,19 @@ async fn main() -> Result<()> {
         let handle = tokio::spawn(async move {
             println!("   Creating environment {}...", i + 1);
             let test_env = CleanroomEnvironment::new().await?;
-            println!("   ✅ Environment {} created: {}", i + 1, test_env.session_id());
+            println!(
+                "   ✅ Environment {} created: {}",
+                i + 1,
+                test_env.session_id()
+            );
 
             // Run a quick validation test in each environment
-            let result = test_env.execute_test("stress_validation", || {
-                // Simple sync validation for stress testing
-                Ok::<String, CleanroomError>(format!("Environment {} validated", i + 1))
-            }).await?;
+            let result = test_env
+                .execute_test("stress_validation", || {
+                    // Simple sync validation for stress testing
+                    Ok::<String, CleanroomError>(format!("Environment {} validated", i + 1))
+                })
+                .await?;
 
             Ok::<(CleanroomEnvironment, String), CleanroomError>((test_env, result))
         });
@@ -67,7 +73,11 @@ async fn main() -> Result<()> {
     }
 
     let creation_duration = start_time.elapsed();
-    println!("⏱️  Created {} environments in {:?}", results.len(), creation_duration);
+    println!(
+        "⏱️  Created {} environments in {:?}",
+        results.len(),
+        creation_duration
+    );
 
     // Innovation 2: Resource Exhaustion and Recovery Test
     println!("\n🔬 Innovation 2: Resource Exhaustion Recovery");
@@ -79,10 +89,12 @@ async fn main() -> Result<()> {
     // Create many containers to test resource management
     let mut container_handles = Vec::new();
     for i in 0..50 {
-        let container_result = env.get_or_create_container(&format!("stress-container-{}", i), || {
-            println!("   Creating container {}...", i + 1);
-            Ok::<String, CleanroomError>(format!("stress-container-{}", i))
-        }).await;
+        let container_result = env
+            .get_or_create_container(&format!("stress-container-{}", i), || {
+                println!("   Creating container {}...", i + 1);
+                Ok::<String, CleanroomError>(format!("stress-container-{}", i))
+            })
+            .await;
 
         match container_result {
             Ok(handle) => {
@@ -99,7 +111,10 @@ async fn main() -> Result<()> {
         sleep(Duration::from_millis(10)).await;
     }
 
-    println!("   Created {} containers before hitting resource limits", container_handles.len());
+    println!(
+        "   Created {} containers before hitting resource limits",
+        container_handles.len()
+    );
 
     // Test cleanup and recovery
     println!("   Testing cleanup and recovery...");
@@ -111,7 +126,10 @@ async fn main() -> Result<()> {
     // Verify cleanup worked by checking metrics
     let metrics = env.get_metrics().await;
     let metrics = metrics?;
-    println!("   ✅ Cleanup completed - final container count: {}", metrics.containers_created);
+    println!(
+        "   ✅ Cleanup completed - final container count: {}",
+        metrics.containers_created
+    );
 
     let resource_duration = resource_test_start.elapsed();
     println!("⏱️  Resource test completed in {:?}", resource_duration);
@@ -132,9 +150,11 @@ async fn main() -> Result<()> {
         for i in 0..5 {
             if let Ok(temp_env) = CleanroomEnvironment::new().await {
                 // Run a quick test
-                let _ = temp_env.execute_test("memory_test", || {
-                    Ok::<String, CleanroomError>(format!("Memory test {}", i))
-                }).await;
+                let _ = temp_env
+                    .execute_test("memory_test", || {
+                        Ok::<String, CleanroomError>(format!("Memory test {}", i))
+                    })
+                    .await;
                 temp_envs.push(temp_env);
             }
         }
@@ -165,15 +185,21 @@ async fn main() -> Result<()> {
 
         // Run a batch of operations
         for i in 0..10 {
-            let _ = env.get_or_create_container(&format!("perf-test-{}", i), || {
-                Ok::<String, CleanroomError>(format!("perf-container-{}", i))
-            }).await;
+            let _ = env
+                .get_or_create_container(&format!("perf-test-{}", i), || {
+                    Ok::<String, CleanroomError>(format!("perf-container-{}", i))
+                })
+                .await;
         }
 
         let round_duration = round_start.elapsed();
         perf_measurements.push(round_duration);
 
-        println!("   ⏱️  Round {} completed in {:?}", round + 1, round_duration);
+        println!(
+            "   ⏱️  Round {} completed in {:?}",
+            round + 1,
+            round_duration
+        );
 
         // Brief pause between rounds
         sleep(Duration::from_millis(200)).await;
@@ -203,7 +229,10 @@ async fn main() -> Result<()> {
     }
 
     let total_perf_duration = perf_test_start.elapsed();
-    println!("⏱️  Performance test completed in {:?}", total_perf_duration);
+    println!(
+        "⏱️  Performance test completed in {:?}",
+        total_perf_duration
+    );
 
     // Innovation 5: Concurrent Stress with Resource Monitoring
     println!("\n🔬 Innovation 5: Concurrent Stress with Monitoring");
@@ -237,7 +266,10 @@ async fn main() -> Result<()> {
     }
 
     let concurrent_duration = concurrent_start.elapsed();
-    println!("⏱️  Concurrent stress tests completed in {:?}", concurrent_duration);
+    println!(
+        "⏱️  Concurrent stress tests completed in {:?}",
+        concurrent_duration
+    );
     println!("✅ {} out of 4 stress tests passed", success_count);
 
     // Innovation 6: Framework Self-Healing Demonstration
@@ -251,9 +283,11 @@ async fn main() -> Result<()> {
         println!("   Attempting error scenario {}...", i + 1);
 
         // Try to create a container with an invalid name (should fail gracefully)
-        let error_result = env.get_or_create_container("invalid-name-with-!@#$%^&*()", || {
-            Ok::<String, CleanroomError>("should-not-succeed".to_string())
-        }).await;
+        let error_result = env
+            .get_or_create_container("invalid-name-with-!@#$%^&*()", || {
+                Ok::<String, CleanroomError>("should-not-succeed".to_string())
+            })
+            .await;
 
         match error_result {
             Ok(_) => println!("   ⚠️  Expected error scenario didn't fail"),
@@ -278,16 +312,22 @@ async fn main() -> Result<()> {
     println!("Tests Executed: {}", final_metrics.tests_executed);
     println!("Containers Created: {}", containers_created);
     println!("Containers Reused: {}", containers_reused);
-    println!("Reuse Rate: {:.1}%", if containers_created + containers_reused > 0 {
-        (containers_reused as f64 / (containers_created + containers_reused) as f64) * 100.0
-    } else {
-        0.0
-    });
-    println!("Success Rate: {:.1}%", if final_metrics.tests_executed > 0 {
-        (final_metrics.tests_passed as f64 / final_metrics.tests_executed as f64) * 100.0
-    } else {
-        0.0
-    });
+    println!(
+        "Reuse Rate: {:.1}%",
+        if containers_created + containers_reused > 0 {
+            (containers_reused as f64 / (containers_created + containers_reused) as f64) * 100.0
+        } else {
+            0.0
+        }
+    );
+    println!(
+        "Success Rate: {:.1}%",
+        if final_metrics.tests_executed > 0 {
+            (final_metrics.tests_passed as f64 / final_metrics.tests_executed as f64) * 100.0
+        } else {
+            0.0
+        }
+    );
 
     println!("\n🎉 STRESS TEST INNOVATIONS COMPLETED!");
     println!("====================================");
@@ -309,14 +349,18 @@ async fn main() -> Result<()> {
 /// Memory stress test - creates and destroys many objects
 async fn run_memory_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomError> {
     for i in 0..20 {
-        let container = env.get_or_create_container(&format!("memory-test-{}", i), || {
-            Ok::<String, CleanroomError>(format!("memory-container-{}", i))
-        }).await?;
+        let container = env
+            .get_or_create_container(&format!("memory-test-{}", i), || {
+                Ok::<String, CleanroomError>(format!("memory-container-{}", i))
+            })
+            .await?;
 
         // Brief usage
-        let _ = env.execute_test("memory_usage", || {
-            Ok::<String, CleanroomError>(format!("Memory test {}", i))
-        }).await?;
+        let _ = env
+            .execute_test("memory_usage", || {
+                Ok::<String, CleanroomError>(format!("Memory test {}", i))
+            })
+            .await?;
 
         // Explicit cleanup simulation
         println!("   Memory test {} completed", i + 1);
@@ -327,14 +371,16 @@ async fn run_memory_stress_test(env: CleanroomEnvironment) -> Result<(), Cleanro
 /// CPU stress test - performs computational work
 async fn run_cpu_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomError> {
     for i in 0..10 {
-        let _ = env.execute_test("cpu_stress", || {
-            // Simulate CPU-intensive work
-            let mut result = 0;
-            for j in 0..10000 {
-                result += j * j;
-            }
-            Ok::<String, CleanroomError>(format!("CPU result: {}", result))
-        }).await?;
+        let _ = env
+            .execute_test("cpu_stress", || {
+                // Simulate CPU-intensive work
+                let mut result = 0;
+                for j in 0..10000 {
+                    result += j * j;
+                }
+                Ok::<String, CleanroomError>(format!("CPU result: {}", result))
+            })
+            .await?;
 
         println!("   CPU test {} completed", i + 1);
     }
@@ -344,10 +390,12 @@ async fn run_cpu_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomE
 /// I/O stress test - performs file operations
 async fn run_io_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomError> {
     for i in 0..15 {
-        let _ = env.execute_test("io_stress", || {
-            // Simulate I/O operations
-            Ok::<String, CleanroomError>(format!("I/O operation {}", i))
-        }).await?;
+        let _ = env
+            .execute_test("io_stress", || {
+                // Simulate I/O operations
+                Ok::<String, CleanroomError>(format!("I/O operation {}", i))
+            })
+            .await?;
 
         println!("   I/O test {} completed", i + 1);
     }
@@ -357,10 +405,12 @@ async fn run_io_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomEr
 /// Network stress test - simulates network operations
 async fn run_network_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomError> {
     for i in 0..5 {
-        let _ = env.execute_test("network_stress", || {
-            // Simulate network operations
-            Ok::<String, CleanroomError>(format!("Network test {}", i))
-        }).await?;
+        let _ = env
+            .execute_test("network_stress", || {
+                // Simulate network operations
+                Ok::<String, CleanroomError>(format!("Network test {}", i))
+            })
+            .await?;
 
         println!("   Network test {} completed", i + 1);
     }

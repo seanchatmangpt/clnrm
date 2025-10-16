@@ -32,26 +32,35 @@ async fn main() -> Result<(), CleanroomError> {
     // Create 5 different container instances without reuse
     for i in 0..5 {
         let container_name = format!("traditional-{}", i);
-        let _container = env.get_or_create_container(&container_name, || {
-            Ok::<String, CleanroomError>(format!("container-instance-{}", i))
-        }).await?;
+        let _container = env
+            .get_or_create_container(&container_name, || {
+                Ok::<String, CleanroomError>(format!("container-instance-{}", i))
+            })
+            .await?;
         println!("   ✅ Created container instance: {}", container_name);
     }
 
     // Create one container, then reuse it 4 times
     let reused_container_name = "performance-test-container";
-    let _container1 = env.get_or_create_container(reused_container_name, || {
-        Ok::<String, CleanroomError>("reusable-container-instance".to_string())
-    }).await?;
+    let _container1 = env
+        .get_or_create_container(reused_container_name, || {
+            Ok::<String, CleanroomError>("reusable-container-instance".to_string())
+        })
+        .await?;
 
     println!("   ✅ Created initial container instance");
 
     // Reuse the same container instance 4 more times
     for i in 1..=4 {
-        let _container = env.get_or_create_container(reused_container_name, || {
-            println!("   ⚠️  Factory called on reuse {} - container not being reused!", i);
-            Ok::<String, CleanroomError>("should-not-be-created".to_string())
-        }).await?;
+        let _container = env
+            .get_or_create_container(reused_container_name, || {
+                println!(
+                    "   ⚠️  Factory called on reuse {} - container not being reused!",
+                    i
+                );
+                Ok::<String, CleanroomError>("should-not-be-created".to_string())
+            })
+            .await?;
         println!("   ✅ Reused container instance (iteration {})", i);
     }
 
@@ -63,7 +72,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("📈 Container Reuse Statistics:");
     println!("   Containers Created: {}", created);
     println!("   Containers Reused:  {}", reused);
-    println!("   Reuse Rate: {:.1}%", (reused as f64 / (created + reused) as f64) * 100.0);
+    println!(
+        "   Reuse Rate: {:.1}%",
+        (reused as f64 / (created + reused) as f64) * 100.0
+    );
 
     // Test 3: Hermetic Isolation
     println!("\n📊 Test 3: Hermetic Isolation");
@@ -87,13 +99,17 @@ async fn main() -> Result<(), CleanroomError> {
     }
 
     // Test that each environment can create containers independently
-    let container_a = env_a.get_or_create_container("isolation-container-a", || {
-        Ok::<String, CleanroomError>("env-a-container".to_string())
-    }).await?;
+    let container_a = env_a
+        .get_or_create_container("isolation-container-a", || {
+            Ok::<String, CleanroomError>("env-a-container".to_string())
+        })
+        .await?;
 
-    let container_b = env_b.get_or_create_container("isolation-container-b", || {
-        Ok::<String, CleanroomError>("env-b-container".to_string())
-    }).await?;
+    let container_b = env_b
+        .get_or_create_container("isolation-container-b", || {
+            Ok::<String, CleanroomError>("env-b-container".to_string())
+        })
+        .await?;
 
     println!("   Environment A container: {}", container_a);
     println!("   Environment B container: {}", container_b);
@@ -109,9 +125,11 @@ async fn main() -> Result<(), CleanroomError> {
     println!("\n📊 Test 4: Framework Self-Testing Capability");
     println!("-------------------------------------------");
 
-    let test_result = env.execute_test("framework_self_test", || {
-        Ok::<String, CleanroomError>("Framework self-test validation working".to_string())
-    }).await?;
+    let test_result = env
+        .execute_test("framework_self_test", || {
+            Ok::<String, CleanroomError>("Framework self-test validation working".to_string())
+        })
+        .await?;
 
     println!("✅ Framework self-test result: {}", test_result);
 
@@ -132,7 +150,9 @@ async fn main() -> Result<(), CleanroomError> {
         println!("✅ SUCCESS: Observability is capturing metrics correctly");
     } else {
         println!("❌ FAILURE: Observability is not working properly");
-        return Err(CleanroomError::internal_error("Observability validation failed"));
+        return Err(CleanroomError::internal_error(
+            "Observability validation failed",
+        ));
     }
 
     // INNOVATION 1: Meta-testing - Test that verifies the testing framework itself
@@ -185,7 +205,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("  ✅ Performance regression detection");
     println!("  ✅ Dynamic test generation");
     println!("  ✅ Chaos engineering validation");
-    println!("\n⏱️  Total test duration: {}ms", total_duration.as_millis());
+    println!(
+        "\n⏱️  Total test duration: {}ms",
+        total_duration.as_millis()
+    );
 
     Ok(())
 }
@@ -213,15 +236,21 @@ async fn validate_testing_framework(_env: &CleanroomEnvironment) -> Result<Strin
 }
 
 /// INNOVATION: Self-healing - Tests that can recover from failures
-async fn test_self_healing_capability(env: &CleanroomEnvironment) -> Result<String, CleanroomError> {
+async fn test_self_healing_capability(
+    env: &CleanroomEnvironment,
+) -> Result<String, CleanroomError> {
     println!("🔧 Testing self-healing capabilities...");
 
     // Simulate a failing operation
     println!("   ⚠️  Simulating container failure...");
-    let broken_container: Result<String, CleanroomError> = env.get_or_create_container("broken-container", || {
-        // Simulate a failure by returning an error
-        Err(CleanroomError::internal_error("Simulated container creation failure"))
-    }).await;
+    let broken_container: Result<String, CleanroomError> = env
+        .get_or_create_container("broken-container", || {
+            // Simulate a failure by returning an error
+            Err(CleanroomError::internal_error(
+                "Simulated container creation failure",
+            ))
+        })
+        .await;
 
     match broken_container {
         Ok(_) => println!("   ❌ Expected failure but got success"),
@@ -230,9 +259,11 @@ async fn test_self_healing_capability(env: &CleanroomEnvironment) -> Result<Stri
             println!("   🔄 Attempting recovery...");
 
             // Now try to recover by creating a working container
-            let recovery_container = env.get_or_create_container("recovery-container", || {
-                Ok::<String, CleanroomError>("recovered-container".to_string())
-            }).await?;
+            let recovery_container = env
+                .get_or_create_container("recovery-container", || {
+                    Ok::<String, CleanroomError>("recovered-container".to_string())
+                })
+                .await?;
 
             println!("   ✅ Successfully recovered: {}", recovery_container);
         }
@@ -242,7 +273,9 @@ async fn test_self_healing_capability(env: &CleanroomEnvironment) -> Result<Stri
 }
 
 /// INNOVATION: Performance Regression Detection - Detects performance degradation
-async fn detect_performance_regression(env: &CleanroomEnvironment) -> Result<String, CleanroomError> {
+async fn detect_performance_regression(
+    env: &CleanroomEnvironment,
+) -> Result<String, CleanroomError> {
     println!("📈 Detecting performance regressions...");
 
     let mut performance_history = Vec::new();
@@ -253,23 +286,33 @@ async fn detect_performance_regression(env: &CleanroomEnvironment) -> Result<Str
 
         // Create multiple containers to measure performance
         for j in 0..5 {
-            let _container = env.get_or_create_container(&format!("perf-regression-{}", i * 5 + j), || {
-                Ok::<String, CleanroomError>(format!("perf-container-{}", j))
-            }).await?;
+            let _container = env
+                .get_or_create_container(&format!("perf-regression-{}", i * 5 + j), || {
+                    Ok::<String, CleanroomError>(format!("perf-container-{}", j))
+                })
+                .await?;
         }
 
         let duration = start.elapsed();
         performance_history.push(duration.as_millis());
-        println!("   ✅ Performance run {}: {}ms", i + 1, duration.as_millis());
+        println!(
+            "   ✅ Performance run {}: {}ms",
+            i + 1,
+            duration.as_millis()
+        );
     }
 
     // Check for performance regression (simple check: last run should not be > 2x slower than average)
-    let avg_performance: f64 = performance_history.iter().map(|&x| x as f64).sum::<f64>() / performance_history.len() as f64;
+    let avg_performance: f64 = performance_history.iter().map(|&x| x as f64).sum::<f64>()
+        / performance_history.len() as f64;
     let last_performance = *performance_history.last().unwrap() as f64;
 
     if last_performance > avg_performance * 2.0 {
         println!("   ⚠️  Performance regression detected!");
-        println!("      Average: {:.1}ms, Last: {:.1}ms", avg_performance, last_performance);
+        println!(
+            "      Average: {:.1}ms, Last: {:.1}ms",
+            avg_performance, last_performance
+        );
     } else {
         println!("   ✅ No performance regression detected");
     }
@@ -278,7 +321,9 @@ async fn detect_performance_regression(env: &CleanroomEnvironment) -> Result<Str
 }
 
 /// INNOVATION: Dynamic Test Generation - Tests that generate other tests
-async fn generate_dynamic_tests(_env: &CleanroomEnvironment) -> Result<Vec<String>, CleanroomError> {
+async fn generate_dynamic_tests(
+    _env: &CleanroomEnvironment,
+) -> Result<Vec<String>, CleanroomError> {
     println!("🎭 Generating dynamic tests...");
 
     let mut generated_tests = Vec::new();

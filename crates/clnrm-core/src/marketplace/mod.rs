@@ -3,23 +3,26 @@
 //! Provides a comprehensive plugin marketplace with discovery, installation,
 //! management, and community features for the Cleanroom testing framework.
 
-pub mod metadata;
-pub mod registry;
-pub mod discovery;
 pub mod commands;
-pub mod package;
-pub mod security;
 pub mod community;
+pub mod discovery;
+pub mod metadata;
+pub mod package;
+pub mod registry;
+pub mod security;
 
-pub use metadata::*;
-pub use registry::*;
-pub use discovery::*;
-pub use package::*;
-pub use security::*;
 pub use community::*;
+pub use discovery::*;
+pub use metadata::*;
+pub use package::*;
+pub use registry::*;
+pub use security::*;
 
 // Re-export command types
-pub use commands::{MarketplaceCommands, MarketplaceSubcommands, UpdateResult, execute_marketplace_command, initialize_sample_marketplace};
+pub use commands::{
+    execute_marketplace_command, initialize_sample_marketplace, MarketplaceCommands,
+    MarketplaceSubcommands, UpdateResult,
+};
 
 use crate::error::{CleanroomError, Result};
 use std::path::PathBuf;
@@ -93,8 +96,15 @@ impl Marketplace {
             "Production-ready PostgreSQL testing plugin with advanced features",
             "Cleanroom Core Team",
         )?;
-        postgres_plugin.keywords = vec!["database".to_string(), "postgresql".to_string(), "sql".to_string(), "testing".to_string()];
-        postgres_plugin.capabilities.push(crate::marketplace::metadata::standard_capabilities::database_capability());
+        postgres_plugin.keywords = vec![
+            "database".to_string(),
+            "postgresql".to_string(),
+            "sql".to_string(),
+            "testing".to_string(),
+        ];
+        postgres_plugin
+            .capabilities
+            .push(crate::marketplace::metadata::standard_capabilities::database_capability());
         postgres_plugin.community.average_rating = 4.8;
         postgres_plugin.community.rating_count = 127;
         postgres_plugin.community.download_count = 2341;
@@ -107,12 +117,19 @@ impl Marketplace {
             "High-performance Redis testing with cache and session management",
             "Community Maintainers",
         )?;
-        redis_plugin.keywords = vec!["cache".to_string(), "redis".to_string(), "session".to_string(), "performance".to_string()];
-        redis_plugin.capabilities.push(crate::marketplace::metadata::PluginCapability::new(
-            "cache",
-            crate::marketplace::metadata::PluginCategory::Storage,
-            "Provides Redis cache testing capabilities",
-        ));
+        redis_plugin.keywords = vec![
+            "cache".to_string(),
+            "redis".to_string(),
+            "session".to_string(),
+            "performance".to_string(),
+        ];
+        redis_plugin
+            .capabilities
+            .push(crate::marketplace::metadata::PluginCapability::new(
+                "cache",
+                crate::marketplace::metadata::PluginCategory::Storage,
+                "Provides Redis cache testing capabilities",
+            ));
         redis_plugin.community.average_rating = 4.6;
         redis_plugin.community.rating_count = 89;
         redis_plugin.community.download_count = 1542;
@@ -125,12 +142,19 @@ impl Marketplace {
             "Apache Kafka streaming and message queue testing plugin",
             "Enterprise Solutions Inc",
         )?;
-        kafka_plugin.keywords = vec!["kafka".to_string(), "streaming".to_string(), "messaging".to_string(), "event".to_string()];
-        kafka_plugin.capabilities.push(crate::marketplace::metadata::PluginCapability::new(
-            "messaging",
-            crate::marketplace::metadata::PluginCategory::MessageQueue,
-            "Provides Kafka streaming and message queue testing",
-        ));
+        kafka_plugin.keywords = vec![
+            "kafka".to_string(),
+            "streaming".to_string(),
+            "messaging".to_string(),
+            "event".to_string(),
+        ];
+        kafka_plugin
+            .capabilities
+            .push(crate::marketplace::metadata::PluginCapability::new(
+                "messaging",
+                crate::marketplace::metadata::PluginCategory::MessageQueue,
+                "Provides Kafka streaming and message queue testing",
+            ));
         kafka_plugin.community.average_rating = 4.4;
         kafka_plugin.community.rating_count = 203;
         kafka_plugin.community.download_count = 892;
@@ -143,8 +167,15 @@ impl Marketplace {
             "Comprehensive AI/ML model testing and validation framework",
             "AI Testing Collective",
         )?;
-        ai_plugin.keywords = vec!["ai".to_string(), "machine-learning".to_string(), "testing".to_string(), "validation".to_string()];
-        ai_plugin.capabilities.push(crate::marketplace::metadata::standard_capabilities::ai_ml_capability());
+        ai_plugin.keywords = vec![
+            "ai".to_string(),
+            "machine-learning".to_string(),
+            "testing".to_string(),
+            "validation".to_string(),
+        ];
+        ai_plugin
+            .capabilities
+            .push(crate::marketplace::metadata::standard_capabilities::ai_ml_capability());
         ai_plugin.community.average_rating = 4.9;
         ai_plugin.community.rating_count = 67;
         ai_plugin.community.download_count = 342;
@@ -157,12 +188,19 @@ impl Marketplace {
             "MongoDB NoSQL database testing with document validation",
             "Database Community",
         )?;
-        mongodb_plugin.keywords = vec!["mongodb".to_string(), "nosql".to_string(), "document".to_string(), "database".to_string()];
-        mongodb_plugin.capabilities.push(crate::marketplace::metadata::PluginCapability::new(
-            "database",
-            crate::marketplace::metadata::PluginCategory::Database,
-            "Provides MongoDB document database testing",
-        ));
+        mongodb_plugin.keywords = vec![
+            "mongodb".to_string(),
+            "nosql".to_string(),
+            "document".to_string(),
+            "database".to_string(),
+        ];
+        mongodb_plugin
+            .capabilities
+            .push(crate::marketplace::metadata::PluginCapability::new(
+                "database",
+                crate::marketplace::metadata::PluginCategory::Database,
+                "Provides MongoDB document database testing",
+            ));
         mongodb_plugin.community.average_rating = 4.3;
         mongodb_plugin.community.rating_count = 156;
         mongodb_plugin.community.download_count = 678;
@@ -219,7 +257,10 @@ impl Marketplace {
 
         if latest.version > current.version {
             self.installer.update_plugin(&current, &latest).await?;
-            Ok(UpdateResult::Updated(plugin_name.to_string(), latest.version))
+            Ok(UpdateResult::Updated(
+                plugin_name.to_string(),
+                latest.version,
+            ))
         } else {
             Ok(UpdateResult::NoUpdate(plugin_name.to_string()))
         }
@@ -228,7 +269,9 @@ impl Marketplace {
     /// Rate a plugin
     pub async fn rate_plugin(&self, plugin_name: &str, rating: u8) -> Result<()> {
         if rating > 5 {
-            return Err(CleanroomError::validation_error("Rating must be between 1 and 5"));
+            return Err(CleanroomError::validation_error(
+                "Rating must be between 1 and 5",
+            ));
         }
 
         self.registry.rate_plugin(plugin_name, rating).await
@@ -236,7 +279,9 @@ impl Marketplace {
 
     /// Add a review for a plugin
     pub async fn review_plugin(&self, plugin_name: &str, review: &str) -> Result<()> {
-        self.registry.add_review(plugin_name, review.to_string()).await
+        self.registry
+            .add_review(plugin_name, review.to_string())
+            .await
     }
 
     /// Get plugin statistics

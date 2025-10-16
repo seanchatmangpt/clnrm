@@ -3,18 +3,18 @@
 //! Provides a professional command-line interface using clap for running tests,
 //! managing services, and generating reports.
 
+pub mod commands;
 pub mod types;
 pub mod utils;
-pub mod commands;
 
-use crate::error::Result;
-use crate::config::load_cleanroom_config;
-use crate::cli::types::{Cli, Commands, ServiceCommands, ReportFormat};
-use crate::cli::utils::setup_logging;
 use crate::cli::commands::*;
+use crate::cli::types::{Cli, Commands, ReportFormat, ServiceCommands};
+use crate::cli::utils::setup_logging;
+use crate::config::load_cleanroom_config;
+use crate::error::Result;
 use clap::Parser;
-use tracing::error;
 use std::path::PathBuf;
+use tracing::error;
 
 // Remove global config - we'll load it per command as needed
 
@@ -43,7 +43,7 @@ pub async fn run_cli() -> Result<()> {
                 interactive,
                 verbose: cli.verbose,
             };
-            
+
             // If no paths provided, discover all test files automatically
             let paths_to_run = if let Some(paths) = paths {
                 paths
@@ -51,7 +51,7 @@ pub async fn run_cli() -> Result<()> {
                 // Default behavior: discover all test files
                 vec![PathBuf::from(".")]
             };
-            
+
             run_tests(&paths_to_run, &config).await
         }
 
@@ -97,12 +97,23 @@ pub async fn run_cli() -> Result<()> {
                 horizon_minutes,
                 service,
             } => {
-                ai_manage(auto_scale, predict_load, optimize_resources, horizon_minutes, service).await?;
+                ai_manage(
+                    auto_scale,
+                    predict_load,
+                    optimize_resources,
+                    horizon_minutes,
+                    service,
+                )
+                .await?;
                 Ok(())
             }
         },
 
-        Commands::Report { input, output, format } => {
+        Commands::Report {
+            input,
+            output,
+            format,
+        } => {
             let format_str = match format {
                 ReportFormat::Html => "html",
                 ReportFormat::Markdown => "markdown",
@@ -118,7 +129,6 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-
         Commands::AiOrchestrate {
             paths,
             predict_failures,
@@ -126,7 +136,14 @@ pub async fn run_cli() -> Result<()> {
             confidence_threshold,
             max_workers,
         } => {
-            ai_orchestrate_tests(paths, predict_failures, auto_optimize, confidence_threshold, max_workers).await
+            ai_orchestrate_tests(
+                paths,
+                predict_failures,
+                auto_optimize,
+                confidence_threshold,
+                max_workers,
+            )
+            .await
         }
 
         Commands::AiPredict {
@@ -134,9 +151,7 @@ pub async fn run_cli() -> Result<()> {
             predict_failures,
             recommendations,
             format,
-        } => {
-            ai_predict_analytics(analyze_history, predict_failures, recommendations, format).await
-        }
+        } => ai_predict_analytics(analyze_history, predict_failures, recommendations, format).await,
 
         Commands::AiOptimize {
             execution_order,
@@ -144,7 +159,13 @@ pub async fn run_cli() -> Result<()> {
             parallel_execution,
             auto_apply,
         } => {
-            ai_optimize_tests(execution_order, resource_allocation, parallel_execution, auto_apply).await
+            ai_optimize_tests(
+                execution_order,
+                resource_allocation,
+                parallel_execution,
+                auto_apply,
+            )
+            .await
         }
 
         Commands::AiReal { analyze } => {
@@ -157,9 +178,7 @@ pub async fn run_cli() -> Result<()> {
             }
         }
 
-        Commands::Health { verbose } => {
-            system_health_check(verbose).await
-        }
+        Commands::Health { verbose } => system_health_check(verbose).await,
 
         Commands::AiMonitor {
             interval,
@@ -184,7 +203,14 @@ pub async fn run_cli() -> Result<()> {
             }
 
             let monitor_interval = std::time::Duration::from_secs(interval);
-            ai_monitor(monitor_interval, anomaly_threshold, ai_alerts, proactive_healing, webhook_url).await
+            ai_monitor(
+                monitor_interval,
+                anomaly_threshold,
+                ai_alerts,
+                proactive_healing,
+                webhook_url,
+            )
+            .await
         }
 
         Commands::Marketplace { command } => {
@@ -202,6 +228,6 @@ pub async fn run_cli() -> Result<()> {
 }
 
 // Re-export all public types and functions for backward compatibility
+pub use commands::*;
 pub use types::*;
 pub use utils::*;
-pub use commands::*;

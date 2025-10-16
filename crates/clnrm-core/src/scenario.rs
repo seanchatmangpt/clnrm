@@ -214,8 +214,14 @@ impl Scenario {
             return self;
         }
 
-        let cmd = Cmd::new(args_vec.first().map_or("", |v| v))
-            .args(&args_vec.get(1..).unwrap_or(&[]).iter().map(|s| s.as_str()).collect::<Vec<_>>());
+        let cmd = Cmd::new(args_vec.first().map_or("", |v| v)).args(
+            &args_vec
+                .get(1..)
+                .unwrap_or(&[])
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>(),
+        );
         self.steps.push(Step {
             name: label,
             cmd,
@@ -256,7 +262,7 @@ impl Scenario {
     }
 
     /// Run the scenario asynchronously with testcontainers backend
-    /// 
+    ///
     /// Core Team Compliance:
     /// - ✅ Async function for I/O operations
     /// - ✅ Proper error handling with CleanroomError
@@ -323,7 +329,7 @@ impl Scenario {
     }
 
     /// Run the scenario asynchronously with a specific backend
-    /// 
+    ///
     /// Core Team Compliance:
     /// - ✅ Async function for I/O operations
     /// - ✅ Proper error handling with CleanroomError
@@ -335,13 +341,14 @@ impl Scenario {
     ) -> Result<RunResult> {
         // Use spawn_blocking to run the synchronous backend in a separate thread
         // This prevents the "Cannot start a runtime from within a runtime" error
-        let result = tokio::task::spawn_blocking(move || {
-            self.run_with_backend(backend)
-        }).await
-        .map_err(|e| crate::error::CleanroomError::internal_error("Task join failed")
-            .with_context("Failed to execute scenario in blocking task")
-            .with_source(e.to_string()))?;
-        
+        let result = tokio::task::spawn_blocking(move || self.run_with_backend(backend))
+            .await
+            .map_err(|e| {
+                crate::error::CleanroomError::internal_error("Task join failed")
+                    .with_context("Failed to execute scenario in blocking task")
+                    .with_source(e.to_string())
+            })?;
+
         result
     }
 }

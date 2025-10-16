@@ -7,19 +7,19 @@
 //! through the "eat your own dog food" principle - the framework validates
 //! its own functionality using its own capabilities.
 
+pub mod assertions;
 pub mod backend;
-pub mod error;
-pub mod policy;
-pub mod scenario;
 pub mod cleanroom;
 pub mod cli;
-pub mod utils;
-pub mod telemetry;
-pub mod macros;
-pub mod assertions;
-pub mod services;
 pub mod config;
+pub mod error;
+pub mod macros;
 pub mod marketplace;
+pub mod policy;
+pub mod scenario;
+pub mod services;
+pub mod telemetry;
+pub mod utils;
 
 // Testing utilities (includes property-based test generators)
 pub mod testing;
@@ -29,17 +29,20 @@ pub use policy::{Policy, SecurityLevel, SecurityPolicy};
 pub use scenario::scenario;
 
 #[cfg(feature = "otel-traces")]
-pub use telemetry::{OtelConfig, Export, OtelGuard};
+pub use telemetry::{Export, OtelConfig, OtelGuard};
 
-pub use cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, ServiceRegistry, HealthStatus, ExecutionResult};
-pub use macros::{with_database, with_cache, with_message_queue, with_web_server};
-pub use assertions::{database, cache, email_service, UserAssertions};
-pub use services::surrealdb::SurrealDbPlugin;
-pub use services::generic::GenericContainerPlugin;
-pub use config::{
-    TestConfig, ScenarioConfig, StepConfig, parse_toml_config, load_config_from_file,
-    CleanroomConfig, load_cleanroom_config, load_cleanroom_config_from_file
+pub use assertions::{cache, database, email_service, UserAssertions};
+pub use cleanroom::{
+    CleanroomEnvironment, ExecutionResult, HealthStatus, ServiceHandle, ServicePlugin,
+    ServiceRegistry,
 };
+pub use config::{
+    load_cleanroom_config, load_cleanroom_config_from_file, load_config_from_file,
+    parse_toml_config, CleanroomConfig, ScenarioConfig, StepConfig, TestConfig,
+};
+pub use macros::{with_cache, with_database, with_message_queue, with_web_server};
+pub use services::generic::GenericContainerPlugin;
+pub use services::surrealdb::SurrealDbPlugin;
 
 // The cleanroom_test macro is already exported via #[macro_export] in macros.rs
 

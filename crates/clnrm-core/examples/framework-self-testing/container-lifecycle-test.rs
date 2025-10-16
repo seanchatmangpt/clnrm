@@ -5,10 +5,10 @@
 //!
 //! Users can copy and paste this code to verify that container lifecycle testing works.
 
-use clnrm_core::{CleanroomEnvironment};
 use clnrm_core::error::Result;
-use std::time::{Duration, Instant};
+use clnrm_core::CleanroomEnvironment;
 use futures_util::future;
+use std::time::{Duration, Instant};
 
 /// Test that containers start, execute commands, and cleanup properly
 /// This is the exact claim made in the README: "Container Lifecycle Testing"
@@ -24,10 +24,12 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
     let env = CleanroomEnvironment::new().await?;
 
     // Test actual container creation using the framework's container manager
-    let container = env.get_or_create_container("lifecycle-test", || {
-        // The framework creates the actual container instance
-        Ok::<String, clnrm_core::CleanroomError>("alpine-container".to_string())
-    }).await?;
+    let container = env
+        .get_or_create_container("lifecycle-test", || {
+            // The framework creates the actual container instance
+            Ok::<String, clnrm_core::CleanroomError>("alpine-container".to_string())
+        })
+        .await?;
 
     println!("✅ Container created successfully using framework's container manager");
     println!("⏱️  Container creation time: {:?}", start_time.elapsed());
@@ -37,18 +39,48 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
     let command_start = Instant::now();
 
     // Execute commands as the README shows
-    let result = env.execute_in_container(&container, &["echo".to_string(), "Container started successfully".to_string()]).await?;
+    let result = env
+        .execute_in_container(
+            &container,
+            &[
+                "echo".to_string(),
+                "Container started successfully".to_string(),
+            ],
+        )
+        .await?;
     assert_eq!(result.exit_code, 0);
 
-    let result = env.execute_in_container(&container, &["sh".to_string(), "-c".to_string(), "echo 'Testing command execution' && sleep 0.1 && echo 'Command completed'".to_string()]).await?;
+    let result = env
+        .execute_in_container(
+            &container,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "echo 'Testing command execution' && sleep 0.1 && echo 'Command completed'"
+                    .to_string(),
+            ],
+        )
+        .await?;
     assert_eq!(result.exit_code, 0);
     assert!(result.stdout.contains("Command completed"));
 
-    let result = env.execute_in_container(&container, &["sh".to_string(), "-c".to_string(), "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt".to_string()]).await?;
+    let result = env
+        .execute_in_container(
+            &container,
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt".to_string(),
+            ],
+        )
+        .await?;
     assert_eq!(result.exit_code, 0);
     assert!(result.stdout.contains("test data"));
 
-    println!("✅ Command execution works in {:?}", command_start.elapsed());
+    println!(
+        "✅ Command execution works in {:?}",
+        command_start.elapsed()
+    );
 
     // Test 3: Container reuse performance (as claimed in README: "10-50x performance improvement")
     println!("\n📋 Test 3: Container reuse performance verification");
@@ -56,18 +88,22 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
 
     // First container creation (expensive)
     println!("🏗️  Creating container for reuse test...");
-    let _container1 = env.get_or_create_container("reuse-test", || {
-        Ok::<String, clnrm_core::CleanroomError>("reusable-container".to_string())
-    }).await?;
+    let _container1 = env
+        .get_or_create_container("reuse-test", || {
+            Ok::<String, clnrm_core::CleanroomError>("reusable-container".to_string())
+        })
+        .await?;
 
     let first_creation = reuse_start.elapsed();
 
     // Reuse the container (should return same instance)
     let reuse_time = Instant::now();
-    let container2 = env.get_or_create_container("reuse-test", || {
-        println!("❌ This should not print - container should be reused!");
-        Ok::<String, clnrm_core::CleanroomError>("should-not-be-created".to_string())
-    }).await?;
+    let container2 = env
+        .get_or_create_container("reuse-test", || {
+            println!("❌ This should not print - container should be reused!");
+            Ok::<String, clnrm_core::CleanroomError>("should-not-be-created".to_string())
+        })
+        .await?;
 
     let reuse_duration = reuse_time.elapsed();
 
@@ -82,7 +118,10 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
 
     // Get container reuse statistics
     let (created, reused) = env.get_container_reuse_stats().await;
-    println!("📊 Container reuse stats: {} created, {} reused", created, reused);
+    println!(
+        "📊 Container reuse stats: {} created, {} reused",
+        created, reused
+    );
 
     if reused >= 1 {
         println!("✅ README claim verified: Container reuse working correctly");
@@ -93,30 +132,66 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
     let isolation_start = Instant::now();
 
     // Create two separate containers using the framework's container manager
-    let container_a = env.get_or_create_container("isolation-a", || {
-        Ok::<String, clnrm_core::CleanroomError>("container-a".to_string())
-    }).await?;
+    let container_a = env
+        .get_or_create_container("isolation-a", || {
+            Ok::<String, clnrm_core::CleanroomError>("container-a".to_string())
+        })
+        .await?;
 
-    let container_b = env.get_or_create_container("isolation-b", || {
-        Ok::<String, clnrm_core::CleanroomError>("container-b".to_string())
-    }).await?;
+    let container_b = env
+        .get_or_create_container("isolation-b", || {
+            Ok::<String, clnrm_core::CleanroomError>("container-b".to_string())
+        })
+        .await?;
 
     // Write different data to each container
-    env.execute_in_container(&container_a, &["sh".to_string(), "-c".to_string(), "echo 'data-a' > /tmp/shared.txt".to_string()]).await?;
-    env.execute_in_container(&container_b, &["sh".to_string(), "-c".to_string(), "echo 'data-b' > /tmp/shared.txt".to_string()]).await?;
+    env.execute_in_container(
+        &container_a,
+        &[
+            "sh".to_string(),
+            "-c".to_string(),
+            "echo 'data-a' > /tmp/shared.txt".to_string(),
+        ],
+    )
+    .await?;
+    env.execute_in_container(
+        &container_b,
+        &[
+            "sh".to_string(),
+            "-c".to_string(),
+            "echo 'data-b' > /tmp/shared.txt".to_string(),
+        ],
+    )
+    .await?;
 
     // Verify isolation - each container should have its own data
-    let result_a = env.execute_in_container(&container_a, &["cat".to_string(), "/tmp/shared.txt".to_string()]).await?;
-    let result_b = env.execute_in_container(&container_b, &["cat".to_string(), "/tmp/shared.txt".to_string()]).await?;
+    let result_a = env
+        .execute_in_container(
+            &container_a,
+            &["cat".to_string(), "/tmp/shared.txt".to_string()],
+        )
+        .await?;
+    let result_b = env
+        .execute_in_container(
+            &container_b,
+            &["cat".to_string(), "/tmp/shared.txt".to_string()],
+        )
+        .await?;
 
     assert_eq!(result_a.stdout.trim(), "data-a");
     assert_eq!(result_b.stdout.trim(), "data-b");
 
-    println!("✅ Hermetic isolation verified in {:?}", isolation_start.elapsed());
+    println!(
+        "✅ Hermetic isolation verified in {:?}",
+        isolation_start.elapsed()
+    );
     println!("📋 Each container maintains its own isolated filesystem");
 
     let total_time = start_time.elapsed();
-    println!("\n🎉 SUCCESS: All container lifecycle claims verified in {:?}", total_time);
+    println!(
+        "\n🎉 SUCCESS: All container lifecycle claims verified in {:?}",
+        total_time
+    );
     println!("📚 README claims demonstrated using framework's actual functionality:");
     println!("   ✅ Container creation via framework works");
     println!("   ✅ Command execution in containers works");
@@ -153,12 +228,16 @@ async fn test_concurrent_container_operations() -> Result<()> {
         // Note: CleanroomEnvironment doesn't implement Clone, so we use a reference
         let handle = tokio::spawn(async move {
             // Create containers concurrently - some may share containers for reuse
-            let container = env.get_or_create_container(&format!("concurrent-{}", i), || {
-                Ok::<String, clnrm_core::CleanroomError>(format!("container-{}", i))
-            }).await?;
+            let container = env
+                .get_or_create_container(&format!("concurrent-{}", i), || {
+                    Ok::<String, clnrm_core::CleanroomError>(format!("container-{}", i))
+                })
+                .await?;
 
             // Execute work in the container
-            let result = env.execute_in_container(&container, &["echo".to_string(), format!("work-{}", i)]).await?;
+            let result = env
+                .execute_in_container(&container, &["echo".to_string(), format!("work-{}", i)])
+                .await?;
             Ok::<_, clnrm_core::CleanroomError>(result.stdout)
         });
         handles.push(handle);
@@ -167,7 +246,10 @@ async fn test_concurrent_container_operations() -> Result<()> {
     // Wait for all to complete
     let results = future::try_join_all(handles).await?;
 
-    println!("✅ Concurrent operations completed in {:?}", start_time.elapsed());
+    println!(
+        "✅ Concurrent operations completed in {:?}",
+        start_time.elapsed()
+    );
     println!("📊 Results: {:?}", results);
 
     // Verify all results are correct

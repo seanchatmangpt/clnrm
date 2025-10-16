@@ -321,12 +321,16 @@ impl TestConfig {
     pub fn validate(&self) -> Result<()> {
         // Validate name is not empty
         if self.test.metadata.name.trim().is_empty() {
-            return Err(CleanroomError::validation_error("Test name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Test name cannot be empty",
+            ));
         }
 
         // Validate steps exist
         if self.steps.is_empty() {
-            return Err(CleanroomError::validation_error("At least one step is required"));
+            return Err(CleanroomError::validation_error(
+                "At least one step is required",
+            ));
         }
 
         // Validate each step
@@ -338,8 +342,9 @@ impl TestConfig {
         // Validate services if present
         if let Some(services) = &self.services {
             for (service_name, service) in services.iter() {
-                service.validate()
-                    .map_err(|e| CleanroomError::validation_error(format!("Service {}: {}", service_name, e)))?;
+                service.validate().map_err(|e| {
+                    CleanroomError::validation_error(format!("Service {}: {}", service_name, e))
+                })?;
             }
         }
 
@@ -347,24 +352,29 @@ impl TestConfig {
         if let Some(assertions) = &self.assertions {
             // Basic validation - assertions should not be empty
             if assertions.is_empty() {
-                return Err(CleanroomError::validation_error("Assertions cannot be empty if provided"));
+                return Err(CleanroomError::validation_error(
+                    "Assertions cannot be empty if provided",
+                ));
             }
         }
 
         Ok(())
     }
-
 }
 
 impl ScenarioConfig {
     /// Validate the scenario configuration
     pub fn validate(&self) -> Result<()> {
         if self.name.trim().is_empty() {
-            return Err(CleanroomError::validation_error("Scenario name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Scenario name cannot be empty",
+            ));
         }
 
         if self.steps.is_empty() {
-            return Err(CleanroomError::validation_error("At least one step is required"));
+            return Err(CleanroomError::validation_error(
+                "At least one step is required",
+            ));
         }
 
         for (i, step) in self.steps.iter().enumerate() {
@@ -380,11 +390,15 @@ impl StepConfig {
     /// Validate the step configuration
     pub fn validate(&self) -> Result<()> {
         if self.name.trim().is_empty() {
-            return Err(CleanroomError::validation_error("Step name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Step name cannot be empty",
+            ));
         }
 
         if self.command.is_empty() {
-            return Err(CleanroomError::validation_error("Step command cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Step command cannot be empty",
+            ));
         }
 
         Ok(())
@@ -395,20 +409,28 @@ impl ServiceConfig {
     /// Validate the service configuration
     pub fn validate(&self) -> Result<()> {
         if self.r#type.trim().is_empty() {
-            return Err(CleanroomError::validation_error("Service type cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Service type cannot be empty",
+            ));
         }
 
         if self.plugin.trim().is_empty() {
-            return Err(CleanroomError::validation_error("Service plugin cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Service plugin cannot be empty",
+            ));
         }
 
         if let Some(ref image) = self.image {
             if image.trim().is_empty() {
-                return Err(CleanroomError::validation_error("Service image cannot be empty"));
+                return Err(CleanroomError::validation_error(
+                    "Service image cannot be empty",
+                ));
             }
         } else if self.r#type != "network_service" && self.r#type != "ollama" {
             // For container-based services, image is required
-            return Err(CleanroomError::validation_error("Service image is required for container-based services"));
+            return Err(CleanroomError::validation_error(
+                "Service image is required for container-based services",
+            ));
         }
 
         Ok(())
@@ -420,17 +442,19 @@ impl PolicyConfig {
     pub fn validate(&self) -> Result<()> {
         if let Some(security_level) = &self.security_level {
             match security_level.to_lowercase().as_str() {
-                "low" | "medium" | "high" => {},
-                _ => return Err(CleanroomError::validation_error(
-                    "Security level must be 'low', 'medium', or 'high'"
-                ))
+                "low" | "medium" | "high" => {}
+                _ => {
+                    return Err(CleanroomError::validation_error(
+                        "Security level must be 'low', 'medium', or 'high'",
+                    ))
+                }
             }
         }
 
         if let Some(max_cpu) = self.max_cpu_usage {
             if max_cpu < 0.0 || max_cpu > 1.0 {
                 return Err(CleanroomError::validation_error(
-                    "Max CPU usage must be between 0.0 and 1.0"
+                    "Max CPU usage must be between 0.0 and 1.0",
                 ));
             }
         }
@@ -498,7 +522,11 @@ impl Default for CleanroomConfig {
             plugins: PluginConfig {
                 auto_discover: true,
                 plugin_dir: "./plugins".to_string(),
-                enabled_plugins: vec!["surrealdb".to_string(), "postgres".to_string(), "redis".to_string()],
+                enabled_plugins: vec![
+                    "surrealdb".to_string(),
+                    "postgres".to_string(),
+                    "redis".to_string(),
+                ],
             },
             performance: PerformanceConfig {
                 container_pool_size: 5,
@@ -536,42 +564,56 @@ impl CleanroomConfig {
     pub fn validate(&self) -> Result<()> {
         // Validate project name
         if self.project.name.trim().is_empty() {
-            return Err(CleanroomError::validation_error("Project name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Project name cannot be empty",
+            ));
         }
 
         // Validate CLI settings
         if self.cli.jobs == 0 {
-            return Err(CleanroomError::validation_error("CLI jobs must be greater than 0"));
+            return Err(CleanroomError::validation_error(
+                "CLI jobs must be greater than 0",
+            ));
         }
 
         // Validate container settings
         if self.containers.max_containers == 0 {
-            return Err(CleanroomError::validation_error("Max containers must be greater than 0"));
+            return Err(CleanroomError::validation_error(
+                "Max containers must be greater than 0",
+            ));
         }
 
         if self.containers.startup_timeout.as_secs() == 0 {
-            return Err(CleanroomError::validation_error("Container startup timeout must be greater than 0"));
+            return Err(CleanroomError::validation_error(
+                "Container startup timeout must be greater than 0",
+            ));
         }
 
         // Validate observability settings
         if self.observability.metrics_port == 0 {
-            return Err(CleanroomError::validation_error("Metrics port must be greater than 0"));
+            return Err(CleanroomError::validation_error(
+                "Metrics port must be greater than 0",
+            ));
         }
 
         // Validate security level
         match self.security.security_level.to_lowercase().as_str() {
-            "low" | "medium" | "high" => {},
-            _ => return Err(CleanroomError::validation_error(
-                "Security level must be 'low', 'medium', or 'high'"
-            )),
+            "low" | "medium" | "high" => {}
+            _ => {
+                return Err(CleanroomError::validation_error(
+                    "Security level must be 'low', 'medium', or 'high'",
+                ))
+            }
         }
 
         // Validate log level
         match self.observability.log_level.to_lowercase().as_str() {
-            "debug" | "info" | "warn" | "error" => {},
-            _ => return Err(CleanroomError::validation_error(
-                "Log level must be 'debug', 'info', 'warn', or 'error'"
-            )),
+            "debug" | "info" | "warn" | "error" => {}
+            _ => {
+                return Err(CleanroomError::validation_error(
+                    "Log level must be 'debug', 'info', 'warn', or 'error'",
+                ))
+            }
         }
 
         Ok(())
@@ -604,11 +646,13 @@ pub fn load_cleanroom_config() -> Result<CleanroomConfig> {
 /// Load CleanroomConfig from a specific file
 pub fn load_cleanroom_config_from_file<P: AsRef<Path>>(path: P) -> Result<CleanroomConfig> {
     let path = path.as_ref();
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| CleanroomError::config_error(format!("Failed to read cleanroom.toml: {}", e)))?;
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        CleanroomError::config_error(format!("Failed to read cleanroom.toml: {}", e))
+    })?;
 
-    let mut config: CleanroomConfig = toml::from_str(&content)
-        .map_err(|e| CleanroomError::config_error(format!("Invalid cleanroom.toml format: {}", e)))?;
+    let mut config: CleanroomConfig = toml::from_str(&content).map_err(|e| {
+        CleanroomError::config_error(format!("Invalid cleanroom.toml format: {}", e))
+    })?;
 
     config.validate()?;
     Ok(config)
@@ -617,7 +661,12 @@ pub fn load_cleanroom_config_from_file<P: AsRef<Path>>(path: P) -> Result<Cleanr
 /// Load CleanroomConfig from user directory
 fn load_cleanroom_config_from_user_dir() -> Result<CleanroomConfig> {
     let user_config_dir = std::env::var("HOME")
-        .map(|home| Path::new(&home).join(".config").join("cleanroom").join("cleanroom.toml"))
+        .map(|home| {
+            Path::new(&home)
+                .join(".config")
+                .join("cleanroom")
+                .join("cleanroom.toml")
+        })
         .unwrap_or_else(|_| Path::new("~/.config/cleanroom/cleanroom.toml").to_path_buf());
 
     if user_config_dir.exists() {
@@ -646,26 +695,38 @@ fn apply_env_overrides(mut config: CleanroomConfig) -> Result<CleanroomConfig> {
         config.cli.watch = watch.parse::<bool>().unwrap_or(config.cli.watch);
     }
     if let Ok(interactive) = std::env::var("CLEANROOM_CLI_INTERACTIVE") {
-        config.cli.interactive = interactive.parse::<bool>().unwrap_or(config.cli.interactive);
+        config.cli.interactive = interactive
+            .parse::<bool>()
+            .unwrap_or(config.cli.interactive);
     }
 
     // Container settings
     if let Ok(reuse) = std::env::var("CLEANROOM_CONTAINERS_REUSE_ENABLED") {
-        config.containers.reuse_enabled = reuse.parse::<bool>().unwrap_or(config.containers.reuse_enabled);
+        config.containers.reuse_enabled = reuse
+            .parse::<bool>()
+            .unwrap_or(config.containers.reuse_enabled);
     }
     if let Ok(max_containers) = std::env::var("CLEANROOM_CONTAINERS_MAX_CONTAINERS") {
-        config.containers.max_containers = max_containers.parse::<usize>().unwrap_or(config.containers.max_containers);
+        config.containers.max_containers = max_containers
+            .parse::<usize>()
+            .unwrap_or(config.containers.max_containers);
     }
 
     // Observability settings
     if let Ok(tracing) = std::env::var("CLEANROOM_OBSERVABILITY_ENABLE_TRACING") {
-        config.observability.enable_tracing = tracing.parse::<bool>().unwrap_or(config.observability.enable_tracing);
+        config.observability.enable_tracing = tracing
+            .parse::<bool>()
+            .unwrap_or(config.observability.enable_tracing);
     }
     if let Ok(metrics) = std::env::var("CLEANROOM_OBSERVABILITY_ENABLE_METRICS") {
-        config.observability.enable_metrics = metrics.parse::<bool>().unwrap_or(config.observability.enable_metrics);
+        config.observability.enable_metrics = metrics
+            .parse::<bool>()
+            .unwrap_or(config.observability.enable_metrics);
     }
     if let Ok(logging) = std::env::var("CLEANROOM_OBSERVABILITY_ENABLE_LOGGING") {
-        config.observability.enable_logging = logging.parse::<bool>().unwrap_or(config.observability.enable_logging);
+        config.observability.enable_logging = logging
+            .parse::<bool>()
+            .unwrap_or(config.observability.enable_logging);
     }
     if let Ok(log_level) = std::env::var("CLEANROOM_OBSERVABILITY_LOG_LEVEL") {
         config.observability.log_level = log_level;
@@ -673,13 +734,19 @@ fn apply_env_overrides(mut config: CleanroomConfig) -> Result<CleanroomConfig> {
 
     // Security settings
     if let Ok(hermetic) = std::env::var("CLEANROOM_SECURITY_HERMETIC_ISOLATION") {
-        config.security.hermetic_isolation = hermetic.parse::<bool>().unwrap_or(config.security.hermetic_isolation);
+        config.security.hermetic_isolation = hermetic
+            .parse::<bool>()
+            .unwrap_or(config.security.hermetic_isolation);
     }
     if let Ok(network) = std::env::var("CLEANROOM_SECURITY_NETWORK_ISOLATION") {
-        config.security.network_isolation = network.parse::<bool>().unwrap_or(config.security.network_isolation);
+        config.security.network_isolation = network
+            .parse::<bool>()
+            .unwrap_or(config.security.network_isolation);
     }
     if let Ok(filesystem) = std::env::var("CLEANROOM_SECURITY_FILESYSTEM_ISOLATION") {
-        config.security.file_system_isolation = filesystem.parse::<bool>().unwrap_or(config.security.file_system_isolation);
+        config.security.file_system_isolation = filesystem
+            .parse::<bool>()
+            .unwrap_or(config.security.file_system_isolation);
     }
     if let Ok(security_level) = std::env::var("CLEANROOM_SECURITY_LEVEL") {
         config.security.security_level = security_level;
@@ -766,20 +833,18 @@ max_execution_time = 300
                     name: "test".to_string(),
                     description: Some("test description".to_string()),
                     timeout: None,
-                }
+                },
             },
-            steps: vec![
-                StepConfig {
-                    name: "step".to_string(),
-                    command: vec!["echo".to_string(), "test".to_string()],
-                    service: None,
-                    expected_output_regex: None,
-                    workdir: None,
-                    env: None,
-                    expected_exit_code: None,
-                    continue_on_failure: None,
-                }
-            ],
+            steps: vec![StepConfig {
+                name: "step".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                service: None,
+                expected_output_regex: None,
+                workdir: None,
+                env: None,
+                expected_exit_code: None,
+                continue_on_failure: None,
+            }],
             services: None,
             assertions: None,
         };
@@ -795,7 +860,7 @@ max_execution_time = 300
                     name: "".to_string(),
                     description: Some("test description".to_string()),
                     timeout: None,
-                }
+                },
             },
             steps: vec![],
             services: None,
@@ -813,7 +878,7 @@ max_execution_time = 300
                     name: "test".to_string(),
                     description: Some("test description".to_string()),
                     timeout: None,
-                }
+                },
             },
             steps: vec![],
             services: None,

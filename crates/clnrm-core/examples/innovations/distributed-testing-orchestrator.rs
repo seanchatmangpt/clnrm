@@ -11,7 +11,9 @@
 //! - Fault tolerance and recovery mechanisms
 //! - Performance optimization across distributed systems
 
-use clnrm_core::{CleanroomEnvironment, ServicePlugin, ServiceHandle, HealthStatus, CleanroomError};
+use clnrm_core::{
+    CleanroomEnvironment, CleanroomError, HealthStatus, ServiceHandle, ServicePlugin,
+};
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -87,7 +89,9 @@ impl ServicePlugin for DistributedCoordinatorPlugin {
         "distributed_coordinator"
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
+    fn start(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
         let name = self.name().to_string();
         Box::pin(async move {
             println!("🚀 Starting Distributed Testing Coordinator");
@@ -102,10 +106,16 @@ impl ServicePlugin for DistributedCoordinatorPlugin {
         })
     }
 
-    fn stop(&self, handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
+    fn stop(
+        &self,
+        handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
         let service_name = handle.service_name.clone();
         Box::pin(async move {
-            println!("🛑 Stopping Distributed Testing Coordinator: {}", service_name);
+            println!(
+                "🛑 Stopping Distributed Testing Coordinator: {}",
+                service_name
+            );
             Ok(())
         })
     }
@@ -120,26 +130,35 @@ impl DistributedTestingOrchestrator {
         let mut service_deps = HashMap::new();
 
         // Define complex service dependencies for distributed testing
-        service_deps.insert("web_api".to_string(), ServiceDependency {
-            service_name: "web_api".to_string(),
-            depends_on: vec!["database".to_string(), "cache".to_string()],
-            startup_order: 1,
-            health_check_timeout: Duration::from_secs(30),
-        });
+        service_deps.insert(
+            "web_api".to_string(),
+            ServiceDependency {
+                service_name: "web_api".to_string(),
+                depends_on: vec!["database".to_string(), "cache".to_string()],
+                startup_order: 1,
+                health_check_timeout: Duration::from_secs(30),
+            },
+        );
 
-        service_deps.insert("database".to_string(), ServiceDependency {
-            service_name: "database".to_string(),
-            depends_on: vec!["storage".to_string()],
-            startup_order: 2,
-            health_check_timeout: Duration::from_secs(60),
-        });
+        service_deps.insert(
+            "database".to_string(),
+            ServiceDependency {
+                service_name: "database".to_string(),
+                depends_on: vec!["storage".to_string()],
+                startup_order: 2,
+                health_check_timeout: Duration::from_secs(60),
+            },
+        );
 
-        service_deps.insert("cache".to_string(), ServiceDependency {
-            service_name: "cache".to_string(),
-            depends_on: vec!["memory".to_string()],
-            startup_order: 3,
-            health_check_timeout: Duration::from_secs(15),
-        });
+        service_deps.insert(
+            "cache".to_string(),
+            ServiceDependency {
+                service_name: "cache".to_string(),
+                depends_on: vec!["memory".to_string()],
+                startup_order: 3,
+                health_check_timeout: Duration::from_secs(15),
+            },
+        );
 
         Self {
             main_env: env,
@@ -173,16 +192,25 @@ impl DistributedTestingOrchestrator {
 
             self.test_nodes.insert(node_id.clone(), node);
 
-            println!("✅ Created test node: {} (capabilities: {})",
-                     node_id,
-                     self.test_nodes.get(&node_id).unwrap().capabilities.join(", "));
+            println!(
+                "✅ Created test node: {} (capabilities: {})",
+                node_id,
+                self.test_nodes
+                    .get(&node_id)
+                    .unwrap()
+                    .capabilities
+                    .join(", ")
+            );
         }
 
         println!("✅ Distributed testing infrastructure initialized");
         Ok(())
     }
 
-    async fn orchestrate_complex_test(&mut self, test_name: &str) -> Result<String, CleanroomError> {
+    async fn orchestrate_complex_test(
+        &mut self,
+        test_name: &str,
+    ) -> Result<String, CleanroomError> {
         println!("\n🎼 Orchestrating Complex Distributed Test: {}", test_name);
         println!("==========================================");
 
@@ -206,11 +234,16 @@ impl DistributedTestingOrchestrator {
         // Phase 2: Node Selection and Assignment
         println!("\n📋 Phase 2: Node Selection and Assignment");
         let assigned_nodes = self.select_optimal_nodes(&dependency_plan).await?;
-        println!("   Assigned {} nodes for test execution", assigned_nodes.len());
+        println!(
+            "   Assigned {} nodes for test execution",
+            assigned_nodes.len()
+        );
 
         // Phase 3: Parallel Test Execution
         println!("\n📋 Phase 3: Parallel Test Execution");
-        let execution_results = self.execute_distributed_tests(&assigned_nodes, test_name).await?;
+        let execution_results = self
+            .execute_distributed_tests(&assigned_nodes, test_name)
+            .await?;
 
         // Phase 4: Real-time Monitoring and Adaptation
         println!("\n📋 Phase 4: Real-time Monitoring");
@@ -233,7 +266,12 @@ impl DistributedTestingOrchestrator {
 
         for service_name in self.service_dependencies.keys() {
             if !visited.contains(service_name) {
-                self.topological_sort(service_name, &mut visited, &mut temp_visited, &mut ordered_services)?;
+                self.topological_sort(
+                    service_name,
+                    &mut visited,
+                    &mut temp_visited,
+                    &mut ordered_services,
+                )?;
             }
         }
 
@@ -252,7 +290,10 @@ impl DistributedTestingOrchestrator {
         if let Some(dependency) = self.service_dependencies.get(service_name) {
             for dep in &dependency.depends_on {
                 if temp_visited.contains(dep) {
-                    return Err(CleanroomError::internal_error(format!("Circular dependency detected: {} -> {}", service_name, dep)));
+                    return Err(CleanroomError::internal_error(format!(
+                        "Circular dependency detected: {} -> {}",
+                        service_name, dep
+                    )));
                 }
                 if !visited.contains(dep) {
                     self.topological_sort(dep, visited, temp_visited, result)?;
@@ -267,23 +308,35 @@ impl DistributedTestingOrchestrator {
         Ok(())
     }
 
-    async fn select_optimal_nodes(&mut self, _services: &[String]) -> Result<Vec<String>, CleanroomError> {
+    async fn select_optimal_nodes(
+        &mut self,
+        _services: &[String],
+    ) -> Result<Vec<String>, CleanroomError> {
         let mut selected_nodes = Vec::new();
 
         // Select nodes based on availability and capabilities
         for (node_id, node) in &mut self.test_nodes {
-            if matches!(node.status, NodeStatus::Available) && node.current_load < node.max_load * 0.8 {
+            if matches!(node.status, NodeStatus::Available)
+                && node.current_load < node.max_load * 0.8
+            {
                 node.status = NodeStatus::Busy;
                 node.current_load += 20.0; // Simulate load increase
                 selected_nodes.push(node_id.clone());
-                println!("   Selected node: {} (load: {:.1}%)", node_id, node.current_load);
+                println!(
+                    "   Selected node: {} (load: {:.1}%)",
+                    node_id, node.current_load
+                );
             }
         }
 
         Ok(selected_nodes)
     }
 
-    async fn execute_distributed_tests(&self, nodes: &[String], test_name: &str) -> Result<Vec<String>, CleanroomError> {
+    async fn execute_distributed_tests(
+        &self,
+        nodes: &[String],
+        test_name: &str,
+    ) -> Result<Vec<String>, CleanroomError> {
         let mut results = Vec::new();
 
         // Execute tests in parallel across selected nodes
@@ -294,10 +347,16 @@ impl DistributedTestingOrchestrator {
             let test_name_clone = test_name.to_string();
 
             let handle = tokio::spawn(async move {
-                println!("   Executing test '{}' on node '{}'", test_name_clone, node_id_clone);
+                println!(
+                    "   Executing test '{}' on node '{}'",
+                    test_name_clone, node_id_clone
+                );
                 // Simulate distributed test execution
                 tokio::time::sleep(Duration::from_millis(500)).await;
-                format!("Node {} completed test '{}'", node_id_clone, test_name_clone)
+                format!(
+                    "Node {} completed test '{}'",
+                    node_id_clone, test_name_clone
+                )
             });
 
             handles.push(handle);
@@ -314,7 +373,10 @@ impl DistributedTestingOrchestrator {
         Ok(results)
     }
 
-    async fn monitor_test_execution(&self, _execution_results: &[String]) -> Result<Vec<String>, CleanroomError> {
+    async fn monitor_test_execution(
+        &self,
+        _execution_results: &[String],
+    ) -> Result<Vec<String>, CleanroomError> {
         println!("   🔍 Monitoring test execution in real-time...");
 
         // Simulate real-time monitoring
@@ -326,7 +388,10 @@ impl DistributedTestingOrchestrator {
         Ok(vec!["Monitoring completed successfully".to_string()])
     }
 
-    async fn aggregate_test_results(&self, _monitoring_results: &[String]) -> Result<String, CleanroomError> {
+    async fn aggregate_test_results(
+        &self,
+        _monitoring_results: &[String],
+    ) -> Result<String, CleanroomError> {
         println!("   📊 Aggregating results from all distributed nodes...");
 
         // Simulate result aggregation
@@ -339,7 +404,10 @@ impl DistributedTestingOrchestrator {
         println!("      Passed: {}", passed_tests);
         println!("      Success Rate: {:.2}%", success_rate);
 
-        Ok(format!("Distributed test completed with {:.2}% success rate", success_rate))
+        Ok(format!(
+            "Distributed test completed with {:.2}% success rate",
+            success_rate
+        ))
     }
 
     async fn demonstrate_self_healing(&mut self) -> Result<(), CleanroomError> {
@@ -382,7 +450,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("using itself for coordination, monitoring, and validation.\n");
 
     let main_env = CleanroomEnvironment::new().await?;
-    println!("✅ Created main orchestration environment: {}", main_env.session_id());
+    println!(
+        "✅ Created main orchestration environment: {}",
+        main_env.session_id()
+    );
 
     let mut orchestrator = DistributedTestingOrchestrator::new(main_env);
 
@@ -421,10 +492,22 @@ async fn main() -> Result<(), CleanroomError> {
         // Check node health
         for (node_id, node) in &orchestrator.test_nodes {
             match &node.status {
-                NodeStatus::Available => println!("   ✅ Node {}: Available (load: {:.1}%)", node_id, node.current_load),
-                NodeStatus::Busy => println!("   🔄 Node {}: Busy (load: {:.1}%)", node_id, node.current_load),
-                NodeStatus::Overloaded => println!("   ⚠️  Node {}: Overloaded (load: {:.1}%)", node_id, node.current_load),
-                NodeStatus::Failed => println!("   ❌ Node {}: Failed (load: {:.1}%)", node_id, node.current_load),
+                NodeStatus::Available => println!(
+                    "   ✅ Node {}: Available (load: {:.1}%)",
+                    node_id, node.current_load
+                ),
+                NodeStatus::Busy => println!(
+                    "   🔄 Node {}: Busy (load: {:.1}%)",
+                    node_id, node.current_load
+                ),
+                NodeStatus::Overloaded => println!(
+                    "   ⚠️  Node {}: Overloaded (load: {:.1}%)",
+                    node_id, node.current_load
+                ),
+                NodeStatus::Failed => println!(
+                    "   ❌ Node {}: Failed (load: {:.1}%)",
+                    node_id, node.current_load
+                ),
             }
         }
 
@@ -439,10 +522,13 @@ async fn main() -> Result<(), CleanroomError> {
     println!("=======================================");
 
     println!("   Demonstrating adaptive test scheduling...");
-    let adaptive_result = orchestrator.main_env.execute_test("adaptive_scheduling_demo", || {
-        // Simulate intelligent test scheduling based on node capabilities
-        Ok::<String, CleanroomError>("Adaptive scheduling completed".to_string())
-    }).await?;
+    let adaptive_result = orchestrator
+        .main_env
+        .execute_test("adaptive_scheduling_demo", || {
+            // Simulate intelligent test scheduling based on node capabilities
+            Ok::<String, CleanroomError>("Adaptive scheduling completed".to_string())
+        })
+        .await?;
 
     println!("   ✅ {}", adaptive_result);
 
@@ -451,23 +537,46 @@ async fn main() -> Result<(), CleanroomError> {
     println!("=======================================");
 
     let total_execution_time = monitoring_start.elapsed();
-    let active_nodes = orchestrator.test_nodes.values()
+    let active_nodes = orchestrator
+        .test_nodes
+        .values()
         .filter(|node| !matches!(node.status, NodeStatus::Failed))
         .count();
 
     println!("\n📊 Distributed Testing Summary:");
     println!("==============================");
     println!("Total Execution Time: {:?}", total_execution_time);
-    println!("Active Test Nodes: {}/{}", active_nodes, orchestrator.test_nodes.len());
-    println!("Service Dependencies Resolved: {}", orchestrator.service_dependencies.len());
-    println!("Test Sessions Managed: {}", orchestrator.test_sessions.len());
+    println!(
+        "Active Test Nodes: {}/{}",
+        active_nodes,
+        orchestrator.test_nodes.len()
+    );
+    println!(
+        "Service Dependencies Resolved: {}",
+        orchestrator.service_dependencies.len()
+    );
+    println!(
+        "Test Sessions Managed: {}",
+        orchestrator.test_sessions.len()
+    );
 
     // Calculate overall system efficiency
     let total_capacity: f64 = orchestrator.test_nodes.values().map(|n| n.max_load).sum();
-    let current_load: f64 = orchestrator.test_nodes.values().map(|n| n.current_load).sum();
-    let efficiency = if total_capacity > 0.0 { (current_load / total_capacity) * 100.0 } else { 0.0 };
+    let current_load: f64 = orchestrator
+        .test_nodes
+        .values()
+        .map(|n| n.current_load)
+        .sum();
+    let efficiency = if total_capacity > 0.0 {
+        (current_load / total_capacity) * 100.0
+    } else {
+        0.0
+    };
 
-    println!("System Efficiency: {:.1}% ({:.1} / {:.1} load units)", efficiency, current_load, total_capacity);
+    println!(
+        "System Efficiency: {:.1}% ({:.1} / {:.1} load units)",
+        efficiency, current_load, total_capacity
+    );
 
     println!("\n🎉 DISTRIBUTED TESTING ORCHESTRATION COMPLETED!");
     println!("==============================================");

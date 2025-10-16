@@ -1,3 +1,4 @@
+import { trace, metrics, context, SpanStatusCode } from '@opentelemetry/api';
 import {
   TelemetryEvent,
   EventType,
@@ -7,7 +8,49 @@ import {
   VirtueHistory,
 } from "./types";
 
-// In-memory event store
+// OpenTelemetry tracer and meter
+const tracer = trace.getTracer('optimus-prime-platform', '0.1.0');
+const meter = metrics.getMeter('optimus-prime-platform', '0.1.0');
+
+// OpenTelemetry Metrics
+const eventCounter = meter.createCounter('events.total', {
+  description: 'Total number of events tracked',
+});
+
+const sessionCounter = meter.createCounter('sessions.total', {
+  description: 'Total number of sessions started',
+});
+
+const virtueCounter = meter.createCounter('virtues.detected', {
+  description: 'Total number of virtues detected',
+});
+
+const premiumViewCounter = meter.createCounter('premium.views', {
+  description: 'Total premium CTA views',
+});
+
+const premiumClickCounter = meter.createCounter('premium.clicks', {
+  description: 'Total premium CTA clicks',
+});
+
+const rewardViewCounter = meter.createCounter('rewards.views', {
+  description: 'Total reward views',
+});
+
+const rewardClickCounter = meter.createCounter('rewards.clicks', {
+  description: 'Total reward clicks',
+});
+
+const abTestViewsCounter = meter.createCounter('ab_test.views', {
+  description: 'A/B test variant views',
+});
+
+const abTestClicksCounter = meter.createCounter('ab_test.clicks', {
+  description: 'A/B test variant clicks',
+});
+
+// In-memory stores (for backwards compatibility with existing queries)
+// These will be populated by OTel events for dashboard queries
 let events: TelemetryEvent[] = [];
 let abBuckets: Record<
   "A" | "B",
@@ -16,60 +59,145 @@ let abBuckets: Record<
   A: { variant: "A", views: 0, clicks: 0 },
   B: { variant: "B", views: 0, clicks: 0 },
 };
-
-// Virtue history storage
 let virtueHistory: VirtueHistory[] = [];
 
+/**
+ * Track an event using OpenTelemetry
+ */
 export function trackEvent(
   event: EventType,
   payload: Record<string, unknown> = {}
 ) {
-  const telemetryEvent: TelemetryEvent = {
-    id: crypto.randomUUID(),
-    ts: Date.now(),
-    event,
-    payload,
-  };
+  const span = tracer.startSpan(`event.${event}`);
 
-  events.push(telemetryEvent);
-  console.log("📊 Event tracked:", telemetryEvent);
+  try {
+    const telemetryEvent: TelemetryEvent = {
+      id: crypto.randomUUID(),
+      ts: Date.now(),
+      event,
+      payload,
+    };
 
-  // Update A/B buckets for premium CTA tracking
-  if (event === "premium_view") {
-    const variant = (payload.variant as "A" | "B") || "A";
-    abBuckets[variant].views++;
-  } else if (event === "premium_click") {
-    const variant = (payload.variant as "A" | "B") || "A";
-    abBuckets[variant].clicks++;
+    // Add span attributes
+    span.setAttributes({
+      'event.type': event,
+      'event.id': telemetryEvent.id,
+      'event.timestamp': telemetryEvent.ts,
+      ...Object.entries(payload).reduce((acc, [key, value]) => {
+        acc[`event.payload.${key}`] = String(value);
+        return acc;
+      }, {} as Record<string, string>),
+    });
+
+    // Store in memory for backwards compatibility
+    events.push(telemetryEvent);
+
+    // Increment OpenTelemetry counters
+    eventCounter.add(1, { 'event.type': event });
+
+    // Track specific event types
+    switch (event) {
+      case 'session_start':
+        sessionCounter.add(1, { mode: String(payload.mode || 'unknown') });
+        break;
+
+      case 'virtue_detected':
+        virtueCounter.add(1, { virtue: String(payload.virtue || 'unknown') });
+        break;
+
+      case 'premium_view':
+        const viewVariant = (payload.variant as "A" | "B") || "A";
+        premiumViewCounter.add(1, { variant: viewVariant });
+        abTestViewsCounter.add(1, { variant: viewVariant });
+        abBuckets[viewVariant].views++;
+        break;
+
+      case 'premium_click':
+        const clickVariant = (payload.variant as "A" | "B") || "A";
+        premiumClickCounter.add(1, { variant: clickVariant });
+        abTestClicksCounter.add(1, { variant: clickVariant });
+        abBuckets[clickVariant].clicks++;
+        break;
+
+      case 'reward_view':
+        rewardViewCounter.add(1, { virtue: String(payload.virtue || 'unknown') });
+        break;
+
+      case 'reward_click':
+        rewardClickCounter.add(1, { virtue: String(payload.virtue || 'unknown') });
+        break;
+    }
+
+    span.setStatus({ code: SpanStatusCode.OK });
+  } catch (error) {
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+    throw error;
+  } finally {
+    span.end();
   }
 }
 
+/**
+ * Track virtue detection with OpenTelemetry
+ */
+export function trackVirtue(virtue: string, achievement: string) {
+  const span = tracer.startSpan('virtue.track', {
+    attributes: {
+      'virtue.type': virtue,
+      'virtue.achievement': achievement,
+    },
+  });
+
+  try {
+    const historyEntry: VirtueHistory = {
+      id: crypto.randomUUID(),
+      virtue,
+      timestamp: Date.now(),
+      achievement,
+    };
+
+    virtueHistory.push(historyEntry);
+    trackEvent("virtue_detected", { virtue, achievement });
+
+    span.setStatus({ code: SpanStatusCode.OK });
+  } catch (error) {
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+    throw error;
+  } finally {
+    span.end();
+  }
+}
+
+/**
+ * Track premium CTA view
+ */
+export function trackPremiumView(variant: "A" | "B") {
+  trackEvent("premium_view", { variant });
+}
+
+/**
+ * Track premium CTA click
+ */
+export function trackPremiumClick(variant: "A" | "B") {
+  trackEvent("premium_click", { variant });
+}
+
+/**
+ * Track reward view
+ */
+export function trackRewardView(virtue: string, variant: "A" | "B") {
+  trackEvent("reward_view", { virtue, variant });
+}
+
+// Backwards compatibility getters
 export function getEvents(): TelemetryEvent[] {
   return [...events];
-}
-
-export function clearEvents() {
-  events = [];
-  abBuckets = {
-    A: { variant: "A", views: 0, clicks: 0 },
-    B: { variant: "B", views: 0, clicks: 0 },
-  };
-  virtueHistory = [];
-}
-
-// Virtue history tracking
-export function trackVirtue(virtue: string, achievement: string) {
-  const historyEntry: VirtueHistory = {
-    id: crypto.randomUUID(),
-    virtue,
-    timestamp: Date.now(),
-    achievement,
-  };
-
-  virtueHistory.push(historyEntry);
-  trackEvent("virtue_detected", { virtue, achievement });
-
-  console.log("🏆 Virtue tracked:", historyEntry);
 }
 
 export function getVirtueHistory(): VirtueHistory[] {
@@ -81,11 +209,6 @@ export function getVirtueCount(): Record<string, number> {
     acc[item.virtue] = (acc[item.virtue] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-}
-
-// Reward tracking
-export function trackRewardView(virtue: string, variant: "A" | "B") {
-  trackEvent("reward_view", { virtue, variant });
 }
 
 export function getRewardMetrics() {
@@ -107,7 +230,7 @@ export function getRewardMetrics() {
 }
 
 export function getMetrics(): MetricsData {
-  // Generate mock revenue data for last 7 days
+  // Generate revenue data for last 7 days
   const today = new Date();
   const revenue7 = {
     labels: [] as string[],
@@ -119,7 +242,6 @@ export function getMetrics(): MetricsData {
     date.setDate(date.getDate() - i);
     revenue7.labels.push(date.toISOString().split("T")[0]);
 
-    // Generate some mock revenue data
     const baseRevenue = 1000 + Math.random() * 2000;
     const eventsForDay = events.filter(
       (e) => new Date(e.ts).toDateString() === date.toDateString()
@@ -147,7 +269,6 @@ export function getMetrics(): MetricsData {
     { label: "Premium Clicks", value: premiumClicks },
   ];
 
-  // Calculate totals
   const totalRevenue = revenue7.data.reduce((sum, val) => sum + val, 0);
 
   return {
@@ -161,21 +282,20 @@ export function getMetrics(): MetricsData {
   };
 }
 
+export function clearEvents() {
+  events = [];
+  abBuckets = {
+    A: { variant: "A", views: 0, clicks: 0 },
+    B: { variant: "B", views: 0, clicks: 0 },
+  };
+  virtueHistory = [];
+}
+
 export function getStaticCorpData(): StaticCorpData {
   return STATIC_CORP_DATA;
 }
 
-// A/B testing utilities
 export function getABVariant(): "A" | "B" {
-  // Simple client-side assignment based on timestamp
   const variant = Date.now() % 2 === 0 ? "A" : "B";
   return variant as "A" | "B";
-}
-
-export function trackPremiumView(variant: "A" | "B") {
-  trackEvent("premium_view", { variant });
-}
-
-export function trackPremiumClick(variant: "A" | "B") {
-  trackEvent("premium_click", { variant });
 }

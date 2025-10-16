@@ -149,7 +149,11 @@ pub async fn execute_marketplace_command(
     command: MarketplaceSubcommands,
 ) -> Result<()> {
     match command {
-        MarketplaceSubcommands::Search { query, category, limit } => {
+        MarketplaceSubcommands::Search {
+            query,
+            category,
+            limit,
+        } => {
             let results = marketplace.search(&query).await?;
 
             println!("🔍 Search results for '{}':", query);
@@ -162,12 +166,22 @@ pub async fn execute_marketplace_command(
                     }
                 }
 
-                println!("  📦 {} v{} - {}", plugin.name, plugin.version, plugin.description);
-                println!("     by {} | ⭐ {:.1}/5.0", plugin.author, plugin.community.average_rating);
+                println!(
+                    "  📦 {} v{} - {}",
+                    plugin.name, plugin.version, plugin.description
+                );
+                println!(
+                    "     by {} | ⭐ {:.1}/5.0",
+                    plugin.author, plugin.community.average_rating
+                );
             }
         }
 
-        MarketplaceSubcommands::Install { plugin, version, force } => {
+        MarketplaceSubcommands::Install {
+            plugin,
+            version,
+            force,
+        } => {
             println!("📦 Installing plugin: {}", plugin);
 
             if let Some(ref ver) = version {
@@ -200,7 +214,10 @@ pub async fn execute_marketplace_command(
             }
         }
 
-        MarketplaceSubcommands::List { installed, category } => {
+        MarketplaceSubcommands::List {
+            installed,
+            category,
+        } => {
             if installed {
                 let plugins = marketplace.list_installed()?;
                 println!("📋 Installed plugins ({}):", plugins.len());
@@ -212,11 +229,16 @@ pub async fn execute_marketplace_command(
                         }
                     }
 
-                    println!("  📦 {} v{} - {}", plugin.name, plugin.version, plugin.description);
-                    println!("     by {} | ⭐ {:.1}/5.0 | Downloads: {}",
+                    println!(
+                        "  📦 {} v{} - {}",
+                        plugin.name, plugin.version, plugin.description
+                    );
+                    println!(
+                        "     by {} | ⭐ {:.1}/5.0 | Downloads: {}",
                         plugin.author,
                         plugin.community.average_rating,
-                        plugin.community.download_count);
+                        plugin.community.download_count
+                    );
                 }
             } else {
                 let plugins = marketplace.search("").await?;
@@ -229,57 +251,73 @@ pub async fn execute_marketplace_command(
                         }
                     }
 
-                    println!("  📦 {} v{} - {}", plugin.name, plugin.version, plugin.description);
-                    println!("     by {} | ⭐ {:.1}/5.0", plugin.author, plugin.community.average_rating);
+                    println!(
+                        "  📦 {} v{} - {}",
+                        plugin.name, plugin.version, plugin.description
+                    );
+                    println!(
+                        "     by {} | ⭐ {:.1}/5.0",
+                        plugin.author, plugin.community.average_rating
+                    );
                 }
             }
         }
 
-        MarketplaceSubcommands::Info { plugin } => {
-            match marketplace.get_plugin_info(&plugin) {
-                Ok(metadata) => {
-                    println!("📦 Plugin Information: {}", metadata.name);
-                    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    println!("Version: {}", metadata.version);
-                    println!("Author: {}", metadata.author);
-                    println!("License: {}", metadata.license);
-                    println!("Description: {}", metadata.description);
+        MarketplaceSubcommands::Info { plugin } => match marketplace.get_plugin_info(&plugin) {
+            Ok(metadata) => {
+                println!("📦 Plugin Information: {}", metadata.name);
+                println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                println!("Version: {}", metadata.version);
+                println!("Author: {}", metadata.author);
+                println!("License: {}", metadata.license);
+                println!("Description: {}", metadata.description);
 
-                    if let Some(ref homepage) = metadata.homepage {
-                        println!("Homepage: {}", homepage);
-                    }
-
-                    if let Some(ref repo) = metadata.repository {
-                        println!("Repository: {}", repo);
-                    }
-
-                    println!("Keywords: {}", metadata.keywords.join(", "));
-
-                    if !metadata.capabilities.is_empty() {
-                        println!("Capabilities:");
-                        for capability in &metadata.capabilities {
-                            println!("  • {} ({}) - {}", capability.name, capability.category, capability.description);
-                        }
-                    }
-
-                    if !metadata.dependencies.is_empty() {
-                        println!("Dependencies:");
-                        for dep in &metadata.dependencies {
-                            println!("  • {} {}", dep.name, dep.version_constraint);
-                        }
-                    }
-
-                    println!("Community Stats:");
-                    println!("  ⭐ Rating: {:.1}/5.0 ({} reviews)", metadata.community.average_rating, metadata.community.rating_count);
-                    println!("  📥 Downloads: {}", metadata.community.download_count);
-                    println!("  📅 Created: {}", metadata.community.created_at.format("%Y-%m-%d"));
-                    println!("  🔄 Updated: {}", metadata.community.updated_at.format("%Y-%m-%d"));
+                if let Some(ref homepage) = metadata.homepage {
+                    println!("Homepage: {}", homepage);
                 }
-                Err(e) => {
-                    println!("❌ Plugin '{}' not found: {}", plugin, e);
+
+                if let Some(ref repo) = metadata.repository {
+                    println!("Repository: {}", repo);
                 }
+
+                println!("Keywords: {}", metadata.keywords.join(", "));
+
+                if !metadata.capabilities.is_empty() {
+                    println!("Capabilities:");
+                    for capability in &metadata.capabilities {
+                        println!(
+                            "  • {} ({}) - {}",
+                            capability.name, capability.category, capability.description
+                        );
+                    }
+                }
+
+                if !metadata.dependencies.is_empty() {
+                    println!("Dependencies:");
+                    for dep in &metadata.dependencies {
+                        println!("  • {} {}", dep.name, dep.version_constraint);
+                    }
+                }
+
+                println!("Community Stats:");
+                println!(
+                    "  ⭐ Rating: {:.1}/5.0 ({} reviews)",
+                    metadata.community.average_rating, metadata.community.rating_count
+                );
+                println!("  📥 Downloads: {}", metadata.community.download_count);
+                println!(
+                    "  📅 Created: {}",
+                    metadata.community.created_at.format("%Y-%m-%d")
+                );
+                println!(
+                    "  🔄 Updated: {}",
+                    metadata.community.updated_at.format("%Y-%m-%d")
+                );
             }
-        }
+            Err(e) => {
+                println!("❌ Plugin '{}' not found: {}", plugin, e);
+            }
+        },
 
         MarketplaceSubcommands::Update { all, plugin } => {
             if all {
@@ -363,26 +401,53 @@ pub async fn execute_marketplace_command(
                         println!("📊 Plugin Statistics: {}", stats.metadata.name);
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("Community:");
-                        println!("  ⭐ Average Rating: {:.1}/5.0", stats.community.average_rating);
+                        println!(
+                            "  ⭐ Average Rating: {:.1}/5.0",
+                            stats.community.average_rating
+                        );
                         println!("  👥 Rating Count: {}", stats.community.rating_count);
                         println!("  📥 Total Downloads: {}", stats.community.download_count);
-                        println!("  📅 Created: {}", stats.community.created_at.format("%Y-%m-%d"));
-                        println!("  🔄 Last Updated: {}", stats.community.updated_at.format("%Y-%m-%d"));
+                        println!(
+                            "  📅 Created: {}",
+                            stats.community.created_at.format("%Y-%m-%d")
+                        );
+                        println!(
+                            "  🔄 Last Updated: {}",
+                            stats.community.updated_at.format("%Y-%m-%d")
+                        );
 
                         println!("Usage:");
                         println!("  📦 Installations: {}", stats.usage_stats.installations);
                         println!("  🔄 Active: {}", stats.usage_stats.active_installations);
                         println!("  📊 Daily Usage: {:.1}", stats.usage_stats.daily_usage);
                         println!("  🚀 Peak Usage: {}", stats.usage_stats.peak_usage);
-                        println!("  ⏱️  Avg Session: {:.1}s", stats.usage_stats.avg_session_duration);
+                        println!(
+                            "  ⏱️  Avg Session: {:.1}s",
+                            stats.usage_stats.avg_session_duration
+                        );
                         println!("  ❌ Error Rate: {:.1}%", stats.usage_stats.error_rate);
 
                         println!("Performance:");
-                        println!("  ⚡ Startup Time: {:.1}ms", stats.performance_metrics.avg_startup_time_ms);
-                        println!("  💾 Memory Usage: {:.1}MB", stats.performance_metrics.avg_memory_usage_mb);
-                        println!("  🖥️  CPU Usage: {:.1}%", stats.performance_metrics.avg_cpu_usage_percent);
-                        println!("  📈 P95 Response: {:.1}ms", stats.performance_metrics.p95_response_time_ms);
-                        println!("  ✅ Reliability: {:.1}/100", stats.performance_metrics.reliability_score);
+                        println!(
+                            "  ⚡ Startup Time: {:.1}ms",
+                            stats.performance_metrics.avg_startup_time_ms
+                        );
+                        println!(
+                            "  💾 Memory Usage: {:.1}MB",
+                            stats.performance_metrics.avg_memory_usage_mb
+                        );
+                        println!(
+                            "  🖥️  CPU Usage: {:.1}%",
+                            stats.performance_metrics.avg_cpu_usage_percent
+                        );
+                        println!(
+                            "  📈 P95 Response: {:.1}ms",
+                            stats.performance_metrics.p95_response_time_ms
+                        );
+                        println!(
+                            "  ✅ Reliability: {:.1}/100",
+                            stats.performance_metrics.reliability_score
+                        );
                     }
                     Err(e) => {
                         println!("❌ Failed to get stats for '{}': {}", plugin_name, e);
@@ -410,8 +475,14 @@ pub async fn initialize_sample_marketplace(config: &MarketplaceConfig) -> Result
         "Cleanroom Team",
     )?;
 
-    postgres_plugin.keywords = vec!["database".to_string(), "postgresql".to_string(), "sql".to_string()];
-    postgres_plugin.capabilities.push(crate::marketplace::metadata::standard_capabilities::database_capability());
+    postgres_plugin.keywords = vec![
+        "database".to_string(),
+        "postgresql".to_string(),
+        "sql".to_string(),
+    ];
+    postgres_plugin
+        .capabilities
+        .push(crate::marketplace::metadata::standard_capabilities::database_capability());
 
     let mut redis_plugin = crate::marketplace::metadata::PluginMetadata::new(
         "redis-plugin",
@@ -420,12 +491,18 @@ pub async fn initialize_sample_marketplace(config: &MarketplaceConfig) -> Result
         "Community Contributor",
     )?;
 
-    redis_plugin.keywords = vec!["cache".to_string(), "redis".to_string(), "session".to_string()];
-    redis_plugin.capabilities.push(crate::marketplace::metadata::PluginCapability::new(
-        "cache",
-        crate::marketplace::metadata::PluginCategory::Storage,
-        "Provides Redis cache testing capabilities",
-    ));
+    redis_plugin.keywords = vec![
+        "cache".to_string(),
+        "redis".to_string(),
+        "session".to_string(),
+    ];
+    redis_plugin
+        .capabilities
+        .push(crate::marketplace::metadata::PluginCapability::new(
+            "cache",
+            crate::marketplace::metadata::PluginCategory::Storage,
+            "Provides Redis cache testing capabilities",
+        ));
 
     let mut ai_plugin = crate::marketplace::metadata::PluginMetadata::new(
         "ai-testing-plugin",
@@ -434,11 +511,20 @@ pub async fn initialize_sample_marketplace(config: &MarketplaceConfig) -> Result
         "AI Testing Community",
     )?;
 
-    ai_plugin.keywords = vec!["ai".to_string(), "machine-learning".to_string(), "testing".to_string()];
-    ai_plugin.capabilities.push(crate::marketplace::metadata::standard_capabilities::ai_ml_capability());
+    ai_plugin.keywords = vec![
+        "ai".to_string(),
+        "machine-learning".to_string(),
+        "testing".to_string(),
+    ];
+    ai_plugin
+        .capabilities
+        .push(crate::marketplace::metadata::standard_capabilities::ai_ml_capability());
 
     // Register plugins
-    marketplace.registry.register_plugin(postgres_plugin).await?;
+    marketplace
+        .registry
+        .register_plugin(postgres_plugin)
+        .await?;
     marketplace.registry.register_plugin(redis_plugin).await?;
     marketplace.registry.register_plugin(ai_plugin).await?;
 

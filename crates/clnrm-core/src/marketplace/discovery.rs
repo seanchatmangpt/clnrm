@@ -4,7 +4,7 @@
 //! for the marketplace ecosystem.
 
 use crate::error::{CleanroomError, Result};
-use crate::marketplace::{MarketplaceConfig, metadata::*};
+use crate::marketplace::{metadata::*, MarketplaceConfig};
 use std::collections::HashMap;
 
 /// Plugin discovery engine
@@ -41,7 +41,10 @@ impl PluginDiscovery {
             .filter(|plugin| {
                 plugin.name.to_lowercase().contains(&query_lower)
                     || plugin.description.to_lowercase().contains(&query_lower)
-                    || plugin.keywords.iter().any(|k| k.to_lowercase().contains(&query_lower))
+                    || plugin
+                        .keywords
+                        .iter()
+                        .any(|k| k.to_lowercase().contains(&query_lower))
             })
             .collect();
 
@@ -49,13 +52,19 @@ impl PluginDiscovery {
     }
 
     /// Search plugins by category
-    pub async fn search_by_category(&self, category: &PluginCategory) -> Result<Vec<PluginMetadata>> {
+    pub async fn search_by_category(
+        &self,
+        category: &PluginCategory,
+    ) -> Result<Vec<PluginMetadata>> {
         let all_plugins = self.search_plugins("").await?;
 
         let results: Vec<PluginMetadata> = all_plugins
             .into_iter()
             .filter(|plugin| {
-                plugin.capabilities.iter().any(|cap| &cap.category == category)
+                plugin
+                    .capabilities
+                    .iter()
+                    .any(|cap| &cap.category == category)
             })
             .collect();
 
@@ -68,13 +77,17 @@ impl PluginDiscovery {
         // For now, search in mock data
         let plugins = self.search_plugins(name).await?;
 
-        plugins.into_iter()
+        plugins
+            .into_iter()
             .find(|p| p.name == name)
             .ok_or_else(|| CleanroomError::validation_error(format!("Plugin '{}' not found", name)))
     }
 
     /// Get plugin recommendations based on installed plugins
-    pub async fn get_recommendations(&self, installed_plugins: &[PluginMetadata]) -> Result<Vec<PluginMetadata>> {
+    pub async fn get_recommendations(
+        &self,
+        installed_plugins: &[PluginMetadata],
+    ) -> Result<Vec<PluginMetadata>> {
         let all_plugins = self.search_plugins("").await?;
 
         // Simple recommendation: suggest plugins in same categories
@@ -88,7 +101,9 @@ impl PluginDiscovery {
 
             // Recommend if shares categories with installed plugins
             for installed in installed_plugins {
-                if let (Some(cat1), Some(cat2)) = (plugin.primary_category(), installed.primary_category()) {
+                if let (Some(cat1), Some(cat2)) =
+                    (plugin.primary_category(), installed.primary_category())
+                {
                     if cat1 == cat2 {
                         recommended.push(plugin.clone());
                         break;
@@ -99,7 +114,9 @@ impl PluginDiscovery {
 
         // Sort by quality score
         recommended.sort_by(|a, b| {
-            b.quality_score().partial_cmp(&a.quality_score()).unwrap_or(std::cmp::Ordering::Equal)
+            b.quality_score()
+                .partial_cmp(&a.quality_score())
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         Ok(recommended.into_iter().take(10).collect())
@@ -113,7 +130,9 @@ impl PluginDiscovery {
         plugins.sort_by(|a, b| {
             let score_a = a.community.download_count as f64 + a.community.average_rating * 1000.0;
             let score_b = b.community.download_count as f64 + b.community.average_rating * 1000.0;
-            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+            score_b
+                .partial_cmp(&score_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         Ok(plugins.into_iter().take(limit).collect())
@@ -127,7 +146,10 @@ impl PluginDiscovery {
         let results: Vec<PluginMetadata> = all_plugins
             .into_iter()
             .filter(|plugin| {
-                plugin.keywords.iter().any(|k| k.to_lowercase() == keyword_lower)
+                plugin
+                    .keywords
+                    .iter()
+                    .any(|k| k.to_lowercase() == keyword_lower)
             })
             .collect();
 
@@ -151,9 +173,7 @@ impl PluginDiscovery {
     pub async fn get_popular(&self, limit: usize) -> Result<Vec<PluginMetadata>> {
         let mut plugins = self.search_plugins("").await?;
 
-        plugins.sort_by(|a, b| {
-            b.community.download_count.cmp(&a.community.download_count)
-        });
+        plugins.sort_by(|a, b| b.community.download_count.cmp(&a.community.download_count));
 
         Ok(plugins.into_iter().take(limit).collect())
     }
@@ -163,7 +183,8 @@ impl PluginDiscovery {
         let mut plugins = self.search_plugins("").await?;
 
         plugins.sort_by(|a, b| {
-            b.community.average_rating
+            b.community
+                .average_rating
                 .partial_cmp(&a.community.average_rating)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
@@ -180,10 +201,16 @@ impl PluginDiscovery {
             "postgres-plugin",
             "1.2.3",
             "Production-ready PostgreSQL testing plugin with advanced features",
-            "Cleanroom Core Team"
+            "Cleanroom Core Team",
         ) {
-            plugin.keywords = vec!["database".to_string(), "postgresql".to_string(), "sql".to_string()];
-            plugin.capabilities.push(standard_capabilities::database_capability());
+            plugin.keywords = vec![
+                "database".to_string(),
+                "postgresql".to_string(),
+                "sql".to_string(),
+            ];
+            plugin
+                .capabilities
+                .push(standard_capabilities::database_capability());
             plugin.homepage = Some("https://plugins.cleanroom.dev/postgres".to_string());
             plugin.repository = Some("https://github.com/cleanroom/postgres-plugin".to_string());
             plugin.community.average_rating = 4.8;
@@ -197,10 +224,16 @@ impl PluginDiscovery {
             "redis-plugin",
             "2.0.1",
             "High-performance Redis testing with cache and session management",
-            "Community Maintainers"
+            "Community Maintainers",
         ) {
-            plugin.keywords = vec!["cache".to_string(), "redis".to_string(), "session".to_string()];
-            plugin.capabilities.push(standard_capabilities::cache_capability());
+            plugin.keywords = vec![
+                "cache".to_string(),
+                "redis".to_string(),
+                "session".to_string(),
+            ];
+            plugin
+                .capabilities
+                .push(standard_capabilities::cache_capability());
             plugin.homepage = Some("https://plugins.cleanroom.dev/redis".to_string());
             plugin.community.average_rating = 4.6;
             plugin.community.rating_count = 89;
@@ -213,10 +246,16 @@ impl PluginDiscovery {
             "kafka-plugin",
             "1.5.0",
             "Apache Kafka streaming and message queue testing plugin",
-            "Enterprise Solutions Inc"
+            "Enterprise Solutions Inc",
         ) {
-            plugin.keywords = vec!["kafka".to_string(), "streaming".to_string(), "messages".to_string()];
-            plugin.capabilities.push(standard_capabilities::message_queue_capability());
+            plugin.keywords = vec![
+                "kafka".to_string(),
+                "streaming".to_string(),
+                "messages".to_string(),
+            ];
+            plugin
+                .capabilities
+                .push(standard_capabilities::message_queue_capability());
             plugin.community.average_rating = 4.4;
             plugin.community.rating_count = 67;
             plugin.community.download_count = 2100;
@@ -228,10 +267,17 @@ impl PluginDiscovery {
             "ai-testing-plugin",
             "0.8.2",
             "Comprehensive AI/ML model testing and validation framework",
-            "AI Testing Collective"
+            "AI Testing Collective",
         ) {
-            plugin.keywords = vec!["ai".to_string(), "ml".to_string(), "testing".to_string(), "validation".to_string()];
-            plugin.capabilities.push(standard_capabilities::ai_ml_capability());
+            plugin.keywords = vec![
+                "ai".to_string(),
+                "ml".to_string(),
+                "testing".to_string(),
+                "validation".to_string(),
+            ];
+            plugin
+                .capabilities
+                .push(standard_capabilities::ai_ml_capability());
             plugin.homepage = Some("https://plugins.cleanroom.dev/ai-testing".to_string());
             plugin.community.average_rating = 4.9;
             plugin.community.rating_count = 234;
@@ -244,10 +290,16 @@ impl PluginDiscovery {
             "mongodb-plugin",
             "1.1.0",
             "MongoDB NoSQL database testing with document validation",
-            "Database Community"
+            "Database Community",
         ) {
-            plugin.keywords = vec!["database".to_string(), "mongodb".to_string(), "nosql".to_string()];
-            plugin.capabilities.push(standard_capabilities::database_capability());
+            plugin.keywords = vec![
+                "database".to_string(),
+                "mongodb".to_string(),
+                "nosql".to_string(),
+            ];
+            plugin
+                .capabilities
+                .push(standard_capabilities::database_capability());
             plugin.community.average_rating = 4.3;
             plugin.community.rating_count = 45;
             plugin.community.download_count = 1500;
@@ -278,11 +330,16 @@ mod tests {
         let config = MarketplaceConfig::default();
         let discovery = PluginDiscovery::new(&config)?;
 
-        let results = discovery.search_by_category(&PluginCategory::Database).await?;
+        let results = discovery
+            .search_by_category(&PluginCategory::Database)
+            .await?;
         assert!(!results.is_empty());
 
         for plugin in results {
-            assert!(plugin.capabilities.iter().any(|cap| matches!(cap.category, PluginCategory::Database)));
+            assert!(plugin
+                .capabilities
+                .iter()
+                .any(|cap| matches!(cap.category, PluginCategory::Database)));
         }
 
         Ok(())
@@ -305,13 +362,10 @@ mod tests {
         let config = MarketplaceConfig::default();
         let discovery = PluginDiscovery::new(&config)?;
 
-        let mut installed = PluginMetadata::new(
-            "test-db",
-            "1.0.0",
-            "Test database",
-            "Test"
-        )?;
-        installed.capabilities.push(standard_capabilities::database_capability());
+        let mut installed = PluginMetadata::new("test-db", "1.0.0", "Test database", "Test")?;
+        installed
+            .capabilities
+            .push(standard_capabilities::database_capability());
 
         let recommendations = discovery.get_recommendations(&[installed]).await?;
         // Should recommend other database plugins

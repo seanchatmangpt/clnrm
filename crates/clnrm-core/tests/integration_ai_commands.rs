@@ -27,13 +27,13 @@
 //! ```
 
 use clnrm_core::cleanroom::CleanroomEnvironment;
-use clnrm_core::error::{CleanroomError, Result};
+use clnrm_core::cli::commands::{ai_optimize, ai_orchestrate, ai_predict, ai_real};
 use clnrm_core::cli::types::PredictionFormat;
-use clnrm_core::cli::commands::{ai_orchestrate, ai_predict, ai_optimize, ai_real};
-use clnrm_core::services::ai_intelligence::{AIIntelligenceService, TestExecution, ResourceUsage};
+use clnrm_core::error::{CleanroomError, Result};
 use clnrm_core::marketplace::{Marketplace, MarketplaceConfig};
-use std::path::PathBuf;
+use clnrm_core::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 // ============================================================================
 // Test Fixtures and Utilities
@@ -42,8 +42,9 @@ use std::collections::HashMap;
 /// Create a temporary test directory with sample test files
 fn create_test_fixtures() -> Result<PathBuf> {
     let temp_dir = std::env::temp_dir().join(format!("clnrm_test_{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&temp_dir)
-        .map_err(|e| CleanroomError::internal_error(format!("Failed to create test directory: {}", e)))?;
+    std::fs::create_dir_all(&temp_dir).map_err(|e| {
+        CleanroomError::internal_error(format!("Failed to create test directory: {}", e))
+    })?;
 
     // Create a sample test file
     let test_file = temp_dir.join("sample_test.toml");
@@ -95,7 +96,11 @@ fn generate_sample_executions(count: usize, success_rate: f64) -> Vec<TestExecut
             timestamp: now - chrono::Duration::hours(i as i64),
             success,
             execution_time_ms: 1000 + (rand::random::<u64>() % 5000),
-            error_message: if success { None } else { Some(format!("Test failed: timeout")) },
+            error_message: if success {
+                None
+            } else {
+                Some(format!("Test failed: timeout"))
+            },
             resource_usage: ResourceUsage {
                 cpu_percent: 20.0 + rand::random::<f32>() * 30.0,
                 memory_mb: 100 + (rand::random::<u64>() % 400),
@@ -128,7 +133,10 @@ async fn ollama_available() -> bool {
 
 /// Check if SurrealDB is available
 async fn surrealdb_available() -> bool {
-    use surrealdb::{engine::remote::ws::{Client, Ws}, Surreal};
+    use surrealdb::{
+        engine::remote::ws::{Client, Ws},
+        Surreal,
+    };
 
     let db: Surreal<Client> = Surreal::init();
     let result = db.connect::<Ws>("127.0.0.1:8000").await;
@@ -155,7 +163,8 @@ mod orchestrate_tests {
             false, // No auto-optimization
             0.7,   // Confidence threshold
             4,     // Max workers
-        ).await;
+        )
+        .await;
 
         cleanup_test_fixtures(temp_dir);
 
@@ -174,11 +183,15 @@ mod orchestrate_tests {
             false, // No auto-optimization
             0.5,   // Lower confidence threshold for testing
             4,
-        ).await;
+        )
+        .await;
 
         cleanup_test_fixtures(temp_dir);
 
-        assert!(result.is_ok(), "Orchestration with prediction should succeed");
+        assert!(
+            result.is_ok(),
+            "Orchestration with prediction should succeed"
+        );
         Ok(())
     }
 
@@ -192,11 +205,15 @@ mod orchestrate_tests {
             true,  // Enable auto-optimization
             0.7,
             4,
-        ).await;
+        )
+        .await;
 
         cleanup_test_fixtures(temp_dir);
 
-        assert!(result.is_ok(), "Orchestration with optimization should succeed");
+        assert!(
+            result.is_ok(),
+            "Orchestration with optimization should succeed"
+        );
         Ok(())
     }
 
@@ -210,7 +227,8 @@ mod orchestrate_tests {
             true, // Enable optimization
             0.6,  // Medium confidence threshold
             8,    // More workers
-        ).await;
+        )
+        .await;
 
         cleanup_test_fixtures(temp_dir);
 
@@ -229,12 +247,16 @@ mod orchestrate_tests {
             true,
             0.7,
             4,
-        ).await;
+        )
+        .await;
 
         cleanup_test_fixtures(temp_dir1);
         cleanup_test_fixtures(temp_dir2);
 
-        assert!(result.is_ok(), "Orchestration with multiple paths should succeed");
+        assert!(
+            result.is_ok(),
+            "Orchestration with multiple paths should succeed"
+        );
         Ok(())
     }
 
@@ -250,7 +272,8 @@ mod orchestrate_tests {
             true,
             0.8, // High confidence threshold
             16,  // Many workers to test parallelization
-        ).await;
+        )
+        .await;
 
         cleanup_test_fixtures(temp_dir);
 
@@ -274,7 +297,8 @@ mod predict_tests {
             false, // No failure prediction
             false, // No recommendations
             PredictionFormat::Human,
-        ).await;
+        )
+        .await;
 
         assert!(result.is_ok(), "History analysis should succeed");
         Ok(())
@@ -287,7 +311,8 @@ mod predict_tests {
             true,  // Enable failure prediction
             false,
             PredictionFormat::Human,
-        ).await;
+        )
+        .await;
 
         assert!(result.is_ok(), "Failure prediction should succeed");
         Ok(())
@@ -298,9 +323,10 @@ mod predict_tests {
         let result = ai_predict::ai_predict_analytics(
             false,
             false,
-            true,  // Enable recommendations
+            true, // Enable recommendations
             PredictionFormat::Human,
-        ).await;
+        )
+        .await;
 
         assert!(result.is_ok(), "Recommendation generation should succeed");
         Ok(())
@@ -313,7 +339,8 @@ mod predict_tests {
             true,
             true,
             PredictionFormat::Human,
-        ).await;
+        )
+        .await;
 
         assert!(result.is_ok(), "Full prediction analysis should succeed");
         Ok(())
@@ -321,12 +348,8 @@ mod predict_tests {
 
     #[tokio::test]
     async fn test_predict_json_format() -> Result<()> {
-        let result = ai_predict::ai_predict_analytics(
-            true,
-            true,
-            true,
-            PredictionFormat::Json,
-        ).await;
+        let result =
+            ai_predict::ai_predict_analytics(true, true, true, PredictionFormat::Json).await;
 
         assert!(result.is_ok(), "JSON format output should succeed");
         Ok(())
@@ -334,12 +357,8 @@ mod predict_tests {
 
     #[tokio::test]
     async fn test_predict_markdown_format() -> Result<()> {
-        let result = ai_predict::ai_predict_analytics(
-            true,
-            true,
-            false,
-            PredictionFormat::Markdown,
-        ).await;
+        let result =
+            ai_predict::ai_predict_analytics(true, true, false, PredictionFormat::Markdown).await;
 
         assert!(result.is_ok(), "Markdown format output should succeed");
         Ok(())
@@ -347,12 +366,8 @@ mod predict_tests {
 
     #[tokio::test]
     async fn test_predict_csv_format() -> Result<()> {
-        let result = ai_predict::ai_predict_analytics(
-            true,
-            false,
-            false,
-            PredictionFormat::Csv,
-        ).await;
+        let result =
+            ai_predict::ai_predict_analytics(true, false, false, PredictionFormat::Csv).await;
 
         assert!(result.is_ok(), "CSV format output should succeed");
         Ok(())
@@ -374,36 +389,44 @@ mod optimize_tests {
             false, // No resource allocation
             false, // No parallel execution
             false, // No auto-apply
-        ).await;
+        )
+        .await;
 
         // Should succeed even with no test files
-        assert!(result.is_ok(), "Execution order optimization should succeed");
+        assert!(
+            result.is_ok(),
+            "Execution order optimization should succeed"
+        );
         Ok(())
     }
 
     #[tokio::test]
     async fn test_optimize_resource_allocation() -> Result<()> {
         let result = ai_optimize::ai_optimize_tests(
-            false,
-            true,  // Enable resource allocation optimization
-            false,
-            false,
-        ).await;
+            false, true, // Enable resource allocation optimization
+            false, false,
+        )
+        .await;
 
-        assert!(result.is_ok(), "Resource allocation optimization should succeed");
+        assert!(
+            result.is_ok(),
+            "Resource allocation optimization should succeed"
+        );
         Ok(())
     }
 
     #[tokio::test]
     async fn test_optimize_parallel_execution() -> Result<()> {
         let result = ai_optimize::ai_optimize_tests(
+            false, false, true, // Enable parallel execution optimization
             false,
-            false,
-            true,  // Enable parallel execution optimization
-            false,
-        ).await;
+        )
+        .await;
 
-        assert!(result.is_ok(), "Parallel execution optimization should succeed");
+        assert!(
+            result.is_ok(),
+            "Parallel execution optimization should succeed"
+        );
         Ok(())
     }
 
@@ -411,10 +434,9 @@ mod optimize_tests {
     async fn test_optimize_all_features() -> Result<()> {
         let result = ai_optimize::ai_optimize_tests(
             true, // All optimizations enabled
-            true,
-            true,
-            false, // Don't auto-apply in tests
-        ).await;
+            true, true, false, // Don't auto-apply in tests
+        )
+        .await;
 
         assert!(result.is_ok(), "Full optimization should succeed");
         Ok(())
@@ -423,13 +445,14 @@ mod optimize_tests {
     #[tokio::test]
     async fn test_optimize_with_auto_apply() -> Result<()> {
         let result = ai_optimize::ai_optimize_tests(
-            true,
-            true,
-            true,
-            true, // Enable auto-apply
-        ).await;
+            true, true, true, true, // Enable auto-apply
+        )
+        .await;
 
-        assert!(result.is_ok(), "Optimization with auto-apply should succeed");
+        assert!(
+            result.is_ok(),
+            "Optimization with auto-apply should succeed"
+        );
         Ok(())
     }
 }
@@ -448,7 +471,9 @@ mod real_ai_tests {
         // Check if required services are available
         if !surrealdb_available().await {
             println!("⚠️  SurrealDB not available, skipping test");
-            println!("   Start SurrealDB: docker run -p 8000:8000 surrealdb/surrealdb:latest start");
+            println!(
+                "   Start SurrealDB: docker run -p 8000:8000 surrealdb/surrealdb:latest start"
+            );
             return Ok(());
         }
 
@@ -460,7 +485,10 @@ mod real_ai_tests {
 
         let result = ai_real::ai_real_analysis().await;
 
-        assert!(result.is_ok(), "Real AI analysis should succeed with services available");
+        assert!(
+            result.is_ok(),
+            "Real AI analysis should succeed with services available"
+        );
         Ok(())
     }
 
@@ -473,7 +501,10 @@ mod real_ai_tests {
         match result {
             Ok(_) => println!("✅ Real AI analysis succeeded"),
             Err(e) => {
-                println!("ℹ️  Real AI analysis failed (expected if services unavailable): {}", e);
+                println!(
+                    "ℹ️  Real AI analysis failed (expected if services unavailable): {}",
+                    e
+                );
                 // This is expected if SurrealDB or Ollama aren't running
             }
         }
@@ -540,9 +571,15 @@ mod ai_service_tests {
         // Analyze stored data
         let analysis = service.analyze_test_history().await?;
 
-        assert!(analysis.total_executions > 0, "Should have stored executions");
+        assert!(
+            analysis.total_executions > 0,
+            "Should have stored executions"
+        );
         assert!(analysis.success_rate > 0.0, "Should calculate success rate");
-        assert!(analysis.avg_execution_time > 0.0, "Should calculate avg execution time");
+        assert!(
+            analysis.avg_execution_time > 0.0,
+            "Should calculate avg execution time"
+        );
 
         Ok(())
     }
@@ -588,7 +625,10 @@ mod marketplace_tests {
         let config = MarketplaceConfig::default();
         let marketplace = Marketplace::new(config)?;
 
-        assert!(marketplace.search("").await.is_ok(), "Marketplace search should work");
+        assert!(
+            marketplace.search("").await.is_ok(),
+            "Marketplace search should work"
+        );
         Ok(())
     }
 
@@ -701,13 +741,9 @@ mod performance_tests {
         let temp_dir = create_test_fixtures()?;
 
         let start = Instant::now();
-        let result = ai_orchestrate::ai_orchestrate_tests(
-            Some(vec![temp_dir.clone()]),
-            true,
-            true,
-            0.7,
-            4,
-        ).await;
+        let result =
+            ai_orchestrate::ai_orchestrate_tests(Some(vec![temp_dir.clone()]), true, true, 0.7, 4)
+                .await;
         let duration = start.elapsed();
 
         cleanup_test_fixtures(temp_dir);
@@ -716,7 +752,10 @@ mod performance_tests {
         println!("⚡ Orchestration completed in {:?}", duration);
 
         // Should complete in reasonable time
-        assert!(duration.as_secs() < 10, "Orchestration should complete within 10 seconds");
+        assert!(
+            duration.as_secs() < 10,
+            "Orchestration should complete within 10 seconds"
+        );
 
         Ok(())
     }
@@ -724,18 +763,17 @@ mod performance_tests {
     #[tokio::test]
     async fn bench_predict_performance() -> Result<()> {
         let start = Instant::now();
-        let result = ai_predict::ai_predict_analytics(
-            true,
-            true,
-            true,
-            PredictionFormat::Human,
-        ).await;
+        let result =
+            ai_predict::ai_predict_analytics(true, true, true, PredictionFormat::Human).await;
         let duration = start.elapsed();
 
         assert!(result.is_ok());
         println!("⚡ Prediction analysis completed in {:?}", duration);
 
-        assert!(duration.as_secs() < 5, "Prediction should complete within 5 seconds");
+        assert!(
+            duration.as_secs() < 5,
+            "Prediction should complete within 5 seconds"
+        );
 
         Ok(())
     }
@@ -743,18 +781,16 @@ mod performance_tests {
     #[tokio::test]
     async fn bench_optimize_performance() -> Result<()> {
         let start = Instant::now();
-        let result = ai_optimize::ai_optimize_tests(
-            true,
-            true,
-            true,
-            false,
-        ).await;
+        let result = ai_optimize::ai_optimize_tests(true, true, true, false).await;
         let duration = start.elapsed();
 
         assert!(result.is_ok());
         println!("⚡ Optimization completed in {:?}", duration);
 
-        assert!(duration.as_secs() < 5, "Optimization should complete within 5 seconds");
+        assert!(
+            duration.as_secs() < 5,
+            "Optimization should complete within 5 seconds"
+        );
 
         Ok(())
     }
@@ -779,9 +815,15 @@ mod performance_tests {
         let results = marketplace.search("bench").await?;
         let duration = start.elapsed();
 
-        println!("⚡ Marketplace search (100 plugins) completed in {:?}", duration);
+        println!(
+            "⚡ Marketplace search (100 plugins) completed in {:?}",
+            duration
+        );
         assert!(results.len() >= 100);
-        assert!(duration.as_millis() < 1000, "Search should complete within 1 second");
+        assert!(
+            duration.as_millis() < 1000,
+            "Search should complete within 1 second"
+        );
 
         Ok(())
     }
@@ -799,13 +841,9 @@ mod error_handling_tests {
     async fn test_orchestrate_with_invalid_path() -> Result<()> {
         let invalid_path = PathBuf::from("/nonexistent/path/that/does/not/exist");
 
-        let result = ai_orchestrate::ai_orchestrate_tests(
-            Some(vec![invalid_path]),
-            false,
-            false,
-            0.7,
-            4,
-        ).await;
+        let result =
+            ai_orchestrate::ai_orchestrate_tests(Some(vec![invalid_path]), false, false, 0.7, 4)
+                .await;
 
         // Should handle gracefully - either succeed with no tests or return an error
         match result {
@@ -819,12 +857,8 @@ mod error_handling_tests {
     #[tokio::test]
     async fn test_predict_with_no_data() -> Result<()> {
         // Should handle case with no historical data
-        let result = ai_predict::ai_predict_analytics(
-            true,
-            true,
-            false,
-            PredictionFormat::Human,
-        ).await;
+        let result =
+            ai_predict::ai_predict_analytics(true, true, false, PredictionFormat::Human).await;
 
         assert!(result.is_ok(), "Should handle empty data gracefully");
         Ok(())
@@ -833,12 +867,7 @@ mod error_handling_tests {
     #[tokio::test]
     async fn test_optimize_with_no_tests() -> Result<()> {
         // Should handle case with no test files
-        let result = ai_optimize::ai_optimize_tests(
-            true,
-            true,
-            false,
-            false,
-        ).await;
+        let result = ai_optimize::ai_optimize_tests(true, true, false, false).await;
 
         // Should either succeed or fail gracefully
         match result {
@@ -854,8 +883,13 @@ mod error_handling_tests {
         let config = MarketplaceConfig::default();
         let marketplace = Marketplace::new(config)?;
 
-        let results = marketplace.search("definitely-does-not-exist-12345").await?;
-        assert!(results.is_empty(), "Should return empty results for nonexistent plugin");
+        let results = marketplace
+            .search("definitely-does-not-exist-12345")
+            .await?;
+        assert!(
+            results.is_empty(),
+            "Should return empty results for nonexistent plugin"
+        );
 
         Ok(())
     }
@@ -872,8 +906,10 @@ mod error_handling_tests {
             Ok(_) => println!("✅ Service started (services may be available)"),
             Err(e) => {
                 println!("ℹ️  Expected failure without services: {}", e);
-                assert!(e.to_string().contains("Failed") || e.to_string().contains("connection"),
-                    "Error should indicate service unavailability");
+                assert!(
+                    e.to_string().contains("Failed") || e.to_string().contains("connection"),
+                    "Error should indicate service unavailability"
+                );
             }
         }
 
@@ -899,13 +935,7 @@ mod concurrent_tests {
         for _ in 0..3 {
             let dir = temp_dir.clone();
             let handle = tokio::spawn(async move {
-                ai_orchestrate::ai_orchestrate_tests(
-                    Some(vec![dir]),
-                    false,
-                    false,
-                    0.7,
-                    2,
-                ).await
+                ai_orchestrate::ai_orchestrate_tests(Some(vec![dir]), false, false, 0.7, 2).await
             });
             handles.push(handle);
         }
@@ -913,7 +943,10 @@ mod concurrent_tests {
         // Wait for all tasks
         for handle in handles {
             let result = handle.await;
-            assert!(result.is_ok(), "Concurrent orchestration task should succeed");
+            assert!(
+                result.is_ok(),
+                "Concurrent orchestration task should succeed"
+            );
         }
 
         cleanup_test_fixtures(temp_dir);
@@ -944,7 +977,10 @@ mod concurrent_tests {
 
         for handle in handles {
             let result = handle.await;
-            assert!(result.is_ok(), "Concurrent plugin registration should succeed");
+            assert!(
+                result.is_ok(),
+                "Concurrent plugin registration should succeed"
+            );
         }
 
         // Verify all plugins were registered

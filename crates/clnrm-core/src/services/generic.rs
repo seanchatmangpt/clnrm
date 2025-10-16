@@ -3,16 +3,16 @@
 //! Provides a generic container service that can run any Docker image
 //! with configurable environment variables, ports, and commands.
 
-use crate::cleanroom::{ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use uuid::Uuid;
-use testcontainers::runners::AsyncRunner;
-use testcontainers::{GenericImage, ImageExt};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
+use testcontainers::runners::AsyncRunner;
+use testcontainers::{GenericImage, ImageExt};
+use tokio::sync::RwLock;
+use uuid::Uuid;
 
 pub struct GenericContainerPlugin {
     name: String,
@@ -69,7 +69,8 @@ impl ServicePlugin for GenericContainerPlugin {
             let image = GenericImage::new(self.image.clone(), self.tag.clone());
 
             // Build container request with environment variables and ports
-            let mut container_request: testcontainers::core::ContainerRequest<GenericImage> = image.into();
+            let mut container_request: testcontainers::core::ContainerRequest<GenericImage> =
+                image.into();
 
             // Add environment variables
             for (key, value) in &self.env_vars {
@@ -78,21 +79,21 @@ impl ServicePlugin for GenericContainerPlugin {
 
             // Add port mappings
             for port in &self.ports {
-                container_request = container_request.with_mapped_port(*port, testcontainers::core::ContainerPort::Tcp(*port));
+                container_request = container_request
+                    .with_mapped_port(*port, testcontainers::core::ContainerPort::Tcp(*port));
             }
 
             // Start container
-            let node = container_request
-                .start()
-                .await
-                .map_err(|e| CleanroomError::container_error("Failed to start generic container")
+            let node = container_request.start().await.map_err(|e| {
+                CleanroomError::container_error("Failed to start generic container")
                     .with_context("Container startup failed")
-                    .with_source(e.to_string()))?;
+                    .with_source(e.to_string())
+            })?;
 
             let mut metadata = HashMap::new();
             metadata.insert("image".to_string(), format!("{}:{}", self.image, self.tag));
             metadata.insert("container_type".to_string(), "generic".to_string());
-            
+
             // Add port information
             for port in &self.ports {
                 if let Ok(host_port) = node.get_host_port_ipv4(*port).await {
@@ -112,7 +113,10 @@ impl ServicePlugin for GenericContainerPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             let mut container_guard = self.container_id.write().await;
             if container_guard.is_some() {
@@ -123,8 +127,7 @@ impl ServicePlugin for GenericContainerPlugin {
     }
 
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {
-        if handle.metadata.contains_key("image") && 
-           handle.metadata.contains_key("container_type") {
+        if handle.metadata.contains_key("image") && handle.metadata.contains_key("container_type") {
             HealthStatus::Healthy
         } else {
             HealthStatus::Unknown

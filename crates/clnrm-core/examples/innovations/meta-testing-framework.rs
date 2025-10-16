@@ -45,45 +45,51 @@ impl MetaTestingFramework {
         let mut frameworks = HashMap::new();
 
         // Define testing frameworks to test
-        frameworks.insert("junit".to_string(), TestFramework {
-            name: "JUnit".to_string(),
-            version: "5.10.0".to_string(),
-            capabilities: vec![
-                "unit_testing".to_string(),
-                "assertion_framework".to_string(),
-                "test_organization".to_string(),
-            ],
-            strengths: vec![
-                "mature_ecosystem".to_string(),
-                "ide_integration".to_string(),
-                "enterprise_adoption".to_string(),
-            ],
-            weaknesses: vec![
-                "runtime_only".to_string(),
-                "no_container_isolation".to_string(),
-                "limited_observability".to_string(),
-            ],
-        });
+        frameworks.insert(
+            "junit".to_string(),
+            TestFramework {
+                name: "JUnit".to_string(),
+                version: "5.10.0".to_string(),
+                capabilities: vec![
+                    "unit_testing".to_string(),
+                    "assertion_framework".to_string(),
+                    "test_organization".to_string(),
+                ],
+                strengths: vec![
+                    "mature_ecosystem".to_string(),
+                    "ide_integration".to_string(),
+                    "enterprise_adoption".to_string(),
+                ],
+                weaknesses: vec![
+                    "runtime_only".to_string(),
+                    "no_container_isolation".to_string(),
+                    "limited_observability".to_string(),
+                ],
+            },
+        );
 
-        frameworks.insert("pytest".to_string(), TestFramework {
-            name: "pytest".to_string(),
-            version: "7.4.0".to_string(),
-            capabilities: vec![
-                "python_testing".to_string(),
-                "fixture_system".to_string(),
-                "plugin_architecture".to_string(),
-            ],
-            strengths: vec![
-                "python_native".to_string(),
-                "extensive_plugins".to_string(),
-                "easy_to_use".to_string(),
-            ],
-            weaknesses: vec![
-                "python_only".to_string(),
-                "no_container_support".to_string(),
-                "limited_cross_language".to_string(),
-            ],
-        });
+        frameworks.insert(
+            "pytest".to_string(),
+            TestFramework {
+                name: "pytest".to_string(),
+                version: "7.4.0".to_string(),
+                capabilities: vec![
+                    "python_testing".to_string(),
+                    "fixture_system".to_string(),
+                    "plugin_architecture".to_string(),
+                ],
+                strengths: vec![
+                    "python_native".to_string(),
+                    "extensive_plugins".to_string(),
+                    "easy_to_use".to_string(),
+                ],
+                weaknesses: vec![
+                    "python_only".to_string(),
+                    "no_container_support".to_string(),
+                    "limited_cross_language".to_string(),
+                ],
+            },
+        );
 
         Self {
             cleanroom_env: env,
@@ -93,12 +99,19 @@ impl MetaTestingFramework {
     }
 
     /// Meta-test: Use Cleanroom to test another testing framework
-    async fn meta_test_framework(&mut self, framework_name: &str) -> Result<TestResult, CleanroomError> {
+    async fn meta_test_framework(
+        &mut self,
+        framework_name: &str,
+    ) -> Result<TestResult, CleanroomError> {
         println!("\n🔬 META-TESTING: {}", framework_name);
         println!("========================");
 
-        let framework = self.frameworks_under_test.get(framework_name)
-            .ok_or_else(|| CleanroomError::internal_error(format!("Framework '{}' not found", framework_name)))?;
+        let framework = self
+            .frameworks_under_test
+            .get(framework_name)
+            .ok_or_else(|| {
+                CleanroomError::internal_error(format!("Framework '{}' not found", framework_name))
+            })?;
 
         let start_time = std::time::Instant::now();
 
@@ -130,7 +143,12 @@ impl MetaTestingFramework {
         let total_time = start_time.elapsed();
 
         // Calculate overall scores
-        let reliability_score = (setup_result + execution_result + observability_result + isolation_result + performance_result) / 5.0;
+        let reliability_score = (setup_result
+            + execution_result
+            + observability_result
+            + isolation_result
+            + performance_result)
+            / 5.0;
 
         let observations = vec![
             format!("Framework: {} v{}", framework.name, framework.version),
@@ -157,9 +175,12 @@ impl MetaTestingFramework {
 
     async fn test_framework_setup(&self, framework: &TestFramework) -> Result<f64, CleanroomError> {
         // Use Cleanroom to evaluate another framework's setup process
-        let _ = self.cleanroom_env.execute_test("framework_setup_analysis", || {
-            Ok::<String, CleanroomError>(format!("Analyzing {} setup process", framework.name))
-        }).await?;
+        let _ = self
+            .cleanroom_env
+            .execute_test("framework_setup_analysis", || {
+                Ok::<String, CleanroomError>(format!("Analyzing {} setup process", framework.name))
+            })
+            .await?;
 
         // Score based on framework characteristics
         let mut score = 7.0; // Base score
@@ -177,35 +198,62 @@ impl MetaTestingFramework {
         Ok(score.min(10.0).max(0.0))
     }
 
-    async fn test_framework_execution(&self, framework: &TestFramework) -> Result<f64, CleanroomError> {
+    async fn test_framework_execution(
+        &self,
+        framework: &TestFramework,
+    ) -> Result<f64, CleanroomError> {
         // Compare execution patterns between frameworks
-        let _ = self.cleanroom_env.execute_test("framework_execution_comparison", || {
-            Ok::<String, CleanroomError>(format!("Comparing {} execution model", framework.name))
-        }).await?;
+        let _ = self
+            .cleanroom_env
+            .execute_test("framework_execution_comparison", || {
+                Ok::<String, CleanroomError>(format!(
+                    "Comparing {} execution model",
+                    framework.name
+                ))
+            })
+            .await?;
 
         // Score based on execution capabilities
         let mut score = 6.0;
 
-        if framework.capabilities.contains(&"assertion_framework".to_string()) {
+        if framework
+            .capabilities
+            .contains(&"assertion_framework".to_string())
+        {
             score += 2.0;
         }
-        if framework.capabilities.contains(&"plugin_architecture".to_string()) {
+        if framework
+            .capabilities
+            .contains(&"plugin_architecture".to_string())
+        {
             score += 2.0;
         }
 
         Ok(score.min(10.0).max(0.0))
     }
 
-    async fn test_framework_observability(&self, framework: &TestFramework) -> Result<f64, CleanroomError> {
+    async fn test_framework_observability(
+        &self,
+        framework: &TestFramework,
+    ) -> Result<f64, CleanroomError> {
         // Use Cleanroom's observability to evaluate another framework's observability
-        let _ = self.cleanroom_env.execute_test("framework_observability_evaluation", || {
-            Ok::<String, CleanroomError>(format!("Evaluating {} observability features", framework.name))
-        }).await?;
+        let _ = self
+            .cleanroom_env
+            .execute_test("framework_observability_evaluation", || {
+                Ok::<String, CleanroomError>(format!(
+                    "Evaluating {} observability features",
+                    framework.name
+                ))
+            })
+            .await?;
 
         // Score based on observability capabilities
         let mut score = 4.0;
 
-        if framework.weaknesses.contains(&"limited_observability".to_string()) {
+        if framework
+            .weaknesses
+            .contains(&"limited_observability".to_string())
+        {
             score -= 3.0;
         }
         // Cleanroom has excellent observability, so we can detect this
@@ -213,35 +261,59 @@ impl MetaTestingFramework {
         Ok(score.min(10.0).max(0.0))
     }
 
-    async fn test_framework_isolation(&self, framework: &TestFramework) -> Result<f64, CleanroomError> {
+    async fn test_framework_isolation(
+        &self,
+        framework: &TestFramework,
+    ) -> Result<f64, CleanroomError> {
         // Use Cleanroom's isolation capabilities to test another framework's isolation
-        let _ = self.cleanroom_env.execute_test("framework_isolation_analysis", || {
-            Ok::<String, CleanroomError>(format!("Analyzing {} isolation capabilities", framework.name))
-        }).await?;
+        let _ = self
+            .cleanroom_env
+            .execute_test("framework_isolation_analysis", || {
+                Ok::<String, CleanroomError>(format!(
+                    "Analyzing {} isolation capabilities",
+                    framework.name
+                ))
+            })
+            .await?;
 
         // Score based on isolation support
         let mut score = 3.0; // Most frameworks lack proper isolation
 
-        if framework.weaknesses.contains(&"no_container_isolation".to_string()) {
+        if framework
+            .weaknesses
+            .contains(&"no_container_isolation".to_string())
+        {
             score -= 2.0;
         }
-        if framework.weaknesses.contains(&"limited_cross_language".to_string()) {
+        if framework
+            .weaknesses
+            .contains(&"limited_cross_language".to_string())
+        {
             score -= 1.0;
         }
 
         Ok(score.min(10.0).max(0.0))
     }
 
-    async fn test_framework_performance(&self, framework: &TestFramework) -> Result<f64, CleanroomError> {
+    async fn test_framework_performance(
+        &self,
+        framework: &TestFramework,
+    ) -> Result<f64, CleanroomError> {
         // Use Cleanroom to benchmark another framework's performance characteristics
-        let _ = self.cleanroom_env.execute_test("framework_performance_benchmark", || {
-            Ok::<String, CleanroomError>(format!("Benchmarking {} performance", framework.name))
-        }).await?;
+        let _ = self
+            .cleanroom_env
+            .execute_test("framework_performance_benchmark", || {
+                Ok::<String, CleanroomError>(format!("Benchmarking {} performance", framework.name))
+            })
+            .await?;
 
         // Score based on performance characteristics
         let mut score = 6.0;
 
-        if framework.strengths.contains(&"mature_ecosystem".to_string()) {
+        if framework
+            .strengths
+            .contains(&"mature_ecosystem".to_string())
+        {
             score += 2.0;
         }
         if framework.weaknesses.contains(&"runtime_only".to_string()) {
@@ -261,8 +333,14 @@ impl MetaTestingFramework {
 
         for result in &self.test_results {
             report.push_str(&format!("## {} Analysis\n", result.framework_name));
-            report.push_str(&format!("- **Execution Time**: {}ms\n", result.execution_time_ms));
-            report.push_str(&format!("- **Reliability Score**: {:.2}/10.00\n", result.reliability_score));
+            report.push_str(&format!(
+                "- **Execution Time**: {}ms\n",
+                result.execution_time_ms
+            ));
+            report.push_str(&format!(
+                "- **Reliability Score**: {:.2}/10.00\n",
+                result.reliability_score
+            ));
             report.push_str("- **Observations**:\n");
 
             for observation in &result.observations {
@@ -277,10 +355,14 @@ impl MetaTestingFramework {
         report.push_str("|-----------|-------------|-----------|-------------------|\n");
 
         for result in &self.test_results {
-            let framework = self.frameworks_under_test.get(&result.framework_name).unwrap();
+            let framework = self
+                .frameworks_under_test
+                .get(&result.framework_name)
+                .unwrap();
             let strengths_summary = framework.strengths.join(", ");
 
-            report.push_str(&format!("| {} | {:.2}/10 | {} | {} |\n",
+            report.push_str(&format!(
+                "| {} | {:.2}/10 | {} | {} |\n",
                 result.framework_name,
                 result.reliability_score,
                 strengths_summary,
@@ -315,34 +397,37 @@ async fn main() -> Result<(), CleanroomError> {
     let mut meta_framework = MetaTestingFramework::new(env);
 
     // Include Cleanroom in the comparison (self-referential testing!)
-    meta_framework.frameworks_under_test.insert("cleanroom".to_string(), TestFramework {
-        name: "Cleanroom".to_string(),
-        version: "0.3.0".to_string(),
-        capabilities: vec![
-            "framework_self_testing".to_string(),
-            "container_isolation".to_string(),
-            "plugin_architecture".to_string(),
-            "comprehensive_observability".to_string(),
-            "meta_testing".to_string(),
-        ],
-        strengths: vec![
-            "eat_own_dog_food".to_string(),
-            "hermetic_isolation".to_string(),
-            "copy_paste_evidence".to_string(),
-            "framework_intelligence".to_string(),
-        ],
-        weaknesses: vec![
-            "requires_rust".to_string(),
-            "learning_curve".to_string(),
-        ],
-    });
+    meta_framework.frameworks_under_test.insert(
+        "cleanroom".to_string(),
+        TestFramework {
+            name: "Cleanroom".to_string(),
+            version: "0.3.0".to_string(),
+            capabilities: vec![
+                "framework_self_testing".to_string(),
+                "container_isolation".to_string(),
+                "plugin_architecture".to_string(),
+                "comprehensive_observability".to_string(),
+                "meta_testing".to_string(),
+            ],
+            strengths: vec![
+                "eat_own_dog_food".to_string(),
+                "hermetic_isolation".to_string(),
+                "copy_paste_evidence".to_string(),
+                "framework_intelligence".to_string(),
+            ],
+            weaknesses: vec!["requires_rust".to_string(), "learning_curve".to_string()],
+        },
+    );
 
     // Run meta-tests on all frameworks
     let frameworks_to_test = vec!["cleanroom", "junit", "pytest"];
 
     for framework in frameworks_to_test {
         let result = meta_framework.meta_test_framework(framework).await?;
-        println!("\n🎯 Meta-test completed for {}: {:.2}/10.00 reliability", result.framework_name, result.reliability_score);
+        println!(
+            "\n🎯 Meta-test completed for {}: {:.2}/10.00 reliability",
+            result.framework_name, result.reliability_score
+        );
     }
 
     // Generate comprehensive comparative report
@@ -352,10 +437,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("===============================");
 
     for result in &meta_framework.test_results {
-        println!("{}: {:.2}/10.00 reliability (executed in {}ms)",
-                 result.framework_name,
-                 result.reliability_score,
-                 result.execution_time_ms);
+        println!(
+            "{}: {:.2}/10.00 reliability (executed in {}ms)",
+            result.framework_name, result.reliability_score, result.execution_time_ms
+        );
     }
 
     // Save report to file

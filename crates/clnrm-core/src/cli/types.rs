@@ -2,10 +2,10 @@
 //!
 //! Contains all the common types, enums, and structs used across CLI commands.
 
-use clap::{Parser, Subcommand, ValueEnum, ArgAction};
-use std::path::PathBuf;
-use std::collections::HashMap;
+use clap::{ArgAction, Parser, Subcommand, ValueEnum};
 use serde::Deserialize;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// Cleanroom Testing Platform - Hermetic Integration Testing
 #[derive(Parser)]
@@ -67,7 +67,7 @@ pub enum Commands {
         /// Force reinitialize if already initialized
         #[arg(long)]
         force: bool,
-        
+
         /// Generate cleanroom.toml configuration file
         #[arg(long)]
         config: bool,
@@ -232,7 +232,6 @@ pub enum Commands {
         #[command(subcommand)]
         command: crate::marketplace::MarketplaceSubcommands,
     },
-
 }
 
 #[derive(Subcommand)]
@@ -425,12 +424,12 @@ mod tests {
     fn test_cli_config_default() -> crate::error::Result<()> {
         // Act
         let config = CliConfig::default();
-        
+
         // Assert
         assert_eq!(config.jobs, 4);
         assert!(!config.parallel);
         assert!(!config.fail_fast);
-        
+
         Ok(())
     }
 
@@ -462,7 +461,7 @@ mod tests {
             duration_ms: 1000,
             error: None,
         };
-        
+
         assert_eq!(result.name, "test_name");
         assert!(result.passed);
         assert_eq!(result.duration_ms, 1000);
@@ -478,12 +477,12 @@ mod tests {
             duration_ms: 500,
             error: None,
         };
-        
+
         let results = CliTestResults {
             tests: vec![test_result],
             total_duration_ms: 1000,
         };
-        
+
         assert_eq!(results.tests.len(), 1);
         assert_eq!(results.total_duration_ms, 1000);
     }

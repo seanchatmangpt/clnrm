@@ -3,15 +3,15 @@
 //! Provides integration with Hugging Face's Text Generation Inference server.
 //! TGI is optimized for high-performance text generation with LLMs.
 
-use crate::cleanroom::{ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
+use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use serde_json::{json, Value};
-use std::future::Future;
-use std::pin::Pin;
 
 /// TGI service configuration
 #[derive(Debug, Clone)]
@@ -56,7 +56,9 @@ impl TgiPlugin {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(self.config.timeout_seconds))
             .build()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e))
+            })?;
 
         Ok(client)
     }
@@ -71,11 +73,9 @@ impl TgiPlugin {
 
         let url = format!("{}/health", self.config.endpoint);
 
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to connect to TGI: {}", e)))?;
+        let response = client.get(&url).send().await.map_err(|e| {
+            CleanroomError::service_error(format!("Failed to connect to TGI: {}", e))
+        })?;
 
         if response.status().is_success() {
             Ok(())
@@ -85,7 +85,11 @@ impl TgiPlugin {
     }
 
     /// Generate text using TGI API
-    pub async fn generate_text(&self, inputs: &str, parameters: Option<TgiParameters>) -> Result<TgiResponse> {
+    pub async fn generate_text(
+        &self,
+        inputs: &str,
+        parameters: Option<TgiParameters>,
+    ) -> Result<TgiResponse> {
         let mut client_guard = self.client.write().await;
         if client_guard.is_none() {
             *client_guard = Some(self.init_client().await?);
@@ -111,13 +115,14 @@ impl TgiPlugin {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to generate text: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::service_error(format!("Failed to generate text: {}", e))
+            })?;
 
         if response.status().is_success() {
-            let tgi_response: TgiResponse = response
-                .json()
-                .await
-                .map_err(|e| CleanroomError::service_error(format!("Failed to parse response: {}", e)))?;
+            let tgi_response: TgiResponse = response.json().await.map_err(|e| {
+                CleanroomError::service_error(format!("Failed to parse response: {}", e))
+            })?;
 
             Ok(tgi_response)
         } else {
@@ -126,7 +131,10 @@ impl TgiPlugin {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
 
-            Err(CleanroomError::service_error(format!("TGI API error: {}", error_text)))
+            Err(CleanroomError::service_error(format!(
+                "TGI API error: {}",
+                error_text
+            )))
         }
     }
 
@@ -147,14 +155,15 @@ impl TgiPlugin {
             .map_err(|e| CleanroomError::service_error(format!("Failed to get info: {}", e)))?;
 
         if response.status().is_success() {
-            let info: TgiInfo = response
-                .json()
-                .await
-                .map_err(|e| CleanroomError::service_error(format!("Failed to parse info: {}", e)))?;
+            let info: TgiInfo = response.json().await.map_err(|e| {
+                CleanroomError::service_error(format!("Failed to parse info: {}", e))
+            })?;
 
             Ok(info)
         } else {
-            Err(CleanroomError::service_error("Failed to retrieve service info"))
+            Err(CleanroomError::service_error(
+                "Failed to retrieve service info",
+            ))
         }
     }
 }
@@ -276,7 +285,10 @@ impl ServicePlugin for TgiPlugin {
             let mut metadata = HashMap::new();
             metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
             metadata.insert("model_id".to_string(), self.config.model_id.clone());
-            metadata.insert("timeout_seconds".to_string(), self.config.timeout_seconds.to_string());
+            metadata.insert(
+                "timeout_seconds".to_string(),
+                self.config.timeout_seconds.to_string(),
+            );
             metadata.insert("health_status".to_string(), format!("{:?}", health));
 
             if let Some(max_total_tokens) = self.config.max_total_tokens {
@@ -291,7 +303,10 @@ impl ServicePlugin for TgiPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             // HTTP-based service, no cleanup needed beyond dropping the client
             Ok(())

@@ -4,15 +4,15 @@
 //! proactive failure prediction, and automatic healing triggers.
 //! This fulfills Gap #6: "Intelligent monitoring with AI-powered anomaly detection"
 
-use crate::error::{CleanroomError, Result};
 use crate::cleanroom::{CleanroomEnvironment, ServicePlugin};
-use crate::services::ai_intelligence::{AIIntelligenceService, TestExecution, ResourceUsage};
-use tracing::{info, warn, error};
-use std::time::{Duration, Instant};
-use std::sync::Arc;
-use tokio::sync::{RwLock, mpsc};
-use serde::{Serialize, Deserialize};
+use crate::error::{CleanroomError, Result};
+use crate::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::{mpsc, RwLock};
+use tracing::{error, info, warn};
 
 /// AI-powered autonomous monitoring command
 pub async fn ai_monitor(
@@ -35,7 +35,8 @@ pub async fn ai_monitor(
         enable_alerts,
         enable_healing,
         webhook_url,
-    ).await?;
+    )
+    .await?;
 
     // Start monitoring loop
     monitor.run().await?;
@@ -71,17 +72,31 @@ impl AutonomousMonitor {
         let ai_service = Arc::new(AIIntelligenceService::new());
 
         // Start AI service
-        let ai_handle = ai_service.start().await
-            .map_err(|e| CleanroomError::service_error("Failed to start AI service")
+        let ai_handle = ai_service.start().await.map_err(|e| {
+            CleanroomError::service_error("Failed to start AI service")
                 .with_context("Monitoring requires AI intelligence service")
-                .with_source(e.to_string()))?;
+                .with_source(e.to_string())
+        })?;
 
         info!("✅ AI Intelligence Service started");
-        info!("   SurrealDB: {}:{}",
-              ai_handle.metadata.get("surrealdb_host").unwrap_or(&"unknown".to_string()),
-              ai_handle.metadata.get("surrealdb_port").unwrap_or(&"unknown".to_string()));
-        info!("   Ollama: {}",
-              ai_handle.metadata.get("ollama_endpoint").unwrap_or(&"unknown".to_string()));
+        info!(
+            "   SurrealDB: {}:{}",
+            ai_handle
+                .metadata
+                .get("surrealdb_host")
+                .unwrap_or(&"unknown".to_string()),
+            ai_handle
+                .metadata
+                .get("surrealdb_port")
+                .unwrap_or(&"unknown".to_string())
+        );
+        info!(
+            "   Ollama: {}",
+            ai_handle
+                .metadata
+                .get("ollama_endpoint")
+                .unwrap_or(&"unknown".to_string())
+        );
 
         Ok(Self {
             monitor_interval,
@@ -123,8 +138,13 @@ impl AutonomousMonitor {
             if !anomalies.is_empty() {
                 warn!("⚠️  Detected {} anomalies", anomalies.len());
                 for anomaly in &anomalies {
-                    warn!("   • {}: {} (severity: {:?}, confidence: {:.1}%)",
-                          anomaly.metric_name, anomaly.description, anomaly.severity, anomaly.confidence * 100.0);
+                    warn!(
+                        "   • {}: {} (severity: {:?}, confidence: {:.1}%)",
+                        anomaly.metric_name,
+                        anomaly.description,
+                        anomaly.severity,
+                        anomaly.confidence * 100.0
+                    );
                 }
 
                 // Phase 4: Generate and send alerts
@@ -145,18 +165,28 @@ impl AutonomousMonitor {
             if !predictions.is_empty() {
                 info!("🔮 Proactive Failure Predictions:");
                 for prediction in &predictions {
-                    info!("   • {} ({:.1}% probability)",
-                          prediction.test_name, prediction.failure_probability * 100.0);
+                    info!(
+                        "   • {} ({:.1}% probability)",
+                        prediction.test_name,
+                        prediction.failure_probability * 100.0
+                    );
                 }
             }
 
             // Phase 7: Update monitoring dashboard
-            self.update_dashboard(&metrics, &anomalies, &predictions).await?;
+            self.update_dashboard(&metrics, &anomalies, &predictions)
+                .await?;
 
             // Performance metrics for this iteration
             let iteration_duration = iteration_start.elapsed();
-            info!("⏱️  Iteration completed in {:.2}s", iteration_duration.as_secs_f64());
-            info!("📈 Total monitoring uptime: {:.2}s", start_time.elapsed().as_secs_f64());
+            info!(
+                "⏱️  Iteration completed in {:.2}s",
+                iteration_duration.as_secs_f64()
+            );
+            info!(
+                "📈 Total monitoring uptime: {:.2}s",
+                start_time.elapsed().as_secs_f64()
+            );
 
             // Sleep until next monitoring interval
             tokio::time::sleep(self.monitor_interval).await;
@@ -247,7 +277,10 @@ impl AutonomousMonitor {
     }
 
     /// Detect pattern-based anomalies using AI
-    async fn detect_pattern_anomalies(&self, _metrics: &[SystemMetric]) -> Result<Option<Vec<Anomaly>>> {
+    async fn detect_pattern_anomalies(
+        &self,
+        _metrics: &[SystemMetric],
+    ) -> Result<Option<Vec<Anomaly>>> {
         // Use AI to detect complex patterns that statistical methods might miss
         let buffer = self.metrics_buffer.read().await;
         let historical_data = buffer.get_recent_window(100);
@@ -265,11 +298,15 @@ impl AutonomousMonitor {
         if analysis.success_rate < 0.85 {
             pattern_anomalies.push(Anomaly {
                 metric_name: "success_rate_decline".to_string(),
-                description: format!("Success rate declining to {:.1}%", analysis.success_rate * 100.0),
+                description: format!(
+                    "Success rate declining to {:.1}%",
+                    analysis.success_rate * 100.0
+                ),
                 severity: AnomalySeverity::High,
                 confidence: 0.9,
                 detected_at: std::time::SystemTime::now(),
-                recommended_action: "Investigate failing tests and review recent changes".to_string(),
+                recommended_action: "Investigate failing tests and review recent changes"
+                    .to_string(),
             });
         }
 
@@ -277,15 +314,23 @@ impl AutonomousMonitor {
         if analysis.avg_execution_time > 5000.0 {
             pattern_anomalies.push(Anomaly {
                 metric_name: "performance_degradation".to_string(),
-                description: format!("Average execution time increased to {:.0}ms", analysis.avg_execution_time),
+                description: format!(
+                    "Average execution time increased to {:.0}ms",
+                    analysis.avg_execution_time
+                ),
                 severity: AnomalySeverity::Medium,
                 confidence: 0.85,
                 detected_at: std::time::SystemTime::now(),
-                recommended_action: "Optimize test execution and check resource constraints".to_string(),
+                recommended_action: "Optimize test execution and check resource constraints"
+                    .to_string(),
             });
         }
 
-        Ok(if pattern_anomalies.is_empty() { None } else { Some(pattern_anomalies) })
+        Ok(if pattern_anomalies.is_empty() {
+            None
+        } else {
+            Some(pattern_anomalies)
+        })
     }
 
     /// Predict future failures proactively
@@ -297,7 +342,9 @@ impl AutonomousMonitor {
     async fn send_alerts(&self, anomalies: &[Anomaly]) -> Result<()> {
         for anomaly in anomalies {
             let alert = Alert::from_anomaly(anomaly);
-            self.alert_manager.send_alert(&alert, self.webhook_url.as_deref()).await?;
+            self.alert_manager
+                .send_alert(&alert, self.webhook_url.as_deref())
+                .await?;
         }
         Ok(())
     }
@@ -305,7 +352,10 @@ impl AutonomousMonitor {
     /// Trigger self-healing actions
     async fn trigger_healing(&self, anomalies: &[Anomaly]) -> Result<()> {
         for anomaly in anomalies {
-            if matches!(anomaly.severity, AnomalySeverity::Critical | AnomalySeverity::High) {
+            if matches!(
+                anomaly.severity,
+                AnomalySeverity::Critical | AnomalySeverity::High
+            ) {
                 self.healing_engine.heal(anomaly).await?;
             }
         }
@@ -313,7 +363,12 @@ impl AutonomousMonitor {
     }
 
     /// Update monitoring dashboard
-    async fn update_dashboard(&self, metrics: &[SystemMetric], anomalies: &[Anomaly], predictions: &[FailurePrediction]) -> Result<()> {
+    async fn update_dashboard(
+        &self,
+        metrics: &[SystemMetric],
+        anomalies: &[Anomaly],
+        predictions: &[FailurePrediction],
+    ) -> Result<()> {
         let dashboard = MonitoringDashboard {
             timestamp: std::time::SystemTime::now(),
             metrics: metrics.to_vec(),
@@ -329,7 +384,11 @@ impl AutonomousMonitor {
     }
 
     /// Calculate overall system health score
-    async fn calculate_health_score(&self, _metrics: &[SystemMetric], anomalies: &[Anomaly]) -> Result<f64> {
+    async fn calculate_health_score(
+        &self,
+        _metrics: &[SystemMetric],
+        anomalies: &[Anomaly],
+    ) -> Result<f64> {
         let base_score = 100.0;
         let mut deductions = 0.0;
 
@@ -343,7 +402,11 @@ impl AutonomousMonitor {
         }
 
         let score_after_deductions = base_score - deductions;
-        let result: f64 = if score_after_deductions > 0.0 { score_after_deductions } else { 0.0 };
+        let result: f64 = if score_after_deductions > 0.0 {
+            score_after_deductions
+        } else {
+            0.0
+        };
         Ok(result)
     }
 }
@@ -391,7 +454,9 @@ impl AnomalyDetector {
     }
 
     fn detect_statistical_anomaly(&mut self, metric: &SystemMetric) -> Option<Anomaly> {
-        let baseline = self.baseline.entry(metric.name.clone())
+        let baseline = self
+            .baseline
+            .entry(metric.name.clone())
             .or_insert_with(|| MetricBaseline::new());
 
         baseline.update(metric.value);
@@ -400,7 +465,10 @@ impl AnomalyDetector {
             if anomaly_score > self.threshold {
                 return Some(Anomaly {
                     metric_name: metric.name.clone(),
-                    description: format!("{} deviates by {:.1}σ from baseline", metric.name, anomaly_score),
+                    description: format!(
+                        "{} deviates by {:.1}σ from baseline",
+                        metric.name, anomaly_score
+                    ),
                     severity: self.classify_severity(anomaly_score),
                     confidence: anomaly_score.min(1.0),
                     detected_at: metric.timestamp,
@@ -433,7 +501,8 @@ impl AnomalyDetector {
             "memory_usage" => "Check for memory leaks or increase available memory",
             "test_flakiness_score" => "Identify and fix flaky tests",
             _ => "Investigate metric deviation and check system logs",
-        }.to_string()
+        }
+        .to_string()
     }
 }
 
@@ -472,9 +541,12 @@ impl MetricBaseline {
 
         self.mean = self.values.iter().sum::<f64>() / self.values.len() as f64;
 
-        let variance = self.values.iter()
+        let variance = self
+            .values
+            .iter()
             .map(|&v| (v - self.mean).powi(2))
-            .sum::<f64>() / self.values.len() as f64;
+            .sum::<f64>()
+            / self.values.len() as f64;
 
         self.std_dev = variance.sqrt();
     }
@@ -550,19 +622,16 @@ impl AlertManager {
             "recommended_action": alert.recommended_action,
         });
 
-        match client.post(url)
-            .json(&payload)
-            .send()
-            .await {
-                Ok(_) => {
-                    info!("✅ Alert sent to webhook: {}", url);
-                    Ok(())
-                },
-                Err(e) => {
-                    warn!("⚠️  Failed to send webhook: {}", e);
-                    Ok(()) // Don't fail the monitoring loop
-                }
+        match client.post(url).json(&payload).send().await {
+            Ok(_) => {
+                info!("✅ Alert sent to webhook: {}", url);
+                Ok(())
             }
+            Err(e) => {
+                warn!("⚠️  Failed to send webhook: {}", e);
+                Ok(()) // Don't fail the monitoring loop
+            }
+        }
     }
 }
 
@@ -584,28 +653,20 @@ impl HealingEngine {
         let healing_action = match anomaly.metric_name.as_str() {
             "test_success_rate" | "success_rate_decline" => {
                 self.heal_test_failures(anomaly).await?
-            },
-            "test_execution_rate" => {
-                self.heal_execution_rate(anomaly).await?
-            },
+            }
+            "test_execution_rate" => self.heal_execution_rate(anomaly).await?,
             "avg_execution_time" | "performance_degradation" => {
                 self.heal_performance(anomaly).await?
-            },
-            "cpu_usage" | "memory_usage" => {
-                self.heal_resource_issues(anomaly).await?
-            },
-            "test_flakiness_score" => {
-                self.heal_flaky_tests(anomaly).await?
-            },
-            _ => {
-                HealingAction {
-                    anomaly_id: anomaly.metric_name.clone(),
-                    action_type: HealingActionType::Monitor,
-                    description: format!("Monitoring {} for further anomalies", anomaly.metric_name),
-                    applied_at: std::time::SystemTime::now(),
-                    success: true,
-                }
             }
+            "cpu_usage" | "memory_usage" => self.heal_resource_issues(anomaly).await?,
+            "test_flakiness_score" => self.heal_flaky_tests(anomaly).await?,
+            _ => HealingAction {
+                anomaly_id: anomaly.metric_name.clone(),
+                action_type: HealingActionType::Monitor,
+                description: format!("Monitoring {} for further anomalies", anomaly.metric_name),
+                applied_at: std::time::SystemTime::now(),
+                success: true,
+            },
         };
 
         // Record healing action
@@ -829,10 +890,22 @@ mod tests {
     fn test_anomaly_severity_classification() {
         let detector = AnomalyDetector::new(0.5);
 
-        assert!(matches!(detector.classify_severity(0.95), AnomalySeverity::Critical));
-        assert!(matches!(detector.classify_severity(0.75), AnomalySeverity::High));
-        assert!(matches!(detector.classify_severity(0.55), AnomalySeverity::Medium));
-        assert!(matches!(detector.classify_severity(0.30), AnomalySeverity::Low));
+        assert!(matches!(
+            detector.classify_severity(0.95),
+            AnomalySeverity::Critical
+        ));
+        assert!(matches!(
+            detector.classify_severity(0.75),
+            AnomalySeverity::High
+        ));
+        assert!(matches!(
+            detector.classify_severity(0.55),
+            AnomalySeverity::Medium
+        ));
+        assert!(matches!(
+            detector.classify_severity(0.30),
+            AnomalySeverity::Low
+        ));
     }
 
     #[test]

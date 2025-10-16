@@ -40,7 +40,9 @@ impl PluginReview {
         content: impl Into<String>,
     ) -> Result<Self> {
         if rating == 0 || rating > 5 {
-            return Err(CleanroomError::validation_error("Rating must be between 1 and 5"));
+            return Err(CleanroomError::validation_error(
+                "Rating must be between 1 and 5",
+            ));
         }
 
         Ok(Self {
@@ -232,7 +234,10 @@ impl CommunityManager {
 
     /// Get discussions for a plugin
     pub fn get_discussions(&self, plugin_name: &str) -> Vec<DiscussionThread> {
-        self.discussions.get(plugin_name).cloned().unwrap_or_default()
+        self.discussions
+            .get(plugin_name)
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Get a specific discussion thread
@@ -320,7 +325,7 @@ mod tests {
             "user123",
             5,
             "Great plugin!",
-            "This plugin works perfectly for my use case."
+            "This plugin works perfectly for my use case.",
         )?;
 
         assert_eq!(review.rating, 5);
@@ -335,9 +340,9 @@ mod tests {
         let result = PluginReview::new(
             "test-plugin",
             "user123",
-            6,  // Invalid rating
+            6, // Invalid rating
             "Test",
-            "Content"
+            "Content",
         );
 
         assert!(result.is_err());
@@ -345,11 +350,7 @@ mod tests {
 
     #[test]
     fn test_discussion_thread() {
-        let mut thread = DiscussionThread::new(
-            "test-plugin",
-            "user123",
-            "How to use this plugin?"
-        );
+        let mut thread = DiscussionThread::new("test-plugin", "user123", "How to use this plugin?");
 
         assert_eq!(thread.posts.len(), 0);
         assert!(!thread.locked);
@@ -364,13 +365,7 @@ mod tests {
     fn test_community_manager() -> Result<()> {
         let mut manager = CommunityManager::new();
 
-        let review = PluginReview::new(
-            "test-plugin",
-            "user123",
-            5,
-            "Excellent",
-            "Great work"
-        )?;
+        let review = PluginReview::new("test-plugin", "user123", 5, "Excellent", "Great work")?;
 
         manager.add_review(review)?;
 
@@ -387,11 +382,7 @@ mod tests {
     fn test_locked_thread() -> Result<()> {
         let mut manager = CommunityManager::new();
 
-        let mut thread = DiscussionThread::new(
-            "test-plugin",
-            "user123",
-            "Test thread"
-        );
+        let mut thread = DiscussionThread::new("test-plugin", "user123", "Test thread");
         thread.lock();
 
         let thread_id = thread.id.clone();

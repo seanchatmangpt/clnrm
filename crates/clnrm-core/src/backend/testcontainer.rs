@@ -6,13 +6,13 @@
 use crate::backend::{Backend, Cmd, RunResult};
 use crate::error::{BackendError, Result};
 use crate::policy::Policy;
+use futures_util::TryFutureExt;
 use std::time::{Duration, Instant};
 use testcontainers::{core::ExecCommand, runners::SyncRunner, GenericImage, ImageExt};
 use tokio::io::AsyncReadExt;
-use futures_util::TryFutureExt;
 
 #[cfg(feature = "otel-traces")]
-use tracing::{info, warn, instrument};
+use tracing::{info, instrument, warn};
 
 /// Testcontainers backend for containerized execution
 #[derive(Debug, Clone)]
@@ -42,7 +42,7 @@ impl TestcontainerBackend {
     /// Create a new testcontainers backend
     pub fn new(image: impl Into<String>) -> Result<Self> {
         let image_str = image.into();
-        
+
         // Parse image name and tag
         let (image_name, image_tag) = if let Some((name, tag)) = image_str.split_once(':') {
             (name.to_string(), tag.to_string())
@@ -126,14 +126,16 @@ impl TestcontainerBackend {
         true
     }
 
-
     /// Execute command in container
     #[cfg_attr(feature = "otel-traces", instrument(name = "testcontainer.execute", skip(self, cmd), fields(image = %self.image_name, tag = %self.image_tag)))]
     fn execute_in_container(&self, cmd: &Cmd) -> Result<RunResult> {
         let start_time = Instant::now();
 
         #[cfg(feature = "otel-traces")]
-        info!("Starting container with image {}:{}", self.image_name, self.image_tag);
+        info!(
+            "Starting container with image {}:{}",
+            self.image_name, self.image_tag
+        );
 
         // Docker availability will be checked by the container startup itself
 
@@ -186,7 +188,7 @@ impl TestcontainerBackend {
                     #[cfg(feature = "otel-traces")]
                     warn!("Container startup took {}s, which is longer than expected. First pull of image may take time.", elapsed.as_secs());
                 }
-                
+
                 BackendError::Runtime(format!(
                     "Failed to start container with image '{}:{}' after {}s.\n\
                     Possible causes:\n\

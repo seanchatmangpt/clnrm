@@ -192,7 +192,7 @@ This is a comprehensive implementation of the Optimus Prime Character Platform a
 - **Tailwind CSS** with custom design tokens
 - **Ollama AI Provider** for local AI functionality with qwen3-coder:30b model
 - **Chart.js** for analytics visualizations
-- **In-memory telemetry** for event tracking
+- **OpenTelemetry** for observability (traces, metrics, logs)
 
 ## 📁 Project Structure
 
@@ -245,6 +245,9 @@ npm run dev
 Create a `.env.local` file with:
 
 ```env
+# Optional: Export telemetry to OpenTelemetry collector
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+
 # Optional: OpenAI API key for comparison
 OPENAI_API_KEY=your_openai_api_key_here
 ```
@@ -296,13 +299,15 @@ npm start
 
 ## 📊 Analytics & Metrics
 
-The platform tracks:
+The platform uses **OpenTelemetry** for observability:
 
-- **Session Events**: Start, message sent, interactions
-- **Virtue Detection**: Leadership quality recognition
-- **Conversion Funnel**: From session to premium engagement
-- **A/B Test Results**: Premium CTA performance comparison
-- **Revenue Metrics**: 7-day revenue tracking
+- **Distributed Tracing**: Request flow across API routes
+- **Metrics**: Sessions, virtues, premium CTR, A/B test performance
+- **Event Tracking**: Session starts, virtue detection, premium interactions
+- **Performance**: Response times, error rates, throughput
+- **Exporters**: Console (dev) or OTLP (production)
+
+See [OpenTelemetry Integration Guide](docs/OPENTELEMETRY_INTEGRATION.md) for details.
 
 ## 🎨 Design System
 

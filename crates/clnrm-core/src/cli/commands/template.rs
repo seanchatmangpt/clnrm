@@ -3,38 +3,43 @@
 //! Handles project generation from templates with various configurations.
 
 use crate::error::{CleanroomError, Result};
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// Generate project from template
 pub fn generate_from_template(template: &str, name: Option<&str>) -> Result<()> {
     let project_name = name.unwrap_or("cleanroom-project");
-    
-    info!("Generating project from template: {} -> {}", template, project_name);
+
+    info!(
+        "Generating project from template: {} -> {}",
+        template, project_name
+    );
     debug!("Template: {}", template);
-    
+
     // Check if template exists
     let available_templates = vec!["default", "advanced", "minimal", "database", "api"];
     if !available_templates.contains(&template) {
         return Err(CleanroomError::validation_error(&format!(
-            "Unknown template '{}'. Available templates: {}", 
-            template, 
+            "Unknown template '{}'. Available templates: {}",
+            template,
             available_templates.join(", ")
         )));
     }
-    
+
     // Self-test: Create project structure
     let project_dir = std::path::Path::new(project_name);
-    
+
     if project_dir.exists() {
-        return Err(CleanroomError::validation_error("Project directory already exists")
-            .with_context(format!("Directory: {}", project_name)));
+        return Err(
+            CleanroomError::validation_error("Project directory already exists")
+                .with_context(format!("Directory: {}", project_name)),
+        );
     }
-    
+
     // Create directory structure
     std::fs::create_dir_all(project_dir)?;
     std::fs::create_dir_all(project_dir.join("tests"))?;
     std::fs::create_dir_all(project_dir.join("scenarios"))?;
-    
+
     // Generate template-specific content
     match template {
         "default" => generate_default_template(project_dir, project_name)?,
@@ -44,7 +49,7 @@ pub fn generate_from_template(template: &str, name: Option<&str>) -> Result<()> 
         "api" => generate_api_template(project_dir, project_name)?,
         _ => unreachable!(), // Already validated above
     }
-    
+
     info!("Project generated successfully: {}", project_name);
     Ok(())
 }
@@ -82,9 +87,12 @@ expected_output_regex = "Cleaning up"
 "#,
         project_name
     );
-    
-    std::fs::write(project_dir.join("tests").join("basic.clnrm.toml"), test_content)?;
-    
+
+    std::fs::write(
+        project_dir.join("tests").join("basic.clnrm.toml"),
+        test_content,
+    )?;
+
     // Create README
     let readme_content = format!(
         r#"# {} - Cleanroom Test Project
@@ -116,9 +124,9 @@ This project demonstrates the cleanroom framework testing itself through the "ea
 "#,
         project_name
     );
-    
+
     std::fs::write(project_dir.join("README.md"), readme_content)?;
-    
+
     Ok(())
 }
 
@@ -176,9 +184,12 @@ expected_output_regex = "Cleaning up"
 "#,
         project_name
     );
-    
-    std::fs::write(project_dir.join("tests").join("advanced.clnrm.toml"), test_content)?;
-    
+
+    std::fs::write(
+        project_dir.join("tests").join("advanced.clnrm.toml"),
+        test_content,
+    )?;
+
     // Create README
     let readme_content = format!(
         r#"# {} - Advanced Cleanroom Test Project
@@ -220,9 +231,9 @@ clnrm plugins
 "#,
         project_name
     );
-    
+
     std::fs::write(project_dir.join("README.md"), readme_content)?;
-    
+
     Ok(())
 }
 
@@ -249,9 +260,12 @@ expected_output_regex = "Hello from cleanroom!"
 "#,
         project_name
     );
-    
-    std::fs::write(project_dir.join("tests").join("minimal.clnrm.toml"), test_content)?;
-    
+
+    std::fs::write(
+        project_dir.join("tests").join("minimal.clnrm.toml"),
+        test_content,
+    )?;
+
     // Create minimal README
     let readme_content = format!(
         r#"# {} - Minimal Cleanroom Test
@@ -264,9 +278,9 @@ clnrm run
 "#,
         project_name
     );
-    
+
     std::fs::write(project_dir.join("README.md"), readme_content)?;
-    
+
     Ok(())
 }
 
@@ -323,9 +337,12 @@ expected_output_regex = "Cleaning up database"
 "#,
         project_name
     );
-    
-    std::fs::write(project_dir.join("tests").join("database.clnrm.toml"), test_content)?;
-    
+
+    std::fs::write(
+        project_dir.join("tests").join("database.clnrm.toml"),
+        test_content,
+    )?;
+
     // Create README
     let readme_content = format!(
         r#"# {} - Database Integration Test Project
@@ -359,9 +376,9 @@ clnrm plugins
 "#,
         project_name
     );
-    
+
     std::fs::write(project_dir.join("README.md"), readme_content)?;
-    
+
     Ok(())
 }
 
@@ -421,9 +438,12 @@ expected_output_regex = "Stopping API server"
 "#,
         project_name
     );
-    
-    std::fs::write(project_dir.join("tests").join("api.clnrm.toml"), test_content)?;
-    
+
+    std::fs::write(
+        project_dir.join("tests").join("api.clnrm.toml"),
+        test_content,
+    )?;
+
     // Create README
     let readme_content = format!(
         r#"# {} - API Integration Test Project
@@ -457,8 +477,8 @@ clnrm plugins
 "#,
         project_name
     );
-    
+
     std::fs::write(project_dir.join("README.md"), readme_content)?;
-    
+
     Ok(())
 }

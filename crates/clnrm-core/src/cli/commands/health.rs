@@ -2,11 +2,11 @@
 //!
 //! Provides comprehensive health status for the Cleanroom Autonomic System
 
+use crate::cleanroom::{CleanroomEnvironment, HealthStatus, ServicePlugin};
 use crate::error::{CleanroomError, Result};
-use crate::cleanroom::{CleanroomEnvironment, ServicePlugin, HealthStatus};
 use crate::services::ai_intelligence::AIIntelligenceService;
-use tracing::{info, warn};
 use std::time::Instant;
+use tracing::{info, warn};
 
 /// System health check command
 pub async fn system_health_check(verbose: bool) -> Result<()> {
@@ -34,7 +34,10 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
         }
         Err(e) => {
             println!("  ❌ Cleanroom Environment: Failed");
-            errors.push(format!("Cleanroom environment initialization failed: {}", e));
+            errors.push(format!(
+                "Cleanroom environment initialization failed: {}",
+                e
+            ));
         }
     }
 
@@ -48,10 +51,20 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
     match ai_service.start().await {
         Ok(handle) => {
             println!("  ✅ AI Intelligence Service: Operational");
-            println!("     • SurrealDB: {}",
-                handle.metadata.get("surrealdb_host").unwrap_or(&"unknown".to_string()));
-            println!("     • Ollama: {}",
-                handle.metadata.get("ollama_endpoint").unwrap_or(&"unknown".to_string()));
+            println!(
+                "     • SurrealDB: {}",
+                handle
+                    .metadata
+                    .get("surrealdb_host")
+                    .unwrap_or(&"unknown".to_string())
+            );
+            println!(
+                "     • Ollama: {}",
+                handle
+                    .metadata
+                    .get("ollama_endpoint")
+                    .unwrap_or(&"unknown".to_string())
+            );
             health_score += 1;
 
             // Clean up
@@ -162,7 +175,10 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
         "❌"
     };
 
-    println!("  {} Overall Health: {}% ({}/{})", status_emoji, health_percentage, health_score, total_checks);
+    println!(
+        "  {} Overall Health: {}% ({}/{})",
+        status_emoji, health_percentage, health_score, total_checks
+    );
     println!("  📊 Status: {}", get_health_status(health_percentage));
 
     if !warnings.is_empty() {
@@ -212,16 +228,24 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
     println!("  Version: 0.4.0");
     println!("  Platform: {}", std::env::consts::OS);
     println!("  Architecture: {}", std::env::consts::ARCH);
-    println!("  Rust Version: {}", env!("CARGO_PKG_RUST_VERSION", "unknown"));
+    println!(
+        "  Rust Version: {}",
+        env!("CARGO_PKG_RUST_VERSION", "unknown")
+    );
 
-    println!("\n✨ Health check completed in {:.2}s\n", elapsed.as_secs_f64());
+    println!(
+        "\n✨ Health check completed in {:.2}s\n",
+        elapsed.as_secs_f64()
+    );
 
     // Return success if health is acceptable
     if health_percentage >= 70 {
         Ok(())
     } else {
-        Err(CleanroomError::internal_error("System health below acceptable threshold")
-            .with_context(format!("Health score: {}%", health_percentage)))
+        Err(
+            CleanroomError::internal_error("System health below acceptable threshold")
+                .with_context(format!("Health score: {}%", health_percentage)),
+        )
     }
 }
 
@@ -236,8 +260,9 @@ async fn check_ollama_health() -> Result<()> {
         .get("http://localhost:11434/api/tags")
         .send()
         .await
-        .map_err(|e| CleanroomError::connection_failed("Ollama connection failed")
-            .with_source(e.to_string()))?;
+        .map_err(|e| {
+            CleanroomError::connection_failed("Ollama connection failed").with_source(e.to_string())
+        })?;
 
     if response.status().is_success() {
         Ok(())
@@ -263,10 +288,16 @@ mod tests {
 
     #[test]
     fn test_health_status() {
-        assert_eq!(get_health_status(100), "EXCELLENT - All systems operational");
+        assert_eq!(
+            get_health_status(100),
+            "EXCELLENT - All systems operational"
+        );
         assert_eq!(get_health_status(85), "GOOD - Minor issues detected");
         assert_eq!(get_health_status(75), "ACCEPTABLE - Some features degraded");
         assert_eq!(get_health_status(65), "DEGRADED - Multiple issues detected");
-        assert_eq!(get_health_status(50), "CRITICAL - Immediate attention required");
+        assert_eq!(
+            get_health_status(50),
+            "CRITICAL - Immediate attention required"
+        );
     }
 }

@@ -4,23 +4,23 @@
 //! principle. Every feature of this framework is validated by using the framework
 //! to test its own functionality.
 
-use crate::backend::{Backend, TestcontainerBackend, Cmd};
+use crate::backend::{Backend, Cmd, TestcontainerBackend};
 use crate::error::{CleanroomError, Result};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use uuid::Uuid;
 #[cfg(feature = "otel-traces")]
 use opentelemetry::global;
 #[cfg(feature = "otel-traces")]
-use opentelemetry::KeyValue;
+use opentelemetry::trace::{Span, Tracer, TracerProvider};
 #[cfg(feature = "otel-traces")]
-use opentelemetry::trace::{TracerProvider, Tracer, Span};
-use testcontainers::runners::AsyncRunner;
-use testcontainers_modules::surrealdb::{SurrealDb, SURREALDB_PORT};
+use opentelemetry::KeyValue;
+use std::any::Any;
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::any::Any;
+use std::sync::Arc;
+use testcontainers::runners::AsyncRunner;
+use testcontainers_modules::surrealdb::{SurrealDb, SURREALDB_PORT};
+use tokio::sync::RwLock;
+use uuid::Uuid;
 
 /// Plugin-based service registry (no hardcoded postgres/redis)
 pub trait ServicePlugin: Send + Sync {
@@ -77,14 +77,14 @@ impl ServiceRegistry {
     /// Initialize default plugins
     pub fn with_default_plugins(mut self) -> Self {
         use crate::services::{
-            generic::GenericContainerPlugin,
-            ollama::OllamaPlugin,
-            vllm::VllmPlugin,
-            tgi::TgiPlugin
+            generic::GenericContainerPlugin, ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin,
         };
 
         // Register core plugins
-        let generic_plugin = Box::new(GenericContainerPlugin::new("generic_container", "alpine:latest"));
+        let generic_plugin = Box::new(GenericContainerPlugin::new(
+            "generic_container",
+            "alpine:latest",
+        ));
         self.register_plugin(generic_plugin);
 
         // Register AI/LLM proxy plugins for automated rollout testing
@@ -133,13 +133,13 @@ impl ServiceRegistry {
 
     /// Start a service by name
     pub async fn start_service(&mut self, service_name: &str) -> Result<ServiceHandle> {
-        let plugin = self.plugins.get(service_name)
-            .ok_or_else(|| CleanroomError::internal_error(&format!(
-                "Service plugin '{}' not found", service_name
-            )))?;
+        let plugin = self.plugins.get(service_name).ok_or_else(|| {
+            CleanroomError::internal_error(&format!("Service plugin '{}' not found", service_name))
+        })?;
 
         let handle = plugin.start().await?;
-        self.active_services.insert(handle.id.clone(), handle.clone());
+        self.active_services
+            .insert(handle.id.clone(), handle.clone());
 
         Ok(handle)
     }
@@ -147,11 +147,12 @@ impl ServiceRegistry {
     /// Stop a service by handle ID
     pub async fn stop_service(&mut self, handle_id: &str) -> Result<()> {
         if let Some(handle) = self.active_services.remove(handle_id) {
-            let plugin = self.plugins.get(&handle.service_name)
-                .ok_or_else(|| CleanroomError::internal_error(&format!(
+            let plugin = self.plugins.get(&handle.service_name).ok_or_else(|| {
+                CleanroomError::internal_error(&format!(
                     "Service plugin '{}' not found for handle '{}'",
                     handle.service_name, handle_id
-                )))?;
+                ))
+            })?;
 
             plugin.stop(handle).await?;
         }
@@ -181,27 +182,37 @@ impl ServiceRegistry {
 
     /// Check if service is running
     pub fn is_service_running(&self, service_name: &str) -> bool {
-        self.active_services.values()
+        self.active_services
+            .values()
             .any(|handle| handle.service_name == service_name)
     }
 
     /// Get service logs
     pub async fn get_service_logs(&self, service_id: &str, lines: usize) -> Result<Vec<String>> {
-        let handle = self.active_services.get(service_id)
-            .ok_or_else(|| CleanroomError::internal_error(&format!(
-                "Service with ID '{}' not found", service_id
-            )))?;
+        let handle = self.active_services.get(service_id).ok_or_else(|| {
+            CleanroomError::internal_error(&format!("Service with ID '{}' not found", service_id))
+        })?;
 
-        let plugin = self.plugins.get(&handle.service_name)
-            .ok_or_else(|| CleanroomError::internal_error(&format!(
-                "Service plugin '{}' not found", handle.service_name
-            )))?;
+        let plugin = self.plugins.get(&handle.service_name).ok_or_else(|| {
+            CleanroomError::internal_error(&format!(
+                "Service plugin '{}' not found",
+                handle.service_name
+            ))
+        })?;
 
         // For now, return mock logs since actual log retrieval depends on the service implementation
         // In a real implementation, this would call plugin.get_logs(handle, lines)
         let mock_logs = vec![
-            format!("[{}] Service '{}' started", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), handle.service_name),
-            format!("[{}] Service '{}' is running", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), handle.service_name),
+            format!(
+                "[{}] Service '{}' started",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                handle.service_name
+            ),
+            format!(
+                "[{}] Service '{}' is running",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
+                handle.service_name
+            ),
         ];
 
         // Return only the requested number of lines
@@ -272,8 +283,9 @@ impl ExecutionResult {
     /// Check if command output matches a regex pattern
     pub fn matches_regex(&self, pattern: &str) -> Result<bool> {
         use regex::Regex;
-        let regex = Regex::new(pattern)
-            .map_err(|e| CleanroomError::validation_error(format!("Invalid regex pattern '{}': {}", pattern, e)))?;
+        let regex = Regex::new(pattern).map_err(|e| {
+            CleanroomError::validation_error(format!("Invalid regex pattern '{}': {}", pattern, e))
+        })?;
         Ok(regex.is_match(&self.stdout))
     }
 
@@ -371,7 +383,9 @@ impl CleanroomEnvironment {
         #[cfg(feature = "otel-traces")]
         let tracer_provider = global::tracer_provider();
         #[cfg(feature = "otel-traces")]
-        let mut span = tracer_provider.tracer("clnrm-cleanroom").start(format!("test.{}", _test_name));
+        let mut span = tracer_provider
+            .tracer("clnrm-cleanroom")
+            .start(format!("test.{}", _test_name));
         #[cfg(feature = "otel-traces")]
         span.set_attributes(vec![
             KeyValue::new("test.name", _test_name.to_string()),
@@ -411,12 +425,16 @@ impl CleanroomEnvironment {
                 KeyValue::new("session.id", self.session_id.to_string()),
             ];
 
-            let counter = self.meter.u64_counter("test.executions")
+            let counter = self
+                .meter
+                .u64_counter("test.executions")
                 .with_description("Number of test executions")
                 .build();
             counter.add(1, &attributes);
 
-            let histogram = self.meter.f64_histogram("test.duration")
+            let histogram = self
+                .meter
+                .f64_histogram("test.duration")
                 .with_description("Test execution duration")
                 .build();
             histogram.record(duration.as_secs_f64(), &attributes);
@@ -508,21 +526,21 @@ impl CleanroomEnvironment {
     }
 
     /// Register a container for reuse
-    pub async fn register_container<T: Send + Sync + 'static>(&self, name: String, container: T) -> Result<()> {
+    pub async fn register_container<T: Send + Sync + 'static>(
+        &self,
+        name: String,
+        container: T,
+    ) -> Result<()> {
         let mut registry = self.container_registry.write().await;
         registry.insert(name, Box::new(container));
         Ok(())
     }
 
     /// Get or create container with reuse pattern
-    /// 
+    ///
     /// This method implements true container reuse by storing and returning
     /// the actual container instances, providing the promised 10-50x performance improvement.
-    pub async fn get_or_create_container<F, T>(
-        &self,
-        name: &str,
-        factory: F,
-    ) -> Result<T>
+    pub async fn get_or_create_container<F, T>(&self, name: &str, factory: F) -> Result<T>
     where
         F: FnOnce() -> Result<T>,
         T: Send + Sync + Clone + 'static,
@@ -548,23 +566,23 @@ impl CleanroomEnvironment {
                 let mut metrics = self.metrics.write().await;
                 metrics.containers_reused += 1;
             }
-            
+
             return Ok(container);
         }
 
         // First time creating this container
         let container = factory()?;
-        
+
         // Register the actual container for future reuse
         let mut registry = self.container_registry.write().await;
         registry.insert(name.to_string(), Box::new(container.clone()));
-        
+
         // Update metrics
         {
             let mut metrics = self.metrics.write().await;
             metrics.containers_created += 1;
         }
-        
+
         Ok(container)
     }
 
@@ -591,7 +609,7 @@ impl CleanroomEnvironment {
 
     /// Execute a command in a container with proper error handling and observability
     /// Core Team Compliance: Async for I/O operations, proper error handling, no unwrap/expect
-    /// 
+    ///
     /// This method creates a fresh container for each command execution, which is appropriate
     /// for testing scenarios where isolation is more important than performance.
     pub async fn execute_in_container(
@@ -602,7 +620,9 @@ impl CleanroomEnvironment {
         #[cfg(feature = "otel-traces")]
         let tracer_provider = global::tracer_provider();
         #[cfg(feature = "otel-traces")]
-        let mut span = tracer_provider.tracer("clnrm-cleanroom").start(format!("container.exec.{}", container_name));
+        let mut span = tracer_provider
+            .tracer("clnrm-cleanroom")
+            .start(format!("container.exec.{}", container_name));
         #[cfg(feature = "otel-traces")]
         span.set_attributes(vec![
             KeyValue::new("container.name", container_name.to_string()),
@@ -622,45 +642,60 @@ impl CleanroomEnvironment {
         // Use spawn_blocking to avoid runtime conflicts with testcontainers
         // Clone the backend to move it into the blocking task
         let backend = self.backend.clone();
-        let execution_result = tokio::task::spawn_blocking(move || {
-            backend.run_cmd(cmd)
-        }).await.map_err(|e| {
-            #[cfg(feature = "otel-traces")]
-            {
-                span.set_status(opentelemetry::trace::Status::error("Task join failed"));
-                span.end();
-            }
-            CleanroomError::internal_error("Failed to execute command in blocking task")
-                .with_context("Command execution task failed")
-                .with_source(e.to_string())
-        })?.map_err(|e| {
-            #[cfg(feature = "otel-traces")]
-            {
-                span.set_status(opentelemetry::trace::Status::error("Command execution failed"));
-                span.end();
-            }
-            CleanroomError::container_error("Failed to execute command in container")
-                .with_context(format!("Container: {}, Command: {}", container_name, command.join(" ")))
-                .with_source(e.to_string())
-        })?;
+        let execution_result = tokio::task::spawn_blocking(move || backend.run_cmd(cmd))
+            .await
+            .map_err(|e| {
+                #[cfg(feature = "otel-traces")]
+                {
+                    span.set_status(opentelemetry::trace::Status::error("Task join failed"));
+                    span.end();
+                }
+                CleanroomError::internal_error("Failed to execute command in blocking task")
+                    .with_context("Command execution task failed")
+                    .with_source(e.to_string())
+            })?
+            .map_err(|e| {
+                #[cfg(feature = "otel-traces")]
+                {
+                    span.set_status(opentelemetry::trace::Status::error(
+                        "Command execution failed",
+                    ));
+                    span.end();
+                }
+                CleanroomError::container_error("Failed to execute command in container")
+                    .with_context(format!(
+                        "Container: {}, Command: {}",
+                        container_name,
+                        command.join(" ")
+                    ))
+                    .with_source(e.to_string())
+            })?;
 
         let duration = start_time.elapsed();
 
         // Record metrics
         #[cfg(feature = "otel-metrics")]
         {
-            let histogram = self.meter.f64_histogram("container.command.duration")
+            let histogram = self
+                .meter
+                .f64_histogram("container.command.duration")
                 .with_description("Container command execution duration")
                 .build();
-            histogram.record(duration.as_secs_f64(), &[
-                KeyValue::new("container.name", container_name.to_string()),
-                KeyValue::new("command", command.join(" ")),
-            ]);
+            histogram.record(
+                duration.as_secs_f64(),
+                &[
+                    KeyValue::new("container.name", container_name.to_string()),
+                    KeyValue::new("command", command.join(" ")),
+                ],
+            );
         }
 
         #[cfg(feature = "otel-traces")]
         span.set_attributes(vec![
-            KeyValue::new("execution.exit_code", execution_result.exit_code.to_string()),
+            KeyValue::new(
+                "execution.exit_code",
+                execution_result.exit_code.to_string(),
+            ),
             KeyValue::new("execution.duration_ms", duration.as_millis().to_string()),
         ]);
 
@@ -735,17 +770,15 @@ impl ServicePlugin for MockDatabasePlugin {
     fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
         Box::pin(async move {
             // Start SurrealDB container using testcontainers-modules
-            let node = SurrealDb::default()
-                .start()
-                .await
-                .map_err(|e| CleanroomError::container_error("Failed to start SurrealDB")
+            let node = SurrealDb::default().start().await.map_err(|e| {
+                CleanroomError::container_error("Failed to start SurrealDB")
                     .with_context("SurrealDB container startup failed")
-                    .with_source(e.to_string()))?;
+                    .with_source(e.to_string())
+            })?;
 
-            let host_port = node.get_host_port_ipv4(SURREALDB_PORT)
-                .await
-                .map_err(|e| CleanroomError::container_error("Failed to get port")
-                    .with_source(e.to_string()))?;
+            let host_port = node.get_host_port_ipv4(SURREALDB_PORT).await.map_err(|e| {
+                CleanroomError::container_error("Failed to get port").with_source(e.to_string())
+            })?;
 
             // Store container reference
             let mut container_guard = self.container_id.write().await;
@@ -766,7 +799,10 @@ impl ServicePlugin for MockDatabasePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             let mut container_guard = self.container_id.write().await;
             *container_guard = None; // Container drops automatically
@@ -803,7 +839,9 @@ mod tests {
     #[tokio::test]
     async fn test_cleanroom_execute_test() {
         let env = CleanroomEnvironment::default();
-        let result = env.execute_test("test", || Ok::<i32, CleanroomError>(42)).await;
+        let result = env
+            .execute_test("test", || Ok::<i32, CleanroomError>(42))
+            .await;
         assert!(result.is_ok()); // Should succeed with default implementation
         assert_eq!(result.unwrap(), 42);
     }
@@ -839,9 +877,11 @@ mod tests {
     #[tokio::test]
     async fn test_register_container() {
         let env = CleanroomEnvironment::default();
-        let result = env.register_container("test-container".to_string(), "container-123".to_string()).await;
+        let result = env
+            .register_container("test-container".to_string(), "container-123".to_string())
+            .await;
         assert!(result.is_ok());
-        
+
         // Verify container was registered
         assert!(env.has_container("test-container").await);
     }
@@ -849,11 +889,13 @@ mod tests {
     #[tokio::test]
     async fn test_get_or_create_container() {
         let env = CleanroomEnvironment::default();
-        
+
         // First call should create and register container
-        let result1 = env.get_or_create_container("test-container", || {
-            Ok::<String, CleanroomError>("container-instance".to_string())
-        }).await;
+        let result1 = env
+            .get_or_create_container("test-container", || {
+                Ok::<String, CleanroomError>("container-instance".to_string())
+            })
+            .await;
         assert!(result1.is_ok());
         assert_eq!(result1.unwrap(), "container-instance");
 
@@ -864,9 +906,11 @@ mod tests {
         assert_eq!(reused, 0);
 
         // Second call should return the SAME container instance (true reuse!)
-        let result2 = env.get_or_create_container("test-container", || {
-            Ok::<String, CleanroomError>("container-instance-2".to_string())
-        }).await;
+        let result2 = env
+            .get_or_create_container("test-container", || {
+                Ok::<String, CleanroomError>("container-instance-2".to_string())
+            })
+            .await;
         assert!(result2.is_ok());
         // This should be the SAME instance, not a new one
         assert_eq!(result2.unwrap(), "container-instance");

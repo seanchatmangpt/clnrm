@@ -4,13 +4,13 @@
 //! the complexity of container management and provides the developer experience
 //! that users actually want.
 
-use crate::cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{CleanroomEnvironment, HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// Jane-friendly test macro that handles all the boilerplate
 ///
@@ -46,15 +46,15 @@ macro_rules! cleanroom_test {
                     .with_context("Cleanroom environment initialization failed")
                     .with_source(e.to_string())
                 )?;
-            
+
             // Set up test context
             let mut test_context = $crate::macros::TestContext::new(env);
-            
+
             // Run the test with proper error handling
             let result = async {
                 $body
             }.await;
-            
+
             // Handle test result with clear error messages
             match result {
                 Ok(_) => {
@@ -98,38 +98,59 @@ impl ServiceSetup {
 
     /// Set up a database service
     pub async fn with_database(&self, image: &str) -> Result<()> {
-        self.with_service("database", image, Box::new(DatabaseServicePlugin::new(image))).await
+        self.with_service(
+            "database",
+            image,
+            Box::new(DatabaseServicePlugin::new(image)),
+        )
+        .await
     }
 
     /// Set up a cache service
     pub async fn with_cache(&self, image: &str) -> Result<()> {
-        self.with_service("cache", image, Box::new(CacheServicePlugin::new(image))).await
+        self.with_service("cache", image, Box::new(CacheServicePlugin::new(image)))
+            .await
     }
 
     /// Set up a message queue service
     pub async fn with_message_queue(&self, image: &str) -> Result<()> {
-        self.with_service("message_queue", image, Box::new(MessageQueueServicePlugin::new(image))).await
+        self.with_service(
+            "message_queue",
+            image,
+            Box::new(MessageQueueServicePlugin::new(image)),
+        )
+        .await
     }
 
     /// Set up a web server service
     pub async fn with_web_server(&self, image: &str) -> Result<()> {
-        self.with_service("web_server", image, Box::new(WebServerServicePlugin::new(image))).await
+        self.with_service(
+            "web_server",
+            image,
+            Box::new(WebServerServicePlugin::new(image)),
+        )
+        .await
     }
 
     /// Generic service setup
-    async fn with_service(&self, service_type: &str, image: &str, plugin: Box<dyn ServicePlugin>) -> Result<()> {
+    async fn with_service(
+        &self,
+        service_type: &str,
+        image: &str,
+        plugin: Box<dyn ServicePlugin>,
+    ) -> Result<()> {
         println!("🚀 Starting {} service with image: {}", service_type, image);
-        
+
         // Register the service plugin
         self.env.register_service(plugin).await?;
-        
+
         // Start the service
         let handle = self.env.start_service(service_type).await?;
-        
+
         // Store the handle for cleanup
         let mut services = self.services.write().await;
         services.insert(service_type.to_string(), handle);
-        
+
         println!("✅ {} service started successfully", service_type);
         Ok(())
     }
@@ -140,9 +161,14 @@ impl ServiceSetup {
         if let Some(handle) = services.get("database") {
             let default_port = "5432".to_string();
             let port = handle.metadata.get("port").unwrap_or(&default_port);
-            Ok(format!("postgresql://postgres:password@localhost:{}/testdb", port))
+            Ok(format!(
+                "postgresql://postgres:password@localhost:{}/testdb",
+                port
+            ))
         } else {
-            Err(CleanroomError::internal_error("Database service not started. Call with_database() first."))
+            Err(CleanroomError::internal_error(
+                "Database service not started. Call with_database() first.",
+            ))
         }
     }
 
@@ -154,7 +180,9 @@ impl ServiceSetup {
             let port = handle.metadata.get("port").unwrap_or(&default_port);
             Ok(format!("redis://localhost:{}", port))
         } else {
-            Err(CleanroomError::internal_error("Cache service not started. Call with_cache() first."))
+            Err(CleanroomError::internal_error(
+                "Cache service not started. Call with_cache() first.",
+            ))
         }
     }
 }
@@ -170,11 +198,8 @@ impl TestContext {
     pub fn new(env: CleanroomEnvironment) -> Self {
         let env = Arc::new(env);
         let services = ServiceSetup::new(env.clone());
-        
-        Self {
-            env,
-            services,
-        }
+
+        Self { env, services }
     }
 
     /// Get service setup for declarative configuration
@@ -225,7 +250,10 @@ impl ServicePlugin for DatabaseServicePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             // In a real implementation, this would stop the database container
             Ok(())
@@ -273,10 +301,11 @@ impl ServicePlugin for CacheServicePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(())
-        })
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -319,10 +348,11 @@ impl ServicePlugin for MessageQueueServicePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(())
-        })
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -365,10 +395,11 @@ impl ServicePlugin for WebServerServicePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(())
-        })
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -421,8 +452,6 @@ mod tests {
         // Test that service setup can be created
         assert!(setup.services.read().await.is_empty());
     }
-
-
 
     #[tokio::test]
     async fn test_jane_friendly_functions() {

@@ -78,18 +78,30 @@ impl AIPoweredTestOptimizer {
         }
     }
 
-    async fn record_test_execution(&mut self, record: TestExecutionRecord) -> Result<(), CleanroomError> {
+    async fn record_test_execution(
+        &mut self,
+        record: TestExecutionRecord,
+    ) -> Result<(), CleanroomError> {
         self.execution_history.push(record.clone());
 
         // Use Cleanroom to validate the recording process
-        let _ = self.cleanroom_env.execute_test("execution_recording", || {
-            Ok::<String, CleanroomError>(format!("Recorded execution for {}", record.test_name))
-        }).await?;
+        let _ = self
+            .cleanroom_env
+            .execute_test("execution_recording", || {
+                Ok::<String, CleanroomError>(format!("Recorded execution for {}", record.test_name))
+            })
+            .await?;
 
-        println!("📊 Recorded test execution: {} ({}ms, {})",
-                 record.test_name,
-                 record.execution_time_ms,
-                 if record.success { "✅ SUCCESS" } else { "❌ FAILED" });
+        println!(
+            "📊 Recorded test execution: {} ({}ms, {})",
+            record.test_name,
+            record.execution_time_ms,
+            if record.success {
+                "✅ SUCCESS"
+            } else {
+                "❌ FAILED"
+            }
+        );
 
         Ok(())
     }
@@ -102,41 +114,49 @@ impl AIPoweredTestOptimizer {
         let mut test_groups: HashMap<String, Vec<&TestExecutionRecord>> = HashMap::new();
 
         for record in &self.execution_history {
-            test_groups.entry(record.test_name.clone())
-                      .or_insert_with(Vec::new)
-                      .push(record);
+            test_groups
+                .entry(record.test_name.clone())
+                .or_insert_with(Vec::new)
+                .push(record);
         }
 
         // Analyze patterns for each test
         for (test_name, executions) in test_groups {
-            let pattern = self.analyze_single_test_pattern(&test_name, executions).await?;
-            self.learned_patterns.insert(test_name.clone(), pattern.clone());
+            let pattern = self
+                .analyze_single_test_pattern(&test_name, executions)
+                .await?;
+            self.learned_patterns
+                .insert(test_name.clone(), pattern.clone());
 
             println!("📈 Pattern analysis for '{}':", test_name);
             println!("   Success Rate: {:.2}%", pattern.success_rate * 100.0);
             println!("   Avg Execution Time: {}ms", pattern.avg_execution_time);
             println!("   Failure Patterns: {:?}", pattern.failure_patterns);
-            println!("   Optimization Suggestions: {:?}", pattern.optimization_suggestions);
+            println!(
+                "   Optimization Suggestions: {:?}",
+                pattern.optimization_suggestions
+            );
         }
 
         Ok(())
     }
 
-    async fn analyze_single_test_pattern(&self, test_name: &str, executions: Vec<&TestExecutionRecord>) -> Result<TestPattern, CleanroomError> {
+    async fn analyze_single_test_pattern(
+        &self,
+        test_name: &str,
+        executions: Vec<&TestExecutionRecord>,
+    ) -> Result<TestPattern, CleanroomError> {
         let total_executions = executions.len();
         let successful_executions = executions.iter().filter(|e| e.success).count();
         let success_rate = successful_executions as f64 / total_executions as f64;
 
-        let avg_execution_time = executions.iter()
-            .map(|e| e.execution_time_ms)
-            .sum::<u64>() / total_executions as u64;
+        let avg_execution_time =
+            executions.iter().map(|e| e.execution_time_ms).sum::<u64>() / total_executions as u64;
 
         // Identify failure patterns
         let mut failure_patterns = Vec::new();
-        let failed_executions: Vec<&TestExecutionRecord> = executions.iter()
-            .filter(|e| !e.success)
-            .cloned()
-            .collect();
+        let failed_executions: Vec<&TestExecutionRecord> =
+            executions.iter().filter(|e| !e.success).cloned().collect();
 
         if failed_executions.len() > 2 {
             // Look for patterns in failure timing
@@ -207,7 +227,9 @@ impl AIPoweredTestOptimizer {
         }
 
         // Look for performance optimization opportunities
-        let slow_tests: Vec<&TestExecutionRecord> = self.execution_history.iter()
+        let slow_tests: Vec<&TestExecutionRecord> = self
+            .execution_history
+            .iter()
             .filter(|e| e.execution_time_ms > 10000)
             .collect();
 
@@ -238,8 +260,14 @@ impl AIPoweredTestOptimizer {
             println!("\n🎯 Optimization Strategy: {}", strategy.name);
             println!("   Type: {:?}", strategy.strategy_type);
             println!("   Confidence: {:.1}%", strategy.confidence_score * 100.0);
-            println!("   Expected Improvement: {:.1}%", strategy.expected_improvement);
-            println!("   Implementation Cost: {}/10", strategy.implementation_cost);
+            println!(
+                "   Expected Improvement: {:.1}%",
+                strategy.expected_improvement
+            );
+            println!(
+                "   Implementation Cost: {}/10",
+                strategy.implementation_cost
+            );
         }
 
         Ok(())
@@ -247,9 +275,12 @@ impl AIPoweredTestOptimizer {
 
     async fn identify_independent_tests(&self) -> Result<Vec<String>, CleanroomError> {
         // Use Cleanroom's dependency analysis to identify independent tests
-        let _ = self.cleanroom_env.execute_test("dependency_analysis", || {
-            Ok::<String, CleanroomError>("Analyzing test dependencies".to_string())
-        }).await?;
+        let _ = self
+            .cleanroom_env
+            .execute_test("dependency_analysis", || {
+                Ok::<String, CleanroomError>("Analyzing test dependencies".to_string())
+            })
+            .await?;
 
         // Simulate identifying independent tests
         let mut independent_tests = Vec::new();
@@ -279,7 +310,9 @@ impl AIPoweredTestOptimizer {
             let failure_probability = 1.0 - pattern.success_rate;
 
             // Adjust based on recent trends
-            let recent_executions = self.execution_history.iter()
+            let recent_executions = self
+                .execution_history
+                .iter()
                 .filter(|e| e.test_name == *test_name)
                 .rev()
                 .take(5)
@@ -293,7 +326,11 @@ impl AIPoweredTestOptimizer {
 
             failure_predictions.insert(test_name.clone(), 1.0 - predicted_failure_rate);
 
-            println!("   {}: {:.1}% failure probability", test_name, (1.0 - predicted_failure_rate) * 100.0);
+            println!(
+                "   {}: {:.1}% failure probability",
+                test_name,
+                (1.0 - predicted_failure_rate) * 100.0
+            );
         }
 
         Ok(failure_predictions)
@@ -321,7 +358,9 @@ impl AIPoweredTestOptimizer {
             schedule.prioritized_tests.push(TestPriority {
                 test_name,
                 priority_score: failure_prob,
-                estimated_duration: self.learned_patterns.get(&schedule.prioritized_tests.len().to_string())
+                estimated_duration: self
+                    .learned_patterns
+                    .get(&schedule.prioritized_tests.len().to_string())
                     .map(|p| p.avg_execution_time)
                     .unwrap_or(1000),
             });
@@ -338,7 +377,9 @@ impl AIPoweredTestOptimizer {
         }
 
         // Estimate total duration
-        let total_estimated = schedule.prioritized_tests.iter()
+        let total_estimated = schedule
+            .prioritized_tests
+            .iter()
             .map(|p| p.estimated_duration)
             .sum::<u64>();
         schedule.estimated_duration = Duration::from_millis(total_estimated);
@@ -381,7 +422,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("testing strategies and predict failures using itself!\n");
 
     let env = CleanroomEnvironment::new().await?;
-    println!("✅ Created AI optimization environment: {}", env.session_id());
+    println!(
+        "✅ Created AI optimization environment: {}",
+        env.session_id()
+    );
 
     let mut optimizer = AIPoweredTestOptimizer::new(env);
 
@@ -395,7 +439,12 @@ async fn main() -> Result<(), CleanroomError> {
             execution_time_ms: 2500,
             success: true,
             timestamp: std::time::SystemTime::now(),
-            resource_usage: ResourceUsage { cpu_percent: 15.0, memory_mb: 128, network_io: 1024, disk_io: 512 },
+            resource_usage: ResourceUsage {
+                cpu_percent: 15.0,
+                memory_mb: 128,
+                network_io: 1024,
+                disk_io: 512,
+            },
             error_patterns: vec![],
         },
         TestExecutionRecord {
@@ -403,7 +452,12 @@ async fn main() -> Result<(), CleanroomError> {
             execution_time_ms: 2800,
             success: true,
             timestamp: std::time::SystemTime::now(),
-            resource_usage: ResourceUsage { cpu_percent: 18.0, memory_mb: 135, network_io: 1156, disk_io: 578 },
+            resource_usage: ResourceUsage {
+                cpu_percent: 18.0,
+                memory_mb: 135,
+                network_io: 1156,
+                disk_io: 578,
+            },
             error_patterns: vec![],
         },
         TestExecutionRecord {
@@ -411,7 +465,12 @@ async fn main() -> Result<(), CleanroomError> {
             execution_time_ms: 15000,
             success: false,
             timestamp: std::time::SystemTime::now(),
-            resource_usage: ResourceUsage { cpu_percent: 45.0, memory_mb: 256, network_io: 2048, disk_io: 4096 },
+            resource_usage: ResourceUsage {
+                cpu_percent: 45.0,
+                memory_mb: 256,
+                network_io: 2048,
+                disk_io: 4096,
+            },
             error_patterns: vec!["timeout".to_string(), "connection_failure".to_string()],
         },
         TestExecutionRecord {
@@ -419,7 +478,12 @@ async fn main() -> Result<(), CleanroomError> {
             execution_time_ms: 3200,
             success: true,
             timestamp: std::time::SystemTime::now(),
-            resource_usage: ResourceUsage { cpu_percent: 22.0, memory_mb: 145, network_io: 1280, disk_io: 640 },
+            resource_usage: ResourceUsage {
+                cpu_percent: 22.0,
+                memory_mb: 145,
+                network_io: 1280,
+                disk_io: 640,
+            },
             error_patterns: vec![],
         },
     ];
@@ -459,9 +523,12 @@ async fn main() -> Result<(), CleanroomError> {
     println!("   Demonstrating continuous learning and adaptation...");
 
     // Simulate learning from optimization results
-    let improvement_result = optimizer.cleanroom_env.execute_test("self_improvement_cycle", || {
-        Ok::<String, CleanroomError>("Framework learned from optimization results".to_string())
-    }).await?;
+    let improvement_result = optimizer
+        .cleanroom_env
+        .execute_test("self_improvement_cycle", || {
+            Ok::<String, CleanroomError>("Framework learned from optimization results".to_string())
+        })
+        .await?;
 
     println!("   ✅ {}", improvement_result);
 
@@ -471,24 +538,46 @@ async fn main() -> Result<(), CleanroomError> {
 
     println!("📈 Pattern Analysis Results:");
     for (test_name, pattern) in &optimizer.learned_patterns {
-        println!("   {}: {:.1}% success rate, {}ms avg", test_name, pattern.success_rate * 100.0, pattern.avg_execution_time);
+        println!(
+            "   {}: {:.1}% success rate, {}ms avg",
+            test_name,
+            pattern.success_rate * 100.0,
+            pattern.avg_execution_time
+        );
     }
 
     println!("\n🎯 Generated Strategies:");
     for strategy in &optimizer.optimization_strategies {
-        println!("   {}: {:.1}% confidence, {:.1}% improvement",
-                 strategy.name, strategy.confidence_score * 100.0, strategy.expected_improvement);
+        println!(
+            "   {}: {:.1}% confidence, {:.1}% improvement",
+            strategy.name,
+            strategy.confidence_score * 100.0,
+            strategy.expected_improvement
+        );
     }
 
     println!("\n🔮 Failure Predictions:");
     for (test_name, failure_prob) in &failure_predictions {
-        println!("   {}: {:.1}% failure probability", test_name, failure_prob * 100.0);
+        println!(
+            "   {}: {:.1}% failure probability",
+            test_name,
+            failure_prob * 100.0
+        );
     }
 
     println!("\n📅 Optimized Schedule:");
-    println!("   Prioritized Tests: {}", optimized_schedule.prioritized_tests.len());
-    println!("   Parallel Groups: {}", optimized_schedule.parallel_groups.len());
-    println!("   Estimated Duration: {:?}", optimized_schedule.estimated_duration);
+    println!(
+        "   Prioritized Tests: {}",
+        optimized_schedule.prioritized_tests.len()
+    );
+    println!(
+        "   Parallel Groups: {}",
+        optimized_schedule.parallel_groups.len()
+    );
+    println!(
+        "   Estimated Duration: {:?}",
+        optimized_schedule.estimated_duration
+    );
 
     println!("\n🎉 AI-POWERED TEST OPTIMIZATION COMPLETED!");
     println!("=========================================");

@@ -7,16 +7,17 @@ use crate::error::Result;
 /// Validate a file path exists and is readable
 pub fn validate_file_path(path: &str) -> Result<()> {
     use std::path::Path;
-    
+
     let path_obj = Path::new(path);
-    
+
     // Check if path exists
     if !path_obj.exists() {
         return Err(crate::error::CleanroomError::validation_error(&format!(
-            "Path does not exist: {}", path
+            "Path does not exist: {}",
+            path
         )));
     }
-    
+
     // Check if path is readable (file) or accessible (directory)
     if path_obj.is_file() {
         // For files, check if we can read metadata
@@ -26,27 +27,29 @@ pub fn validate_file_path(path: &str) -> Result<()> {
         std::fs::read_dir(path_obj)?;
     } else {
         return Err(crate::error::CleanroomError::validation_error(&format!(
-            "Path is neither a file nor directory: {}", path
+            "Path is neither a file nor directory: {}",
+            path
         )));
     }
-    
+
     Ok(())
 }
 
 /// Parse a TOML configuration file
 pub fn parse_toml_config(content: &str) -> Result<serde_json::Value> {
     // Parse TOML content
-    let toml_value: toml::Value = toml::from_str(content)
-        .map_err(|e| crate::error::CleanroomError::validation_error(&format!(
-            "Invalid TOML syntax: {}", e
-        )))?;
-    
+    let toml_value: toml::Value = toml::from_str(content).map_err(|e| {
+        crate::error::CleanroomError::validation_error(&format!("Invalid TOML syntax: {}", e))
+    })?;
+
     // Convert TOML to JSON for consistent handling
-    let json_value = serde_json::to_value(toml_value)
-        .map_err(|e| crate::error::CleanroomError::internal_error(&format!(
-            "Failed to convert TOML to JSON: {}", e
-        )))?;
-    
+    let json_value = serde_json::to_value(toml_value).map_err(|e| {
+        crate::error::CleanroomError::internal_error(&format!(
+            "Failed to convert TOML to JSON: {}",
+            e
+        ))
+    })?;
+
     Ok(json_value)
 }
 
@@ -69,26 +72,30 @@ pub fn format_duration(duration: std::time::Duration) -> String {
 /// Validate regex pattern
 pub fn validate_regex(pattern: &str) -> Result<()> {
     use regex::Regex;
-    
+
     // Try to compile the regex pattern
-    Regex::new(pattern)
-        .map_err(|e| crate::error::CleanroomError::validation_error(&format!(
-            "Invalid regex pattern '{}': {}", pattern, e
-        )))?;
-    
+    Regex::new(pattern).map_err(|e| {
+        crate::error::CleanroomError::validation_error(&format!(
+            "Invalid regex pattern '{}': {}",
+            pattern, e
+        ))
+    })?;
+
     Ok(())
 }
 
 /// Execute regex pattern matching
 pub fn execute_regex_match(text: &str, pattern: &str) -> Result<bool> {
     use regex::Regex;
-    
+
     // Compile and execute regex
-    let regex = Regex::new(pattern)
-        .map_err(|e| crate::error::CleanroomError::validation_error(&format!(
-            "Invalid regex pattern '{}': {}", pattern, e
-        )))?;
-    
+    let regex = Regex::new(pattern).map_err(|e| {
+        crate::error::CleanroomError::validation_error(&format!(
+            "Invalid regex pattern '{}': {}",
+            pattern, e
+        ))
+    })?;
+
     Ok(regex.is_match(text))
 }
 
@@ -101,7 +108,7 @@ mod tests {
         // Test with existing file (current directory)
         let result = validate_file_path(".");
         assert!(result.is_ok());
-        
+
         // Test with nonexistent file
         let result = validate_file_path("nonexistent.txt");
         assert!(result.is_err());
@@ -112,7 +119,7 @@ mod tests {
         // Test with valid TOML
         let result = parse_toml_config("[test]\nname = \"example\"");
         assert!(result.is_ok());
-        
+
         // Test with invalid TOML
         let result = parse_toml_config("invalid toml");
         assert!(result.is_err());

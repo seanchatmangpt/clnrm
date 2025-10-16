@@ -8,7 +8,7 @@
 //! observable events and verifying they are captured correctly.
 
 use clnrm_core::{CleanroomEnvironment, CleanroomError};
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 #[tokio::main]
 async fn main() -> Result<(), CleanroomError> {
@@ -55,7 +55,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("  ✅ Metrics collection works correctly");
     println!("  ✅ Observability chain is functional");
     println!("  ✅ Performance impact is acceptable");
-    println!("\n⏱️  Total validation time: {}ms", total_duration.as_millis());
+    println!(
+        "\n⏱️  Total validation time: {}ms",
+        total_duration.as_millis()
+    );
 
     Ok(())
 }

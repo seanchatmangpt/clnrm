@@ -3,15 +3,15 @@
 //! Revolutionary AI-powered test generation that creates comprehensive
 //! test cases, edge cases, and failure scenarios automatically.
 
-use crate::cleanroom::{ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
+use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use std::future::Future;
-use std::pin::Pin;
-use serde_json::{json, Value};
 
 /// AI test generator configuration
 #[derive(Debug, Clone)]
@@ -196,42 +196,73 @@ impl AITestGeneratorPlugin {
     }
 
     /// Generate tests for a specific component
-    pub async fn generate_tests_for_component(&self, component_name: &str, component_spec: &str) -> Result<Vec<GeneratedTestCase>> {
-        println!("🤖 AI Test Generator: Generating tests for component '{}'", component_name);
-        
+    pub async fn generate_tests_for_component(
+        &self,
+        component_name: &str,
+        component_spec: &str,
+    ) -> Result<Vec<GeneratedTestCase>> {
+        println!(
+            "🤖 AI Test Generator: Generating tests for component '{}'",
+            component_name
+        );
+
         let start_time = std::time::Instant::now();
         let mut generated_tests = Vec::new();
 
         // Generate tests based on strategy
         match &self.config.strategy {
             TestGenerationStrategy::CodeAnalysis => {
-                generated_tests.extend(self.generate_code_analysis_tests(component_name, component_spec).await?);
+                generated_tests.extend(
+                    self.generate_code_analysis_tests(component_name, component_spec)
+                        .await?,
+                );
             }
             TestGenerationStrategy::ApiSpecification => {
-                generated_tests.extend(self.generate_api_tests(component_name, component_spec).await?);
+                generated_tests.extend(
+                    self.generate_api_tests(component_name, component_spec)
+                        .await?,
+                );
             }
             TestGenerationStrategy::UserStories => {
-                generated_tests.extend(self.generate_user_story_tests(component_name, component_spec).await?);
+                generated_tests.extend(
+                    self.generate_user_story_tests(component_name, component_spec)
+                        .await?,
+                );
             }
             TestGenerationStrategy::ErrorPatterns => {
-                generated_tests.extend(self.generate_error_pattern_tests(component_name, component_spec).await?);
+                generated_tests.extend(
+                    self.generate_error_pattern_tests(component_name, component_spec)
+                        .await?,
+                );
             }
             TestGenerationStrategy::PerformanceBased => {
-                generated_tests.extend(self.generate_performance_tests(component_name, component_spec).await?);
+                generated_tests.extend(
+                    self.generate_performance_tests(component_name, component_spec)
+                        .await?,
+                );
             }
             TestGenerationStrategy::Custom { prompts } => {
-                generated_tests.extend(self.generate_custom_tests(component_name, component_spec, prompts).await?);
+                generated_tests.extend(
+                    self.generate_custom_tests(component_name, component_spec, prompts)
+                        .await?,
+                );
             }
         }
 
         // Add edge cases if enabled
         if self.config.include_edge_cases {
-            generated_tests.extend(self.generate_edge_case_tests(component_name, component_spec).await?);
+            generated_tests.extend(
+                self.generate_edge_case_tests(component_name, component_spec)
+                    .await?,
+            );
         }
 
         // Add negative tests if enabled
         if self.config.include_negative_tests {
-            generated_tests.extend(self.generate_negative_tests(component_name, component_spec).await?);
+            generated_tests.extend(
+                self.generate_negative_tests(component_name, component_spec)
+                    .await?,
+            );
         }
 
         // Limit to max test cases
@@ -249,7 +280,7 @@ impl AITestGeneratorPlugin {
         for test in &generated_tests {
             let category_name = format!("{:?}", test.category);
             *metrics.tests_by_category.entry(category_name).or_insert(0) += 1;
-            
+
             match test.category {
                 TestCategory::EdgeCase => metrics.edge_cases_generated += 1,
                 TestCategory::Negative => metrics.negative_tests_generated += 1,
@@ -261,14 +292,22 @@ impl AITestGeneratorPlugin {
         let mut tests = self.generated_tests.write().await;
         tests.extend(generated_tests.clone());
 
-        println!("✅ AI Test Generator: Generated {} tests for '{}' in {}ms", 
-            generated_tests.len(), component_name, generation_time);
+        println!(
+            "✅ AI Test Generator: Generated {} tests for '{}' in {}ms",
+            generated_tests.len(),
+            component_name,
+            generation_time
+        );
 
         Ok(generated_tests)
     }
 
     /// Generate tests based on code analysis
-    async fn generate_code_analysis_tests(&self, component_name: &str, _spec: &str) -> Result<Vec<GeneratedTestCase>> {
+    async fn generate_code_analysis_tests(
+        &self,
+        component_name: &str,
+        _spec: &str,
+    ) -> Result<Vec<GeneratedTestCase>> {
         // Simulate AI-powered code analysis
         let tests = vec![
             GeneratedTestCase {
@@ -296,14 +335,12 @@ impl AITestGeneratorPlugin {
             GeneratedTestCase {
                 name: format!("{}_input_validation", component_name),
                 description: format!("Test input validation for {}", component_name),
-                steps: vec![
-                    TestStep {
-                        description: "Test with invalid input".to_string(),
-                        action: format!("call {} with null input", component_name),
-                        expected_result: "Validation error thrown".to_string(),
-                        validation: "Error message contains validation details".to_string(),
-                    },
-                ],
+                steps: vec![TestStep {
+                    description: "Test with invalid input".to_string(),
+                    action: format!("call {} with null input", component_name),
+                    expected_result: "Validation error thrown".to_string(),
+                    validation: "Error message contains validation details".to_string(),
+                }],
                 expected_outcome: "Input validation works correctly".to_string(),
                 category: TestCategory::Negative,
                 priority: TestPriority::Medium,
@@ -315,123 +352,128 @@ impl AITestGeneratorPlugin {
     }
 
     /// Generate API tests
-    async fn generate_api_tests(&self, component_name: &str, _spec: &str) -> Result<Vec<GeneratedTestCase>> {
-        let tests = vec![
-            GeneratedTestCase {
-                name: format!("{}_api_get_request", component_name),
-                description: format!("Test GET request to {} API", component_name),
-                steps: vec![
-                    TestStep {
-                        description: "Send GET request".to_string(),
-                        action: format!("GET /api/{}", component_name.to_lowercase()),
-                        expected_result: "200 OK response".to_string(),
-                        validation: "Response contains expected data".to_string(),
-                    },
-                ],
-                expected_outcome: "API responds correctly".to_string(),
-                category: TestCategory::Integration,
-                priority: TestPriority::High,
-                estimated_time_ms: 2000,
-            },
-        ];
+    async fn generate_api_tests(
+        &self,
+        component_name: &str,
+        _spec: &str,
+    ) -> Result<Vec<GeneratedTestCase>> {
+        let tests = vec![GeneratedTestCase {
+            name: format!("{}_api_get_request", component_name),
+            description: format!("Test GET request to {} API", component_name),
+            steps: vec![TestStep {
+                description: "Send GET request".to_string(),
+                action: format!("GET /api/{}", component_name.to_lowercase()),
+                expected_result: "200 OK response".to_string(),
+                validation: "Response contains expected data".to_string(),
+            }],
+            expected_outcome: "API responds correctly".to_string(),
+            category: TestCategory::Integration,
+            priority: TestPriority::High,
+            estimated_time_ms: 2000,
+        }];
 
         Ok(tests)
     }
 
     /// Generate user story tests
-    async fn generate_user_story_tests(&self, component_name: &str, _spec: &str) -> Result<Vec<GeneratedTestCase>> {
-        let tests = vec![
-            GeneratedTestCase {
-                name: format!("{}_user_journey", component_name),
-                description: format!("Test complete user journey for {}", component_name),
-                steps: vec![
-                    TestStep {
-                        description: "User starts interaction".to_string(),
-                        action: format!("user opens {} interface", component_name),
-                        expected_result: "Interface loads successfully".to_string(),
-                        validation: "All UI elements are visible".to_string(),
-                    },
-                    TestStep {
-                        description: "User completes action".to_string(),
-                        action: format!("user performs main action in {}", component_name),
-                        expected_result: "Action completed successfully".to_string(),
-                        validation: "User sees success message".to_string(),
-                    },
-                ],
-                expected_outcome: "User journey completes successfully".to_string(),
-                category: TestCategory::Functional,
-                priority: TestPriority::Critical,
-                estimated_time_ms: 5000,
-            },
-        ];
+    async fn generate_user_story_tests(
+        &self,
+        component_name: &str,
+        _spec: &str,
+    ) -> Result<Vec<GeneratedTestCase>> {
+        let tests = vec![GeneratedTestCase {
+            name: format!("{}_user_journey", component_name),
+            description: format!("Test complete user journey for {}", component_name),
+            steps: vec![
+                TestStep {
+                    description: "User starts interaction".to_string(),
+                    action: format!("user opens {} interface", component_name),
+                    expected_result: "Interface loads successfully".to_string(),
+                    validation: "All UI elements are visible".to_string(),
+                },
+                TestStep {
+                    description: "User completes action".to_string(),
+                    action: format!("user performs main action in {}", component_name),
+                    expected_result: "Action completed successfully".to_string(),
+                    validation: "User sees success message".to_string(),
+                },
+            ],
+            expected_outcome: "User journey completes successfully".to_string(),
+            category: TestCategory::Functional,
+            priority: TestPriority::Critical,
+            estimated_time_ms: 5000,
+        }];
 
         Ok(tests)
     }
 
     /// Generate error pattern tests
-    async fn generate_error_pattern_tests(&self, component_name: &str, _spec: &str) -> Result<Vec<GeneratedTestCase>> {
-        let tests = vec![
-            GeneratedTestCase {
-                name: format!("{}_network_timeout", component_name),
-                description: format!("Test {} behavior during network timeout", component_name),
-                steps: vec![
-                    TestStep {
-                        description: "Simulate network timeout".to_string(),
-                        action: format!("inject network delay in {}", component_name),
-                        expected_result: "Timeout error handled gracefully".to_string(),
-                        validation: "Error message is user-friendly".to_string(),
-                    },
-                ],
-                expected_outcome: "Component handles network errors properly".to_string(),
-                category: TestCategory::Negative,
-                priority: TestPriority::High,
-                estimated_time_ms: 3000,
-            },
-        ];
+    async fn generate_error_pattern_tests(
+        &self,
+        component_name: &str,
+        _spec: &str,
+    ) -> Result<Vec<GeneratedTestCase>> {
+        let tests = vec![GeneratedTestCase {
+            name: format!("{}_network_timeout", component_name),
+            description: format!("Test {} behavior during network timeout", component_name),
+            steps: vec![TestStep {
+                description: "Simulate network timeout".to_string(),
+                action: format!("inject network delay in {}", component_name),
+                expected_result: "Timeout error handled gracefully".to_string(),
+                validation: "Error message is user-friendly".to_string(),
+            }],
+            expected_outcome: "Component handles network errors properly".to_string(),
+            category: TestCategory::Negative,
+            priority: TestPriority::High,
+            estimated_time_ms: 3000,
+        }];
 
         Ok(tests)
     }
 
     /// Generate performance tests
-    async fn generate_performance_tests(&self, component_name: &str, _spec: &str) -> Result<Vec<GeneratedTestCase>> {
-        let tests = vec![
-            GeneratedTestCase {
-                name: format!("{}_load_test", component_name),
-                description: format!("Test {} under high load", component_name),
-                steps: vec![
-                    TestStep {
-                        description: "Apply high load".to_string(),
-                        action: format!("send 1000 requests to {}", component_name),
-                        expected_result: "All requests processed within SLA".to_string(),
-                        validation: "Response time < 100ms".to_string(),
-                    },
-                ],
-                expected_outcome: "Component performs well under load".to_string(),
-                category: TestCategory::Performance,
-                priority: TestPriority::High,
-                estimated_time_ms: 10000,
-            },
-        ];
+    async fn generate_performance_tests(
+        &self,
+        component_name: &str,
+        _spec: &str,
+    ) -> Result<Vec<GeneratedTestCase>> {
+        let tests = vec![GeneratedTestCase {
+            name: format!("{}_load_test", component_name),
+            description: format!("Test {} under high load", component_name),
+            steps: vec![TestStep {
+                description: "Apply high load".to_string(),
+                action: format!("send 1000 requests to {}", component_name),
+                expected_result: "All requests processed within SLA".to_string(),
+                validation: "Response time < 100ms".to_string(),
+            }],
+            expected_outcome: "Component performs well under load".to_string(),
+            category: TestCategory::Performance,
+            priority: TestPriority::High,
+            estimated_time_ms: 10000,
+        }];
 
         Ok(tests)
     }
 
     /// Generate custom tests
-    async fn generate_custom_tests(&self, component_name: &str, _spec: &str, prompts: &[String]) -> Result<Vec<GeneratedTestCase>> {
+    async fn generate_custom_tests(
+        &self,
+        component_name: &str,
+        _spec: &str,
+        prompts: &[String],
+    ) -> Result<Vec<GeneratedTestCase>> {
         let mut tests = Vec::new();
-        
+
         for (i, prompt) in prompts.iter().enumerate() {
             tests.push(GeneratedTestCase {
                 name: format!("{}_custom_test_{}", component_name, i + 1),
                 description: format!("Custom test based on prompt: {}", prompt),
-                steps: vec![
-                    TestStep {
-                        description: "Execute custom test scenario".to_string(),
-                        action: format!("execute scenario: {}", prompt),
-                        expected_result: "Scenario completes successfully".to_string(),
-                        validation: "Results match expected behavior".to_string(),
-                    },
-                ],
+                steps: vec![TestStep {
+                    description: "Execute custom test scenario".to_string(),
+                    action: format!("execute scenario: {}", prompt),
+                    expected_result: "Scenario completes successfully".to_string(),
+                    validation: "Results match expected behavior".to_string(),
+                }],
                 expected_outcome: "Custom test passes".to_string(),
                 category: TestCategory::Functional,
                 priority: TestPriority::Medium,
@@ -443,49 +485,49 @@ impl AITestGeneratorPlugin {
     }
 
     /// Generate edge case tests
-    async fn generate_edge_case_tests(&self, component_name: &str, _spec: &str) -> Result<Vec<GeneratedTestCase>> {
-        let tests = vec![
-            GeneratedTestCase {
-                name: format!("{}_boundary_conditions", component_name),
-                description: format!("Test {} with boundary conditions", component_name),
-                steps: vec![
-                    TestStep {
-                        description: "Test with maximum values".to_string(),
-                        action: format!("call {} with MAX_INT value", component_name),
-                        expected_result: "Component handles large values correctly".to_string(),
-                        validation: "No overflow or underflow occurs".to_string(),
-                    },
-                ],
-                expected_outcome: "Boundary conditions handled properly".to_string(),
-                category: TestCategory::EdgeCase,
-                priority: TestPriority::Medium,
-                estimated_time_ms: 1000,
-            },
-        ];
+    async fn generate_edge_case_tests(
+        &self,
+        component_name: &str,
+        _spec: &str,
+    ) -> Result<Vec<GeneratedTestCase>> {
+        let tests = vec![GeneratedTestCase {
+            name: format!("{}_boundary_conditions", component_name),
+            description: format!("Test {} with boundary conditions", component_name),
+            steps: vec![TestStep {
+                description: "Test with maximum values".to_string(),
+                action: format!("call {} with MAX_INT value", component_name),
+                expected_result: "Component handles large values correctly".to_string(),
+                validation: "No overflow or underflow occurs".to_string(),
+            }],
+            expected_outcome: "Boundary conditions handled properly".to_string(),
+            category: TestCategory::EdgeCase,
+            priority: TestPriority::Medium,
+            estimated_time_ms: 1000,
+        }];
 
         Ok(tests)
     }
 
     /// Generate negative tests
-    async fn generate_negative_tests(&self, component_name: &str, _spec: &str) -> Result<Vec<GeneratedTestCase>> {
-        let tests = vec![
-            GeneratedTestCase {
-                name: format!("{}_malicious_input", component_name),
-                description: format!("Test {} with malicious input", component_name),
-                steps: vec![
-                    TestStep {
-                        description: "Inject malicious payload".to_string(),
-                        action: format!("call {} with SQL injection payload", component_name),
-                        expected_result: "Input sanitized or rejected".to_string(),
-                        validation: "No security breach occurs".to_string(),
-                    },
-                ],
-                expected_outcome: "Component is secure against malicious input".to_string(),
-                category: TestCategory::Security,
-                priority: TestPriority::Critical,
-                estimated_time_ms: 1500,
-            },
-        ];
+    async fn generate_negative_tests(
+        &self,
+        component_name: &str,
+        _spec: &str,
+    ) -> Result<Vec<GeneratedTestCase>> {
+        let tests = vec![GeneratedTestCase {
+            name: format!("{}_malicious_input", component_name),
+            description: format!("Test {} with malicious input", component_name),
+            steps: vec![TestStep {
+                description: "Inject malicious payload".to_string(),
+                action: format!("call {} with SQL injection payload", component_name),
+                expected_result: "Input sanitized or rejected".to_string(),
+                validation: "No security breach occurs".to_string(),
+            }],
+            expected_outcome: "Component is secure against malicious input".to_string(),
+            category: TestCategory::Security,
+            priority: TestPriority::Critical,
+            estimated_time_ms: 1500,
+        }];
 
         Ok(tests)
     }
@@ -509,12 +551,21 @@ impl ServicePlugin for AITestGeneratorPlugin {
     fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
         Box::pin(async move {
             println!("🤖 AI Test Generator: Starting AI-powered test generation service");
-            
+
             let mut metadata = HashMap::new();
             metadata.insert("ai_model".to_string(), self.config.model.clone());
-            metadata.insert("strategy".to_string(), format!("{:?}", self.config.strategy));
-            metadata.insert("coverage_target".to_string(), self.config.coverage_target.to_string());
-            metadata.insert("max_test_cases".to_string(), self.config.max_test_cases.to_string());
+            metadata.insert(
+                "strategy".to_string(),
+                format!("{:?}", self.config.strategy),
+            );
+            metadata.insert(
+                "coverage_target".to_string(),
+                self.config.coverage_target.to_string(),
+            );
+            metadata.insert(
+                "max_test_cases".to_string(),
+                self.config.max_test_cases.to_string(),
+            );
             metadata.insert("service_type".to_string(), "ai_test_generator".to_string());
 
             Ok(ServiceHandle {
@@ -525,7 +576,10 @@ impl ServicePlugin for AITestGeneratorPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             println!("🤖 AI Test Generator: Stopping AI-powered test generation service");
             Ok(())
@@ -564,7 +618,9 @@ mod tests {
     #[tokio::test]
     async fn test_generate_tests_for_component() {
         let plugin = AITestGeneratorPlugin::new("test");
-        let tests = plugin.generate_tests_for_component("UserService", "User management service").await;
+        let tests = plugin
+            .generate_tests_for_component("UserService", "User management service")
+            .await;
         assert!(tests.is_ok());
         assert!(!tests.unwrap().is_empty());
     }

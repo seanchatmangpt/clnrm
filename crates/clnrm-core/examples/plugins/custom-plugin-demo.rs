@@ -6,8 +6,7 @@
 //! Users can copy this code to see how to create custom plugins.
 
 use clnrm_core::{
-    ServicePlugin, ServiceHandle, HealthStatus, CleanroomError,
-    CleanroomEnvironment
+    CleanroomEnvironment, CleanroomError, HealthStatus, ServiceHandle, ServicePlugin,
 };
 use std::collections::HashMap;
 use std::future::Future;
@@ -29,7 +28,9 @@ impl ServicePlugin for PostgresPlugin {
         "postgres"
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
+    fn start(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
         Box::pin(async move {
             println!("🚀 Starting PostgreSQL plugin...");
 
@@ -41,7 +42,10 @@ impl ServicePlugin for PostgresPlugin {
                 service_name: "postgres".to_string(),
                 metadata: {
                     let mut map = HashMap::new();
-                    map.insert("connection_string".to_string(), self.connection_string.clone());
+                    map.insert(
+                        "connection_string".to_string(),
+                        self.connection_string.clone(),
+                    );
                     map.insert("status".to_string(), "running".to_string());
                     map
                 },
@@ -49,7 +53,10 @@ impl ServicePlugin for PostgresPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
         Box::pin(async move {
             println!("⏹️  Stopping PostgreSQL plugin...");
             tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
@@ -80,7 +87,9 @@ impl ServicePlugin for RedisPlugin {
         "redis"
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
+    fn start(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
         Box::pin(async move {
             println!("🚀 Starting Redis plugin...");
 
@@ -101,7 +110,10 @@ impl ServicePlugin for RedisPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
         Box::pin(async move {
             println!("⏹️  Stopping Redis plugin...");
             tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
@@ -134,7 +146,7 @@ async fn main() -> Result<(), CleanroomError> {
     println!("==============================");
 
     let postgres_plugin = Box::new(PostgresPlugin::new(
-        "postgresql://localhost:5432/testdb".to_string()
+        "postgresql://localhost:5432/testdb".to_string(),
     ));
     let redis_plugin = Box::new(RedisPlugin::new("localhost".to_string(), 6379));
 
@@ -152,16 +164,28 @@ async fn main() -> Result<(), CleanroomError> {
     let cache_handle = env.start_service("redis").await?;
 
     println!("✅ Services started successfully");
-    println!("   Database: {} (ID: {})", db_handle.service_name, db_handle.id);
-    println!("   Cache: {} (ID: {})", cache_handle.service_name, cache_handle.id);
+    println!(
+        "   Database: {} (ID: {})",
+        db_handle.service_name, db_handle.id
+    );
+    println!(
+        "   Cache: {} (ID: {})",
+        cache_handle.service_name, cache_handle.id
+    );
 
     // Test 3: Health checks
     println!("\n📋 Test 3: Health Checks");
     println!("========================");
 
     let all_health = env.check_health().await?;
-    let db_health = all_health.get(&db_handle.id).cloned().unwrap_or(HealthStatus::Unknown);
-    let cache_health = all_health.get(&cache_handle.id).cloned().unwrap_or(HealthStatus::Unknown);
+    let db_health = all_health
+        .get(&db_handle.id)
+        .cloned()
+        .unwrap_or(HealthStatus::Unknown);
+    let cache_health = all_health
+        .get(&cache_handle.id)
+        .cloned()
+        .unwrap_or(HealthStatus::Unknown);
 
     println!("✅ Health checks completed");
     println!("   Database health: {:?}", db_health);
@@ -202,8 +226,14 @@ async fn main() -> Result<(), CleanroomError> {
     let cache_handle2 = env.start_service("redis").await?;
 
     println!("✅ Services restarted using same plugins");
-    println!("   Database: {} (ID: {})", db_handle2.service_name, db_handle2.id);
-    println!("   Cache: {} (ID: {})", cache_handle2.service_name, cache_handle2.id);
+    println!(
+        "   Database: {} (ID: {})",
+        db_handle2.service_name, db_handle2.id
+    );
+    println!(
+        "   Cache: {} (ID: {})",
+        cache_handle2.service_name, cache_handle2.id
+    );
 
     // Clean up
     env.stop_service(&db_handle2.id).await?;

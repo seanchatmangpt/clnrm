@@ -1,5 +1,5 @@
 //! Shared utilities for the Cleanroom Testing Framework
-//! 
+//!
 //! This crate contains common types and utilities shared across
 //! the Cleanroom ecosystem.
 
@@ -14,7 +14,7 @@ pub type SharedResult<T> = Result<T, SharedError>;
 pub enum SharedError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
-    
+
     #[error("UUID error: {0}")]
     Uuid(#[from] uuid::Error),
 }

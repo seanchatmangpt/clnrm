@@ -13,7 +13,10 @@ pub mod cli {
     use std::path::PathBuf;
 
     /// Run tests with the specified configuration
-    pub fn run_tests(paths: &[PathBuf], config: &CliConfig) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    pub fn run_tests(
+        paths: &[PathBuf],
+        config: &CliConfig,
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         // For now, just validate that the paths exist and show a message
         for path in paths {
             if !path.exists() {
@@ -40,8 +43,8 @@ pub mod config {
 
 // Re-export commonly used types for convenience
 pub use clnrm_core::{
-    CleanroomError, CleanroomEnvironment, ServicePlugin, ServiceHandle,
-    TestConfig, ScenarioConfig, StepConfig
+    CleanroomEnvironment, CleanroomError, ScenarioConfig, ServiceHandle, ServicePlugin, StepConfig,
+    TestConfig,
 };
 
 // Re-export Result from the error module

@@ -1,0 +1,113 @@
+@startuml Autonomic Hyper-Intelligence Architecture
+
+!define AWSPUML https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v19.0/dist
+!include AWSPUML/AWSCommon.puml
+!include AWSPUML/InternetOfThings/IoTCore.puml
+!include AWSPUML/InternetOfThings/IoTGreengrass.puml
+!include AWSPUML/Database/DynamoDB.puml
+!include AWSPUML/Compute/Lambda.puml
+!include AWSPUML/Analytics/Kinesis.puml
+!include AWSPUML/MachineLearning/SageMaker.puml
+!include AWSPUML/ApplicationIntegration/EventBridge.puml
+
+' Define custom colors and styling
+skinparam backgroundColor #f8f9fa
+skinparam component {
+    BackgroundColor #ffffff
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 11
+    FontColor #333333
+}
+
+skinparam package {
+    BackgroundColor #e3f2fd
+    BorderColor #1976d2
+    BorderThickness 2
+}
+
+skinparam note {
+    BackgroundColor #fff3e0
+    BorderColor #f57c00
+}
+
+' Title and Header
+title "Autonomic Hyper-Intelligence Architecture\nReal AI Integration for Testing Frameworks"
+
+package "External AI Services" as ExternalAI #lightblue {
+
+    component [Ollama AI Server] as Ollama #MachineLearning {
+        description "Real AI Model Processing\nllama3.2:3b Model"
+    }
+
+    component [SurrealDB] as SurrealDB #Database {
+        description "Persistent Data Storage\nACID Transactions\nSchema Management"
+    }
+}
+
+package "Cleanroom Framework" as Framework #lightgreen {
+
+    component [CLI Interface] as CLI #IoTCore {
+        description "Command Line Interface\nUser Interaction Layer"
+    }
+
+    package "AI Intelligence Service" as AIService #lightyellow {
+        component [Service Orchestrator] as Orchestrator #IoTGreengrass {
+            description "Coordinates all AI services\nManages service lifecycle"
+        }
+
+        component [Data Ingestion] as Ingestion #Kinesis {
+            description "Collects test execution data\nReal-time data streaming"
+        }
+
+        component [AI Processing Engine] as AIProcessing #SageMaker {
+            description "Processes AI queries\nGenerates insights\nPattern recognition"
+        }
+
+        component [Persistent Storage] as Storage #DynamoDB {
+            description "Stores historical data\nLearning from patterns"
+        }
+    }
+
+    package "AI Commands" as Commands #lightcyan {
+
+        component [AI Orchestrate] as Orchestrate #EventBridge {
+            description "Intelligent test orchestration\nPredictive failure analysis\nAutonomous optimization"
+        }
+
+        component [AI Predict] as Predict #Lambda {
+            description "Predictive analytics\nFailure prediction\nTrend analysis"
+        }
+
+        component [AI Optimize] as Optimize #Lambda {
+            description "Resource optimization\nExecution order optimization\nParallel strategies"
+        }
+    }
+}
+
+' Define relationships and data flow
+CLI --> Orchestrate : User commands
+Orchestrate --> Predict : Predictive analysis
+Orchestrate --> Optimize : Optimization strategies
+Predict --> AIProcessing : AI queries
+Optimize --> AIProcessing : AI recommendations
+
+AIProcessing --> Ollama : Real AI model calls
+Storage --> SurrealDB : Data persistence
+Ingestion --> Storage : Test execution data
+Ingestion --> AIProcessing : Pattern analysis
+
+' Service integration
+Orchestrator --> AIService : Service management
+AIService --> ExternalAI : Real AI integration
+
+' Data flow arrows
+note right of CLI : User runs:\nclnrm ai-orchestrate \\\n--predict-failures \\\n--auto-optimize
+
+note right of Orchestrate : 1. Test Discovery\n2. AI Analysis\n3. Failure Prediction\n4. Optimization\n5. Execution\n6. Results Analysis
+
+note right of AIProcessing : Real AI Processing:\n• Pattern Recognition\n• Predictive Analytics\n• Optimization Strategies\n• Insight Generation
+
+note bottom of Storage : Persistent Learning:\n• Historical Data Storage\n• Pattern Evolution\n• Continuous Improvement\n• Knowledge Accumulation
+
+@enduml

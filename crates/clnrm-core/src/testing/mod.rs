@@ -7,9 +7,9 @@
 pub mod property_generators;
 
 // Re-export framework test types and functions for CLI commands
-use crate::cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, HealthStatus};
-use crate::backend::{Backend, TestcontainerBackend, Cmd};
-use crate::cli::{validate_config, list_plugins};
+use crate::backend::{Backend, Cmd, TestcontainerBackend};
+use crate::cleanroom::{CleanroomEnvironment, HealthStatus, ServiceHandle, ServicePlugin};
+use crate::cli::{list_plugins, validate_config};
 use crate::error::{CleanroomError, Result};
 use crate::policy::{Policy, SecurityLevel};
 use std::collections::HashMap;

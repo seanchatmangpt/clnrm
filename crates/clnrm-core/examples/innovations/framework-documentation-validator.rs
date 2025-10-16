@@ -92,83 +92,93 @@ impl DocumentationValidator {
         let mut frameworks = HashMap::new();
 
         // Define frameworks to validate (including Cleanroom itself!)
-        frameworks.insert("cleanroom".to_string(), FrameworkDocumentation {
-            name: "Cleanroom".to_string(),
-            version: "0.3.0".to_string(),
-            documentation_url: "https://github.com/cleanroom-testing/clnrm".to_string(),
-            claims: vec![
-                DocumentationClaim {
-                    claim_text: "Framework provides hermetic isolation for tests".to_string(),
-                    claim_type: ClaimType::Feature,
-                    verification_method: VerificationMethod::CodeExecution,
-                    verified: true, // We know this works!
-                    evidence: Some("examples/framework-self-testing/hermetic-isolation-test.toml".to_string()),
-                    severity: ClaimSeverity::Critical,
-                },
-                DocumentationClaim {
-                    claim_text: "10-50x performance improvement through container reuse".to_string(),
-                    claim_type: ClaimType::Performance,
-                    verification_method: VerificationMethod::PerformanceBenchmark,
-                    verified: true,
-                    evidence: Some("examples/performance/container-reuse-benchmark.rs".to_string()),
-                    severity: ClaimSeverity::High,
-                },
-                DocumentationClaim {
-                    claim_text: "Plugin-based architecture for extensibility".to_string(),
-                    claim_type: ClaimType::Feature,
-                    verification_method: VerificationMethod::CodeExecution,
-                    verified: true,
-                    evidence: Some("examples/framework-self-testing/plugin-system-test.rs".to_string()),
-                    severity: ClaimSeverity::High,
-                },
-            ],
-            examples: vec![
-                CodeExample {
+        frameworks.insert(
+            "cleanroom".to_string(),
+            FrameworkDocumentation {
+                name: "Cleanroom".to_string(),
+                version: "0.3.0".to_string(),
+                documentation_url: "https://github.com/cleanroom-testing/clnrm".to_string(),
+                claims: vec![
+                    DocumentationClaim {
+                        claim_text: "Framework provides hermetic isolation for tests".to_string(),
+                        claim_type: ClaimType::Feature,
+                        verification_method: VerificationMethod::CodeExecution,
+                        verified: true, // We know this works!
+                        evidence: Some(
+                            "examples/framework-self-testing/hermetic-isolation-test.toml"
+                                .to_string(),
+                        ),
+                        severity: ClaimSeverity::Critical,
+                    },
+                    DocumentationClaim {
+                        claim_text: "10-50x performance improvement through container reuse"
+                            .to_string(),
+                        claim_type: ClaimType::Performance,
+                        verification_method: VerificationMethod::PerformanceBenchmark,
+                        verified: true,
+                        evidence: Some(
+                            "examples/performance/container-reuse-benchmark.rs".to_string(),
+                        ),
+                        severity: ClaimSeverity::High,
+                    },
+                    DocumentationClaim {
+                        claim_text: "Plugin-based architecture for extensibility".to_string(),
+                        claim_type: ClaimType::Feature,
+                        verification_method: VerificationMethod::CodeExecution,
+                        verified: true,
+                        evidence: Some(
+                            "examples/framework-self-testing/plugin-system-test.rs".to_string(),
+                        ),
+                        severity: ClaimSeverity::High,
+                    },
+                ],
+                examples: vec![CodeExample {
                     filename: "simple_test.rs".to_string(),
                     language: "rust".to_string(),
                     content: "// Example content...".to_string(),
                     claims_validated: vec!["hermetic_isolation".to_string()],
                     execution_successful: true,
                     execution_output: Some("Framework isolation test passed".to_string()),
-                },
-            ],
-            score: 95.0, // High score because we validate our own claims!
-        });
+                }],
+                score: 95.0, // High score because we validate our own claims!
+            },
+        );
 
-        frameworks.insert("pytest".to_string(), FrameworkDocumentation {
-            name: "pytest".to_string(),
-            version: "7.4.0".to_string(),
-            documentation_url: "https://pytest.org".to_string(),
-            claims: vec![
-                DocumentationClaim {
-                    claim_text: "Easy to use testing framework for Python".to_string(),
-                    claim_type: ClaimType::Usability,
-                    verification_method: VerificationMethod::InstallationTest,
-                    verified: false, // We can't actually verify pytest claims
-                    evidence: None,
-                    severity: ClaimSeverity::Medium,
-                },
-                DocumentationClaim {
-                    claim_text: "Supports fixtures and plugins".to_string(),
-                    claim_type: ClaimType::Feature,
-                    verification_method: VerificationMethod::CodeExecution,
-                    verified: false,
-                    evidence: None,
-                    severity: ClaimSeverity::Medium,
-                },
-            ],
-            examples: vec![
-                CodeExample {
+        frameworks.insert(
+            "pytest".to_string(),
+            FrameworkDocumentation {
+                name: "pytest".to_string(),
+                version: "7.4.0".to_string(),
+                documentation_url: "https://pytest.org".to_string(),
+                claims: vec![
+                    DocumentationClaim {
+                        claim_text: "Easy to use testing framework for Python".to_string(),
+                        claim_type: ClaimType::Usability,
+                        verification_method: VerificationMethod::InstallationTest,
+                        verified: false, // We can't actually verify pytest claims
+                        evidence: None,
+                        severity: ClaimSeverity::Medium,
+                    },
+                    DocumentationClaim {
+                        claim_text: "Supports fixtures and plugins".to_string(),
+                        claim_type: ClaimType::Feature,
+                        verification_method: VerificationMethod::CodeExecution,
+                        verified: false,
+                        evidence: None,
+                        severity: ClaimSeverity::Medium,
+                    },
+                ],
+                examples: vec![CodeExample {
                     filename: "test_example.py".to_string(),
                     language: "python".to_string(),
                     content: "def test_something(): assert True".to_string(),
                     claims_validated: vec!["easy_to_use".to_string()],
                     execution_successful: false, // Can't execute Python from Rust easily
                     execution_output: None,
-                },
-            ],
-            score: 45.0, // Lower score because we can't verify most claims
-        });
+                }],
+                score: 45.0, // Lower score because we can't verify most claims
+            },
+        );
 
         Self {
             cleanroom_env: env,
@@ -177,12 +187,16 @@ impl DocumentationValidator {
         }
     }
 
-    async fn validate_framework_documentation(&mut self, framework_name: &str) -> Result<f64, CleanroomError> {
+    async fn validate_framework_documentation(
+        &mut self,
+        framework_name: &str,
+    ) -> Result<f64, CleanroomError> {
         println!("\n📚 VALIDATING DOCUMENTATION: {}", framework_name);
         println!("================================");
 
-        let framework = self.frameworks.get_mut(framework_name)
-            .ok_or_else(|| CleanroomError::internal_error(format!("Framework '{}' not found", framework_name)))?;
+        let framework = self.frameworks.get_mut(framework_name).ok_or_else(|| {
+            CleanroomError::internal_error(format!("Framework '{}' not found", framework_name))
+        })?;
 
         let mut total_score = 0.0;
         let mut validated_claims = 0;
@@ -214,14 +228,22 @@ impl DocumentationValidator {
         framework.score = total_score;
 
         println!("\n📊 Validation Summary for {}:", framework_name);
-        println!("   Claims Validated: {}/{}", validated_claims, framework.claims.len());
+        println!(
+            "   Claims Validated: {}/{}",
+            validated_claims,
+            framework.claims.len()
+        );
         println!("   Examples Score: {:.1}/10", example_score);
         println!("   Overall Score: {:.1}/100", framework.score);
 
         Ok(framework.score)
     }
 
-    async fn validate_single_claim(&self, framework_name: &str, claim: &DocumentationClaim) -> Result<ValidationResult, CleanroomError> {
+    async fn validate_single_claim(
+        &self,
+        framework_name: &str,
+        claim: &DocumentationClaim,
+    ) -> Result<ValidationResult, CleanroomError> {
         let mut evidence_found = None;
         let mut verification_successful = false;
         let mut recommendations = Vec::new();
@@ -229,9 +251,15 @@ impl DocumentationValidator {
         match claim.verification_method {
             VerificationMethod::CodeExecution => {
                 // Use Cleanroom to execute code that validates the claim
-                let execution_result = self.cleanroom_env.execute_test("claim_validation", || {
-                    Ok::<String, CleanroomError>(format!("Validating claim for {}", framework_name))
-                }).await?;
+                let execution_result = self
+                    .cleanroom_env
+                    .execute_test("claim_validation", || {
+                        Ok::<String, CleanroomError>(format!(
+                            "Validating claim for {}",
+                            framework_name
+                        ))
+                    })
+                    .await?;
 
                 verification_successful = true;
                 evidence_found = Some(execution_result);
@@ -285,7 +313,10 @@ impl DocumentationValidator {
         })
     }
 
-    async fn validate_code_examples(&mut self, framework_name: &str) -> Result<f64, CleanroomError> {
+    async fn validate_code_examples(
+        &mut self,
+        framework_name: &str,
+    ) -> Result<f64, CleanroomError> {
         let framework = self.frameworks.get_mut(framework_name).unwrap();
         let mut example_score = 0.0;
 
@@ -312,7 +343,11 @@ impl DocumentationValidator {
 
             // Validate claims referenced by this example
             for claim_ref in &example.claims_validated {
-                if framework.claims.iter().any(|c| c.claim_text.contains(claim_ref)) {
+                if framework
+                    .claims
+                    .iter()
+                    .any(|c| c.claim_text.contains(claim_ref))
+                {
                     example_score += 3.0;
                     println!("     ✅ Referenced claim validated");
                 }
@@ -346,13 +381,26 @@ impl DocumentationValidator {
         report.push_str("Generated by Cleanroom Documentation Validator\n\n");
 
         for (framework_name, framework) in &self.frameworks {
-            report.push_str(&format!("## {} v{} - Documentation Analysis\n", framework.name, framework.version));
-            report.push_str(&format!("- **Documentation URL**: {}\n", framework.documentation_url));
-            report.push_str(&format!("- **Overall Score**: {:.1}/100\n", framework.score));
+            report.push_str(&format!(
+                "## {} v{} - Documentation Analysis\n",
+                framework.name, framework.version
+            ));
+            report.push_str(&format!(
+                "- **Documentation URL**: {}\n",
+                framework.documentation_url
+            ));
+            report.push_str(&format!(
+                "- **Overall Score**: {:.1}/100\n",
+                framework.score
+            ));
             report.push_str("- **Claims Analysis**:\n");
 
             let verified_claims = framework.claims.iter().filter(|c| c.verified).count();
-            report.push_str(&format!("  - Verified Claims: {}/{}\n", verified_claims, framework.claims.len()));
+            report.push_str(&format!(
+                "  - Verified Claims: {}/{}\n",
+                verified_claims,
+                framework.claims.len()
+            ));
 
             for claim in &framework.claims {
                 let status = if claim.verified { "✅" } else { "❌" };
@@ -363,14 +411,21 @@ impl DocumentationValidator {
                 }
             }
 
-            report.push_str(&format!("- **Examples Score**: {:.1}/10\n", framework.examples.len() as f64 * 2.0));
+            report.push_str(&format!(
+                "- **Examples Score**: {:.1}/10\n",
+                framework.examples.len() as f64 * 2.0
+            ));
             report.push_str("\n");
         }
 
         // Add comparative analysis
         report.push_str("## Comparative Framework Analysis\n\n");
-        report.push_str("| Framework | Score | Verified Claims | Key Strengths | Areas for Improvement |\n");
-        report.push_str("|-----------|-------|-----------------|---------------|----------------------|\n");
+        report.push_str(
+            "| Framework | Score | Verified Claims | Key Strengths | Areas for Improvement |\n",
+        );
+        report.push_str(
+            "|-----------|-------|-----------------|---------------|----------------------|\n",
+        );
 
         for (name, framework) in &self.frameworks {
             let strengths = match name.as_str() {
@@ -385,7 +440,8 @@ impl DocumentationValidator {
                 _ => "Needs better evidence for claims",
             };
 
-            report.push_str(&format!("| {} | {:.1}/100 | {}/{} | {} | {} |\n",
+            report.push_str(&format!(
+                "| {} | {:.1}/100 | {}/{} | {} | {} |\n",
                 framework.name,
                 framework.score,
                 framework.claims.iter().filter(|c| c.verified).count(),
@@ -396,10 +452,18 @@ impl DocumentationValidator {
         }
 
         report.push_str("\n## Key Insights\n\n");
-        report.push_str("1. **Cleanroom Advantage**: Highest score due to comprehensive self-validation\n");
-        report.push_str("2. **Documentation Quality Gap**: Many frameworks lack verifiable evidence\n");
-        report.push_str("3. **Copy-Paste Revolution**: Cleanroom's approach is unique and valuable\n");
-        report.push_str("4. **Meta-Validation**: Framework can validate other frameworks' documentation\n");
+        report.push_str(
+            "1. **Cleanroom Advantage**: Highest score due to comprehensive self-validation\n",
+        );
+        report.push_str(
+            "2. **Documentation Quality Gap**: Many frameworks lack verifiable evidence\n",
+        );
+        report.push_str(
+            "3. **Copy-Paste Revolution**: Cleanroom's approach is unique and valuable\n",
+        );
+        report.push_str(
+            "4. **Meta-Validation**: Framework can validate other frameworks' documentation\n",
+        );
 
         report.push_str("\n## Recommendations\n\n");
         report.push_str("**For Framework Authors:**\n");
@@ -425,7 +489,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("This represents the ultimate in framework accountability and transparency.\n");
 
     let env = CleanroomEnvironment::new().await?;
-    println!("✅ Created documentation validation environment: {}", env.session_id());
+    println!(
+        "✅ Created documentation validation environment: {}",
+        env.session_id()
+    );
 
     let mut validator = DocumentationValidator::new(env);
 
@@ -433,7 +500,9 @@ async fn main() -> Result<(), CleanroomError> {
     let frameworks_to_validate = vec!["cleanroom", "pytest"];
 
     for framework in frameworks_to_validate {
-        let score = validator.validate_framework_documentation(framework).await?;
+        let score = validator
+            .validate_framework_documentation(framework)
+            .await?;
         println!("\n📊 {} documentation score: {:.1}/100", framework, score);
     }
 
@@ -444,10 +513,12 @@ async fn main() -> Result<(), CleanroomError> {
     println!("=====================");
 
     for (framework_name, framework) in &validator.frameworks {
-        println!("{}: {:.1}/100 ({} verified claims)",
-                 framework_name,
-                 framework.score,
-                 framework.claims.iter().filter(|c| c.verified).count());
+        println!(
+            "{}: {:.1}/100 ({} verified claims)",
+            framework_name,
+            framework.score,
+            framework.claims.iter().filter(|c| c.verified).count()
+        );
     }
 
     // Save detailed report

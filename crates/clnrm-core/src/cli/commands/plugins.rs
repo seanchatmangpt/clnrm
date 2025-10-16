@@ -18,7 +18,7 @@ pub fn list_plugins() -> Result<()> {
     println!("✅ ollama (local AI model integration)");
     println!("✅ vllm (high-performance LLM inference)");
     println!("✅ tgi (Hugging Face text generation inference)");
-    
+
     // List revolutionary plugins
     println!("\n🚀 Revolutionary Plugins:");
     println!("🎭 chaos_engine (controlled failure injection, network partitions)");
@@ -57,10 +57,10 @@ mod tests {
     fn test_list_plugins_succeeds() -> Result<()> {
         // Act
         let result = list_plugins();
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 
@@ -68,10 +68,10 @@ mod tests {
     fn test_list_plugins_returns_success() -> Result<()> {
         // Act
         let result = list_plugins();
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 
@@ -79,10 +79,10 @@ mod tests {
     fn test_list_plugins_completes_without_error() -> Result<()> {
         // Act
         let result = list_plugins();
-        
+
         // Assert
         assert!(result.is_ok());
-        
+
         Ok(())
     }
 }

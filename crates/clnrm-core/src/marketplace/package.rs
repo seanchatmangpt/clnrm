@@ -4,7 +4,7 @@
 //! and package lifecycle management.
 
 use crate::error::{CleanroomError, Result};
-use crate::marketplace::{MarketplaceConfig, metadata::*};
+use crate::marketplace::{metadata::*, MarketplaceConfig};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
@@ -51,8 +51,9 @@ impl PluginInstaller {
 
         // Create installation directory
         let install_path = self.config.install_dir.join(&metadata.name);
-        fs::create_dir_all(&install_path)
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create install directory: {}", e)))?;
+        fs::create_dir_all(&install_path).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create install directory: {}", e))
+        })?;
 
         // Download and extract plugin package
         self.download_plugin(metadata, &install_path).await?;
@@ -60,7 +61,11 @@ impl PluginInstaller {
         // Validate installation
         self.validate_installation(&install_path, metadata)?;
 
-        tracing::info!("Plugin '{}' installed successfully at {:?}", metadata.name, install_path);
+        tracing::info!(
+            "Plugin '{}' installed successfully at {:?}",
+            metadata.name,
+            install_path
+        );
 
         Ok(metadata.clone())
     }
@@ -83,8 +88,12 @@ impl PluginInstaller {
         let backup_path = install_path.with_extension("backup");
 
         if install_path.exists() {
-            fs::rename(&install_path, &backup_path)
-                .map_err(|e| CleanroomError::internal_error(format!("Failed to backup current installation: {}", e)))?;
+            fs::rename(&install_path, &backup_path).map_err(|e| {
+                CleanroomError::internal_error(format!(
+                    "Failed to backup current installation: {}",
+                    e
+                ))
+            })?;
         }
 
         // Install new version
@@ -117,8 +126,9 @@ impl PluginInstaller {
             )));
         }
 
-        fs::remove_dir_all(&install_path)
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to remove plugin directory: {}", e)))?;
+        fs::remove_dir_all(&install_path).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to remove plugin directory: {}", e))
+        })?;
 
         tracing::info!("Plugin '{}' uninstalled successfully", metadata.name);
 
@@ -172,7 +182,11 @@ impl PluginInstaller {
     }
 
     /// Download plugin package
-    async fn download_plugin(&self, _metadata: &PluginMetadata, _install_path: &PathBuf) -> Result<()> {
+    async fn download_plugin(
+        &self,
+        _metadata: &PluginMetadata,
+        _install_path: &PathBuf,
+    ) -> Result<()> {
         // TODO: Implement actual download from registry
         // For now, create a placeholder file
         tracing::info!("Downloading plugin package (simulated)");
@@ -180,9 +194,15 @@ impl PluginInstaller {
     }
 
     /// Validate plugin installation
-    fn validate_installation(&self, install_path: &PathBuf, _metadata: &PluginMetadata) -> Result<()> {
+    fn validate_installation(
+        &self,
+        install_path: &PathBuf,
+        _metadata: &PluginMetadata,
+    ) -> Result<()> {
         if !install_path.exists() {
-            return Err(CleanroomError::validation_error("Installation directory not found"));
+            return Err(CleanroomError::validation_error(
+                "Installation directory not found",
+            ));
         }
 
         // TODO: Add more validation checks
@@ -201,12 +221,19 @@ impl PluginInstaller {
     }
 
     /// Get plugin dependencies
-    pub async fn get_dependencies(&self, metadata: &PluginMetadata) -> Result<Vec<PluginDependency>> {
+    pub async fn get_dependencies(
+        &self,
+        metadata: &PluginMetadata,
+    ) -> Result<Vec<PluginDependency>> {
         Ok(metadata.dependencies.clone())
     }
 
     /// Check if plugin can be safely removed
-    pub async fn can_remove(&self, _plugin_name: &str, _installed_plugins: &[PluginMetadata]) -> Result<bool> {
+    pub async fn can_remove(
+        &self,
+        _plugin_name: &str,
+        _installed_plugins: &[PluginMetadata],
+    ) -> Result<bool> {
         // TODO: Check if other plugins depend on this one
         Ok(true)
     }
@@ -236,7 +263,10 @@ impl DependencyResolver {
 
     /// Add a dependency relationship
     pub fn add_dependency(&mut self, plugin: String, depends_on: String) {
-        self.graph.entry(plugin).or_insert_with(Vec::new).push(depends_on);
+        self.graph
+            .entry(plugin)
+            .or_insert_with(Vec::new)
+            .push(depends_on);
     }
 
     /// Resolve all dependencies
@@ -296,7 +326,11 @@ mod tests {
     async fn test_installer_creation() -> Result<()> {
         let config = MarketplaceConfig::default();
         let installer = PluginInstaller::new(&config)?;
-        assert!(installer.config.install_dir.to_string_lossy().contains("plugins"));
+        assert!(installer
+            .config
+            .install_dir
+            .to_string_lossy()
+            .contains("plugins"));
         Ok(())
     }
 
@@ -305,13 +339,10 @@ mod tests {
         let config = MarketplaceConfig::default();
         let installer = PluginInstaller::new(&config)?;
 
-        let mut metadata = PluginMetadata::new(
-            "test-plugin",
-            "1.0.0",
-            "Test plugin",
-            "Test"
-        )?;
-        metadata.capabilities.push(standard_capabilities::database_capability());
+        let mut metadata = PluginMetadata::new("test-plugin", "1.0.0", "Test plugin", "Test")?;
+        metadata
+            .capabilities
+            .push(standard_capabilities::database_capability());
 
         let deps = installer.resolve_dependencies(&metadata).await?;
         assert!(deps.contains(&"test-plugin".to_string()));

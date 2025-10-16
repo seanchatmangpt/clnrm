@@ -3,15 +3,15 @@
 //! Provides integration with Ollama AI services for testing AI functionality.
 //! Supports model loading, text generation, and health monitoring.
 
-use crate::cleanroom::{ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
+use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use serde_json::{json, Value};
-use std::future::Future;
-use std::pin::Pin;
 
 /// Ollama AI service plugin configuration
 #[derive(Debug, Clone)]
@@ -46,7 +46,9 @@ impl OllamaPlugin {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(self.config.timeout_seconds))
             .build()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e))
+            })?;
 
         Ok(client)
     }
@@ -56,16 +58,16 @@ impl OllamaPlugin {
         let client = self.init_client().await?;
         let url = format!("{}/api/version", self.config.endpoint);
 
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to connect to Ollama: {}", e)))?;
+        let response = client.get(&url).send().await.map_err(|e| {
+            CleanroomError::service_error(format!("Failed to connect to Ollama: {}", e))
+        })?;
 
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(CleanroomError::service_error("Ollama service not responding"))
+            Err(CleanroomError::service_error(
+                "Ollama service not responding",
+            ))
         }
     }
 
@@ -90,13 +92,14 @@ impl OllamaPlugin {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to generate text: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::service_error(format!("Failed to generate text: {}", e))
+            })?;
 
         if response.status().is_success() {
-            let ollama_response: OllamaResponse = response
-                .json()
-                .await
-                .map_err(|e| CleanroomError::service_error(format!("Failed to parse response: {}", e)))?;
+            let ollama_response: OllamaResponse = response.json().await.map_err(|e| {
+                CleanroomError::service_error(format!("Failed to parse response: {}", e))
+            })?;
 
             Ok(ollama_response)
         } else {
@@ -105,7 +108,10 @@ impl OllamaPlugin {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
 
-            Err(CleanroomError::service_error(format!("Ollama API error: {}", error_text)))
+            Err(CleanroomError::service_error(format!(
+                "Ollama API error: {}",
+                error_text
+            )))
         }
     }
 
@@ -119,21 +125,21 @@ impl OllamaPlugin {
 
         let url = format!("{}/api/tags", self.config.endpoint);
 
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| CleanroomError::service_error(format!("Failed to list models: {}", e)))?;
+        let response =
+            client.get(&url).send().await.map_err(|e| {
+                CleanroomError::service_error(format!("Failed to list models: {}", e))
+            })?;
 
         if response.status().is_success() {
-            let model_list: OllamaModelList = response
-                .json()
-                .await
-                .map_err(|e| CleanroomError::service_error(format!("Failed to parse model list: {}", e)))?;
+            let model_list: OllamaModelList = response.json().await.map_err(|e| {
+                CleanroomError::service_error(format!("Failed to parse model list: {}", e))
+            })?;
 
             Ok(model_list.models)
         } else {
-            Err(CleanroomError::service_error("Failed to retrieve model list"))
+            Err(CleanroomError::service_error(
+                "Failed to retrieve model list",
+            ))
         }
     }
 }
@@ -226,8 +232,14 @@ impl ServicePlugin for OllamaPlugin {
 
             let mut metadata = HashMap::new();
             metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
-            metadata.insert("default_model".to_string(), self.config.default_model.clone());
-            metadata.insert("timeout_seconds".to_string(), self.config.timeout_seconds.to_string());
+            metadata.insert(
+                "default_model".to_string(),
+                self.config.default_model.clone(),
+            );
+            metadata.insert(
+                "timeout_seconds".to_string(),
+                self.config.timeout_seconds.to_string(),
+            );
             metadata.insert("health_status".to_string(), format!("{:?}", health));
 
             Ok(ServiceHandle {
@@ -238,7 +250,10 @@ impl ServicePlugin for OllamaPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             // HTTP-based service, no cleanup needed beyond dropping the client
             Ok(())

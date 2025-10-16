@@ -25,18 +25,22 @@ async fn main() -> Result<(), CleanroomError> {
     let env = CleanroomEnvironment::new().await?;
 
     // Execute a simple test to generate metrics
-    let test_result = env.execute_test("observability_test_1", || {
-        // Create some containers to generate metrics
-        for i in 0..3 {
-            let _container = env.get_or_create_container(&format!("obs-test-{}", i), || {
-                Ok::<String, CleanroomError>(format!("observability-container-{}", i))
-            }).map_err(|e| {
-                println!("Failed to create container: {}", e);
-                e
-            })?;
-        }
-        Ok::<String, CleanroomError>("Observability test completed".to_string())
-    }).await?;
+    let test_result = env
+        .execute_test("observability_test_1", || {
+            // Create some containers to generate metrics
+            for i in 0..3 {
+                let _container = env
+                    .get_or_create_container(&format!("obs-test-{}", i), || {
+                        Ok::<String, CleanroomError>(format!("observability-container-{}", i))
+                    })
+                    .map_err(|e| {
+                        println!("Failed to create container: {}", e);
+                        e
+                    })?;
+            }
+            Ok::<String, CleanroomError>("Observability test completed".to_string())
+        })
+        .await?;
 
     println!("✅ Basic test result: {}", test_result);
 
@@ -58,7 +62,9 @@ async fn main() -> Result<(), CleanroomError> {
         println!("✅ SUCCESS: Observability is collecting metrics correctly");
     } else {
         println!("❌ FAILURE: Observability metrics not working");
-        return Err(CleanroomError::internal_error("Observability validation failed"));
+        return Err(CleanroomError::internal_error(
+            "Observability validation failed",
+        ));
     }
 
     // Test 3: Container Reuse Statistics
@@ -98,7 +104,10 @@ async fn main() -> Result<(), CleanroomError> {
 
     let duration = start.elapsed();
 
-    println!("\n⏱️  Concurrent tests completed in {}ms", duration.as_millis());
+    println!(
+        "\n⏱️  Concurrent tests completed in {}ms",
+        duration.as_millis()
+    );
 
     match (result1, result2, result3) {
         (Ok(msg1), Ok(msg2), Ok(msg3)) => {
@@ -109,7 +118,9 @@ async fn main() -> Result<(), CleanroomError> {
         }
         _ => {
             println!("❌ Some concurrent tests failed");
-            return Err(CleanroomError::internal_error("Concurrent observability test failed"));
+            return Err(CleanroomError::internal_error(
+                "Concurrent observability test failed",
+            ));
         }
     }
 
@@ -123,7 +134,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("   Tests Passed: {}", final_metrics.tests_passed);
     println!("   Tests Failed: {}", final_metrics.tests_failed);
     println!("   Total Duration: {}ms", final_metrics.total_duration_ms);
-    println!("   Containers Created: {}", final_metrics.containers_created);
+    println!(
+        "   Containers Created: {}",
+        final_metrics.containers_created
+    );
     println!("   Containers Reused: {}", final_metrics.containers_reused);
 
     // Test 6: Observability Completeness
@@ -141,7 +155,9 @@ async fn main() -> Result<(), CleanroomError> {
         println!("   - Concurrent execution tracking");
     } else {
         println!("❌ FAILURE: Observability incomplete");
-        return Err(CleanroomError::internal_error("Observability completeness failed"));
+        return Err(CleanroomError::internal_error(
+            "Observability completeness failed",
+        ));
     }
 
     // Test 7: Performance with Observability
@@ -152,32 +168,42 @@ async fn main() -> Result<(), CleanroomError> {
 
     // Execute performance test with observability
     for i in 0..5 {
-        let _result = env.execute_test(&format!("perf_test_{}", i), || {
-            // Simulate some work
-            let _container = env.get_or_create_container(&format!("perf-container-{}", i), || {
-                Ok::<String, CleanroomError>(format!("perf-container-{}", i))
-            }).map_err(|e| {
-                println!("Failed to create container: {}", e);
-                e
-            })?;
+        let _result = env
+            .execute_test(&format!("perf_test_{}", i), || {
+                // Simulate some work
+                let _container = env
+                    .get_or_create_container(&format!("perf-container-{}", i), || {
+                        Ok::<String, CleanroomError>(format!("perf-container-{}", i))
+                    })
+                    .map_err(|e| {
+                        println!("Failed to create container: {}", e);
+                        e
+                    })?;
 
-            // Small delay to simulate real work
-            std::thread::sleep(std::time::Duration::from_millis(10));
+                // Small delay to simulate real work
+                std::thread::sleep(std::time::Duration::from_millis(10));
 
-            Ok::<String, CleanroomError>(format!("Performance test {} completed", i))
-        }).await?;
+                Ok::<String, CleanroomError>(format!("Performance test {} completed", i))
+            })
+            .await?;
     }
 
     let perf_duration = perf_start.elapsed();
-    println!("⏱️  Performance test with observability: {}ms for 5 tests", perf_duration.as_millis());
+    println!(
+        "⏱️  Performance test with observability: {}ms for 5 tests",
+        perf_duration.as_millis()
+    );
 
     let perf_metrics = env.get_metrics().await?;
     println!("📊 Performance test metrics:");
     println!("   Tests Executed: {}", perf_metrics.tests_executed);
-    println!("   Average Test Duration: {:.2}ms",
-             perf_metrics.total_duration_ms as f64 / perf_metrics.tests_executed as f64);
+    println!(
+        "   Average Test Duration: {:.2}ms",
+        perf_metrics.total_duration_ms as f64 / perf_metrics.tests_executed as f64
+    );
 
-    if perf_metrics.tests_executed >= 9 { // Original 4 + 5 more
+    if perf_metrics.tests_executed >= 9 {
+        // Original 4 + 5 more
         println!("✅ SUCCESS: Observability doesn't significantly impact performance");
     } else {
         println!("⚠️  Warning: Observability may be impacting performance");
@@ -196,21 +222,36 @@ async fn main() -> Result<(), CleanroomError> {
 }
 
 /// Helper function to run an observability test
-async fn run_observability_test(env: &CleanroomEnvironment, test_name: &str) -> Result<String, CleanroomError> {
-    let result = env.execute_test(&format!("obs_test_{}", test_name.to_lowercase().replace(" ", "_")), || {
-        // Create a container and do some work
-        let container_id = env.get_or_create_container(&format!("obs-container-{}", test_name), || {
-            Ok::<String, CleanroomError>(format!("{}-observability-container", test_name))
-        })?;
+async fn run_observability_test(
+    env: &CleanroomEnvironment,
+    test_name: &str,
+) -> Result<String, CleanroomError> {
+    let result = env
+        .execute_test(
+            &format!("obs_test_{}", test_name.to_lowercase().replace(" ", "_")),
+            || {
+                // Create a container and do some work
+                let container_id =
+                    env.get_or_create_container(&format!("obs-container-{}", test_name), || {
+                        Ok::<String, CleanroomError>(format!(
+                            "{}-observability-container",
+                            test_name
+                        ))
+                    })?;
 
-        // Verify metrics are being collected
-        let metrics = env.get_metrics();
-        if metrics.tests_executed > 0 {
-            Ok::<String, CleanroomError>(format!("{} observability test completed", test_name))
-        } else {
-            Err(CleanroomError::internal_error("Observability not working"))
-        }
-    }).await?;
+                // Verify metrics are being collected
+                let metrics = env.get_metrics();
+                if metrics.tests_executed > 0 {
+                    Ok::<String, CleanroomError>(format!(
+                        "{} observability test completed",
+                        test_name
+                    ))
+                } else {
+                    Err(CleanroomError::internal_error("Observability not working"))
+                }
+            },
+        )
+        .await?;
 
     Ok(result)
 }

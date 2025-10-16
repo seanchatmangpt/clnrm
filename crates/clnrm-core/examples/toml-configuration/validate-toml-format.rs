@@ -5,8 +5,8 @@
 //!
 //! This is true "eating our own dog food" - using clnrm to test clnrm's TOML parsing.
 
-use clnrm_core::{CleanroomEnvironment};
 use clnrm_core::error::Result;
+use clnrm_core::CleanroomEnvironment;
 use std::fs;
 use std::path::Path;
 
@@ -32,7 +32,7 @@ async fn test_toml_configuration_self_validation() -> Result<()> {
 
     for test_file in &test_files {
         println!("🔍 Validating: {}", test_file.display());
-        
+
         // Use the framework's own TOML parsing to validate its own files
         match validate_toml_file(test_file) {
             Ok(_) => {
@@ -51,7 +51,10 @@ async fn test_toml_configuration_self_validation() -> Result<()> {
     println!("   Invalid files: {}", invalid_files);
 
     // Framework's own TOML files should be valid
-    assert!(invalid_files == 0, "Framework's own TOML files should be valid");
+    assert!(
+        invalid_files == 0,
+        "Framework's own TOML files should be valid"
+    );
 
     // Test 2: Test TOML configuration features (as claimed in README)
     println!("\n📋 Test 2: TOML Configuration Features");
@@ -112,7 +115,8 @@ plugin_should_be_loaded = "alpine"
         }
         Err(e) => {
             return Err(clnrm_core::CleanroomError::validation_error(&format!(
-                "Comprehensive TOML validation failed: {}", e
+                "Comprehensive TOML validation failed: {}",
+                e
             )));
         }
     }
@@ -138,7 +142,7 @@ name = "invalid_toml"
     match validate_toml_file(&Path::new(invalid_toml_path)) {
         Ok(_) => {
             return Err(clnrm_core::CleanroomError::validation_error(
-                "Invalid TOML should not parse successfully"
+                "Invalid TOML should not parse successfully",
             ));
         }
         Err(e) => {
@@ -151,7 +155,10 @@ name = "invalid_toml"
     fs::remove_file(invalid_toml_path)?;
 
     let total_time = start_time.elapsed();
-    println!("\n🎉 SUCCESS: TOML configuration test completed in {:?}", total_time);
+    println!(
+        "\n🎉 SUCCESS: TOML configuration test completed in {:?}",
+        total_time
+    );
     println!("📚 README claims verified:");
     println!("   ✅ TOML configuration parsing works");
     println!("   ✅ Framework's own TOML files are valid");
@@ -187,8 +194,11 @@ max_execution_time = 300
 
     // Parse and execute the TOML configuration
     let config = validate_toml_file(&Path::new(test_toml_path))?;
-    
-    println!("✅ TOML configuration parsed: {}", config.test.metadata.name);
+
+    println!(
+        "✅ TOML configuration parsed: {}",
+        config.test.metadata.name
+    );
     println!("📋 Steps to execute: {}", config.steps.len());
 
     // Execute the scenarios using the framework
@@ -198,12 +208,21 @@ max_execution_time = 300
         println!("🚀 Executing step: {}", step.name);
 
         // Execute the step using the cleanroom environment
-        let execution_result = env.execute_in_container(
-            "test_container",
-            &step.command.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
-        ).await?;
+        let execution_result = env
+            .execute_in_container(
+                "test_container",
+                &step
+                    .command
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>(),
+            )
+            .await?;
 
-        println!("✅ Step '{}' completed with exit code: {}", step.name, execution_result.exit_code);
+        println!(
+            "✅ Step '{}' completed with exit code: {}",
+            step.name, execution_result.exit_code
+        );
     }
 
     // Clean up
@@ -216,14 +235,14 @@ max_execution_time = 300
 /// Find all TOML test files in the framework
 fn find_toml_test_files() -> Result<Vec<std::path::PathBuf>> {
     let mut test_files = Vec::new();
-    
+
     // Look for TOML files in the framework test directories
     let search_paths = [
         "crates/clnrm-core/tests/framework",
         "crates/clnrm-core/examples",
         "examples",
     ];
-    
+
     for search_path in &search_paths {
         if let Ok(entries) = fs::read_dir(search_path) {
             for entry in entries.flatten() {
@@ -236,11 +255,11 @@ fn find_toml_test_files() -> Result<Vec<std::path::PathBuf>> {
             }
         }
     }
-    
+
     // If no files found in framework directories, create some test files
     if test_files.is_empty() {
         println!("📝 No existing TOML files found, creating test files...");
-        
+
         // Create a simple test TOML file
         let simple_toml = r#"
 name = "framework_test"
@@ -251,11 +270,11 @@ steps = [
     { name = "test_step", cmd = ["echo", "framework test"] }
 ]
 "#;
-        
+
         fs::write("framework_test.toml", simple_toml)?;
         test_files.push(std::path::PathBuf::from("framework_test.toml"));
     }
-    
+
     Ok(test_files)
 }
 

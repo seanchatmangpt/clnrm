@@ -5,12 +5,14 @@ use crate::error::CleanroomError;
 
 #[cfg(feature = "otel-traces")]
 use {
-    opentelemetry::{global, KeyValue, propagation::TextMapCompositePropagator, trace::TracerProvider},
+    opentelemetry::{
+        global, propagation::TextMapCompositePropagator, trace::TracerProvider, KeyValue,
+    },
     opentelemetry_sdk::{
+        error::OTelSdkResult,
         propagation::{BaggagePropagator, TraceContextPropagator},
         trace::{Sampler, SdkTracerProvider, SpanExporter},
         Resource,
-        error::OTelSdkResult,
     },
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry},
 };
@@ -18,10 +20,8 @@ use {
 #[cfg(feature = "otel-metrics")]
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 
-
 #[cfg(feature = "otel-traces")]
 use tracing_opentelemetry::OpenTelemetryLayer;
-
 
 /// Export mechanism.
 #[derive(Clone, Debug)]
@@ -70,10 +70,10 @@ impl SpanExporter for SpanExporterType {
 #[derive(Clone, Debug)]
 pub struct OtelConfig {
     pub service_name: &'static str,
-    pub deployment_env: &'static str,             // e.g. "dev" | "prod"
-    pub sample_ratio: f64,                         // 1.0 for always_on
+    pub deployment_env: &'static str, // e.g. "dev" | "prod"
+    pub sample_ratio: f64,            // 1.0 for always_on
     pub export: Export,
-    pub enable_fmt_layer: bool,                    // local pretty logs
+    pub enable_fmt_layer: bool, // local pretty logs
 }
 
 /// Guard flushes providers on drop (happy path).
@@ -147,7 +147,7 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
                     "OTLP HTTP export requires opentelemetry-otlp API compatibility fix. Use stdout export for now."
                 ));
             }
-        },
+        }
         Export::OtlpGrpc { endpoint: _ } => {
             // OTLP gRPC exporter - API compatibility issue with 0.31
             // Fallback to stdout for now, with proper error handling
@@ -162,7 +162,7 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
                     "OTLP gRPC export requires opentelemetry-otlp API compatibility fix. Use stdout export for now."
                 ));
             }
-        },
+        }
         #[cfg(feature = "otel-stdout")]
         Export::Stdout => SpanExporterType::Stdout(opentelemetry_stdout::SpanExporter::default()),
         #[cfg(not(feature = "otel-stdout"))]
@@ -231,10 +231,14 @@ mod tests {
 
     #[test]
     fn test_export_enum_variants() {
-        let http_export = Export::OtlpHttp { endpoint: "http://localhost:4318" };
-        let grpc_export = Export::OtlpGrpc { endpoint: "http://localhost:4317" };
+        let http_export = Export::OtlpHttp {
+            endpoint: "http://localhost:4318",
+        };
+        let grpc_export = Export::OtlpGrpc {
+            endpoint: "http://localhost:4317",
+        };
         let stdout_export = Export::Stdout;
-        
+
         assert!(matches!(http_export, Export::OtlpHttp { .. }));
         assert!(matches!(grpc_export, Export::OtlpGrpc { .. }));
         assert!(matches!(stdout_export, Export::Stdout));
@@ -249,7 +253,7 @@ mod tests {
             export: Export::Stdout,
             enable_fmt_layer: true,
         };
-        
+
         assert_eq!(config.service_name, "test-service");
         assert_eq!(config.deployment_env, "test");
         assert_eq!(config.sample_ratio, 1.0);
@@ -259,8 +263,8 @@ mod tests {
     #[cfg(feature = "otel-traces")]
     #[test]
     fn test_otel_initialization_with_stdout() {
-        use opentelemetry::trace::{Tracer, Span};
-        
+        use opentelemetry::trace::{Span, Tracer};
+
         let config = OtelConfig {
             service_name: "test-service",
             deployment_env: "test",
@@ -268,10 +272,13 @@ mod tests {
             export: Export::Stdout,
             enable_fmt_layer: false, // Disable to avoid test output pollution
         };
-        
+
         let result = init_otel(config);
-        assert!(result.is_ok(), "OTel initialization should succeed with stdout export");
-        
+        assert!(
+            result.is_ok(),
+            "OTel initialization should succeed with stdout export"
+        );
+
         // Test that we can create a span
         let tracer = opentelemetry::global::tracer("test");
         let mut span = tracer.start("test-span");
@@ -285,12 +292,17 @@ mod tests {
             service_name: "test-service",
             deployment_env: "test",
             sample_ratio: 1.0,
-            export: Export::OtlpHttp { endpoint: "http://localhost:4318" },
+            export: Export::OtlpHttp {
+                endpoint: "http://localhost:4318",
+            },
             enable_fmt_layer: false,
         };
-        
+
         let result = init_otel(config);
-        assert!(result.is_ok(), "OTel initialization should succeed with HTTP fallback to stdout");
+        assert!(
+            result.is_ok(),
+            "OTel initialization should succeed with HTTP fallback to stdout"
+        );
     }
 
     #[cfg(feature = "otel-traces")]
@@ -300,12 +312,17 @@ mod tests {
             service_name: "test-service",
             deployment_env: "test",
             sample_ratio: 1.0,
-            export: Export::OtlpGrpc { endpoint: "http://localhost:4317" },
+            export: Export::OtlpGrpc {
+                endpoint: "http://localhost:4317",
+            },
             enable_fmt_layer: false,
         };
-        
+
         let result = init_otel(config);
-        assert!(result.is_ok(), "OTel initialization should succeed with gRPC fallback to stdout");
+        assert!(
+            result.is_ok(),
+            "OTel initialization should succeed with gRPC fallback to stdout"
+        );
     }
 
     #[test]
@@ -318,13 +335,13 @@ mod tests {
             export: Export::Stdout,
             enable_fmt_layer: false,
         };
-        
+
         #[cfg(feature = "otel-traces")]
         {
             let guard = init_otel(config).expect("Should initialize successfully");
             drop(guard); // Should not panic
         }
-        
+
         #[cfg(not(feature = "otel-traces"))]
         {
             // Test passes if we can create the config without the feature
@@ -332,17 +349,18 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_otel_config_clone() {
         let config = OtelConfig {
             service_name: "test-service",
             deployment_env: "test",
             sample_ratio: 0.5,
-            export: Export::OtlpHttp { endpoint: "http://localhost:4318" },
+            export: Export::OtlpHttp {
+                endpoint: "http://localhost:4318",
+            },
             enable_fmt_layer: false,
         };
-        
+
         let cloned = config.clone();
         assert_eq!(cloned.service_name, config.service_name);
         assert_eq!(cloned.sample_ratio, config.sample_ratio);
@@ -356,23 +374,27 @@ mod tests {
     #[test]
     fn test_sample_ratios() {
         let ratios = vec![0.0, 0.1, 0.5, 1.0];
-        
+
         for ratio in ratios {
             let config = OtelConfig {
                 service_name: "test-service",
                 deployment_env: "test",
                 sample_ratio: ratio,
-                export: Export::OtlpHttp { endpoint: "http://localhost:4318" },
+                export: Export::OtlpHttp {
+                    endpoint: "http://localhost:4318",
+                },
                 enable_fmt_layer: false,
             };
-            
+
             assert_eq!(config.sample_ratio, ratio);
         }
     }
 
     #[test]
     fn test_export_debug_format() {
-        let http = Export::OtlpHttp { endpoint: "http://localhost:4318" };
+        let http = Export::OtlpHttp {
+            endpoint: "http://localhost:4318",
+        };
         let debug_str = format!("{:?}", http);
         assert!(debug_str.contains("OtlpHttp"));
         assert!(debug_str.contains("4318"));
@@ -382,25 +404,29 @@ mod tests {
     #[test]
     fn test_deployment_environments() {
         let envs = vec!["dev", "staging", "prod"];
-        
+
         for env in envs {
             let config = OtelConfig {
                 service_name: "test-service",
                 deployment_env: env,
                 sample_ratio: 1.0,
-                export: Export::OtlpHttp { endpoint: "http://localhost:4318" },
+                export: Export::OtlpHttp {
+                    endpoint: "http://localhost:4318",
+                },
                 enable_fmt_layer: true,
             };
-            
+
             assert_eq!(config.deployment_env, env);
         }
     }
 
     #[test]
     fn test_export_clone() {
-        let http_export = Export::OtlpHttp { endpoint: "http://localhost:4318" };
+        let http_export = Export::OtlpHttp {
+            endpoint: "http://localhost:4318",
+        };
         let cloned = http_export.clone();
-        
+
         match cloned {
             Export::OtlpHttp { endpoint } => assert_eq!(endpoint, "http://localhost:4318"),
             _ => panic!("Expected OtlpHttp variant"),
@@ -413,10 +439,12 @@ mod tests {
             service_name: "debug-test",
             deployment_env: "debug",
             sample_ratio: 0.75,
-            export: Export::OtlpGrpc { endpoint: "http://localhost:4317" },
+            export: Export::OtlpGrpc {
+                endpoint: "http://localhost:4317",
+            },
             enable_fmt_layer: true,
         };
-        
+
         let debug_str = format!("{:?}", config);
         assert!(debug_str.contains("debug-test"));
         assert!(debug_str.contains("debug"));
@@ -430,26 +458,30 @@ mod tests {
             service_name: "http-service",
             deployment_env: "test",
             sample_ratio: 1.0,
-            export: Export::OtlpHttp { endpoint: "http://localhost:4318" },
+            export: Export::OtlpHttp {
+                endpoint: "http://localhost:4318",
+            },
             enable_fmt_layer: false,
         };
-        
+
         let grpc_config = OtelConfig {
             service_name: "grpc-service",
             deployment_env: "test",
             sample_ratio: 1.0,
-            export: Export::OtlpGrpc { endpoint: "http://localhost:4317" },
+            export: Export::OtlpGrpc {
+                endpoint: "http://localhost:4317",
+            },
             enable_fmt_layer: false,
         };
-        
+
         assert_eq!(http_config.service_name, "http-service");
         assert_eq!(grpc_config.service_name, "grpc-service");
-        
+
         match http_config.export {
             Export::OtlpHttp { endpoint } => assert_eq!(endpoint, "http://localhost:4318"),
             _ => panic!("Expected OtlpHttp variant"),
         }
-        
+
         match grpc_config.export {
             Export::OtlpGrpc { endpoint } => assert_eq!(endpoint, "http://localhost:4317"),
             _ => panic!("Expected OtlpGrpc variant"),

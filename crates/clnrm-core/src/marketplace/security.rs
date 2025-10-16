@@ -145,7 +145,10 @@ impl SecurityValidator {
         // Check description for suspicious content
         for pattern in &self.malicious_patterns {
             if metadata.description.contains(pattern) {
-                validation.add_warning(format!("Suspicious pattern found in description: {}", pattern));
+                validation.add_warning(format!(
+                    "Suspicious pattern found in description: {}",
+                    pattern
+                ));
             }
         }
 
@@ -286,11 +289,7 @@ impl PluginSandbox {
     }
 
     /// Execute plugin in sandbox
-    pub async fn execute_sandboxed<F, T>(
-        &self,
-        _plugin_name: &str,
-        _f: F,
-    ) -> Result<T>
+    pub async fn execute_sandboxed<F, T>(&self, _plugin_name: &str, _f: F) -> Result<T>
     where
         F: FnOnce() -> Result<T> + Send + 'static,
         T: Send + 'static,
@@ -299,9 +298,9 @@ impl PluginSandbox {
         // For now, just execute directly
         tracing::warn!("Sandboxing not fully implemented, executing directly");
 
-        tokio::task::spawn_blocking(_f)
-            .await
-            .map_err(|e| CleanroomError::internal_error(format!("Sandbox execution failed: {}", e)))?
+        tokio::task::spawn_blocking(_f).await.map_err(|e| {
+            CleanroomError::internal_error(format!("Sandbox execution failed: {}", e))
+        })?
     }
 
     /// Check sandbox resource usage
@@ -328,13 +327,11 @@ mod tests {
     async fn test_security_validation() -> Result<()> {
         let validator = SecurityValidator::new();
 
-        let mut metadata = PluginMetadata::new(
-            "test-plugin",
-            "1.0.0",
-            "Test plugin",
-            "Test Author"
-        )?;
-        metadata.capabilities.push(standard_capabilities::database_capability());
+        let mut metadata =
+            PluginMetadata::new("test-plugin", "1.0.0", "Test plugin", "Test Author")?;
+        metadata
+            .capabilities
+            .push(standard_capabilities::database_capability());
         metadata.repository = Some("https://github.com/test/plugin".to_string());
 
         let validation = validator.validate_plugin(&metadata).await?;
@@ -367,9 +364,11 @@ mod tests {
             "suspicious-plugin",
             "1.0.0",
             "This plugin uses eval() function",
-            "Test Author"
+            "Test Author",
         )?;
-        metadata.capabilities.push(standard_capabilities::database_capability());
+        metadata
+            .capabilities
+            .push(standard_capabilities::database_capability());
 
         let validation = validator.validate_plugin(&metadata).await?;
 

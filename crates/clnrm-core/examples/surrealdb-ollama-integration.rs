@@ -4,13 +4,20 @@
 //! and Ollama for AI processing to provide actual intelligent analysis.
 
 use clnrm_core::{
-    cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle},
-    services::{surrealdb::SurrealDbPlugin, ollama::{OllamaPlugin, OllamaConfig}},
+    cleanroom::{CleanroomEnvironment, ServiceHandle, ServicePlugin},
     error::{CleanroomError, Result},
+    services::{
+        ollama::{OllamaConfig, OllamaPlugin},
+        surrealdb::SurrealDbPlugin,
+    },
 };
-use std::collections::HashMap;
 use serde_json::{json, Value};
-use surrealdb::{engine::remote::ws::{Client, Ws}, opt::auth::Root, Surreal};
+use std::collections::HashMap;
+use surrealdb::{
+    engine::remote::ws::{Client, Ws},
+    opt::auth::Root,
+    Surreal,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -25,9 +32,13 @@ async fn main() -> Result<()> {
     println!("📊 Phase 1: Starting SurrealDB");
     let surrealdb_plugin = SurrealDbPlugin::new();
     let db_handle = surrealdb_plugin.start().await?;
-    
+
     let host = db_handle.metadata.get("host").unwrap();
-    let port = db_handle.metadata.get("port").unwrap().parse::<u16>()
+    let port = db_handle
+        .metadata
+        .get("port")
+        .unwrap()
+        .parse::<u16>()
         .map_err(|e| CleanroomError::config_error(format!("Invalid port: {}", e)))?;
     println!("✅ SurrealDB started at {}:{}", host, port);
 
@@ -53,12 +64,24 @@ async fn main() -> Result<()> {
         timeout_seconds: 120,
     };
     let ollama_plugin = OllamaPlugin::new("ollama", ollama_config);
-    
+
     match ollama_plugin.start().await {
         Ok(ollama_handle) => {
             println!("✅ Ollama started successfully");
-            println!("   Endpoint: {}", ollama_handle.metadata.get("endpoint").unwrap_or(&"unknown".to_string()));
-            println!("   Model: {}", ollama_handle.metadata.get("default_model").unwrap_or(&"unknown".to_string()));
+            println!(
+                "   Endpoint: {}",
+                ollama_handle
+                    .metadata
+                    .get("endpoint")
+                    .unwrap_or(&"unknown".to_string())
+            );
+            println!(
+                "   Model: {}",
+                ollama_handle
+                    .metadata
+                    .get("default_model")
+                    .unwrap_or(&"unknown".to_string())
+            );
 
             // Phase 5: AI-powered analysis
             println!("\n🧠 Phase 5: AI-Powered Analysis");
@@ -68,7 +91,7 @@ async fn main() -> Result<()> {
         Err(e) => {
             println!("⚠️ Ollama not available: {}", e);
             println!("   Continuing with SurrealDB-only analysis...");
-            
+
             // Phase 5: SurrealDB-only analysis
             println!("\n📊 Phase 5: SurrealDB Analysis");
             let analysis = perform_surrealdb_analysis(&db).await?;
@@ -83,7 +106,7 @@ async fn main() -> Result<()> {
 
     println!("\n🎉 SurrealDB + Ollama integration demo completed!");
     println!("📊 This demonstrates real data persistence and AI processing");
-    
+
     Ok(())
 }
 
@@ -91,25 +114,27 @@ async fn main() -> Result<()> {
 async fn setup_surrealdb_connection(host: &str, port: u16) -> Result<Surreal<Client>> {
     let url = format!("{}:{}", host, port);
     let db: Surreal<Client> = Surreal::init();
-    
-    db.connect::<Ws>(url)
-        .await
-        .map_err(|e| CleanroomError::connection_failed("Failed to connect to SurrealDB")
-            .with_source(e.to_string()))?;
-    
+
+    db.connect::<Ws>(url).await.map_err(|e| {
+        CleanroomError::connection_failed("Failed to connect to SurrealDB")
+            .with_source(e.to_string())
+    })?;
+
     db.signin(Root {
         username: "root",
         password: "root",
     })
     .await
-    .map_err(|e| CleanroomError::service_error("Failed to authenticate with SurrealDB")
-        .with_source(e.to_string()))?;
+    .map_err(|e| {
+        CleanroomError::service_error("Failed to authenticate with SurrealDB")
+            .with_source(e.to_string())
+    })?;
 
     // Use the test namespace and database
-    db.use_ns("test").use_db("test")
-        .await
-        .map_err(|e| CleanroomError::service_error("Failed to use test namespace/database")
-            .with_source(e.to_string()))?;
+    db.use_ns("test").use_db("test").await.map_err(|e| {
+        CleanroomError::service_error("Failed to use test namespace/database")
+            .with_source(e.to_string())
+    })?;
 
     Ok(db)
 }
@@ -117,7 +142,9 @@ async fn setup_surrealdb_connection(host: &str, port: u16) -> Result<Surreal<Cli
 /// Set up AI schema in SurrealDB
 async fn setup_ai_schema(db: &Surreal<Client>) -> Result<()> {
     // Create test_executions table
-    let _ = db.query("
+    let _ = db
+        .query(
+            "
         DEFINE TABLE test_executions SCHEMAFULL;
         DEFINE FIELD test_name ON test_executions TYPE string;
         DEFINE FIELD timestamp ON test_executions TYPE datetime;
@@ -127,12 +154,18 @@ async fn setup_ai_schema(db: &Surreal<Client>) -> Result<()> {
         DEFINE FIELD resource_usage ON test_executions TYPE object;
         DEFINE INDEX test_name_idx ON test_executions COLUMNS test_name;
         DEFINE INDEX timestamp_idx ON test_executions COLUMNS timestamp;
-    ").await
-    .map_err(|e| CleanroomError::service_error("Failed to create test_executions table")
-        .with_source(e.to_string()))?;
+    ",
+        )
+        .await
+        .map_err(|e| {
+            CleanroomError::service_error("Failed to create test_executions table")
+                .with_source(e.to_string())
+        })?;
 
     // Create ai_insights table
-    let _ = db.query("
+    let _ = db
+        .query(
+            "
         DEFINE TABLE ai_insights SCHEMAFULL;
         DEFINE FIELD insight_type ON ai_insights TYPE string;
         DEFINE FIELD content ON ai_insights TYPE string;
@@ -140,9 +173,13 @@ async fn setup_ai_schema(db: &Surreal<Client>) -> Result<()> {
         DEFINE FIELD actionable ON ai_insights TYPE bool;
         DEFINE FIELD created_at ON ai_insights TYPE datetime;
         DEFINE INDEX insight_type_idx ON ai_insights COLUMNS insight_type;
-    ").await
-    .map_err(|e| CleanroomError::service_error("Failed to create ai_insights table")
-        .with_source(e.to_string()))?;
+    ",
+        )
+        .await
+        .map_err(|e| {
+            CleanroomError::service_error("Failed to create ai_insights table")
+                .with_source(e.to_string())
+        })?;
 
     Ok(())
 }
@@ -164,16 +201,19 @@ fn generate_test_executions() -> Vec<TestExecution> {
         for i in 0..5 {
             let success = rand::random::<f64>() < success_rate;
             let execution_time = avg_time + (rand::random::<i32>() % 1000 - 500) as u64;
-            
+
             executions.push(TestExecution {
                 test_name: test_name.to_string(),
                 timestamp: now - chrono::Duration::hours(i as i64),
                 success,
                 execution_time_ms: execution_time.max(100),
-                error_message: if success { 
-                    None 
-                } else { 
-                    Some(format!("{} failed: timeout after {}ms", test_name, execution_time))
+                error_message: if success {
+                    None
+                } else {
+                    Some(format!(
+                        "{} failed: timeout after {}ms",
+                        test_name, execution_time
+                    ))
                 },
                 resource_usage: ResourceUsage {
                     cpu_percent: rand::random::<f32>() * 50.0 + 10.0,
@@ -190,7 +230,8 @@ fn generate_test_executions() -> Vec<TestExecution> {
 
 /// Store test execution in SurrealDB
 async fn store_test_execution(db: &Surreal<Client>, execution: &TestExecution) -> Result<()> {
-    let _: Option<Value> = db.create("test_executions")
+    let _: Option<Value> = db
+        .create("test_executions")
         .content(json!({
             "test_name": execution.test_name,
             "timestamp": execution.timestamp,
@@ -200,29 +241,37 @@ async fn store_test_execution(db: &Surreal<Client>, execution: &TestExecution) -
             "resource_usage": execution.resource_usage
         }))
         .await
-        .map_err(|e| CleanroomError::service_error("Failed to store test execution")
-            .with_source(e.to_string()))?;
+        .map_err(|e| {
+            CleanroomError::service_error("Failed to store test execution")
+                .with_source(e.to_string())
+        })?;
 
     Ok(())
 }
 
 /// Perform AI analysis using both SurrealDB and Ollama
 async fn perform_ai_analysis(
-    db: &Surreal<Client>, 
-    ollama_plugin: &OllamaPlugin
+    db: &Surreal<Client>,
+    ollama_plugin: &OllamaPlugin,
 ) -> Result<AIAnalysis> {
     // Get test execution data from SurrealDB
-    let mut response = db.query("
+    let mut response = db
+        .query(
+            "
         SELECT * FROM test_executions 
         ORDER BY timestamp DESC 
         LIMIT 50
-    ").await
-    .map_err(|e| CleanroomError::service_error("Failed to query test executions")
-        .with_source(e.to_string()))?;
+    ",
+        )
+        .await
+        .map_err(|e| {
+            CleanroomError::service_error("Failed to query test executions")
+                .with_source(e.to_string())
+        })?;
 
-    let executions: Vec<TestExecution> = response.take(0)
-        .map_err(|e| CleanroomError::service_error("Failed to parse test executions")
-            .with_source(e.to_string()))?;
+    let executions: Vec<TestExecution> = response.take(0).map_err(|e| {
+        CleanroomError::service_error("Failed to parse test executions").with_source(e.to_string())
+    })?;
 
     if executions.is_empty() {
         return Ok(AIAnalysis {
@@ -237,9 +286,11 @@ async fn perform_ai_analysis(
     let total_executions = executions.len();
     let successful_executions = executions.iter().filter(|e| e.success).count();
     let success_rate = successful_executions as f64 / total_executions as f64;
-    let avg_execution_time = executions.iter()
+    let avg_execution_time = executions
+        .iter()
         .map(|e| e.execution_time_ms as f64)
-        .sum::<f64>() / total_executions as f64;
+        .sum::<f64>()
+        / total_executions as f64;
 
     // Use Ollama for AI analysis
     let ai_insights = generate_ollama_insights(ollama_plugin, &executions, success_rate).await?;
@@ -280,22 +331,21 @@ async fn generate_ollama_insights(
         Err(e) => {
             println!("⚠️ Ollama analysis failed: {}", e);
             // Return fallback insights
-            Ok(vec![
-                AIInsight {
-                    insight_type: "fallback".to_string(),
-                    content: "AI analysis unavailable, using basic insights".to_string(),
-                    confidence: 0.5,
-                    actionable: false,
-                    created_at: chrono::Utc::now(),
-                }
-            ])
+            Ok(vec![AIInsight {
+                insight_type: "fallback".to_string(),
+                content: "AI analysis unavailable, using basic insights".to_string(),
+                confidence: 0.5,
+                actionable: false,
+                created_at: chrono::Utc::now(),
+            }])
         }
     }
 }
 
 /// Parse Ollama response into insights
 async fn parse_ollama_response(response: &str, execution_count: usize) -> Result<Vec<AIInsight>> {
-    let lines: Vec<&str> = response.lines()
+    let lines: Vec<&str> = response
+        .lines()
         .filter(|line| !line.trim().is_empty())
         .collect();
 
@@ -315,7 +365,10 @@ async fn parse_ollama_response(response: &str, execution_count: usize) -> Result
     // Add a summary insight
     insights.push(AIInsight {
         insight_type: "summary".to_string(),
-        content: format!("Analyzed {} test executions with AI-powered insights", execution_count),
+        content: format!(
+            "Analyzed {} test executions with AI-powered insights",
+            execution_count
+        ),
         confidence: 0.9,
         actionable: true,
         created_at: chrono::Utc::now(),
@@ -326,17 +379,23 @@ async fn parse_ollama_response(response: &str, execution_count: usize) -> Result
 
 /// Perform SurrealDB-only analysis
 async fn perform_surrealdb_analysis(db: &Surreal<Client>) -> Result<AIAnalysis> {
-    let mut response = db.query("
+    let mut response = db
+        .query(
+            "
         SELECT * FROM test_executions 
         ORDER BY timestamp DESC 
         LIMIT 50
-    ").await
-    .map_err(|e| CleanroomError::service_error("Failed to query test executions")
-        .with_source(e.to_string()))?;
+    ",
+        )
+        .await
+        .map_err(|e| {
+            CleanroomError::service_error("Failed to query test executions")
+                .with_source(e.to_string())
+        })?;
 
-    let executions: Vec<TestExecution> = response.take(0)
-        .map_err(|e| CleanroomError::service_error("Failed to parse test executions")
-            .with_source(e.to_string()))?;
+    let executions: Vec<TestExecution> = response.take(0).map_err(|e| {
+        CleanroomError::service_error("Failed to parse test executions").with_source(e.to_string())
+    })?;
 
     if executions.is_empty() {
         return Ok(AIAnalysis {
@@ -350,9 +409,11 @@ async fn perform_surrealdb_analysis(db: &Surreal<Client>) -> Result<AIAnalysis> 
     let total_executions = executions.len();
     let successful_executions = executions.iter().filter(|e| e.success).count();
     let success_rate = successful_executions as f64 / total_executions as f64;
-    let avg_execution_time = executions.iter()
+    let avg_execution_time = executions
+        .iter()
         .map(|e| e.execution_time_ms as f64)
-        .sum::<f64>() / total_executions as f64;
+        .sum::<f64>()
+        / total_executions as f64;
 
     // Generate basic insights without AI
     let insights = vec![
@@ -385,13 +446,19 @@ async fn display_ai_analysis(analysis: &AIAnalysis) -> Result<()> {
     println!("📊 AI Analysis Results:");
     println!("   Total Executions: {}", analysis.total_executions);
     println!("   Success Rate: {:.1}%", analysis.success_rate * 100.0);
-    println!("   Average Execution Time: {:.0}ms", analysis.avg_execution_time);
-    
+    println!(
+        "   Average Execution Time: {:.0}ms",
+        analysis.avg_execution_time
+    );
+
     if !analysis.ai_insights.is_empty() {
         println!("💡 AI-Generated Insights:");
         for insight in &analysis.ai_insights {
-            println!("   • {} (confidence: {:.1}%)", 
-                     insight.content, insight.confidence * 100.0);
+            println!(
+                "   • {} (confidence: {:.1}%)",
+                insight.content,
+                insight.confidence * 100.0
+            );
         }
     }
 
@@ -403,13 +470,19 @@ async fn display_surrealdb_analysis(analysis: &AIAnalysis) -> Result<()> {
     println!("📊 SurrealDB Analysis Results:");
     println!("   Total Executions: {}", analysis.total_executions);
     println!("   Success Rate: {:.1}%", analysis.success_rate * 100.0);
-    println!("   Average Execution Time: {:.0}ms", analysis.avg_execution_time);
-    
+    println!(
+        "   Average Execution Time: {:.0}ms",
+        analysis.avg_execution_time
+    );
+
     if !analysis.ai_insights.is_empty() {
         println!("💡 Basic Insights:");
         for insight in &analysis.ai_insights {
-            println!("   • {} (confidence: {:.1}%)", 
-                     insight.content, insight.confidence * 100.0);
+            println!(
+                "   • {} (confidence: {:.1}%)",
+                insight.content,
+                insight.confidence * 100.0
+            );
         }
     }
 

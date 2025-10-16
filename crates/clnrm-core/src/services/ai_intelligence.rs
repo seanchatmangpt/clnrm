@@ -3,17 +3,24 @@
 //! Combines SurrealDB for data persistence and Ollama for AI processing
 //! to provide actual intelligent functionality for the testing framework.
 
-use crate::cleanroom::{ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
-use crate::services::{surrealdb::SurrealDbPlugin, ollama::{OllamaPlugin, OllamaConfig}};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use uuid::Uuid;
+use crate::services::{
+    ollama::{OllamaConfig, OllamaPlugin},
+    surrealdb::SurrealDbPlugin,
+};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use surrealdb::{engine::remote::ws::{Client, Ws}, opt::auth::Root, Surreal};
+use std::sync::Arc;
+use surrealdb::{
+    engine::remote::ws::{Client, Ws},
+    opt::auth::Root,
+    Surreal,
+};
+use tokio::sync::RwLock;
+use uuid::Uuid;
 
 /// AI Intelligence service that combines SurrealDB and Ollama
 pub struct AIIntelligenceService {
@@ -46,25 +53,27 @@ impl AIIntelligenceService {
     async fn init_db_connection(&self, host: &str, port: u16) -> Result<()> {
         let url = format!("{}:{}", host, port);
         let db: Surreal<Client> = Surreal::init();
-        
-        db.connect::<Ws>(url)
-            .await
-            .map_err(|e| CleanroomError::connection_failed("Failed to connect to SurrealDB")
-                .with_source(e.to_string()))?;
-        
+
+        db.connect::<Ws>(url).await.map_err(|e| {
+            CleanroomError::connection_failed("Failed to connect to SurrealDB")
+                .with_source(e.to_string())
+        })?;
+
         db.signin(Root {
             username: "root",
             password: "root",
         })
         .await
-        .map_err(|e| CleanroomError::service_error("Failed to authenticate with SurrealDB")
-            .with_source(e.to_string()))?;
+        .map_err(|e| {
+            CleanroomError::service_error("Failed to authenticate with SurrealDB")
+                .with_source(e.to_string())
+        })?;
 
         // Use the test namespace and database
-        db.use_ns("test").use_db("test")
-            .await
-            .map_err(|e| CleanroomError::service_error("Failed to use test namespace/database")
-                .with_source(e.to_string()))?;
+        db.use_ns("test").use_db("test").await.map_err(|e| {
+            CleanroomError::service_error("Failed to use test namespace/database")
+                .with_source(e.to_string())
+        })?;
 
         // Initialize AI intelligence tables
         self.initialize_ai_tables(&db).await?;
@@ -78,7 +87,9 @@ impl AIIntelligenceService {
     /// Initialize AI intelligence tables in SurrealDB
     async fn initialize_ai_tables(&self, db: &Surreal<Client>) -> Result<()> {
         // Create test_executions table for storing test history
-        let _ = db.query("
+        let _ = db
+            .query(
+                "
             DEFINE TABLE test_executions SCHEMAFULL;
             DEFINE FIELD test_name ON test_executions TYPE string;
             DEFINE FIELD timestamp ON test_executions TYPE datetime;
@@ -88,12 +99,18 @@ impl AIIntelligenceService {
             DEFINE FIELD resource_usage ON test_executions TYPE object;
             DEFINE INDEX test_name_idx ON test_executions COLUMNS test_name;
             DEFINE INDEX timestamp_idx ON test_executions COLUMNS timestamp;
-        ").await
-        .map_err(|e| CleanroomError::service_error("Failed to create test_executions table")
-            .with_source(e.to_string()))?;
+        ",
+            )
+            .await
+            .map_err(|e| {
+                CleanroomError::service_error("Failed to create test_executions table")
+                    .with_source(e.to_string())
+            })?;
 
         // Create failure_patterns table for AI analysis
-        let _ = db.query("
+        let _ = db
+            .query(
+                "
             DEFINE TABLE failure_patterns SCHEMAFULL;
             DEFINE FIELD test_name ON failure_patterns TYPE string;
             DEFINE FIELD pattern_type ON failure_patterns TYPE string;
@@ -102,12 +119,18 @@ impl AIIntelligenceService {
             DEFINE FIELD mitigation ON failure_patterns TYPE string;
             DEFINE FIELD created_at ON failure_patterns TYPE datetime;
             DEFINE INDEX test_name_idx ON failure_patterns COLUMNS test_name;
-        ").await
-        .map_err(|e| CleanroomError::service_error("Failed to create failure_patterns table")
-            .with_source(e.to_string()))?;
+        ",
+            )
+            .await
+            .map_err(|e| {
+                CleanroomError::service_error("Failed to create failure_patterns table")
+                    .with_source(e.to_string())
+            })?;
 
         // Create ai_insights table for storing AI-generated insights
-        let _ = db.query("
+        let _ = db
+            .query(
+                "
             DEFINE TABLE ai_insights SCHEMAFULL;
             DEFINE FIELD insight_type ON ai_insights TYPE string;
             DEFINE FIELD content ON ai_insights TYPE string;
@@ -115,9 +138,13 @@ impl AIIntelligenceService {
             DEFINE FIELD actionable ON ai_insights TYPE bool;
             DEFINE FIELD created_at ON ai_insights TYPE datetime;
             DEFINE INDEX insight_type_idx ON ai_insights COLUMNS insight_type;
-        ").await
-        .map_err(|e| CleanroomError::service_error("Failed to create ai_insights table")
-            .with_source(e.to_string()))?;
+        ",
+            )
+            .await
+            .map_err(|e| {
+                CleanroomError::service_error("Failed to create ai_insights table")
+                    .with_source(e.to_string())
+            })?;
 
         Ok(())
     }
@@ -127,7 +154,9 @@ impl AIIntelligenceService {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
             .build()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e))
+            })?;
 
         Ok(client)
     }
@@ -135,10 +164,12 @@ impl AIIntelligenceService {
     /// Store test execution data in SurrealDB
     pub async fn store_test_execution(&self, execution: &TestExecution) -> Result<()> {
         let db_guard = self.db_connection.read().await;
-        let db = db_guard.as_ref().ok_or_else(|| 
-            CleanroomError::service_error("Database not initialized"))?;
+        let db = db_guard
+            .as_ref()
+            .ok_or_else(|| CleanroomError::service_error("Database not initialized"))?;
 
-        let _: Option<Value> = db.create("test_executions")
+        let _: Option<Value> = db
+            .create("test_executions")
             .content(json!({
                 "test_name": execution.test_name,
                 "timestamp": execution.timestamp,
@@ -148,8 +179,10 @@ impl AIIntelligenceService {
                 "resource_usage": execution.resource_usage
             }))
             .await
-            .map_err(|e| CleanroomError::service_error("Failed to store test execution")
-                .with_source(e.to_string()))?;
+            .map_err(|e| {
+                CleanroomError::service_error("Failed to store test execution")
+                    .with_source(e.to_string())
+            })?;
 
         Ok(())
     }
@@ -157,22 +190,30 @@ impl AIIntelligenceService {
     /// Analyze test execution history using AI
     pub async fn analyze_test_history(&self) -> Result<AIAnalysis> {
         let db_guard = self.db_connection.read().await;
-        let db = db_guard.as_ref().ok_or_else(|| 
-            CleanroomError::service_error("Database not initialized"))?;
+        let db = db_guard
+            .as_ref()
+            .ok_or_else(|| CleanroomError::service_error("Database not initialized"))?;
 
         // Get recent test executions
-        let mut response = db.query("
+        let mut response = db
+            .query(
+                "
             SELECT * FROM test_executions 
             WHERE timestamp > time::now() - 30d 
             ORDER BY timestamp DESC 
             LIMIT 100
-        ").await
-        .map_err(|e| CleanroomError::service_error("Failed to query test executions")
-            .with_source(e.to_string()))?;
+        ",
+            )
+            .await
+            .map_err(|e| {
+                CleanroomError::service_error("Failed to query test executions")
+                    .with_source(e.to_string())
+            })?;
 
-        let executions: Vec<TestExecution> = response.take(0)
-            .map_err(|e| CleanroomError::service_error("Failed to parse test executions")
-                .with_source(e.to_string()))?;
+        let executions: Vec<TestExecution> = response.take(0).map_err(|e| {
+            CleanroomError::service_error("Failed to parse test executions")
+                .with_source(e.to_string())
+        })?;
 
         if executions.is_empty() {
             return Ok(AIAnalysis {
@@ -188,13 +229,15 @@ impl AIIntelligenceService {
         let total_executions = executions.len();
         let successful_executions = executions.iter().filter(|e| e.success).count();
         let success_rate = successful_executions as f64 / total_executions as f64;
-        let avg_execution_time = executions.iter()
+        let avg_execution_time = executions
+            .iter()
             .map(|e| e.execution_time_ms as f64)
-            .sum::<f64>() / total_executions as f64;
+            .sum::<f64>()
+            / total_executions as f64;
 
         // Use AI to analyze failure patterns
         let failure_patterns = self.analyze_failures_with_ai(&executions).await?;
-        
+
         // Generate AI insights
         let ai_insights = self.generate_ai_insights(&executions, success_rate).await?;
 
@@ -208,18 +251,26 @@ impl AIIntelligenceService {
     }
 
     /// Analyze failures using Ollama AI
-    async fn analyze_failures_with_ai(&self, executions: &[TestExecution]) -> Result<Vec<FailurePattern>> {
-        let failed_executions: Vec<_> = executions.iter()
-            .filter(|e| !e.success)
-            .collect();
+    async fn analyze_failures_with_ai(
+        &self,
+        executions: &[TestExecution],
+    ) -> Result<Vec<FailurePattern>> {
+        let failed_executions: Vec<_> = executions.iter().filter(|e| !e.success).collect();
 
         if failed_executions.is_empty() {
             return Ok(Vec::new());
         }
 
         // Prepare data for AI analysis
-        let failure_data = failed_executions.iter()
-            .map(|e| format!("Test: {}, Error: {}", e.test_name, e.error_message.as_deref().unwrap_or("Unknown")))
+        let failure_data = failed_executions
+            .iter()
+            .map(|e| {
+                format!(
+                    "Test: {}, Error: {}",
+                    e.test_name,
+                    e.error_message.as_deref().unwrap_or("Unknown")
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n");
 
@@ -230,15 +281,21 @@ impl AIIntelligenceService {
 
         // Get AI analysis from Ollama
         let ai_response = self.query_ollama(&prompt).await?;
-        
+
         // Parse AI response and create failure patterns
-        let patterns = self.parse_failure_patterns(&ai_response, &failed_executions).await?;
+        let patterns = self
+            .parse_failure_patterns(&ai_response, &failed_executions)
+            .await?;
 
         Ok(patterns)
     }
 
     /// Generate AI insights using Ollama
-    async fn generate_ai_insights(&self, executions: &[TestExecution], success_rate: f64) -> Result<Vec<AIInsight>> {
+    async fn generate_ai_insights(
+        &self,
+        executions: &[TestExecution],
+        success_rate: f64,
+    ) -> Result<Vec<AIInsight>> {
         let prompt = format!(
             "Analyze this test execution data and provide insights:\n\
             - Total executions: {}\n\
@@ -253,14 +310,14 @@ impl AIIntelligenceService {
         );
 
         let ai_response = self.query_ollama(&prompt).await?;
-        
+
         let insights = self.parse_ai_insights(&ai_response).await?;
 
         Ok(insights)
     }
 
     /// Query Ollama AI service
-    async fn query_ollama(&self, prompt: &str) -> Result<String> {
+    pub async fn query_ollama(&self, prompt: &str) -> Result<String> {
         let mut client_guard = self.ollama_client.write().await;
         if client_guard.is_none() {
             *client_guard = Some(self.init_ollama_client().await?);
@@ -288,10 +345,9 @@ impl AIIntelligenceService {
             .map_err(|e| CleanroomError::service_error(format!("Failed to query Ollama: {}", e)))?;
 
         if response.status().is_success() {
-            let ollama_response: Value = response
-                .json()
-                .await
-                .map_err(|e| CleanroomError::service_error(format!("Failed to parse Ollama response: {}", e)))?;
+            let ollama_response: Value = response.json().await.map_err(|e| {
+                CleanroomError::service_error(format!("Failed to parse Ollama response: {}", e))
+            })?;
 
             let response_text = ollama_response["response"]
                 .as_str()
@@ -304,32 +360,45 @@ impl AIIntelligenceService {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
 
-            Err(CleanroomError::service_error(format!("Ollama API error: {}", error_text)))
+            Err(CleanroomError::service_error(format!(
+                "Ollama API error: {}",
+                error_text
+            )))
         }
     }
 
     /// Parse failure patterns from AI response
-    async fn parse_failure_patterns(&self, _ai_response: &str, failed_executions: &[&TestExecution]) -> Result<Vec<FailurePattern>> {
+    async fn parse_failure_patterns(
+        &self,
+        _ai_response: &str,
+        failed_executions: &[&TestExecution],
+    ) -> Result<Vec<FailurePattern>> {
         // Simple parsing - in a real implementation, you'd use more sophisticated NLP
         let mut patterns = Vec::new();
-        
+
         // Group failures by test name
         let mut test_failures: HashMap<String, Vec<&TestExecution>> = HashMap::new();
         for execution in failed_executions {
-            test_failures.entry(execution.test_name.clone())
+            test_failures
+                .entry(execution.test_name.clone())
                 .or_insert_with(Vec::new)
                 .push(execution);
         }
 
         for (test_name, failures) in test_failures {
-            if failures.len() > 1 { // Only create patterns for tests with multiple failures
+            if failures.len() > 1 {
+                // Only create patterns for tests with multiple failures
                 let failure_rate = failures.len() as f64 / (failures.len() + 10) as f64; // Rough estimate
-                
+
                 patterns.push(FailurePattern {
                     test_name: test_name.clone(),
                     pattern_type: "recurring_failure".to_string(),
                     confidence: failure_rate.min(1.0),
-                    description: format!("Test '{}' has failed {} times", test_name, failures.len()),
+                    description: format!(
+                        "Test '{}' has failed {} times",
+                        test_name,
+                        failures.len()
+                    ),
                     mitigation: "Review test implementation and dependencies".to_string(),
                     created_at: chrono::Utc::now(),
                 });
@@ -342,13 +411,16 @@ impl AIIntelligenceService {
     /// Parse AI insights from response
     async fn parse_ai_insights(&self, ai_response: &str) -> Result<Vec<AIInsight>> {
         // Simple parsing - split by lines and create insights
-        let lines: Vec<&str> = ai_response.lines()
+        let lines: Vec<&str> = ai_response
+            .lines()
             .filter(|line| !line.trim().is_empty())
             .collect();
 
         let mut insights = Vec::new();
-        for (i, line) in lines.iter().enumerate().take(5) { // Limit to 5 insights
-            if line.trim().len() > 20 { // Only meaningful lines
+        for (i, line) in lines.iter().enumerate().take(5) {
+            // Limit to 5 insights
+            if line.trim().len() > 20 {
+                // Only meaningful lines
                 insights.push(AIInsight {
                     insight_type: "performance_optimization".to_string(),
                     content: line.trim().to_string(),
@@ -393,11 +465,14 @@ impl ServicePlugin for AIIntelligenceService {
         Box::pin(async move {
             // Start SurrealDB first
             let db_handle = self.surrealdb_plugin.start().await?;
-            
+
             // Extract connection details
-            let host = db_handle.metadata.get("host")
-                .ok_or_else(|| CleanroomError::service_error("Missing host in SurrealDB metadata"))?;
-            let port = db_handle.metadata.get("port")
+            let host = db_handle.metadata.get("host").ok_or_else(|| {
+                CleanroomError::service_error("Missing host in SurrealDB metadata")
+            })?;
+            let port = db_handle
+                .metadata
+                .get("port")
                 .ok_or_else(|| CleanroomError::service_error("Missing port in SurrealDB metadata"))?
                 .parse::<u16>()
                 .map_err(|e| CleanroomError::service_error(format!("Invalid port: {}", e)))?;
@@ -415,7 +490,10 @@ impl ServicePlugin for AIIntelligenceService {
             let mut metadata = HashMap::new();
             metadata.insert("surrealdb_host".to_string(), host.clone());
             metadata.insert("surrealdb_port".to_string(), port.to_string());
-            metadata.insert("ollama_endpoint".to_string(), "http://localhost:11434".to_string());
+            metadata.insert(
+                "ollama_endpoint".to_string(),
+                "http://localhost:11434".to_string(),
+            );
             metadata.insert("ai_model".to_string(), "llama3.2:3b".to_string());
             metadata.insert("status".to_string(), "initialized".to_string());
 
@@ -427,7 +505,10 @@ impl ServicePlugin for AIIntelligenceService {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             // Clean up connections
             let mut db_guard = self.db_connection.write().await;

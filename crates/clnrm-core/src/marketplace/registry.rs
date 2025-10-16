@@ -4,7 +4,7 @@
 //! version management, and plugin lifecycle operations.
 
 use crate::error::{CleanroomError, Result};
-use crate::marketplace::{MarketplaceConfig, metadata::*};
+use crate::marketplace::{metadata::*, MarketplaceConfig};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -42,11 +42,13 @@ impl PluginRegistry {
     /// Create a new plugin registry
     pub fn new(config: &MarketplaceConfig) -> Result<Self> {
         // Ensure directories exist
-        fs::create_dir_all(&config.cache_dir)
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create cache directory: {}", e)))?;
+        fs::create_dir_all(&config.cache_dir).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create cache directory: {}", e))
+        })?;
 
-        fs::create_dir_all(&config.install_dir)
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create install directory: {}", e)))?;
+        fs::create_dir_all(&config.install_dir).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create install directory: {}", e))
+        })?;
 
         let registry = Self {
             config: config.clone(),
@@ -61,11 +63,13 @@ impl PluginRegistry {
         let registry_path = self.config.cache_dir.join("registry.json");
 
         if registry_path.exists() {
-            let content = fs::read_to_string(&registry_path)
-                .map_err(|e| CleanroomError::internal_error(format!("Failed to read registry: {}", e)))?;
+            let content = fs::read_to_string(&registry_path).map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to read registry: {}", e))
+            })?;
 
-            let db: RegistryDatabase = serde_json::from_str(&content)
-                .map_err(|e| CleanroomError::internal_error(format!("Failed to parse registry: {}", e)))?;
+            let db: RegistryDatabase = serde_json::from_str(&content).map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to parse registry: {}", e))
+            })?;
 
             let mut registry = self.registry_db.write().await;
             *registry = db;
@@ -79,11 +83,13 @@ impl PluginRegistry {
         let registry_path = self.config.cache_dir.join("registry.json");
 
         let db = self.registry_db.read().await;
-        let content = serde_json::to_string_pretty(&*db)
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to serialize registry: {}", e)))?;
+        let content = serde_json::to_string_pretty(&*db).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to serialize registry: {}", e))
+        })?;
 
-        fs::write(&registry_path, content)
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to write registry: {}", e)))?;
+        fs::write(&registry_path, content).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to write registry: {}", e))
+        })?;
 
         Ok(())
     }
@@ -107,7 +113,8 @@ impl PluginRegistry {
             tokio::runtime::Handle::current().block_on(self.registry_db.read())
         });
 
-        db.installed.get(name)
+        db.installed
+            .get(name)
             .or_else(|| db.available.get(name))
             .cloned()
             .ok_or_else(|| CleanroomError::validation_error(format!("Plugin '{}' not found", name)))
@@ -138,8 +145,15 @@ impl PluginRegistry {
     pub async fn record_installation(&self, name: &str) -> Result<()> {
         let mut db = self.registry_db.write().await;
 
-        let metadata = db.available.get(name)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Plugin '{}' not found in available plugins", name)))?
+        let metadata = db
+            .available
+            .get(name)
+            .ok_or_else(|| {
+                CleanroomError::validation_error(format!(
+                    "Plugin '{}' not found in available plugins",
+                    name
+                ))
+            })?
             .clone();
 
         let install_path = self.config.install_dir.join(&metadata.name);
@@ -168,8 +182,12 @@ impl PluginRegistry {
         if let Some(record) = db.installations.remove(name) {
             // Remove installation directory
             if record.install_path.exists() {
-                fs::remove_dir_all(&record.install_path)
-                    .map_err(|e| CleanroomError::internal_error(format!("Failed to remove plugin directory: {}", e)))?;
+                fs::remove_dir_all(&record.install_path).map_err(|e| {
+                    CleanroomError::internal_error(format!(
+                        "Failed to remove plugin directory: {}",
+                        e
+                    ))
+                })?;
             }
         }
 
@@ -203,26 +221,36 @@ impl PluginRegistry {
     pub async fn get_install_path(&self, name: &str) -> Result<PathBuf> {
         let db = self.registry_db.read().await;
 
-        db.installations.get(name)
+        db.installations
+            .get(name)
             .map(|record| record.install_path.clone())
-            .ok_or_else(|| CleanroomError::validation_error(format!("Plugin '{}' is not installed", name)))
+            .ok_or_else(|| {
+                CleanroomError::validation_error(format!("Plugin '{}' is not installed", name))
+            })
     }
 
     /// Rate a plugin
     pub async fn rate_plugin(&self, name: &str, rating: u8) -> Result<()> {
         if rating > 5 {
-            return Err(CleanroomError::validation_error("Rating must be between 1 and 5"));
+            return Err(CleanroomError::validation_error(
+                "Rating must be between 1 and 5",
+            ));
         }
 
         let mut db = self.registry_db.write().await;
 
         if let Some(metadata) = db.available.get_mut(name) {
-            let total = metadata.community.average_rating * (metadata.community.rating_count as f64);
+            let total =
+                metadata.community.average_rating * (metadata.community.rating_count as f64);
             metadata.community.rating_count += 1;
-            metadata.community.average_rating = (total + rating as f64) / (metadata.community.rating_count as f64);
+            metadata.community.average_rating =
+                (total + rating as f64) / (metadata.community.rating_count as f64);
             metadata.community.updated_at = chrono::Utc::now();
         } else {
-            return Err(CleanroomError::validation_error(format!("Plugin '{}' not found", name)));
+            return Err(CleanroomError::validation_error(format!(
+                "Plugin '{}' not found",
+                name
+            )));
         }
 
         drop(db);
@@ -239,7 +267,10 @@ impl PluginRegistry {
             metadata.community.reviews.push(review);
             metadata.community.updated_at = chrono::Utc::now();
         } else {
-            return Err(CleanroomError::validation_error(format!("Plugin '{}' not found", name)));
+            return Err(CleanroomError::validation_error(format!(
+                "Plugin '{}' not found",
+                name
+            )));
         }
 
         drop(db);
@@ -254,9 +285,13 @@ impl PluginRegistry {
             tokio::runtime::Handle::current().block_on(self.registry_db.read())
         });
 
-        let metadata = db.available.get(name)
+        let metadata = db
+            .available
+            .get(name)
             .or_else(|| db.installed.get(name))
-            .ok_or_else(|| CleanroomError::validation_error(format!("Plugin '{}' not found", name)))?
+            .ok_or_else(|| {
+                CleanroomError::validation_error(format!("Plugin '{}' not found", name))
+            })?
             .clone();
 
         Ok(PluginStatistics {
@@ -406,13 +441,11 @@ mod tests {
         };
         let registry = PluginRegistry::new(&config)?;
 
-        let mut metadata = PluginMetadata::new(
-            "test-plugin",
-            "1.0.0",
-            "Test plugin",
-            "Test Author"
-        )?;
-        metadata.capabilities.push(standard_capabilities::database_capability());
+        let mut metadata =
+            PluginMetadata::new("test-plugin", "1.0.0", "Test plugin", "Test Author")?;
+        metadata
+            .capabilities
+            .push(standard_capabilities::database_capability());
 
         registry.register_plugin(metadata.clone()).await?;
 
@@ -436,13 +469,11 @@ mod tests {
         };
         let registry = PluginRegistry::new(&config)?;
 
-        let mut metadata = PluginMetadata::new(
-            "test-plugin",
-            "1.0.0",
-            "Test plugin",
-            "Test Author"
-        )?;
-        metadata.capabilities.push(standard_capabilities::database_capability());
+        let mut metadata =
+            PluginMetadata::new("test-plugin", "1.0.0", "Test plugin", "Test Author")?;
+        metadata
+            .capabilities
+            .push(standard_capabilities::database_capability());
 
         registry.register_plugin(metadata).await?;
         registry.record_installation("test-plugin").await?;

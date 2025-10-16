@@ -3,15 +3,15 @@
 //! Revolutionary chaos testing plugin that introduces controlled failures,
 //! network partitions, and system degradation to test resilience.
 
-use crate::cleanroom::{ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
+use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use std::future::Future;
-use std::pin::Pin;
-use serde_json::{json, Value};
 
 /// Chaos engineering configuration
 #[derive(Debug, Clone)]
@@ -34,17 +34,32 @@ pub struct ChaosConfig {
 #[derive(Debug, Clone)]
 pub enum ChaosScenario {
     /// Random service failures
-    RandomFailures { duration_secs: u64, failure_rate: f64 },
+    RandomFailures {
+        duration_secs: u64,
+        failure_rate: f64,
+    },
     /// Network latency spikes
-    LatencySpikes { duration_secs: u64, max_latency_ms: u64 },
+    LatencySpikes {
+        duration_secs: u64,
+        max_latency_ms: u64,
+    },
     /// Memory exhaustion
     MemoryExhaustion { duration_secs: u64, target_mb: u64 },
     /// CPU saturation
-    CpuSaturation { duration_secs: u64, target_percent: u8 },
+    CpuSaturation {
+        duration_secs: u64,
+        target_percent: u8,
+    },
     /// Network partition
-    NetworkPartition { duration_secs: u64, affected_services: Vec<String> },
+    NetworkPartition {
+        duration_secs: u64,
+        affected_services: Vec<String>,
+    },
     /// Cascading failures
-    CascadingFailures { trigger_service: String, propagation_delay_ms: u64 },
+    CascadingFailures {
+        trigger_service: String,
+        propagation_delay_ms: u64,
+    },
 }
 
 impl Default for ChaosConfig {
@@ -56,8 +71,14 @@ impl Default for ChaosConfig {
             memory_pressure_mb: 100,
             cpu_stress_percent: 50,
             scenarios: vec![
-                ChaosScenario::RandomFailures { duration_secs: 30, failure_rate: 0.2 },
-                ChaosScenario::LatencySpikes { duration_secs: 60, max_latency_ms: 500 },
+                ChaosScenario::RandomFailures {
+                    duration_secs: 30,
+                    failure_rate: 0.2,
+                },
+                ChaosScenario::LatencySpikes {
+                    duration_secs: 60,
+                    max_latency_ms: 500,
+                },
             ],
         }
     }
@@ -128,13 +149,16 @@ impl ChaosEnginePlugin {
     /// Inject random failure
     pub async fn inject_failure(&self, service_name: &str) -> Result<bool> {
         let should_fail = rand::random::<f64>() < self.config.failure_rate;
-        
+
         if should_fail {
             let mut metrics = self.metrics.write().await;
             metrics.failures_injected += 1;
             metrics.affected_services.push(service_name.to_string());
-            
-            println!("💥 Chaos Engine: Injecting failure in service '{}'", service_name);
+
+            println!(
+                "💥 Chaos Engine: Injecting failure in service '{}'",
+                service_name
+            );
             Ok(true)
         } else {
             Ok(false)
@@ -152,9 +176,12 @@ impl ChaosEnginePlugin {
         if latency > 0 {
             let mut metrics = self.metrics.write().await;
             metrics.latency_injected_ms += latency;
-            
-            println!("⏱️  Chaos Engine: Injecting {}ms latency in service '{}'", latency, service_name);
-            
+
+            println!(
+                "⏱️  Chaos Engine: Injecting {}ms latency in service '{}'",
+                latency, service_name
+            );
+
             // Simulate latency
             tokio::time::sleep(std::time::Duration::from_millis(latency)).await;
         }
@@ -168,8 +195,11 @@ impl ChaosEnginePlugin {
             let mut metrics = self.metrics.write().await;
             metrics.network_partitions += 1;
             metrics.affected_services.extend(services.iter().cloned());
-            
-            println!("🌐 Chaos Engine: Creating network partition affecting services: {:?}", services);
+
+            println!(
+                "🌐 Chaos Engine: Creating network partition affecting services: {:?}",
+                services
+            );
         }
         Ok(())
     }
@@ -184,10 +214,16 @@ impl ChaosEnginePlugin {
         metrics.scenarios_executed += 1;
 
         match scenario {
-            ChaosScenario::RandomFailures { duration_secs, failure_rate } => {
-                println!("🎲 Chaos Engine: Running random failures for {}s (rate: {:.1}%)", 
-                    duration_secs, failure_rate * 100.0);
-                
+            ChaosScenario::RandomFailures {
+                duration_secs,
+                failure_rate,
+            } => {
+                println!(
+                    "🎲 Chaos Engine: Running random failures for {}s (rate: {:.1}%)",
+                    duration_secs,
+                    failure_rate * 100.0
+                );
+
                 // Simulate random failures over duration
                 for _ in 0..*duration_secs {
                     if rand::random::<f64>() < *failure_rate {
@@ -196,10 +232,15 @@ impl ChaosEnginePlugin {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 }
             }
-            ChaosScenario::LatencySpikes { duration_secs, max_latency_ms } => {
-                println!("⚡ Chaos Engine: Running latency spikes for {}s (max: {}ms)", 
-                    duration_secs, max_latency_ms);
-                
+            ChaosScenario::LatencySpikes {
+                duration_secs,
+                max_latency_ms,
+            } => {
+                println!(
+                    "⚡ Chaos Engine: Running latency spikes for {}s (max: {}ms)",
+                    duration_secs, max_latency_ms
+                );
+
                 // Simulate latency spikes
                 for _ in 0..*duration_secs {
                     if rand::random::<f64>() < 0.1 {
@@ -210,18 +251,28 @@ impl ChaosEnginePlugin {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 }
             }
-            ChaosScenario::MemoryExhaustion { duration_secs, target_mb } => {
-                println!("🧠 Chaos Engine: Running memory exhaustion for {}s (target: {}MB)", 
-                    duration_secs, target_mb);
-                
+            ChaosScenario::MemoryExhaustion {
+                duration_secs,
+                target_mb,
+            } => {
+                println!(
+                    "🧠 Chaos Engine: Running memory exhaustion for {}s (target: {}MB)",
+                    duration_secs, target_mb
+                );
+
                 // Simulate memory pressure
                 let _memory_pressure = vec![0u8; (*target_mb * 1024 * 1024) as usize];
                 tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
             }
-            ChaosScenario::CpuSaturation { duration_secs, target_percent } => {
-                println!("🔥 Chaos Engine: Running CPU saturation for {}s (target: {}%)", 
-                    duration_secs, target_percent);
-                
+            ChaosScenario::CpuSaturation {
+                duration_secs,
+                target_percent,
+            } => {
+                println!(
+                    "🔥 Chaos Engine: Running CPU saturation for {}s (target: {}%)",
+                    duration_secs, target_percent
+                );
+
                 // Simulate CPU stress
                 let start = std::time::Instant::now();
                 while start.elapsed().as_secs() < *duration_secs {
@@ -232,24 +283,36 @@ impl ChaosEnginePlugin {
                     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                 }
             }
-            ChaosScenario::NetworkPartition { duration_secs, affected_services } => {
-                println!("🌐 Chaos Engine: Running network partition for {}s affecting: {:?}", 
-                    duration_secs, affected_services);
-                
+            ChaosScenario::NetworkPartition {
+                duration_secs,
+                affected_services,
+            } => {
+                println!(
+                    "🌐 Chaos Engine: Running network partition for {}s affecting: {:?}",
+                    duration_secs, affected_services
+                );
+
                 metrics.network_partitions += 1;
-                metrics.affected_services.extend(affected_services.iter().cloned());
+                metrics
+                    .affected_services
+                    .extend(affected_services.iter().cloned());
                 tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
             }
-            ChaosScenario::CascadingFailures { trigger_service, propagation_delay_ms } => {
-                println!("💥 Chaos Engine: Running cascading failures triggered by '{}' (delay: {}ms)", 
-                    trigger_service, propagation_delay_ms);
-                
+            ChaosScenario::CascadingFailures {
+                trigger_service,
+                propagation_delay_ms,
+            } => {
+                println!(
+                    "💥 Chaos Engine: Running cascading failures triggered by '{}' (delay: {}ms)",
+                    trigger_service, propagation_delay_ms
+                );
+
                 // Simulate cascading failure
                 metrics.failures_injected += 1;
                 metrics.affected_services.push(trigger_service.clone());
-                
+
                 tokio::time::sleep(std::time::Duration::from_millis(*propagation_delay_ms)).await;
-                
+
                 // Simulate propagation to other services
                 let cascade_services = vec!["service_b".to_string(), "service_c".to_string()];
                 metrics.failures_injected += cascade_services.len() as u64;
@@ -276,7 +339,7 @@ impl ServicePlugin for ChaosEnginePlugin {
     fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
         Box::pin(async move {
             println!("🎭 Chaos Engine: Starting chaos testing service");
-            
+
             // Run initial chaos scenarios
             for scenario in &self.config.scenarios {
                 if let Err(e) = self.run_scenario(scenario).await {
@@ -286,9 +349,15 @@ impl ServicePlugin for ChaosEnginePlugin {
 
             let mut metadata = HashMap::new();
             metadata.insert("chaos_engine_version".to_string(), "1.0.0".to_string());
-            metadata.insert("failure_rate".to_string(), self.config.failure_rate.to_string());
+            metadata.insert(
+                "failure_rate".to_string(),
+                self.config.failure_rate.to_string(),
+            );
             metadata.insert("latency_ms".to_string(), self.config.latency_ms.to_string());
-            metadata.insert("scenarios_count".to_string(), self.config.scenarios.len().to_string());
+            metadata.insert(
+                "scenarios_count".to_string(),
+                self.config.scenarios.len().to_string(),
+            );
             metadata.insert("service_type".to_string(), "chaos_engine".to_string());
             metadata.insert("status".to_string(), "running".to_string());
 
@@ -300,14 +369,17 @@ impl ServicePlugin for ChaosEnginePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             println!("🎭 Chaos Engine: Stopping chaos testing service");
-            
+
             // Stop all active scenarios
             let mut active = self.active_scenarios.write().await;
             active.clear();
-            
+
             Ok(())
         })
     }
@@ -343,14 +415,20 @@ mod tests {
     #[tokio::test]
     async fn test_chaos_scenarios() {
         let plugin = ChaosEnginePlugin::new("test");
-        
+
         // Test random failures scenario
-        let scenario = ChaosScenario::RandomFailures { duration_secs: 1, failure_rate: 0.5 };
+        let scenario = ChaosScenario::RandomFailures {
+            duration_secs: 1,
+            failure_rate: 0.5,
+        };
         let result = plugin.run_scenario(&scenario).await;
         assert!(result.is_ok());
-        
+
         // Test latency spikes scenario
-        let scenario = ChaosScenario::LatencySpikes { duration_secs: 1, max_latency_ms: 100 };
+        let scenario = ChaosScenario::LatencySpikes {
+            duration_secs: 1,
+            max_latency_ms: 100,
+        };
         let result = plugin.run_scenario(&scenario).await;
         assert!(result.is_ok());
     }

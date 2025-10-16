@@ -26,12 +26,18 @@ async fn main() -> Result<(), CleanroomError> {
     for i in 0..5 {
         println!("   Creating environment {}...", i + 1);
         let test_env = CleanroomEnvironment::new().await?;
-        println!("   ✅ Environment {} created: {}", i + 1, test_env.session_id());
+        println!(
+            "   ✅ Environment {} created: {}",
+            i + 1,
+            test_env.session_id()
+        );
 
         // Run a simple validation test in each environment
-        let result = test_env.execute_test("stress_validation", || {
-            Ok::<String, CleanroomError>(format!("Environment {} validated", i + 1))
-        }).await?;
+        let result = test_env
+            .execute_test("stress_validation", || {
+                Ok::<String, CleanroomError>(format!("Environment {} validated", i + 1))
+            })
+            .await?;
 
         println!("   ✅ Test result: {}", result);
         environments.push(test_env);
@@ -43,7 +49,10 @@ async fn main() -> Result<(), CleanroomError> {
     println!("Each environment has unique session ID");
 
     // Verify all environments are different
-    let session_ids: Vec<_> = environments.iter().map(|env| env.session_id().to_string()).collect();
+    let session_ids: Vec<_> = environments
+        .iter()
+        .map(|env| env.session_id().to_string())
+        .collect();
     let unique_ids = session_ids.len();
     let total_ids = session_ids.len();
 
@@ -62,10 +71,12 @@ async fn main() -> Result<(), CleanroomError> {
 
     // Create containers in the main environment
     for i in 0..10 {
-        let container_result = main_env.get_or_create_container(&format!("stress-demo-{}", i), || {
-            println!("   Creating container {}...", i + 1);
-            Ok::<String, CleanroomError>(format!("stress-demo-container-{}", i))
-        }).await;
+        let container_result = main_env
+            .get_or_create_container(&format!("stress-demo-{}", i), || {
+                println!("   Creating container {}...", i + 1);
+                Ok::<String, CleanroomError>(format!("stress-demo-container-{}", i))
+            })
+            .await;
 
         match container_result {
             Ok(handle) => {
@@ -79,17 +90,22 @@ async fn main() -> Result<(), CleanroomError> {
         }
     }
 
-    println!("   Created {} containers in main environment", container_handles.len());
+    println!(
+        "   Created {} containers in main environment",
+        container_handles.len()
+    );
 
     // Demonstrate reuse by trying to get the same containers again
     println!("\n🔬 Innovation: Container Reuse Verification");
     println!("==========================================");
 
     for i in 0..5 {
-        let reused_result = main_env.get_or_create_container(&format!("stress-demo-{}", i), || {
-            println!("   ⚠️  This should not be called - container should be reused");
-            Ok::<String, CleanroomError>("should-not-be-created".to_string())
-        }).await;
+        let reused_result = main_env
+            .get_or_create_container(&format!("stress-demo-{}", i), || {
+                println!("   ⚠️  This should not be called - container should be reused");
+                Ok::<String, CleanroomError>("should-not-be-created".to_string())
+            })
+            .await;
 
         match reused_result {
             Ok(handle) => {

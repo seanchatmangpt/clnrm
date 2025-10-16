@@ -3,17 +3,21 @@
 //! Production-ready SurrealDB container management with health checks
 //! and connection verification.
 
-use crate::cleanroom::{ServicePlugin, ServiceHandle, HealthStatus};
+use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use uuid::Uuid;
-use testcontainers_modules::surrealdb::{SurrealDb, SURREALDB_PORT};
-use testcontainers::runners::AsyncRunner;
-use surrealdb::{engine::remote::ws::{Client, Ws}, opt::auth::Root, Surreal};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
+use surrealdb::{
+    engine::remote::ws::{Client, Ws},
+    opt::auth::Root,
+    Surreal,
+};
+use testcontainers::runners::AsyncRunner;
+use testcontainers_modules::surrealdb::{SurrealDb, SURREALDB_PORT};
+use tokio::sync::RwLock;
+use uuid::Uuid;
 
 pub struct SurrealDbPlugin {
     name: String,
@@ -46,19 +50,20 @@ impl SurrealDbPlugin {
     async fn verify_connection(&self, host_port: u16) -> Result<()> {
         let url = format!("127.0.0.1:{}", host_port);
         let db: Surreal<Client> = Surreal::init();
-        
-        db.connect::<Ws>(url)
-            .await
-            .map_err(|e| CleanroomError::connection_failed("Failed to connect to SurrealDB")
-                .with_source(e.to_string()))?;
-        
+
+        db.connect::<Ws>(url).await.map_err(|e| {
+            CleanroomError::connection_failed("Failed to connect to SurrealDB")
+                .with_source(e.to_string())
+        })?;
+
         db.signin(Root {
             username: &self.username,
             password: &self.password,
         })
         .await
-        .map_err(|e| CleanroomError::service_error("Failed to authenticate")
-            .with_source(e.to_string()))?;
+        .map_err(|e| {
+            CleanroomError::service_error("Failed to authenticate").with_source(e.to_string())
+        })?;
 
         Ok(())
     }
@@ -77,17 +82,16 @@ impl ServicePlugin for SurrealDbPlugin {
                 .with_strict(self.strict)
                 .with_all_capabilities(true);
 
-            let node = db_config
-                .start()
-                .await
-                .map_err(|e| CleanroomError::container_error("Failed to start SurrealDB container")
+            let node = db_config.start().await.map_err(|e| {
+                CleanroomError::container_error("Failed to start SurrealDB container")
                     .with_context("Container startup failed")
-                    .with_source(e.to_string()))?;
+                    .with_source(e.to_string())
+            })?;
 
-            let host_port = node.get_host_port_ipv4(SURREALDB_PORT)
-                .await
-                .map_err(|e| CleanroomError::container_error("Failed to get container port")
-                    .with_source(e.to_string()))?;
+            let host_port = node.get_host_port_ipv4(SURREALDB_PORT).await.map_err(|e| {
+                CleanroomError::container_error("Failed to get container port")
+                    .with_source(e.to_string())
+            })?;
 
             // Verify connection works
             self.verify_connection(host_port).await?;
@@ -100,7 +104,10 @@ impl ServicePlugin for SurrealDbPlugin {
             metadata.insert("port".to_string(), host_port.to_string());
             metadata.insert("username".to_string(), self.username.clone());
             metadata.insert("database_type".to_string(), "surrealdb".to_string());
-            metadata.insert("connection_string".to_string(), format!("ws://127.0.0.1:{}", host_port));
+            metadata.insert(
+                "connection_string".to_string(),
+                format!("ws://127.0.0.1:{}", host_port),
+            );
 
             Ok(ServiceHandle {
                 id: Uuid::new_v4().to_string(),
@@ -110,7 +117,10 @@ impl ServicePlugin for SurrealDbPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             let mut container_guard = self.container_id.write().await;
             if container_guard.is_some() {
@@ -121,8 +131,8 @@ impl ServicePlugin for SurrealDbPlugin {
     }
 
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {
-        if handle.metadata.contains_key("port") && 
-           handle.metadata.contains_key("connection_string") {
+        if handle.metadata.contains_key("port") && handle.metadata.contains_key("connection_string")
+        {
             HealthStatus::Healthy
         } else {
             HealthStatus::Unknown

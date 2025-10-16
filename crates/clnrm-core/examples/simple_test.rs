@@ -34,13 +34,17 @@ async fn main() -> Result<(), CleanroomError> {
     println!("------------------------------------------");
 
     // Create containers in each environment
-    let container1 = env1.get_or_create_container("test-container-1", || {
-        Ok::<String, CleanroomError>("environment-1-container".to_string())
-    }).await?;
+    let container1 = env1
+        .get_or_create_container("test-container-1", || {
+            Ok::<String, CleanroomError>("environment-1-container".to_string())
+        })
+        .await?;
 
-    let container2 = env2.get_or_create_container("test-container-2", || {
-        Ok::<String, CleanroomError>("environment-2-container".to_string())
-    }).await?;
+    let container2 = env2
+        .get_or_create_container("test-container-2", || {
+            Ok::<String, CleanroomError>("environment-2-container".to_string())
+        })
+        .await?;
 
     println!("✅ Created containers in separate environments");
     println!("   Env1 Container: {}", container1);
@@ -66,7 +70,9 @@ async fn main() -> Result<(), CleanroomError> {
         println!("✅ SUCCESS: Environments have separate metrics/state");
     } else {
         println!("❌ FAILURE: Environments are sharing state");
-        return Err(CleanroomError::internal_error("Environment isolation failed"));
+        return Err(CleanroomError::internal_error(
+            "Environment isolation failed",
+        ));
     }
 
     // Test 4: Test concurrent execution isolation
@@ -83,7 +89,10 @@ async fn main() -> Result<(), CleanroomError> {
 
     let duration = start.elapsed();
 
-    println!("\n⏱️  Concurrent execution completed in {}ms", duration.as_millis());
+    println!(
+        "\n⏱️  Concurrent execution completed in {}ms",
+        duration.as_millis()
+    );
 
     match (result1, result2) {
         (Ok(msg1), Ok(msg2)) => {
@@ -93,7 +102,9 @@ async fn main() -> Result<(), CleanroomError> {
         }
         _ => {
             println!("❌ One or both tests failed");
-            return Err(CleanroomError::internal_error("Concurrent isolation test failed"));
+            return Err(CleanroomError::internal_error(
+                "Concurrent isolation test failed",
+            ));
         }
     }
 
@@ -122,7 +133,9 @@ async fn main() -> Result<(), CleanroomError> {
         println!("   Demonstrates hermetic isolation in concurrent scenarios");
     } else {
         println!("❌ FAILURE: Environment isolation not working correctly");
-        return Err(CleanroomError::internal_error("Hermetic isolation validation failed"));
+        return Err(CleanroomError::internal_error(
+            "Hermetic isolation validation failed",
+        ));
     }
 
     println!("\n🎉 ALL ISOLATION TESTS PASSED!");
@@ -137,20 +150,30 @@ async fn main() -> Result<(), CleanroomError> {
 }
 
 /// Helper function to run an isolation test in a specific environment
-async fn run_isolation_test(env: &CleanroomEnvironment, test_name: &str) -> Result<String, CleanroomError> {
+async fn run_isolation_test(
+    env: &CleanroomEnvironment,
+    test_name: &str,
+) -> Result<String, CleanroomError> {
     // For this example, we'll demonstrate that the framework can create environments
     // and manage sessions. The actual async operations would need to be handled differently.
 
     // Create a container specific to this test (simplified for demo)
-    let container_id = env.get_or_create_container(&format!("isolation-container-{}", test_name), || {
-        Ok::<String, CleanroomError>(format!("{}-specific-container", test_name))
-    }).await?;
+    let container_id = env
+        .get_or_create_container(&format!("isolation-container-{}", test_name), || {
+            Ok::<String, CleanroomError>(format!("{}-specific-container", test_name))
+        })
+        .await?;
 
     // Execute a simple test with the environment
-    let result = env.execute_test(&format!("isolation_test_{}", test_name.to_lowercase()), || {
-        // Simple sync operation for demonstration
-        Ok::<String, CleanroomError>(format!("{} container: {}", test_name, container_id))
-    }).await?;
+    let result = env
+        .execute_test(
+            &format!("isolation_test_{}", test_name.to_lowercase()),
+            || {
+                // Simple sync operation for demonstration
+                Ok::<String, CleanroomError>(format!("{} container: {}", test_name, container_id))
+            },
+        )
+        .await?;
 
     Ok(result)
 }

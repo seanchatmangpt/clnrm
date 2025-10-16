@@ -6,12 +6,12 @@
 //! - Service health prediction
 //! - Cost optimization recommendations
 
+use crate::cleanroom::{HealthStatus, ServiceHandle};
 use crate::error::{CleanroomError, Result};
-use crate::cleanroom::{ServiceHandle, HealthStatus};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use serde::{Serialize, Deserialize};
-use tracing::{info, debug, warn};
+use tracing::{debug, info, warn};
 
 /// Service metrics for tracking resource usage and performance
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,7 +156,8 @@ impl MetricsHistory {
 
         let cpu_trend = (recent.cpu_usage - older.cpu_usage) / older.cpu_usage.max(1.0);
         let memory_trend = (recent.memory_usage - older.memory_usage) / older.memory_usage.max(1.0);
-        let request_trend = (recent.request_rate - older.request_rate) / older.request_rate.max(1.0);
+        let request_trend =
+            (recent.request_rate - older.request_rate) / older.request_rate.max(1.0);
 
         Some(ServiceMetrics {
             service_id: self.service_id.clone(),
@@ -171,7 +172,8 @@ impl MetricsHistory {
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs() + (horizon_minutes as u64 * 60),
+                .as_secs()
+                + (horizon_minutes as u64 * 60),
         })
     }
 }
@@ -345,10 +347,10 @@ impl ServiceManager {
 
     /// Determine scaling action based on metrics and prediction
     pub fn determine_scaling_action(&mut self, service_id: &str) -> Result<ScalingAction> {
-        let config = self.auto_scale_configs
-            .get(service_id)
-            .ok_or_else(|| CleanroomError::internal_error("No auto-scale config found")
-                .with_context(format!("Service: {}", service_id)))?;
+        let config = self.auto_scale_configs.get(service_id).ok_or_else(|| {
+            CleanroomError::internal_error("No auto-scale config found")
+                .with_context(format!("Service: {}", service_id))
+        })?;
 
         // Check cooldown period
         let now = SystemTime::now()
@@ -358,18 +360,22 @@ impl ServiceManager {
 
         if let Some(&last_action) = self.last_scaling_action.get(service_id) {
             if now - last_action < config.cooldown_seconds {
-                debug!("Scaling action in cooldown period for service: {}", service_id);
+                debug!(
+                    "Scaling action in cooldown period for service: {}",
+                    service_id
+                );
                 return Ok(ScalingAction::NoAction);
             }
         }
 
         // Get current and predicted metrics
-        let history = self.metrics_history
-            .get(service_id)
-            .ok_or_else(|| CleanroomError::internal_error("No metrics history found")
-                .with_context(format!("Service: {}", service_id)))?;
+        let history = self.metrics_history.get(service_id).ok_or_else(|| {
+            CleanroomError::internal_error("No metrics history found")
+                .with_context(format!("Service: {}", service_id))
+        })?;
 
-        let current = history.average_metrics(5)
+        let current = history
+            .average_metrics(5)
             .ok_or_else(|| CleanroomError::internal_error("Insufficient metrics data"))?;
 
         let predicted = history.predict_load(5).unwrap_or_else(|| current.clone());
@@ -383,23 +389,29 @@ impl ServiceManager {
 
         if max_cpu > config.cpu_scale_up_threshold
             || max_memory > config.memory_scale_up_threshold
-            || max_request_rate > config.request_rate_scale_up_threshold {
-
+            || max_request_rate > config.request_rate_scale_up_threshold
+        {
             if current_instances < config.max_instances {
                 let scale_up = ((max_cpu / config.cpu_scale_up_threshold).ceil() as u32)
                     .min(config.max_instances - current_instances);
 
                 self.last_scaling_action.insert(service_id.to_string(), now);
-                info!("Scaling up service {} by {} instances", service_id, scale_up);
+                info!(
+                    "Scaling up service {} by {} instances",
+                    service_id, scale_up
+                );
                 return Ok(ScalingAction::ScaleUp(scale_up));
             }
         } else if max_cpu < config.cpu_scale_down_threshold
             && max_memory < config.memory_scale_down_threshold
-            && current_instances > config.min_instances {
-
+            && current_instances > config.min_instances
+        {
             let scale_down = 1.min(current_instances - config.min_instances);
             self.last_scaling_action.insert(service_id.to_string(), now);
-            info!("Scaling down service {} by {} instances", service_id, scale_down);
+            info!(
+                "Scaling down service {} by {} instances",
+                service_id, scale_down
+            );
             return Ok(ScalingAction::ScaleDown(scale_down));
         }
 
@@ -413,10 +425,10 @@ impl ServiceManager {
 
     /// Predict service health
     pub fn predict_service_health(&self, service_id: &str) -> Result<HealthStatus> {
-        let history = self.metrics_history
-            .get(service_id)
-            .ok_or_else(|| CleanroomError::internal_error("No metrics history found")
-                .with_context(format!("Service: {}", service_id)))?;
+        let history = self.metrics_history.get(service_id).ok_or_else(|| {
+            CleanroomError::internal_error("No metrics history found")
+                .with_context(format!("Service: {}", service_id))
+        })?;
 
         let predicted = history.predict_load(5);
 
@@ -426,10 +438,16 @@ impl ServiceManager {
             if health_score > 70.0 {
                 Ok(HealthStatus::Healthy)
             } else if health_score > 40.0 {
-                warn!("Service {} predicted to be degraded (score: {})", service_id, health_score);
+                warn!(
+                    "Service {} predicted to be degraded (score: {})",
+                    service_id, health_score
+                );
                 Ok(HealthStatus::Unknown)
             } else {
-                warn!("Service {} predicted to be unhealthy (score: {})", service_id, health_score);
+                warn!(
+                    "Service {} predicted to be unhealthy (score: {})",
+                    service_id, health_score
+                );
                 Ok(HealthStatus::Unhealthy)
             }
         } else {
@@ -438,7 +456,11 @@ impl ServiceManager {
     }
 
     /// Get or create resource pool for a service
-    pub fn get_or_create_pool(&mut self, service_name: String, max_size: usize) -> &mut ResourcePool {
+    pub fn get_or_create_pool(
+        &mut self,
+        service_name: String,
+        max_size: usize,
+    ) -> &mut ResourcePool {
         self.resource_pools
             .entry(service_name.clone())
             .or_insert_with(|| ResourcePool::new(service_name, max_size))
@@ -470,7 +492,9 @@ impl ServiceManager {
                         service_id: service_id.to_string(),
                         service_name: service_name.clone(),
                         recommendation_type: "Optimize".to_string(),
-                        description: "High error rate detected. Investigate and fix to reduce retry costs.".to_string(),
+                        description:
+                            "High error rate detected. Investigate and fix to reduce retry costs."
+                                .to_string(),
                         estimated_savings: 15.0,
                         priority: 4,
                     });
@@ -483,7 +507,9 @@ impl ServiceManager {
                             service_id: service_id.to_string(),
                             service_name: service_name.clone(),
                             recommendation_type: "Pool Optimization".to_string(),
-                            description: "Resource pool has low utilization. Consider reducing pool size.".to_string(),
+                            description:
+                                "Resource pool has low utilization. Consider reducing pool size."
+                                    .to_string(),
                             estimated_savings: 20.0,
                             priority: 3,
                         });
@@ -496,7 +522,9 @@ impl ServiceManager {
                         service_id: service_id.to_string(),
                         service_name,
                         recommendation_type: "Serverless Migration".to_string(),
-                        description: "Low consistent load. Consider migrating to serverless architecture.".to_string(),
+                        description:
+                            "Low consistent load. Consider migrating to serverless architecture."
+                                .to_string(),
                         estimated_savings: 40.0,
                         priority: 4,
                     });
@@ -512,21 +540,32 @@ impl ServiceManager {
     pub fn get_summary(&self) -> HashMap<String, serde_json::Value> {
         let mut summary = HashMap::new();
 
-        summary.insert("total_services".to_string(),
-            serde_json::json!(self.metrics_history.len()));
+        summary.insert(
+            "total_services".to_string(),
+            serde_json::json!(self.metrics_history.len()),
+        );
 
-        summary.insert("total_instances".to_string(),
-            serde_json::json!(self.service_instances.values().sum::<u32>()));
+        summary.insert(
+            "total_instances".to_string(),
+            serde_json::json!(self.service_instances.values().sum::<u32>()),
+        );
 
-        summary.insert("total_pools".to_string(),
-            serde_json::json!(self.resource_pools.len()));
+        summary.insert(
+            "total_pools".to_string(),
+            serde_json::json!(self.resource_pools.len()),
+        );
 
-        let avg_utilization: f64 = self.resource_pools.values()
+        let avg_utilization: f64 = self
+            .resource_pools
+            .values()
             .map(|p| p.utilization())
-            .sum::<f64>() / self.resource_pools.len().max(1) as f64;
+            .sum::<f64>()
+            / self.resource_pools.len().max(1) as f64;
 
-        summary.insert("avg_pool_utilization".to_string(),
-            serde_json::json!(format!("{:.1}%", avg_utilization * 100.0)));
+        summary.insert(
+            "avg_pool_utilization".to_string(),
+            serde_json::json!(format!("{:.1}%", avg_utilization * 100.0)),
+        );
 
         summary
     }
@@ -596,7 +635,8 @@ mod tests {
 
         // Add metrics indicating high load
         for _ in 0..10 {
-            let mut metrics = ServiceMetrics::new(service_id.to_string(), "test-service".to_string());
+            let mut metrics =
+                ServiceMetrics::new(service_id.to_string(), "test-service".to_string());
             metrics.cpu_usage = 85.0;
             metrics.memory_usage = 600.0;
             manager.record_metrics(metrics);
@@ -635,7 +675,8 @@ mod tests {
 
         // Add metrics indicating under-utilization
         for _ in 0..100 {
-            let mut metrics = ServiceMetrics::new(service_id.to_string(), "test-service".to_string());
+            let mut metrics =
+                ServiceMetrics::new(service_id.to_string(), "test-service".to_string());
             metrics.cpu_usage = 10.0;
             metrics.memory_usage = 50.0;
             metrics.request_rate = 5.0;
@@ -644,7 +685,9 @@ mod tests {
 
         let recommendations = manager.generate_cost_recommendations(service_id);
         assert!(!recommendations.is_empty());
-        assert!(recommendations.iter().any(|r| r.recommendation_type == "Downsize"));
+        assert!(recommendations
+            .iter()
+            .any(|r| r.recommendation_type == "Downsize"));
     }
 
     #[test]
@@ -653,7 +696,8 @@ mod tests {
         let service_id = "test-1";
 
         for _ in 0..20 {
-            let mut metrics = ServiceMetrics::new(service_id.to_string(), "test-service".to_string());
+            let mut metrics =
+                ServiceMetrics::new(service_id.to_string(), "test-service".to_string());
             metrics.cpu_usage = 30.0;
             metrics.memory_usage = 200.0;
             metrics.error_rate = 0.001;

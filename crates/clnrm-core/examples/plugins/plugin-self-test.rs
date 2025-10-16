@@ -4,13 +4,13 @@
 //! that the plugin architecture works correctly. This proves our plugin claims
 //! by using plugins to test the plugin system itself.
 
-use clnrm_core::{CleanroomEnvironment, ServicePlugin, ServiceHandle, HealthStatus};
 use clnrm_core::error::Result;
+use clnrm_core::{CleanroomEnvironment, HealthStatus, ServiceHandle, ServicePlugin};
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// Innovative plugin self-testing using the framework's own plugin system
 #[tokio::main]
@@ -41,7 +41,10 @@ async fn main() -> Result<()> {
     println!("=================================================");
 
     let service_handle = env.start_service("plugin_self_test").await?;
-    println!("🚀 Plugin service started: {} (ID: {})", service_handle.service_name, service_handle.id);
+    println!(
+        "🚀 Plugin service started: {} (ID: {})",
+        service_handle.service_name, service_handle.id
+    );
 
     // Test 3: Use the framework's plugin system to check service health
     println!("\n📋 Test 3: Plugin Health Checking Self-Validation");
@@ -51,7 +54,10 @@ async fn main() -> Result<()> {
     println!("🔍 Active services: {}", services.active_services().len());
 
     for (handle_id, handle) in services.active_services() {
-        println!("🏥 Checking health of service: {} (ID: {})", handle.service_name, handle_id);
+        println!(
+            "🏥 Checking health of service: {} (ID: {})",
+            handle.service_name, handle_id
+        );
 
         // In a real implementation, this would check actual service health
         // For this demo, we'll simulate health checking
@@ -63,12 +69,20 @@ async fn main() -> Result<()> {
     println!("==========================================");
 
     // Execute a command using the plugin service
-    let execution_result = env.execute_in_container(
-        &service_handle.service_name,
-        &["echo", "Plugin system executing commands successfully"].iter().map(|s| s.to_string()).collect::<Vec<_>>(),
-    ).await?;
+    let execution_result = env
+        .execute_in_container(
+            &service_handle.service_name,
+            &["echo", "Plugin system executing commands successfully"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>(),
+        )
+        .await?;
 
-    println!("✅ Plugin execution working: {}", execution_result.stdout.trim());
+    println!(
+        "✅ Plugin execution working: {}",
+        execution_result.stdout.trim()
+    );
 
     // Test 5: Use the framework's plugin system to validate plugin isolation
     println!("\n📋 Test 5: Plugin Isolation Self-Validation");
@@ -79,11 +93,17 @@ async fn main() -> Result<()> {
     env.register_service(plugin2).await?;
 
     let handle2 = env.start_service("plugin_isolation_test").await?;
-    println!("🚀 Second plugin service started: {} (ID: {})", handle2.service_name, handle2.id);
+    println!(
+        "🚀 Second plugin service started: {} (ID: {})",
+        handle2.service_name, handle2.id
+    );
 
     // Verify both services are running independently
     let final_services = env.services().await;
-    println!("📊 Total active services: {}", final_services.active_services().len());
+    println!(
+        "📊 Total active services: {}",
+        final_services.active_services().len()
+    );
 
     if final_services.active_services().len() >= 2 {
         println!("✅ Plugin isolation working - multiple services running independently");
@@ -100,14 +120,20 @@ async fn main() -> Result<()> {
 
     // Verify cleanup
     let services_after_cleanup = env.services().await;
-    println!("📊 Services after cleanup: {}", services_after_cleanup.active_services().len());
+    println!(
+        "📊 Services after cleanup: {}",
+        services_after_cleanup.active_services().len()
+    );
 
     if services_after_cleanup.active_services().is_empty() {
         println!("✅ Plugin cleanup working - all services properly stopped");
     }
 
     let total_time = start_time.elapsed();
-    println!("\n🎉 SUCCESS: Plugin System Self-Testing Complete in {:?}", total_time);
+    println!(
+        "\n🎉 SUCCESS: Plugin System Self-Testing Complete in {:?}",
+        total_time
+    );
     println!("🔌 All plugin system claims validated using plugin system itself:");
     println!("   ✅ Plugin registration works");
     println!("   ✅ Plugin service lifecycle works");
@@ -137,8 +163,14 @@ impl PluginSelfTestPlugin {
     fn new_with_name(name: &str) -> Self {
         let mut metadata = HashMap::new();
         metadata.insert("test_type".to_string(), "plugin_self_test".to_string());
-        metadata.insert("innovation".to_string(), "plugin_testing_plugin_system".to_string());
-        metadata.insert("validation_method".to_string(), "framework_self_reference".to_string());
+        metadata.insert(
+            "innovation".to_string(),
+            "plugin_testing_plugin_system".to_string(),
+        );
+        metadata.insert(
+            "validation_method".to_string(),
+            "framework_self_reference".to_string(),
+        );
 
         Self {
             name: name.to_string(),
@@ -164,7 +196,10 @@ impl ServicePlugin for PluginSelfTestPlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn stop(
+        &self,
+        _handle: ServiceHandle,
+    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
         Box::pin(async move {
             info!("Stopping plugin self-test service: {}", self.name);
             Ok(())
