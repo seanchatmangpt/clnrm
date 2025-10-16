@@ -855,7 +855,7 @@ async fn calculate_reliability_score(results: &[TestExecutionResult]) -> Result<
     Ok(success_rate)
 }
 
-/// Generate AI insights from results
+/// Generate fallback AI insights from results (rule-based, not real AI)
 async fn generate_ai_insights(
     ai_service: Option<&AIIntelligenceService>,
     results: &[TestExecutionResult],
@@ -863,24 +863,8 @@ async fn generate_ai_insights(
     performance_score: f64,
     reliability_score: f64,
 ) -> Result<Vec<String>> {
-    // Try to use real AI first if available
-    if let Some(service) = ai_service {
-        match generate_real_ai_insights(
-            service,
-            results,
-            success_rate,
-            performance_score,
-            reliability_score,
-        ).await {
-            Ok(real_insights) => return Ok(real_insights),
-            Err(e) => {
-                warn!("Real AI insights failed, using rule-based fallback: {}", e);
-            }
-        }
-    }
-
-    // Fallback to rule-based analysis (not real AI)
-    warn!("⚠️ Using rule-based analysis instead of real AI - this is NOT genuine intelligence");
+    // Return rule-based fallback analysis
+    warn!("⚠️ Using rule-based analysis - this is NOT genuine intelligence");
     let mut insights = Vec::new();
 
     // Success rate insights (rule-based)
