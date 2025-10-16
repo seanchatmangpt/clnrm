@@ -25,7 +25,7 @@ pub fn discover_test_files(path: &PathBuf) -> Result<Vec<PathBuf>> {
             test_files.push(path.clone());
         } else {
             return Err(CleanroomError::validation_error(&format!(
-                "File must have .toml or .clnrm.toml extension: {}",
+                "File must have .clnrm.toml extension: {}",
                 path.display()
             )));
         }
@@ -50,7 +50,7 @@ pub fn discover_test_files(path: &PathBuf) -> Result<Vec<PathBuf>> {
         
         if test_files.is_empty() {
             return Err(CleanroomError::validation_error(&format!(
-                "No test files (.toml or .clnrm.toml) found in directory: {}",
+                "No test files (.clnrm.toml) found in directory: {}",
                 path.display()
             )));
         }
@@ -187,7 +187,7 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("File must have .toml or .clnrm.toml extension"));
+        assert!(result.unwrap_err().message.contains("File must have .clnrm.toml extension"));
         Ok(())
     }
 
@@ -199,7 +199,7 @@ mod tests {
                 .with_source(e.to_string()))?;
         
         // Create test files
-        let test_file1 = temp_dir.path().join("test1.toml");
+        let test_file1 = temp_dir.path().join("test1.clnrm.toml");
         let test_file2 = temp_dir.path().join("test2.clnrm.toml");
         let ignored_file = temp_dir.path().join("ignored.txt");
         
@@ -218,7 +218,7 @@ mod tests {
 
         // Assert
         assert_eq!(result.len(), 2);
-        assert!(result.iter().any(|p| p.file_name().unwrap() == "test1.toml"));
+        assert!(result.iter().any(|p| p.file_name().unwrap() == "test1.clnrm.toml"));
         assert!(result.iter().any(|p| p.file_name().unwrap() == "test2.clnrm.toml"));
         Ok(())
     }
@@ -241,7 +241,7 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("No test files (.toml or .clnrm.toml) found"));
+        assert!(result.unwrap_err().message.contains("No test files (.clnrm.toml) found"));
         Ok(())
     }
 

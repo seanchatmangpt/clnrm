@@ -79,8 +79,8 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::Init { name } => {
-            init_project(name.as_deref())?;
+        Commands::Init { force, config } => {
+            init_project(force, config)?;
             Ok(())
         }
 

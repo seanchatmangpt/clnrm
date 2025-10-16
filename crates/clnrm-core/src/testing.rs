@@ -319,7 +319,7 @@ pub async fn test_cli_functionality() -> Result<()> {
             .with_source(e.to_string()))?;
 
     // Test init_project
-    let init_result = init_project(Some("test_project"), "default");
+    let init_result = init_project(false, false);
     
     // Restore original directory
     std::env::set_current_dir(&original_dir)

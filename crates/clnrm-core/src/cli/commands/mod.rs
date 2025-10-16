@@ -4,6 +4,7 @@
 
 pub mod run;
 pub mod init;
+pub mod template;
 pub mod validate;
 pub mod plugins;
 pub mod services;
@@ -23,6 +24,7 @@ pub use run::{
 };
 
 pub use init::init_project;
+pub use template::generate_from_template;
 
 pub use validate::{
     validate_config,

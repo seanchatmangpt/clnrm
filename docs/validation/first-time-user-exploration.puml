@@ -1,0 +1,219 @@
+@startuml First Time User Exploration - Cleanroom Integration Test
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam handwritten false
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+skinparam maxmessagesize 150
+
+title First-Time User Exploration: Cleanroom Integration Test\nValidation Scenario from Zero to First Test
+
+actor "New User" as user
+participant "Terminal" as term
+participant "clnrm CLI" as cli
+participant "File System" as fs
+participant "Docker" as docker
+database "Test Results" as results
+
+== Phase 1: Discovery & Installation ==
+
+user -> term: **Step 1:** Install clnrm
+note right
+  User has just learned about
+  cleanroom testing framework
+end note
+
+term -> cli: cargo install clnrm\n(or build from source)
+cli --> term: ✅ Installed clnrm 0.3.0
+
+user -> term: **Step 2:** Check version
+term -> cli: clnrm --version
+cli --> term: clnrm 0.3.0
+note right: **Validation Point 1**\nDoes version command work?
+
+user -> term: **Step 3:** Explore help
+term -> cli: clnrm --help
+cli --> term: Shows all commands:\n- run\n- init\n- template\n- validate\n- plugins\n- services\n- report\n- self-test
+note right: **Validation Point 2**\nAre all commands documented?\nIs help output clear?
+
+== Phase 2: Project Initialization ==
+
+user -> term: **Step 4:** Create new project directory
+term -> fs: mkdir my-first-test
+term -> fs: cd my-first-test
+
+user -> term: **Step 5:** Initialize cleanroom project
+term -> cli: clnrm init
+note right: **Critical Test:**\nZero-config initialization\nNo arguments needed
+end note
+
+cli -> fs: Create tests/ directory
+cli -> fs: Create scenarios/ directory
+cli -> fs: Create tests/basic.clnrm.toml
+cli -> fs: Create README.md
+cli --> term: ✅ Project initialized successfully\n(zero-config)
+
+note over cli, fs: **Validation Point 3**\nDoes init work without arguments?\nAre files created correctly?\nIs .clnrm.toml extension used?
+
+user -> term: **Step 6:** Inspect what was created
+term -> fs: ls -la
+fs --> term: tests/\nscenarios/\nREADME.md
+term -> fs: cat tests/basic.clnrm.toml
+fs --> term: [test.metadata]\nname = "basic_test"\n...\n[services.test_container]\n...\n[[steps]]
+
+note right: **Validation Point 4**\nIs generated TOML valid?\nDoes it match parser expectations?\nDoes structure use [[services]] or [services.name]?
+
+== Phase 3: First Test Run ==
+
+user -> term: **Step 7:** Run tests (zero-config)
+term -> cli: clnrm run
+note right: **Critical Test:**\nNo arguments needed\nAuto-discovery of .clnrm.toml files
+end note
+
+cli -> fs: Discover all .clnrm.toml files
+fs --> cli: Found: tests/basic.clnrm.toml
+
+cli -> cli: Parse TOML configuration
+note over cli: **Validation Point 5**\nDoes TOML parsing work?\nNo "invalid type: map, expected sequence"?
+
+alt TOML Parsing Success
+    cli -> docker: Start test container (alpine:latest)
+    docker --> cli: ✅ Container started
+    
+    cli -> docker: Execute: echo "Hello from cleanroom!"
+    docker --> cli: stdout: Hello from cleanroom!
+    
+    cli -> cli: Validate regex: "Hello from cleanroom!"
+    
+    cli -> docker: Execute: sh -c "echo 'Test environment ready' && uname -a"
+    docker --> cli: stdout: Test environment ready\nLinux...
+    
+    cli -> cli: Validate regex: "Test environment ready"
+    
+    cli -> docker: Cleanup container
+    docker --> cli: ✅ Container removed
+    
+    cli -> results: Test passed: basic_test
+    cli --> term: ✅ Test Results: 1 passed, 0 failed\nDuration: 2.3s
+    
+    note right: **Validation Point 6**\nDid test actually execute?\nDid container commands run?\nDid regex validation work?\nWere results accurate?
+    
+else TOML Parsing Failed
+    cli --> term: ❌ Error: TOML parse error\nat line 9, column 2\n[services.test_container]\ninvalid type: map, expected sequence
+    
+    note right: **CRITICAL FAILURE**\nParser structure mismatch!\nAll 40 files fail this way
+    end note
+end
+
+== Phase 4: Exploration & Validation ==
+
+user -> term: **Step 8:** List available plugins
+term -> cli: clnrm plugins
+cli --> term: 🔧 GenericContainerPlugin\n🗄️ SurrealDbPlugin\n📦 Total: 2 plugins available
+
+note right: **Validation Point 7**\nDoes plugins command work?\nAre plugins actually usable?
+
+user -> term: **Step 9:** Validate test configuration
+term -> cli: clnrm validate tests/basic.clnrm.toml
+
+alt Configuration Valid
+    cli -> fs: Parse TOML file
+    fs --> cli: Configuration structure
+    cli -> cli: Validate structure
+    cli --> term: ✅ Configuration is valid
+    
+    note right: **Validation Point 8**\nDoes validate actually work?\nOr does it fail like run?
+    
+else Configuration Invalid
+    cli --> term: ❌ Error: TOML parse error\ninvalid type: map, expected sequence
+    
+    note right: **CRITICAL ISSUE**\nGenerated file doesn't validate!\nStructure mismatch
+    end note
+end
+
+user -> term: **Step 10:** Run framework self-tests
+term -> cli: clnrm self-test
+cli -> cli: Run internal test suite
+cli --> term: Total Tests: 5\nPassed: 4\nFailed: 1\n❌ test_cli_functionality\n(TOML parsing issue)
+
+note right: **Validation Point 9**\nDoes self-test work?\nWhat tests fail?\nWhy do they fail?
+
+== Phase 5: Advanced Usage ==
+
+user -> term: **Step 11:** Initialize with config
+term -> cli: clnrm init --config --force
+cli -> fs: Create cleanroom.toml
+cli --> term: ✅ Project initialized with configuration
+
+user -> term: **Step 12:** Check services status
+term -> cli: clnrm services status
+cli --> term: 📋 Service Status:\nNo services currently running
+
+user -> term: **Step 13:** Run tests in parallel
+term -> cli: clnrm run --parallel --jobs 4
+
+alt Parallel Execution Works
+    cli -> docker: Start 4 parallel containers
+    cli -> results: Execute tests concurrently
+    cli --> term: ✅ Test Results: 1 passed, 0 failed\nDuration: 0.8s (3x faster)
+    
+else Parallel Execution Fails
+    cli --> term: ❌ Multiple TOML parsing errors\n(same structure issue across all files)
+end
+
+== Validation Summary ==
+
+note over user, results
+**CRITICAL VALIDATION POINTS:**
+
+✅ **Working Features:**
+1. clnrm --version works
+2. clnrm --help shows all commands
+3. clnrm init creates directory structure
+4. clnrm plugins lists 2 plugins
+5. clnrm services status shows services
+6. clnrm self-test runs (4/5 pass)
+
+❌ **Broken Features:**
+7. clnrm run fails on TOML parsing
+8. clnrm validate fails on TOML parsing
+9. Generated .clnrm.toml doesn't validate
+10. Structure mismatch: parser expects [[services]] but files use [services.name]
+
+🔴 **BLOCKER:**
+The generated test file structure doesn't match
+what the parser expects. This breaks the entire
+test execution pipeline.
+
+**Root Cause:**
+Parser expects: [[services]] (array)
+Files use: [services.test_container] (table)
+
+**Impact:**
+- 0 out of 40 test files can execute
+- New users cannot run any tests
+- Framework appears completely broken
+- "clnrm run" does nothing useful
+end note
+
+== Expected User Experience vs Reality ==
+
+note left of user
+**Expected:**
+1. clnrm init ✅
+2. clnrm run ✅
+3. Tests execute ✅
+4. Results shown ✅
+
+**Reality:**
+1. clnrm init ✅
+2. clnrm run ❌
+   (TOML parse error)
+3. Tests never execute ❌
+4. No results ❌
+
+**First Impression:**
+"This framework is broken"
+end note
+
+@enduml

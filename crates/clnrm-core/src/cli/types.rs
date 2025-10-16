@@ -64,9 +64,13 @@ pub enum Commands {
 
     /// Initialize a new test project
     Init {
-        /// Project name
-        #[arg(value_name = "NAME")]
-        name: Option<String>,
+        /// Force reinitialize if already initialized
+        #[arg(long)]
+        force: bool,
+        
+        /// Generate cleanroom.toml configuration file
+        #[arg(long)]
+        config: bool,
     },
 
     /// Generate project from template
@@ -226,7 +230,7 @@ pub struct TestConfig {
     #[serde(rename = "test")]
     pub metadata: TestMetadata,
     #[serde(default)]
-    pub services: Option<Vec<ServiceConfig>>,
+    pub services: Option<HashMap<String, ServiceConfig>>,
     #[serde(default)]
     pub steps: Vec<TestStep>,
     pub assertions: Option<HashMap<String, toml::Value>>,
@@ -242,7 +246,6 @@ pub struct TestMetadata {
 /// Service configuration from TOML
 #[derive(Debug, Deserialize)]
 pub struct ServiceConfig {
-    pub name: String,
     #[serde(rename = "type")]
     pub service_type: String,
     pub plugin: String,
@@ -338,8 +341,7 @@ mod tests {
         // Test that file extension constants are properly defined
         assert_eq!(TOML_FILE_EXTENSION, ".toml");
         assert_eq!(CLNRM_TOML_EXTENSION, ".clnrm.toml");
-        assert_eq!(ACCEPTED_EXTENSIONS.len(), 2);
-        assert!(ACCEPTED_EXTENSIONS.contains(&".toml"));
+        assert_eq!(ACCEPTED_EXTENSIONS.len(), 1);
         assert!(ACCEPTED_EXTENSIONS.contains(&".clnrm.toml"));
     }
 }

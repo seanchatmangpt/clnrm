@@ -1,0 +1,98 @@
+@startuml Cleanroom Configuration Architecture
+
+!define RUST_COLOR #FF6B35
+!define CONFIG_COLOR #4A90E2
+!define TEST_COLOR #28A745
+!define WARNING_COLOR #FFC107
+
+title Cleanroom Configuration Architecture - Rust Core Team Approach
+
+' Configuration Files
+package "Project Configuration" {
+    [cleanroom.toml] as ProjectConfig #4A90E2
+    note right of ProjectConfig
+        **PROJECT/FRAMEWORK CONFIG**
+        - CLI defaults (parallel, jobs, format)
+        - Container settings (reuse, timeouts)
+        - Service defaults
+        - Observability settings
+        - Plugin configuration
+        - Performance tuning
+        
+        **OPTIONAL** - Framework works without it
+        Like .cargo/config.toml
+    end note
+}
+
+package "Test Definitions" {
+    [test1.clnrm.toml] as Test1 #28A745
+    [test2.toml] as Test2 #28A745
+    [basic.toml] as Test3 #28A745
+    
+    note right of Test1
+        **TEST DEFINITION FILES**
+        - [test.metadata]
+        - [services.name]
+        - [[steps]]
+        - expected_output_regex
+        
+        **REQUIRED** - Defines what to test
+        Like Cargo.toml (manifest)
+        Accepts: .toml OR .clnrm.toml
+    end note
+}
+
+' File Structure
+package "Project Structure" {
+    folder "my-project/" {
+        file "cleanroom.toml" as ConfigFile
+        folder "tests/" {
+            file "basic.toml" as TestFile1
+            file "integration.clnrm.toml" as TestFile2
+        }
+        folder "scenarios/" as ScenariosDir
+    }
+}
+
+' Commands
+actor Developer
+component "clnrm init" as InitCmd #FF6B35
+component "clnrm run" as RunCmd #FF6B35
+component "clnrm validate" as ValidateCmd #FF6B35
+
+' Flow
+Developer -> InitCmd: cd my-project && clnrm init
+InitCmd -> ConfigFile: Create cleanroom.toml\n(OPTIONAL, with --config flag)
+InitCmd -> TestFile1: Create tests/basic.toml\n(TEST DEFINITION)
+InitCmd -> ScenariosDir: Create scenarios/\n(empty directory)
+
+Developer -> RunCmd: clnrm run tests/
+RunCmd -> ConfigFile: Load project config\n(if exists, else use defaults)
+RunCmd -> TestFile1: Discover .toml files
+RunCmd -> TestFile2: Discover .clnrm.toml files
+RunCmd --> Developer: Execute tests
+
+note bottom of InitCmd
+    **Rust Core Team Approach:**
+    1. Called IN current directory (like cargo init)
+    2. cleanroom.toml is OPTIONAL (zero-config)
+    3. Creates test/ directory with basic.toml template
+    4. Framework works without cleanroom.toml
+    5. Use --config flag to generate cleanroom.toml
+end note
+
+note bottom of RunCmd
+    **File Discovery:**
+    - Accepts both .toml and .clnrm.toml
+    - Test files contain [test.metadata]
+    - cleanroom.toml controls framework behavior
+end note
+
+' Legend
+legend right
+    |= File Type |= Purpose |= Required |
+    | cleanroom.toml | Project/Framework config | OPTIONAL |
+    | *.toml / *.clnrm.toml | Test definitions | REQUIRED |
+end legend
+
+@enduml

@@ -82,9 +82,10 @@ pub fn validate_single_config(path: &PathBuf) -> Result<()> {
         return Err(CleanroomError::validation_error("At least one step is required"));
     }
     
-    // Log success
-    info!("✅ Configuration valid: {} ({} steps)", 
-          test_config.metadata.name, test_config.steps.len());
+    // Log success with service count
+    let service_count = test_config.services.as_ref().map(|s| s.len()).unwrap_or(0);
+    info!("✅ Configuration valid: {} ({} steps, {} services)", 
+          test_config.metadata.name, test_config.steps.len(), service_count);
     
     Ok(())
 }
@@ -245,7 +246,7 @@ description = "Invalid TOML"
                 .with_source(e.to_string()))?;
         
         // Create test files
-        let test_file1 = temp_dir.path().join("test1.toml");
+        let test_file1 = temp_dir.path().join("test1.clnrm.toml");
         let test_file2 = temp_dir.path().join("test2.clnrm.toml");
         
         let toml_content = r#"
@@ -292,7 +293,7 @@ command = ["echo", "test"]
         
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No test files (.toml or .clnrm.toml) found"));
+        assert!(result.unwrap_err().to_string().contains("No test files (.clnrm.toml) found"));
         
         Ok(())
     }
@@ -346,7 +347,7 @@ command = ["echo", "test"]
         
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("File must have .toml or .clnrm.toml extension"));
+        assert!(result.unwrap_err().to_string().contains("File must have .clnrm.toml extension"));
         
         Ok(())
     }

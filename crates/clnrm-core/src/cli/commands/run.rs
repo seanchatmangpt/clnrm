@@ -242,12 +242,12 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
 
     // Register services from configuration
     if let Some(services) = &test_config.services {
-        for service in services {
-            debug!("Registering service: {} ({})", service.service_type, service.service_type);
+        for (service_name, service_config) in services {
+            debug!("Registering service: {} ({})", service_name, service_config.service_type);
 
             // TODO: Implement actual service plugin registration
             // Currently only Generic and SurrealDB plugins are available
-            unimplemented!("Service plugin registration: Only Generic and SurrealDB plugins are implemented. Service type '{}' not supported", service.service_type);
+            unimplemented!("Service plugin registration: Only Generic and SurrealDB plugins are implemented. Service type '{}' not supported", service_config.service_type);
         }
     }
 
