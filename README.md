@@ -150,6 +150,23 @@ $ clnrm plugins
 - 4GB+ RAM
 
 ### Installation
+
+#### Via Homebrew (Recommended)
+```bash
+# Add the tap and install
+brew tap seanchatmangpt/clnrm
+brew install clnrm
+
+# Verify installation
+clnrm --version  # Should show: clnrm 0.4.0
+```
+
+#### Via Cargo
+```bash
+cargo install clnrm
+```
+
+#### From Source
 ```bash
 git clone https://github.com/seanchatmangpt/clnrm
 cd clnrm
