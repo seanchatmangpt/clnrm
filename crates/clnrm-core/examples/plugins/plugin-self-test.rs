@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
-use tracing::{info, debug, warn, error};
+use tracing::{info, debug};
 
 /// Innovative plugin self-testing using the framework's own plugin system
 #[tokio::main]

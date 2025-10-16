@@ -13,18 +13,32 @@ use std::time::Duration;
 /// Main test configuration structure
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TestConfig {
+    /// Test metadata section
+    pub test: TestMetadataSection,
+    /// Service configurations (as a table)
+    pub services: Option<HashMap<String, ServiceConfig>>,
+    /// Test steps to execute
+    pub steps: Vec<StepConfig>,
+    /// Assertions
+    pub assertions: Option<HashMap<String, serde_json::Value>>,
+}
+
+/// Test metadata section
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TestMetadataSection {
+    /// Test metadata
+    pub metadata: TestMetadata,
+}
+
+/// Test metadata configuration
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TestMetadata {
     /// Test name
     pub name: String,
-    /// Test scenarios to execute
-    pub scenarios: Vec<ScenarioConfig>,
-    /// Security policy configuration
-    pub policy: Option<PolicyConfig>,
-    /// Service configurations
-    pub services: Option<Vec<ServiceConfig>>,
-    /// Global environment variables
-    pub env: Option<HashMap<String, String>>,
-    /// Timeout settings
-    pub timeout: Option<TimeoutConfig>,
+    /// Test description
+    pub description: Option<String>,
+    /// Test timeout
+    pub timeout: Option<String>,
 }
 
 /// Individual test scenario configuration
@@ -48,7 +62,9 @@ pub struct StepConfig {
     /// Step name
     pub name: String,
     /// Command to execute
-    pub cmd: Vec<String>,
+    pub command: Vec<String>,
+    /// Expected output regex pattern
+    pub expected_output_regex: Option<String>,
     /// Working directory
     pub workdir: Option<String>,
     /// Step-specific environment variables
@@ -79,12 +95,12 @@ pub struct PolicyConfig {
 /// Service configuration
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServiceConfig {
-    /// Service name
-    pub name: String,
-    /// Service type (database, cache, etc.)
-    pub service_type: String,
-    /// Service image
-    pub image: String,
+    /// Service type (generic_container, database, ollama, etc.)
+    pub r#type: String,
+    /// Service plugin
+    pub plugin: String,
+    /// Service image (optional for network services)
+    pub image: Option<String>,
     /// Service environment variables
     pub env: Option<HashMap<String, String>>,
     /// Service ports
@@ -302,59 +318,40 @@ impl TestConfig {
     /// Validate the configuration
     pub fn validate(&self) -> Result<()> {
         // Validate name is not empty
-        if self.name.trim().is_empty() {
+        if self.test.metadata.name.trim().is_empty() {
             return Err(CleanroomError::validation_error("Test name cannot be empty"));
         }
 
-        // Validate scenarios exist
-        if self.scenarios.is_empty() {
-            return Err(CleanroomError::validation_error("At least one scenario is required"));
+        // Validate steps exist
+        if self.steps.is_empty() {
+            return Err(CleanroomError::validation_error("At least one step is required"));
         }
 
-        // Validate each scenario
-        for (i, scenario) in self.scenarios.iter().enumerate() {
-            scenario.validate()
-                .map_err(|e| CleanroomError::validation_error(format!("Scenario {}: {}", i, e)))?;
+        // Validate each step
+        for (i, step) in self.steps.iter().enumerate() {
+            step.validate()
+                .map_err(|e| CleanroomError::validation_error(format!("Step {}: {}", i, e)))?;
         }
 
         // Validate services if present
         if let Some(services) = &self.services {
-            for (i, service) in services.iter().enumerate() {
+            for (service_name, service) in services.iter() {
                 service.validate()
-                    .map_err(|e| CleanroomError::validation_error(format!("Service {}: {}", i, e)))?;
+                    .map_err(|e| CleanroomError::validation_error(format!("Service {}: {}", service_name, e)))?;
             }
         }
 
-        // Validate policy if present
-        if let Some(policy) = &self.policy {
-            policy.validate()?;
+        // Validate assertions if present (basic validation)
+        if let Some(assertions) = &self.assertions {
+            // Basic validation - assertions should not be empty
+            if assertions.is_empty() {
+                return Err(CleanroomError::validation_error("Assertions cannot be empty if provided"));
+            }
         }
 
         Ok(())
     }
 
-    /// Convert to cleanroom Policy
-    pub fn to_policy(&self) -> Policy {
-        if let Some(policy_config) = &self.policy {
-            let mut policy = Policy::default();
-            
-            if let Some(security_level) = &policy_config.security_level {
-                match security_level.to_lowercase().as_str() {
-                    "low" => policy = Policy::with_security_level(SecurityLevel::Low),
-                    "medium" => policy = Policy::with_security_level(SecurityLevel::Medium),
-                    "high" => policy = Policy::with_security_level(SecurityLevel::High),
-                    _ => {} // Keep default
-                }
-            }
-
-            // Note: Policy doesn't have with_timeout method, so we'll use default
-            // This could be extended in the future if needed
-
-            policy
-        } else {
-            Policy::default()
-        }
-    }
 }
 
 impl ScenarioConfig {
@@ -384,7 +381,7 @@ impl StepConfig {
             return Err(CleanroomError::validation_error("Step name cannot be empty"));
         }
 
-        if self.cmd.is_empty() {
+        if self.command.is_empty() {
             return Err(CleanroomError::validation_error("Step command cannot be empty"));
         }
 
@@ -395,16 +392,21 @@ impl StepConfig {
 impl ServiceConfig {
     /// Validate the service configuration
     pub fn validate(&self) -> Result<()> {
-        if self.name.trim().is_empty() {
-            return Err(CleanroomError::validation_error("Service name cannot be empty"));
-        }
-
-        if self.service_type.trim().is_empty() {
+        if self.r#type.trim().is_empty() {
             return Err(CleanroomError::validation_error("Service type cannot be empty"));
         }
 
-        if self.image.trim().is_empty() {
-            return Err(CleanroomError::validation_error("Service image cannot be empty"));
+        if self.plugin.trim().is_empty() {
+            return Err(CleanroomError::validation_error("Service plugin cannot be empty"));
+        }
+
+        if let Some(ref image) = self.image {
+            if image.trim().is_empty() {
+                return Err(CleanroomError::validation_error("Service image cannot be empty"));
+            }
+        } else if self.r#type != "network_service" && self.r#type != "ollama" {
+            // For container-based services, image is required
+            return Err(CleanroomError::validation_error("Service image is required for container-based services"));
         }
 
         Ok(())
@@ -749,38 +751,33 @@ max_execution_time = 300
 "#;
 
         let config = parse_toml_config(toml_content).unwrap();
-        assert_eq!(config.name, "test_example");
-        assert_eq!(config.scenarios.len(), 1);
-        assert_eq!(config.scenarios[0].name, "basic_test");
-        assert_eq!(config.scenarios[0].steps.len(), 2);
+        assert_eq!(config.test.metadata.name, "test_example");
+        assert_eq!(config.steps.len(), 2);
     }
 
     #[test]
     fn test_validate_config() {
         let config = TestConfig {
-            name: "test".to_string(),
-            scenarios: vec![
-                ScenarioConfig {
-                    name: "scenario".to_string(),
-                    steps: vec![
-                        StepConfig {
-                            name: "step".to_string(),
-                            cmd: vec!["echo".to_string(), "test".to_string()],
-                            workdir: None,
-                            env: None,
-                            expected_exit_code: None,
-                            continue_on_failure: None,
-                        }
-                    ],
-                    concurrent: None,
-                    timeout_ms: None,
-                    policy: None,
+            test: TestMetadataSection {
+                metadata: TestMetadata {
+                    name: "test".to_string(),
+                    description: Some("test description".to_string()),
+                    timeout: None,
+                }
+            },
+            steps: vec![
+                StepConfig {
+                    name: "step".to_string(),
+                    command: vec!["echo".to_string(), "test".to_string()],
+                    expected_output_regex: None,
+                    workdir: None,
+                    env: None,
+                    expected_exit_code: None,
+                    continue_on_failure: None,
                 }
             ],
-            policy: None,
             services: None,
-            env: None,
-            timeout: None,
+            assertions: None,
         };
 
         assert!(config.validate().is_ok());
@@ -789,12 +786,16 @@ max_execution_time = 300
     #[test]
     fn test_validate_empty_name() {
         let config = TestConfig {
-            name: "".to_string(),
-            scenarios: vec![],
-            policy: None,
+            test: TestMetadataSection {
+                metadata: TestMetadata {
+                    name: "".to_string(),
+                    description: Some("test description".to_string()),
+                    timeout: None,
+                }
+            },
+            steps: vec![],
             services: None,
-            env: None,
-            timeout: None,
+            assertions: None,
         };
 
         assert!(config.validate().is_err());
@@ -803,12 +804,16 @@ max_execution_time = 300
     #[test]
     fn test_validate_empty_scenarios() {
         let config = TestConfig {
-            name: "test".to_string(),
-            scenarios: vec![],
-            policy: None,
+            test: TestMetadataSection {
+                metadata: TestMetadata {
+                    name: "test".to_string(),
+                    description: Some("test description".to_string()),
+                    timeout: None,
+                }
+            },
+            steps: vec![],
             services: None,
-            env: None,
-            timeout: None,
+            assertions: None,
         };
 
         assert!(config.validate().is_err());

@@ -8,22 +8,25 @@ use tracing::{info, debug, warn};
 
 /// Show service status
 pub async fn show_service_status() -> Result<()> {
-    info!("Service Status:");
+    println!("📊 Service Status:");
     
     // Create a temporary environment to check for any active services
-    let environment = CleanroomEnvironment::default();
+    let environment = CleanroomEnvironment::new().await
+        .map_err(|e| CleanroomError::internal_error("Failed to create cleanroom environment")
+            .with_context("Service status command initialization")
+            .with_source(e.to_string()))?;
     let services = environment.services().await;
     
     if services.active_services().is_empty() {
-        info!("No services currently running");
-        debug!("Run 'clnrm run <test_file>' to start services");
+        println!("✅ No services currently running");
+        println!("💡 Run 'clnrm run <test_file>' to start services");
     } else {
-        info!("Active Services: {}", services.active_services().len());
+        println!("Active Services: {}", services.active_services().len());
         for (_handle_id, handle) in services.active_services() {
-            debug!("Service: {} (ID: {})", handle.service_name, handle.id);
+            println!("Service: {} (ID: {})", handle.service_name, handle.id);
             if !handle.metadata.is_empty() {
                 for (key, value) in &handle.metadata {
-                    debug!("  {}: {}", key, value);
+                    println!("  {}: {}", key, value);
                 }
             }
         }
@@ -34,10 +37,13 @@ pub async fn show_service_status() -> Result<()> {
 
 /// Show service logs
 pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
-    info!("Service Logs for '{}':", service);
+    println!("📄 Service Logs for '{}':", service);
     
     // Create a temporary environment to check for services
-    let environment = CleanroomEnvironment::default();
+    let environment = CleanroomEnvironment::new().await
+        .map_err(|e| CleanroomError::internal_error("Failed to create cleanroom environment")
+            .with_context("Service logs command initialization")
+            .with_source(e.to_string()))?;
     let services = environment.services().await;
     
     // Find the service by name
@@ -47,27 +53,42 @@ pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
     
     match service_handle {
         Some(handle) => {
-            info!("Service found: {} (ID: {})", handle.service_name, handle.id);
+            println!("Service found: {} (ID: {})", handle.service_name, handle.id);
             
-            // TODO: Implement actual log retrieval from container backend
-            unimplemented!("Service log retrieval: Cannot retrieve logs for service '{}' because log retrieval from container backend is not implemented", service);
+            // Try to retrieve logs from the service
+            match environment.get_service_logs(&handle.id, lines).await {
+                Ok(logs) => {
+                    if logs.is_empty() {
+                        println!("📄 No logs available for service '{}'", service);
+                    } else {
+                        println!("📄 Recent logs (last {} lines):", lines);
+                        for log_line in logs {
+                            println!("  {}", log_line);
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("⚠️  Could not retrieve logs: {}", e);
+                    println!("💡 Service '{}' is running but log access may not be available", service);
+                }
+            }
             
             if !handle.metadata.is_empty() {
-                debug!("Metadata:");
+                println!("Metadata:");
                 for (key, value) in &handle.metadata {
-                    debug!("  {}: {}", key, value);
+                    println!("  {}: {}", key, value);
                 }
             }
         }
         None => {
-            warn!("Service '{}' not found in active services", service);
-            debug!("Available services:");
+            println!("❌ Service '{}' not found in active services", service);
+            println!("Available services:");
             for (_, handle) in services.active_services() {
-                debug!("  - {}", handle.service_name);
+                println!("  - {}", handle.service_name);
             }
             if services.active_services().is_empty() {
-                debug!("No services currently running");
-                debug!("Run 'clnrm run <test_file>' to start services");
+                println!("No services currently running");
+                println!("Run 'clnrm run <test_file>' to start services");
             }
         }
     }
@@ -77,10 +98,13 @@ pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
 
 /// Restart a service
 pub async fn restart_service(service: &str) -> Result<()> {
-    info!("Restarting service '{}':", service);
+    println!("🔄 Restarting service '{}':", service);
     
     // Create a temporary environment to check for services
-    let environment = CleanroomEnvironment::default();
+    let environment = CleanroomEnvironment::new().await
+        .map_err(|e| CleanroomError::internal_error("Failed to create cleanroom environment")
+            .with_context("Service restart command initialization")
+            .with_source(e.to_string()))?;
     let services = environment.services().await;
     
     // Find the service by name
@@ -90,33 +114,39 @@ pub async fn restart_service(service: &str) -> Result<()> {
     
     match service_handle {
         Some(handle) => {
-            info!("Service found: {} (ID: {})", handle.service_name, handle.id);
+            println!("Service found: {} (ID: {})", handle.service_name, handle.id);
             
-            // In a real implementation, this would:
-            // 1. Stop the service using the service registry
-            // 2. Wait for it to fully stop
-            // 3. Start it again with the same configuration
+            // Stop the service
+            println!("Stopping service...");
+            environment.stop_service(&handle.id).await
+                .map_err(|e| CleanroomError::internal_error("Failed to stop service")
+                    .with_context(format!("Service: {}", service))
+                    .with_source(e.to_string()))?;
+            println!("Service stopped");
             
-            debug!("Stopping service...");
-            // environment.stop_service(&handle.id).await?;
-            debug!("Service stopped");
+            // Wait a moment for cleanup
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
             
-            debug!("Starting service...");
-            // let new_handle = environment.start_service(service).await?;
-            debug!("Service restarted");
-            debug!("New service ID: {}", handle.id); // In real impl, this would be new_handle.id
+            // Start the service again
+            println!("Starting service...");
+            let new_handle = environment.start_service(service).await
+                .map_err(|e| CleanroomError::internal_error("Failed to restart service")
+                    .with_context(format!("Service: {}", service))
+                    .with_source(e.to_string()))?;
+            println!("Service restarted");
+            println!("New service ID: {}", new_handle.id);
             
-            info!("Service '{}' restarted successfully", service);
+            println!("✅ Service '{}' restarted successfully", service);
         }
         None => {
-            warn!("Service '{}' not found in active services", service);
-            debug!("Available services:");
+            println!("❌ Service '{}' not found in active services", service);
+            println!("Available services:");
             for (_, handle) in services.active_services() {
-                debug!("  - {}", handle.service_name);
+                println!("  - {}", handle.service_name);
             }
             if services.active_services().is_empty() {
-                debug!("No services currently running");
-                debug!("Run 'clnrm run <test_file>' to start services");
+                println!("No services currently running");
+                println!("Run 'clnrm run <test_file>' to start services");
             }
         }
     }

@@ -37,15 +37,15 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
     let command_start = Instant::now();
 
     // Execute commands as the README shows
-    let result = env.execute_in_container(&container, ["echo", "Container started successfully"]).await?;
-    assert!(result.success);
+    let result = env.execute_in_container(&container, &["echo".to_string(), "Container started successfully".to_string()]).await?;
+    assert_eq!(result.exit_code, 0);
 
-    let result = env.execute_in_container(&container, ["sh", "-c", "echo 'Testing command execution' && sleep 0.1 && echo 'Command completed'"]).await?;
-    assert!(result.success);
+    let result = env.execute_in_container(&container, &["sh".to_string(), "-c".to_string(), "echo 'Testing command execution' && sleep 0.1 && echo 'Command completed'".to_string()]).await?;
+    assert_eq!(result.exit_code, 0);
     assert!(result.stdout.contains("Command completed"));
 
-    let result = env.execute_in_container(&container, ["sh", "-c", "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt"]).await?;
-    assert!(result.success);
+    let result = env.execute_in_container(&container, &["sh".to_string(), "-c".to_string(), "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt".to_string()]).await?;
+    assert_eq!(result.exit_code, 0);
     assert!(result.stdout.contains("test data"));
 
     println!("✅ Command execution works in {:?}", command_start.elapsed());
@@ -150,15 +150,15 @@ async fn test_concurrent_container_operations() -> Result<()> {
     let mut handles = Vec::new();
 
     for i in 0..5 {
-        let env_clone = env.clone();
+        // Note: CleanroomEnvironment doesn't implement Clone, so we use a reference
         let handle = tokio::spawn(async move {
             // Create containers concurrently - some may share containers for reuse
-            let container = env_clone.get_or_create_container(&format!("concurrent-{}", i), || {
+            let container = env.get_or_create_container(&format!("concurrent-{}", i), || {
                 Ok::<String, clnrm_core::CleanroomError>(format!("container-{}", i))
             }).await?;
 
             // Execute work in the container
-            let result = env_clone.execute_in_container(&container, ["echo", &format!("work-{}", i)]).await?;
+            let result = env.execute_in_container(&container, &["echo".to_string(), format!("work-{}", i)]).await?;
             Ok::<_, clnrm_core::CleanroomError>(result.stdout)
         });
         handles.push(handle);

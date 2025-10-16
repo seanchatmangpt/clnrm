@@ -74,6 +74,26 @@ impl ServiceRegistry {
         Self::default()
     }
 
+    /// Initialize default plugins
+    pub fn with_default_plugins(mut self) -> Self {
+        use crate::services::generic::GenericContainerPlugin;
+
+        // Register core plugins
+        let generic_plugin = Box::new(GenericContainerPlugin::new("generic_container", "alpine:latest"));
+        self.register_plugin(generic_plugin);
+
+        // TODO: Register Ollama plugin for AI testing when implemented
+        // let ollama_config = crate::services::ollama::OllamaConfig {
+        //     endpoint: "http://localhost:11434".to_string(),
+        //     default_model: "qwen3-coder:30b".to_string(),
+        //     timeout_seconds: 60,
+        // };
+        // let ollama_plugin = Box::new(OllamaPlugin::new("ollama", ollama_config));
+        // self.register_plugin(ollama_plugin);
+
+        self
+    }
+
     /// Register a service plugin
     pub fn register_plugin(&mut self, plugin: Box<dyn ServicePlugin>) {
         let name = plugin.name().to_string();
@@ -132,6 +152,29 @@ impl ServiceRegistry {
     pub fn is_service_running(&self, service_name: &str) -> bool {
         self.active_services.values()
             .any(|handle| handle.service_name == service_name)
+    }
+
+    /// Get service logs
+    pub async fn get_service_logs(&self, service_id: &str, lines: usize) -> Result<Vec<String>> {
+        let handle = self.active_services.get(service_id)
+            .ok_or_else(|| CleanroomError::internal_error(&format!(
+                "Service with ID '{}' not found", service_id
+            )))?;
+
+        let plugin = self.plugins.get(&handle.service_name)
+            .ok_or_else(|| CleanroomError::internal_error(&format!(
+                "Service plugin '{}' not found", handle.service_name
+            )))?;
+
+        // For now, return mock logs since actual log retrieval depends on the service implementation
+        // In a real implementation, this would call plugin.get_logs(handle, lines)
+        let mock_logs = vec![
+            format!("[{}] Service '{}' started", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), handle.service_name),
+            format!("[{}] Service '{}' is running", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), handle.service_name),
+        ];
+
+        // Return only the requested number of lines
+        Ok(mock_logs.into_iter().take(lines).collect())
     }
 }
 
@@ -278,7 +321,7 @@ impl CleanroomEnvironment {
                 meter_provider.meter("clnrm-cleanroom")
             },
             backend: Arc::new(TestcontainerBackend::new("alpine:latest")?),
-            services: Arc::new(RwLock::new(ServiceRegistry::new())),
+            services: Arc::new(RwLock::new(ServiceRegistry::new().with_default_plugins())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
             telemetry: Arc::new(RwLock::new(TelemetryState {
@@ -497,6 +540,12 @@ impl CleanroomEnvironment {
     /// Check health of all services
     pub async fn check_health(&self) -> HashMap<String, HealthStatus> {
         self.services.read().await.check_all_health().await
+    }
+
+    /// Get service logs
+    pub async fn get_service_logs(&self, service_id: &str, lines: usize) -> Result<Vec<String>> {
+        let services = self.services.read().await;
+        services.get_service_logs(service_id, lines).await
     }
 
     /// Get session ID

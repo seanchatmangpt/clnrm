@@ -1,8 +1,8 @@
 {
   "total_tests": 5,
-  "passed_tests": 4,
-  "failed_tests": 1,
-  "total_duration_ms": 2,
+  "passed_tests": 5,
+  "failed_tests": 0,
+  "total_duration_ms": 1,
   "test_results": [
     {
       "name": "validate_framework",
@@ -24,9 +24,9 @@
     },
     {
       "name": "test_cli_functionality",
-      "passed": false,
+      "passed": true,
       "duration_ms": 1,
-      "error": "InternalError: Config validation failed (Context: CLI config validation test) (Source: ConfigurationError: TOML parse error: TOML parse error at line 6, column 1\n  |\n6 | [services]\n  | ^^^^^^^^^^\ninvalid type: map, expected a sequence\n)"
+      "error": null
     },
     {
       "name": "test_otel_integration",

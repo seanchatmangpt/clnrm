@@ -125,6 +125,66 @@ pub enum Commands {
         #[arg(short, long)]
         report: bool,
     },
+
+    /// AI-powered test orchestration
+    AiOrchestrate {
+        /// Test files or directories to orchestrate
+        paths: Option<Vec<PathBuf>>,
+
+        /// Enable predictive failure analysis
+        #[arg(long)]
+        predict_failures: bool,
+
+        /// Enable autonomous optimization
+        #[arg(long)]
+        auto_optimize: bool,
+
+        /// AI confidence threshold (0.0-1.0)
+        #[arg(long, default_value = "0.8")]
+        confidence_threshold: f64,
+
+        /// Maximum parallel workers (AI-optimized)
+        #[arg(short = 'j', long, default_value = "8")]
+        max_workers: usize,
+    },
+
+    /// AI-powered predictive analytics
+    AiPredict {
+        /// Analyze test execution history
+        #[arg(long)]
+        analyze_history: bool,
+
+        /// Predict failure patterns
+        #[arg(long)]
+        predict_failures: bool,
+
+        /// Generate optimization recommendations
+        #[arg(long)]
+        recommendations: bool,
+
+        /// Output format for predictions
+        #[arg(short, long, default_value = "human")]
+        format: PredictionFormat,
+    },
+
+    /// AI-powered optimization
+    AiOptimize {
+        /// Optimize test execution order
+        #[arg(long)]
+        execution_order: bool,
+
+        /// Optimize resource allocation
+        #[arg(long)]
+        resource_allocation: bool,
+
+        /// Optimize parallel execution
+        #[arg(long)]
+        parallel_execution: bool,
+
+        /// Apply optimizations automatically
+        #[arg(long)]
+        auto_apply: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -173,6 +233,18 @@ pub enum ReportFormat {
     Json,
     /// PDF report
     Pdf,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum PredictionFormat {
+    /// Human-readable predictions
+    Human,
+    /// JSON format for programmatic use
+    Json,
+    /// Markdown format for documentation
+    Markdown,
+    /// CSV format for analysis
+    Csv,
 }
 
 /// CLI configuration
@@ -224,26 +296,33 @@ pub struct CliTestResult {
     pub error: Option<String>,
 }
 
-/// TOML test configuration structure
+/// TOML test configuration structure - matches the existing config module
 #[derive(Debug, Deserialize)]
 pub struct TestConfig {
     #[serde(rename = "test")]
-    pub metadata: TestMetadata,
+    pub test: TestMetadataSection,
     #[serde(default)]
     pub services: Option<HashMap<String, ServiceConfig>>,
     #[serde(default)]
     pub steps: Vec<TestStep>,
+    #[serde(default)]
     pub assertions: Option<HashMap<String, toml::Value>>,
+}
+
+/// Test metadata section from TOML
+#[derive(Debug, Deserialize)]
+pub struct TestMetadataSection {
+    pub metadata: TestMetadata,
 }
 
 /// Test metadata from TOML
 #[derive(Debug, Deserialize)]
 pub struct TestMetadata {
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
 }
 
-/// Service configuration from TOML
+/// Service configuration from TOML - matches the existing config module
 #[derive(Debug, Deserialize)]
 pub struct ServiceConfig {
     #[serde(rename = "type")]
@@ -341,7 +420,8 @@ mod tests {
         // Test that file extension constants are properly defined
         assert_eq!(TOML_FILE_EXTENSION, ".toml");
         assert_eq!(CLNRM_TOML_EXTENSION, ".clnrm.toml");
-        assert_eq!(ACCEPTED_EXTENSIONS.len(), 1);
+        assert_eq!(ACCEPTED_EXTENSIONS.len(), 2);
+        assert!(ACCEPTED_EXTENSIONS.contains(&".toml"));
         assert!(ACCEPTED_EXTENSIONS.contains(&".clnrm.toml"));
     }
 }

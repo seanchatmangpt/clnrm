@@ -1,0 +1,230 @@
+# AI Performance Benchmark Test
+# Comprehensive performance testing of Vercel AI SDK through CLNRM
+
+[test.metadata]
+name = "ai_performance_benchmark"
+description = "Benchmark AI performance for production readiness"
+timeout = "600s"
+
+# Performance Test Configuration
+[services.performance_ai]
+type = "ollama"
+model = "qwen3-coder:30b"
+endpoint = "http://localhost:11434"
+
+# Performance Benchmarks
+[[steps]]
+command = ["node", "-e", "
+console.log('Setting up AI performance benchmark...');
+console.log('Test parameters:');
+console.log('- Model: qwen3-coder:30b');
+console.log('- Max tokens: 50');
+console.log('- Concurrent requests: 5');
+console.log('- Test duration: 30 seconds');
+console.log('Performance test initialized');
+"]name = "setup_performance_test"
+expected_output_regex = "Performance test initialized"
+
+[[steps]]
+command = ["node", "-e", "
+const { ollama } = require('ollama-ai-provider');
+
+async function test() {
+  const startTime = Date.now();
+  try {
+    const response = await ollama('qwen3-coder:30b').generate('Say hello');
+    const endTime = Date.now();
+    const latency = endTime - startTime;
+
+    console.log('Single request latency:', latency + 'ms');
+    console.log('Response:', response);
+
+    if (latency < 30000) { // Less than 30 seconds for local model
+      console.log('Latency test passed: Response time acceptable');
+    } else {
+      console.log('Latency test failed: Response too slow');
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('Latency test error:', error.message);
+    process.exit(1);
+  }
+}
+test();
+"]name = "test_single_request_latency"
+expected_output_regex = "Latency test passed"
+
+[[steps]]
+command = ["node", "-e", "
+const { ollama } = require('ollama-ai-provider');
+
+async function test() {
+  const startTime = Date.now();
+  const promises = [];
+
+  // Create 3 concurrent requests
+  for (let i = 1; i <= 3; i++) {
+    promises.push(
+      ollama('qwen3-coder:30b').generate('Count to ' + i)
+    );
+  }
+
+  try {
+    const results = await Promise.all(promises);
+    const endTime = Date.now();
+    const totalTime = endTime - startTime;
+
+    console.log('Concurrent requests completed in:', totalTime + 'ms');
+    console.log('Average time per request:', Math.round(totalTime / 3) + 'ms');
+
+    results.forEach((result, index) => {
+      console.log('Response ' + (index + 1) + ':', result);
+    });
+
+    if (totalTime < 90000) { // Less than 90 seconds for 3 requests with local model
+      console.log('Concurrency test passed: Multiple requests handled efficiently');
+    } else {
+      console.log('Concurrency test failed: Requests too slow');
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('Concurrency test error:', error.message);
+    process.exit(1);
+  }
+}
+test();
+"]name = "test_concurrent_requests"
+expected_output_regex = "Concurrency test passed"
+
+[[steps]]
+command = ["node", "-e", "
+const { ollama } = require('ollama-ai-provider');
+
+async function test() {
+  const startTime = Date.now();
+  const requestCount = 5;
+  const results = [];
+
+  console.log('Starting throughput benchmark with', requestCount, 'requests...');
+
+  for (let i = 1; i <= requestCount; i++) {
+    try {
+      const requestStart = Date.now();
+      const response = await ollama('qwen3-coder:30b').generate('Request ' + i + ': Say OK');
+      const requestEnd = Date.now();
+
+      results.push({
+        request: i,
+        latency: requestEnd - requestStart,
+        response: response
+      });
+
+      console.log('Request', i, 'completed in', (requestEnd - requestStart) + 'ms');
+    } catch (error) {
+      console.error('Request', i, 'failed:', error.message);
+      process.exit(1);
+    }
+  }
+
+  const endTime = Date.now();
+  const totalTime = endTime - startTime;
+  const avgLatency = results.reduce((sum, r) => sum + r.latency, 0) / results.length;
+
+  console.log('Throughput benchmark results:');
+  console.log('- Total time:', totalTime + 'ms');
+  console.log('- Average latency:', Math.round(avgLatency) + 'ms');
+  console.log('- Requests per second:', (requestCount / (totalTime / 1000)).toFixed(2));
+
+  if (avgLatency < 30000 && totalTime < 150000) {
+    console.log('Throughput test passed: Performance meets requirements');
+  } else {
+    console.log('Throughput test failed: Performance below requirements');
+    process.exit(1);
+  }
+}
+test();
+"]name = "test_throughput_benchmark"
+expected_output_regex = "Throughput test passed"
+
+[[steps]]
+command = ["node", "-e", "
+const { ollama } = require('ollama-ai-provider');
+
+async function test() {
+  const initialMemory = process.memoryUsage();
+  console.log('Initial memory usage:');
+  console.log('- RSS:', Math.round(initialMemory.rss / 1024 / 1024) + 'MB');
+  console.log('- Heap Used:', Math.round(initialMemory.heapUsed / 1024 / 1024) + 'MB');
+
+  // Perform multiple AI requests to test memory usage
+  for (let i = 1; i <= 3; i++) {
+    try {
+      const response = await ollama('qwen3-coder:30b').generate('Memory test ' + i + ': Generate a short response');
+      console.log('Request', i, 'completed:', response.substring(0, 50));
+    } catch (error) {
+      console.error('Memory test request', i, 'failed:', error.message);
+      process.exit(1);
+    }
+  }
+
+  const finalMemory = process.memoryUsage();
+  console.log('Final memory usage:');
+  console.log('- RSS:', Math.round(finalMemory.rss / 1024 / 1024) + 'MB');
+  console.log('- Heap Used:', Math.round(finalMemory.heapUsed / 1024 / 1024) + 'MB');
+
+  const memoryIncrease = finalMemory.heapUsed - initialMemory.heapUsed;
+  console.log('Memory increase:', Math.round(memoryIncrease / 1024 / 1024) + 'MB');
+
+  if (memoryIncrease < 100 * 1024 * 1024) { // Less than 100MB increase for local model
+    console.log('Memory test passed: Memory usage within acceptable limits');
+  } else {
+    console.log('Memory test failed: Excessive memory usage');
+    process.exit(1);
+  }
+}
+test();
+"]name = "test_memory_usage"
+expected_output_regex = "Memory test passed"
+
+[[steps]]
+command = ["node", "-e", "
+const { ollama } = require('ollama-ai-provider');
+
+async function test() {
+  console.log('Testing error recovery and resilience...');
+
+  // Test 1: Invalid model (should fail gracefully)
+  try {
+    const response = await ollama('invalid-model').generate('Test with invalid model');
+    console.log('Unexpected success with invalid model');
+  } catch (error) {
+    if (error.message.includes('model') || error.message.includes('invalid')) {
+      console.log('Error recovery test 1 passed: Invalid model handled gracefully');
+    } else {
+      console.log('Error recovery test 1 failed: Unexpected error type');
+      process.exit(1);
+    }
+  }
+
+  // Test 2: Valid model test
+  try {
+    const response = await ollama('qwen3-coder:30b').generate('Quick response test');
+    console.log('Network resilience test passed: Request completed successfully');
+  } catch (error) {
+    console.log('Network resilience test failed:', error.message);
+    process.exit(1);
+  }
+
+  console.log('Error recovery test completed successfully');
+}
+test();
+"]name = "test_error_recovery"
+expected_output_regex = "Error recovery test completed successfully"
+
+# Performance Assertions
+[assertions]
+latency_under_30_seconds = "Single AI requests should complete within 30 seconds for local model"
+concurrent_requests_efficient = "Multiple concurrent requests should be handled efficiently"
+throughput_meets_requirements = "AI service should handle at least 1 request per 30 seconds"
+memory_usage_reasonable = "Memory usage should not exceed 100MB per test session for local model"
+error_handling_robust = "AI service should handle errors gracefully without crashing"

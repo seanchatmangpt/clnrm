@@ -25,7 +25,7 @@ pub fn discover_test_files(path: &PathBuf) -> Result<Vec<PathBuf>> {
             test_files.push(path.clone());
         } else {
             return Err(CleanroomError::validation_error(&format!(
-                "File must have .clnrm.toml extension: {}",
+                "File must have .toml or .clnrm.toml extension: {}",
                 path.display()
             )));
         }
@@ -50,7 +50,7 @@ pub fn discover_test_files(path: &PathBuf) -> Result<Vec<PathBuf>> {
         
         if test_files.is_empty() {
             return Err(CleanroomError::validation_error(&format!(
-                "No test files (.clnrm.toml) found in directory: {}",
+                "No test files (.toml or .clnrm.toml) found in directory: {}",
                 path.display()
             )));
         }
@@ -73,18 +73,22 @@ pub fn parse_toml_test(path: &PathBuf) -> Result<crate::config::TestConfig> {
 
 /// Set up logging based on verbosity level
 pub fn setup_logging(verbosity: u8) -> Result<()> {
-    use env_logger::{Builder, Env};
-    use log::LevelFilter;
+    use tracing_subscriber::{fmt, EnvFilter};
 
-    let mut builder = Builder::from_env(Env::default().default_filter_or("info"));
-
-    let filter_level = match verbosity {
-        0 => LevelFilter::Info,
-        1 => LevelFilter::Debug,
-        _ => LevelFilter::Trace,
+    let filter = match verbosity {
+        0 => "info",
+        1 => "debug",
+        _ => "trace",
     };
 
-    builder.filter_level(filter_level).init();
+    let subscriber = fmt::Subscriber::builder()
+        .with_env_filter(EnvFilter::new(filter))
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .map_err(|e| CleanroomError::internal_error("Failed to set up logging")
+            .with_source(e.to_string()))?;
+    
     Ok(())
 }
 
@@ -354,12 +358,10 @@ steps = [
         let config = parse_toml_test(&test_file)?;
         
         // Assert
-        assert_eq!(config.name, "test_example");
-        assert_eq!(config.scenarios.len(), 1);
-        assert_eq!(config.scenarios[0].name, "basic_test");
-        assert_eq!(config.scenarios[0].steps.len(), 1);
-        assert_eq!(config.scenarios[0].steps[0].name, "test_step");
-        assert_eq!(config.scenarios[0].steps[0].cmd, vec!["echo", "hello world"]);
+        assert_eq!(config.test.metadata.name, "test_example");
+        assert_eq!(config.steps.len(), 1);
+        assert_eq!(config.steps[0].name, "test_step");
+        assert_eq!(config.steps[0].command, vec!["echo", "hello world"]);
         
         Ok(())
     }

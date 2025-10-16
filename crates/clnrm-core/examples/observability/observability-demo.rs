@@ -35,17 +35,17 @@ async fn test_observability_framework_self_test() -> Result<()> {
 
     // Get tracing data
     let traces = env.get_traces().await?;
-    println!("📊 Traces collected: {} spans", traces.len());
+    println!("📊 Traces collected: {} trace messages", traces.len());
 
     // Verify tracing is working
-    let has_container_spans = traces.iter().any(|span| span.operation_name.as_str().contains("container"));
-    let has_command_spans = traces.iter().any(|span| span.operation_name.as_str().contains("execute"));
+    let has_container_traces = traces.iter().any(|trace| trace.contains("container"));
+    let has_command_traces = traces.iter().any(|trace| trace.contains("execute"));
 
-    println!("✅ Container operations traced: {}", has_container_spans);
-    println!("✅ Command execution traced: {}", has_command_spans);
+    println!("✅ Container operations traced: {}", has_container_traces);
+    println!("✅ Command execution traced: {}", has_command_traces);
 
-    assert!(has_container_spans, "Container operations should be traced");
-    assert!(has_command_spans, "Command execution should be traced");
+    assert!(has_container_traces, "Container operations should be traced");
+    assert!(has_command_traces, "Command execution should be traced");
 
     // Test 2: Automatic metrics collection (as claimed in README)
     println!("\n📋 Test 2: Automatic Metrics Collection");

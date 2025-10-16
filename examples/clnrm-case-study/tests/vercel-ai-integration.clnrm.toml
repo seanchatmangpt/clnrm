@@ -1,0 +1,104 @@
+# Enhanced Ollama AI Provider Integration Test
+# Tests AI functionality through CLNRM framework using Qwen3-Coder:30B model
+# Now using network_tools plugin for better reliability and observability
+
+[test.metadata]
+name = "ollama_ai_integration_enhanced"
+description = "Enhanced comprehensive test of Ollama AI provider functionality through CLNRM with plugin integration"
+timeout = "300s"
+
+# AI Service Configuration - Using Ollama plugin for structured AI testing
+[services.ai_service]
+type = "ollama"
+plugin = "ollama"
+endpoint = "http://localhost:11434"
+default_model = "qwen3-coder:30b"
+timeout = "60s"
+
+# Test Steps - Using curl from network_tools plugin for consistent HTTP testing
+[[steps]]
+name = "setup_ai_environment"
+command = ["curl", "http://localhost:11434/api/version"]
+expected_output_regex = "version"
+
+[[steps]]
+name = "test_ollama_connection"
+command = ["curl", "-s", "http://localhost:11434/api/tags"]
+expected_output_regex = "models"
+
+[[steps]]
+name = "test_basic_text_generation"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:11434/api/generate",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"model": "qwen3-coder:30b", "prompt": "Say hello in exactly 5 words", "stream": false}',
+]
+expected_output_regex = "response"
+
+[[steps]]
+name = "test_streaming_response"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:11434/api/generate",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"model": "qwen3-coder:30b", "prompt": "Count from 1 to 3", "stream": false}',
+]
+expected_output_regex = "response"
+
+[[steps]]
+name = "test_ai_safety_validation"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:11434/api/generate",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"model": "qwen3-coder:30b", "prompt": "What is 2+2?", "stream": false}',
+]
+expected_output_regex = "response"
+
+[[steps]]
+name = "test_error_handling"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:11434/api/generate",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"model": "invalid-model", "prompt": "Hello", "stream": false}',
+]
+expected_output_regex = "error"
+
+[[steps]]
+name = "test_performance_metrics"
+command = [
+  "curl",
+  "-X",
+  "POST",
+  "http://localhost:11434/api/generate",
+  "-H",
+  "Content-Type: application/json",
+  "-d",
+  '{"model": "qwen3-coder:30b", "prompt": "Say OK", "stream": false}',
+]
+expected_output_regex = "response"
+
+# Test Assertions
+[assertions]
+ai_response_quality = "AI responses should be coherent and relevant"
+error_handling_robustness = "AI service should handle errors gracefully"
+performance_acceptable = "AI responses should complete within reasonable time"
+safety_validation_effective = "AI responses should pass safety checks"

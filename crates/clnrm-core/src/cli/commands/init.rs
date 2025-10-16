@@ -9,7 +9,7 @@ use tracing::{info, debug};
 
 /// Initialize a new test project in the current directory
 pub fn init_project(force: bool, with_config: bool) -> Result<()> {
-    info!("Initializing cleanroom test project in current directory");
+    println!("🚀 Initializing cleanroom test project in current directory");
     
     // Check if already initialized
     let tests_dir = std::path::Path::new("tests");
@@ -21,7 +21,7 @@ pub fn init_project(force: bool, with_config: bool) -> Result<()> {
             return Err(CleanroomError::validation_error("Project already initialized")
                 .with_context("Use --force to reinitialize"));
         }
-        info!("Reinitializing existing project (--force flag used)");
+        println!("Reinitializing existing project (--force flag used)");
     }
     
     // Create directory structure
@@ -109,11 +109,11 @@ version = "0.1.0"
 # See docs for all options: https://docs.cleanroom.dev/config
 "#;
         std::fs::write("cleanroom.toml", config_content)?;
-        info!("Project initialized successfully with configuration");
-        debug!("Created: tests/basic.clnrm.toml, cleanroom.toml, README.md");
+        println!("✅ Project initialized successfully with configuration");
+        println!("📁 Created: tests/basic.clnrm.toml, cleanroom.toml, README.md");
     } else {
-        info!("Project initialized successfully (zero-config)");
-        debug!("Created: tests/basic.clnrm.toml, README.md");
+        println!("✅ Project initialized successfully (zero-config)");
+        println!("📁 Created: tests/basic.clnrm.toml, README.md");
     }
     
     Ok(())

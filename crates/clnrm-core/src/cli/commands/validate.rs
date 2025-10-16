@@ -66,15 +66,16 @@ pub fn validate_single_config(path: &PathBuf) -> Result<()> {
         )));
     }
     
-    // Parse and validate TOML structure using the CLI's own config structure
+    // Parse and validate TOML structure
     let content = std::fs::read_to_string(path)
         .map_err(|e| CleanroomError::config_error(format!("Failed to read config file: {}", e)))?;
     
-    let test_config: crate::cli::types::TestConfig = toml::from_str(&content)
+    // Parse TOML configuration using the config structure
+    let test_config: crate::config::TestConfig = toml::from_str(&content)
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
     
     // Basic validation
-    if test_config.metadata.name.is_empty() {
+    if test_config.test.metadata.name.is_empty() {
         return Err(CleanroomError::validation_error("Test name cannot be empty"));
     }
     
@@ -85,7 +86,7 @@ pub fn validate_single_config(path: &PathBuf) -> Result<()> {
     // Log success with service count
     let service_count = test_config.services.as_ref().map(|s| s.len()).unwrap_or(0);
     info!("✅ Configuration valid: {} ({} steps, {} services)", 
-          test_config.metadata.name, test_config.steps.len(), service_count);
+          test_config.test.metadata.name, test_config.steps.len(), service_count);
     
     Ok(())
 }
@@ -105,13 +106,13 @@ mod tests {
         let test_file = temp_dir.path().join("valid.toml");
         
         let toml_content = r#"
-[test]
+[test.metadata]
 name = "valid_test"
 description = "A valid test configuration"
+timeout = "120s"
 
 # Test container
-[[services]]
-name = "test_container"
+[services.test_container]
 type = "generic_container"
 plugin = "alpine"
 image = "alpine:latest"
@@ -120,6 +121,7 @@ image = "alpine:latest"
 [[steps]]
 name = "test_step"
 command = ["echo", "test"]
+expected_output_regex = "test"
 "#;
         
         fs::write(&test_file, toml_content)

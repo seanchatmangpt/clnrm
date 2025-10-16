@@ -7,33 +7,16 @@ pub mod types;
 pub mod utils;
 pub mod commands;
 
-use crate::error::{CleanroomError, Result};
-use crate::config::{load_cleanroom_config, CleanroomConfig};
-use crate::cli::types::{Cli, Commands, ServiceCommands, OutputFormat, ReportFormat};
+use crate::error::Result;
+use crate::config::load_cleanroom_config;
+use crate::cli::types::{Cli, Commands, ServiceCommands, ReportFormat};
 use crate::cli::utils::setup_logging;
 use crate::cli::commands::*;
 use clap::Parser;
+use tracing::error;
 use std::path::PathBuf;
-use tracing::{info, error};
 
-/// Global cleanroom configuration
-static mut CLEANROOM_CONFIG: Option<CleanroomConfig> = None;
-
-/// Get the global cleanroom configuration
-fn get_cleanroom_config() -> &'static CleanroomConfig {
-    unsafe {
-        CLEANROOM_CONFIG.as_ref().expect("Cleanroom config not initialized")
-    }
-}
-
-/// Initialize the global cleanroom configuration
-fn init_cleanroom_config() -> Result<()> {
-    let config = load_cleanroom_config()?;
-    unsafe {
-        CLEANROOM_CONFIG = Some(config);
-    }
-    Ok(())
-}
+// Remove global config - we'll load it per command as needed
 
 /// Main CLI entry point
 pub async fn run_cli() -> Result<()> {
@@ -66,7 +49,7 @@ pub async fn run_cli() -> Result<()> {
                 paths
             } else {
                 // Default behavior: discover all test files
-                vec![std::path::PathBuf::from(".")]
+                vec![PathBuf::from(".")]
             };
             
             run_tests(&paths_to_run, &config).await

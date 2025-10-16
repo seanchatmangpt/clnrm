@@ -30,6 +30,9 @@ async fn main() -> Result<(), CleanroomError> {
         for i in 0..3 {
             let _container = env.get_or_create_container(&format!("obs-test-{}", i), || {
                 Ok::<String, CleanroomError>(format!("observability-container-{}", i))
+            }).map_err(|e| {
+                println!("Failed to create container: {}", e);
+                e
             })?;
         }
         Ok::<String, CleanroomError>("Observability test completed".to_string())
@@ -43,6 +46,7 @@ async fn main() -> Result<(), CleanroomError> {
 
     let metrics = env.get_metrics().await;
     println!("📊 Collected Metrics:");
+    let metrics = metrics?;
     println!("   Tests Executed: {}", metrics.tests_executed);
     println!("   Tests Passed: {}", metrics.tests_passed);
     println!("   Tests Failed: {}", metrics.tests_failed);
@@ -113,7 +117,7 @@ async fn main() -> Result<(), CleanroomError> {
     println!("\n📊 Test 5: Final Metrics Validation");
     println!("---------------------------------");
 
-    let final_metrics = env.get_metrics().await;
+    let final_metrics = env.get_metrics().await?;
     println!("📊 Final Session Metrics:");
     println!("   Tests Executed: {}", final_metrics.tests_executed);
     println!("   Tests Passed: {}", final_metrics.tests_passed);
@@ -152,6 +156,9 @@ async fn main() -> Result<(), CleanroomError> {
             // Simulate some work
             let _container = env.get_or_create_container(&format!("perf-container-{}", i), || {
                 Ok::<String, CleanroomError>(format!("perf-container-{}", i))
+            }).map_err(|e| {
+                println!("Failed to create container: {}", e);
+                e
             })?;
 
             // Small delay to simulate real work
@@ -164,7 +171,7 @@ async fn main() -> Result<(), CleanroomError> {
     let perf_duration = perf_start.elapsed();
     println!("⏱️  Performance test with observability: {}ms for 5 tests", perf_duration.as_millis());
 
-    let perf_metrics = env.get_metrics().await;
+    let perf_metrics = env.get_metrics().await?;
     println!("📊 Performance test metrics:");
     println!("   Tests Executed: {}", perf_metrics.tests_executed);
     println!("   Average Test Duration: {:.2}ms",

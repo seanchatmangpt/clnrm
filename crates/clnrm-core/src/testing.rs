@@ -5,7 +5,8 @@
 
 use crate::cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, HealthStatus};
 use crate::backend::{Backend, TestcontainerBackend, Cmd};
-use crate::cli::{validate_config, init_project, list_plugins};
+use crate::cli::{validate_config, list_plugins};
+use crate::cli::commands::init_project;
 use crate::error::{CleanroomError, Result};
 use crate::policy::{Policy, SecurityLevel};
 use std::future::Future;
@@ -15,7 +16,7 @@ use std::collections::HashMap;
 use tempfile::TempDir;
 
 /// Framework test results
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FrameworkTestResults {
     /// Total tests executed
     pub total_tests: u32,
@@ -30,7 +31,7 @@ pub struct FrameworkTestResults {
 }
 
 /// Individual test result
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TestResult {
     /// Test name
     pub name: String,
@@ -334,15 +335,20 @@ pub async fn test_cli_functionality() -> Result<()> {
 
     // Test 3: Test validate_config with sample TOML
     let sample_toml = r#"
-[test]
+[test.metadata]
 name = "sample_test"
 description = "A sample test configuration"
+timeout = "120s"
 
-[services]
+[services.test_container]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
 
 [[steps]]
 name = "basic_step"
 command = ["echo", "test scenario"]
+expected_output_regex = "test scenario"
 "#;
 
     let temp_file = temp_dir.path().join("sample_test.toml");

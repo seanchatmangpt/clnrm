@@ -113,15 +113,16 @@ async fn test_readme_observability_claims() -> Result<()> {
     let final_metrics = env.get_metrics().await;
     
     // Verify metrics were collected
-    assert!(final_metrics.tests_executed > initial_metrics.tests_executed, 
+    let final_metrics_unwrapped = final_metrics.unwrap();
+    assert!(final_metrics_unwrapped.tests_executed > initial_metrics.unwrap().tests_executed,
         "Metrics should be collected automatically");
-    assert!(final_metrics.tests_passed > initial_metrics.tests_passed,
+    assert!(final_metrics_unwrapped.tests_passed > initial_metrics.unwrap().tests_passed,
         "Test success metrics should be recorded");
-    
+
     // Claim: "Zero configuration required"
     // The fact that we can create an environment and get metrics without configuration
     // validates this claim
-    assert!(final_metrics.session_id != uuid::Uuid::nil(), 
+    assert!(final_metrics_unwrapped.session_id != uuid::Uuid::nil(), 
         "Session ID should be automatically generated");
     
     Ok(())
@@ -477,11 +478,13 @@ async fn test_readme_observability_detailed_claims() -> Result<()> {
     let final_metrics = env.get_metrics().await;
     
     // Verify metrics collection
-    assert!(final_metrics.tests_executed >= initial_metrics.tests_executed + 3,
+    let final_metrics_unwrapped = final_metrics.unwrap();
+    let initial_metrics_unwrapped = initial_metrics.unwrap();
+    assert!(final_metrics_unwrapped.tests_executed >= initial_metrics_unwrapped.tests_executed + 3,
         "Metrics should be automatically collected");
-    assert!(final_metrics.tests_passed >= initial_metrics.tests_passed + 3,
+    assert!(final_metrics_unwrapped.tests_passed >= initial_metrics_unwrapped.tests_passed + 3,
         "Success metrics should be recorded");
-    assert!(final_metrics.total_duration_ms > initial_metrics.total_duration_ms,
+    assert!(final_metrics_unwrapped.total_duration_ms > initial_metrics_unwrapped.total_duration_ms,
         "Duration metrics should be recorded");
     
     Ok(())
@@ -728,7 +731,7 @@ command = ["echo", "version test"]
     
     // ✅ Comprehensive observability
     let metrics = env.get_metrics().await;
-    assert!(!metrics.session_id.is_nil(), "Observability should be comprehensive");
+    assert!(!metrics.unwrap().session_id.is_nil(), "Observability should be comprehensive");
     
     Ok(())
 }
@@ -799,8 +802,9 @@ mod tests {
         
         // Test metrics collection (simulates the timing information)
         let metrics = env.get_metrics().await;
-        assert!(metrics.tests_executed > 0, "Should record test execution");
-        assert!(metrics.total_duration_ms > 0, "Should record execution time");
+        let metrics_unwrapped = metrics.unwrap();
+        assert!(metrics_unwrapped.tests_executed > 0, "Should record test execution");
+        assert!(metrics_unwrapped.total_duration_ms > 0, "Should record execution time");
         
         Ok(())
     }

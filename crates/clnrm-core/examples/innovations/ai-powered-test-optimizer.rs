@@ -11,8 +11,9 @@
 //! - Pattern recognition in test results
 //! - Self-improving testing strategies
 
-use clnrm_core::{CleanroomEnvironment, CleanroomError};
+use clnrm_core::{CleanroomEnvironment, CleanroomError, Result};
 use std::collections::HashMap;
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 struct TestExecutionRecord {
@@ -32,7 +33,7 @@ struct ResourceUsage {
     disk_io: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct TestPattern {
     test_name: String,
     success_rate: f64,

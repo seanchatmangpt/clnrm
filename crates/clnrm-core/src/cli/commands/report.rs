@@ -9,9 +9,129 @@ use std::path::PathBuf;
 use tracing::info;
 
 /// Generate test reports
-pub async fn generate_report(_input: Option<&PathBuf>, _output: Option<&PathBuf>, _format: &str) -> Result<()> {
-    info!("Report generation not implemented - framework self-testing required");
+pub async fn generate_report(input: Option<&PathBuf>, output: Option<&PathBuf>, format: &str) -> Result<()> {
+    use tokio::fs;
+    use serde_json;
+    
+    // Parse input file if provided, otherwise use default test results
+    let test_results = if let Some(input_path) = input {
+        let content = fs::read_to_string(input_path).await
+            .map_err(|e| CleanroomError::internal_error("Failed to read input file")
+                .with_context(format!("Input file: {}", input_path.display()))
+                .with_source(e.to_string()))?;
+        
+        serde_json::from_str::<FrameworkTestResults>(&content)
+            .map_err(|e| CleanroomError::config_error("Invalid JSON format in input file")
+                .with_context("Input file must contain valid test results JSON")
+                .with_source(e.to_string()))?
+    } else {
+        // Generate default test results by running framework tests
+        crate::testing::run_framework_tests().await
+            .map_err(|e| CleanroomError::internal_error("Failed to generate test results")
+                .with_context("Could not run framework tests for report generation")
+                .with_source(e.to_string()))?
+    };
+    
+    // Generate report content based on format
+    let report_content = match format {
+        "html" => generate_html_report(&test_results)?,
+        "markdown" => generate_markdown_report(&test_results)?,
+        "json" => serde_json::to_string_pretty(&test_results)
+            .map_err(|e| CleanroomError::internal_error("JSON serialization failed")
+                .with_context("Failed to serialize test results to JSON")
+                .with_source(e.to_string()))?,
+        "pdf" => {
+            return Err(CleanroomError::validation_error("PDF format not yet implemented")
+                .with_context("PDF report generation requires additional dependencies"));
+        },
+        _ => return Err(CleanroomError::validation_error(&format!("Unsupported format: {}", format))),
+    };
+    
+    // Write output file if provided, otherwise print to stdout
+    if let Some(output_path) = output {
+        fs::write(output_path, report_content).await
+            .map_err(|e| CleanroomError::internal_error("Failed to write output file")
+                .with_context(format!("Output file: {}", output_path.display()))
+                .with_source(e.to_string()))?;
+        info!("Report generated: {}", output_path.display());
+    } else {
+        println!("{}", report_content);
+    }
+    
     Ok(())
+}
+
+/// Generate HTML report
+fn generate_html_report(results: &FrameworkTestResults) -> Result<String> {
+    let mut html = String::new();
+    
+    html.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
+    html.push_str("<title>Cleanroom Test Report</title>\n");
+    html.push_str("<style>\n");
+    html.push_str("body { font-family: Arial, sans-serif; margin: 40px; }\n");
+    html.push_str(".header { background: #f5f5f5; padding: 20px; border-radius: 5px; }\n");
+    html.push_str(".test { margin: 10px 0; padding: 10px; border-left: 4px solid #ccc; }\n");
+    html.push_str(".passed { border-left-color: #28a745; background: #f8f9fa; }\n");
+    html.push_str(".failed { border-left-color: #dc3545; background: #fff5f5; }\n");
+    html.push_str(".error { color: #dc3545; font-size: 0.9em; margin-top: 5px; }\n");
+    html.push_str("</style>\n");
+    html.push_str("</head>\n<body>\n");
+    
+    html.push_str("<div class=\"header\">\n");
+    html.push_str(&format!("<h1>Cleanroom Test Report</h1>\n"));
+    html.push_str(&format!("<p><strong>Total Tests:</strong> {}</p>\n", results.total_tests));
+    html.push_str(&format!("<p><strong>Passed:</strong> <span style=\"color: #28a745;\">{}</span></p>\n", results.passed_tests));
+    html.push_str(&format!("<p><strong>Failed:</strong> <span style=\"color: #dc3545;\">{}</span></p>\n", results.failed_tests));
+    html.push_str(&format!("<p><strong>Duration:</strong> {}ms</p>\n", results.total_duration_ms));
+    html.push_str("</div>\n");
+    
+    html.push_str("<h2>Test Results</h2>\n");
+    for test in &results.test_results {
+        let class = if test.passed { "passed" } else { "failed" };
+        html.push_str(&format!("<div class=\"test {}\">\n", class));
+        html.push_str(&format!("<h3>{} ({})</h3>\n", test.name, if test.passed { "✅ PASSED" } else { "❌ FAILED" }));
+        html.push_str(&format!("<p>Duration: {}ms</p>\n", test.duration_ms));
+        if let Some(error) = &test.error {
+            html.push_str(&format!("<div class=\"error\">Error: {}</div>\n", html_escape(error)));
+        }
+        html.push_str("</div>\n");
+    }
+    
+    html.push_str("</body>\n</html>\n");
+    Ok(html)
+}
+
+/// Generate Markdown report
+fn generate_markdown_report(results: &FrameworkTestResults) -> Result<String> {
+    let mut markdown = String::new();
+    
+    markdown.push_str("# Cleanroom Test Report\n\n");
+    markdown.push_str(&format!("**Total Tests:** {}\n", results.total_tests));
+    markdown.push_str(&format!("**Passed:** {}\n", results.passed_tests));
+    markdown.push_str(&format!("**Failed:** {}\n", results.failed_tests));
+    markdown.push_str(&format!("**Duration:** {}ms\n\n", results.total_duration_ms));
+    
+    markdown.push_str("## Test Results\n\n");
+    for test in &results.test_results {
+        let status = if test.passed { "✅ PASSED" } else { "❌ FAILED" };
+        markdown.push_str(&format!("### {} ({})\n", test.name, status));
+        markdown.push_str(&format!("- **Duration:** {}ms\n", test.duration_ms));
+        if let Some(error) = &test.error {
+            markdown.push_str(&format!("- **Error:** {}\n", error));
+        }
+        markdown.push_str("\n");
+    }
+    
+    Ok(markdown)
+}
+
+/// Escape HTML special characters
+fn html_escape(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
 }
 
 /// Display test results in user-friendly format
@@ -106,15 +226,20 @@ mod tests {
     #[tokio::test]
     async fn test_generate_report_different_formats() -> Result<()> {
         // Test different report formats
-        let formats = vec!["html", "markdown", "json", "pdf"];
-        
+        let formats = vec!["html", "markdown", "json"];
+
         for format in formats {
             // Act
             let result = generate_report(None, None, format).await;
-            
+
             // Assert
             assert!(result.is_ok(), "Format '{}' should be handled", format);
         }
+
+        // Test PDF format separately - should return error
+        let pdf_result = generate_report(None, None, "pdf").await;
+        assert!(pdf_result.is_err(), "PDF format should return error");
+        assert!(pdf_result.unwrap_err().message.contains("PDF format not yet implemented"));
         
         Ok(())
     }

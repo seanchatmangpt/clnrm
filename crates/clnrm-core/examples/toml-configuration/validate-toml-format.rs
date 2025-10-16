@@ -101,13 +101,13 @@ plugin_should_be_loaded = "alpine"
     match validate_toml_file(&Path::new(test_toml_path)) {
         Ok(config) => {
             println!("✅ Comprehensive TOML parsed successfully");
-            println!("   Test name: {}", config.name);
-            println!("   Scenarios: {}", config.scenarios.len());
-            
+            println!("   Test name: {}", config.test.metadata.name);
+            println!("   Steps: {}", config.steps.len());
+
             // Verify all features are parsed correctly
-            assert_eq!(config.name, "comprehensive_toml_test");
-            assert!(!config.scenarios.is_empty());
-            
+            assert_eq!(config.test.metadata.name, "comprehensive_toml_test");
+            assert!(!config.steps.is_empty());
+
             println!("✅ All TOML features validated");
         }
         Err(e) => {
@@ -188,29 +188,22 @@ max_execution_time = 300
     // Parse and execute the TOML configuration
     let config = validate_toml_file(&Path::new(test_toml_path))?;
     
-    println!("✅ TOML configuration parsed: {}", config.name);
-    println!("📋 Scenarios to execute: {}", config.scenarios.len());
+    println!("✅ TOML configuration parsed: {}", config.test.metadata.name);
+    println!("📋 Steps to execute: {}", config.steps.len());
 
     // Execute the scenarios using the framework
     let env = CleanroomEnvironment::new().await?;
 
-    for scenario in &config.scenarios {
-        println!("🚀 Executing scenario: {}", scenario.name);
+    for step in &config.steps {
+        println!("🚀 Executing step: {}", step.name);
 
-        // Execute each step in the scenario
-        for step in &scenario.steps {
-            println!("📋 Executing step: {}", step.name);
+        // Execute the step using the cleanroom environment
+        let execution_result = env.execute_in_container(
+            "test_container",
+            &step.command.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        ).await?;
 
-            // Execute the step using the cleanroom environment
-            let execution_result = env.execute_in_container(
-                "test_container",
-                &step.cmd.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
-            ).await?;
-
-            println!("✅ Step '{}' completed with exit code: {}", step.name, execution_result.exit_code);
-        }
-
-        println!("✅ Scenario '{}' completed", scenario.name);
+        println!("✅ Step '{}' completed with exit code: {}", step.name, execution_result.exit_code);
     }
 
     // Clean up

@@ -11,12 +11,13 @@
 //! - Performance monitoring during stress scenarios
 //! - Error recovery and resilience testing
 
-use clnrm_core::{CleanroomEnvironment, CleanroomError};
+use clnrm_core::{CleanroomEnvironment, CleanroomError, Result};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
+use futures_util::future;
 
 #[tokio::main]
-async fn main() -> Result<(), CleanroomError> {
+async fn main() -> Result<()> {
     println!("🚀 Framework Stress Test - Advanced Dogfooding Innovation");
     println!("=======================================================");
     println!("Testing Cleanroom's ability to handle extreme stress scenarios");
@@ -109,6 +110,7 @@ async fn main() -> Result<(), CleanroomError> {
 
     // Verify cleanup worked by checking metrics
     let metrics = env.get_metrics().await;
+    let metrics = metrics?;
     println!("   ✅ Cleanup completed - final container count: {}", metrics.containers_created);
 
     let resource_duration = resource_test_start.elapsed();
@@ -213,13 +215,13 @@ async fn main() -> Result<(), CleanroomError> {
 
     // Run multiple stress tests concurrently
     let stress_tests = vec![
-        run_memory_stress_test(env.clone()),
-        run_cpu_stress_test(env.clone()),
-        run_io_stress_test(env.clone()),
-        run_network_stress_test(env.clone()),
+        run_memory_stress_test(&env),
+        run_cpu_stress_test(&env),
+        run_io_stress_test(&env),
+        run_network_stress_test(&env),
     ];
 
-    let results = futures::future::join_all(stress_tests).await;
+    let results = future::join_all(stress_tests).await;
 
     let mut success_count = 0;
     for (i, result) in results.iter().enumerate() {
@@ -272,6 +274,7 @@ async fn main() -> Result<(), CleanroomError> {
     println!("\n📊 Framework Stress Test Report:");
     println!("===============================");
     println!("Execution Time: {:?}", start_time.elapsed());
+    let final_metrics = final_metrics?;
     println!("Tests Executed: {}", final_metrics.tests_executed);
     println!("Containers Created: {}", containers_created);
     println!("Containers Reused: {}", containers_reused);

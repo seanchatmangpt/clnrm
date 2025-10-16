@@ -4,9 +4,9 @@
 //! using its own features to validate its own implementation claims.
 //! This is the ultimate "eat your own dog food" demonstration.
 
-use clnrm_core::{CleanroomEnvironment, CleanroomError};
-use std::time::{Duration, Instant};
-use tracing::{info, debug, warn, error};
+use clnrm_core::{CleanroomEnvironment, CleanroomError, Result};
+use std::time::Instant;
+use tracing::{info, debug};
 
 /// Innovative framework self-testing that uses the framework to test itself
 #[tokio::main]
@@ -157,7 +157,7 @@ impl clnrm_core::ServicePlugin for FrameworkSelfTestPlugin {
         &self.name
     }
 
-    fn start(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<clnrm_core::ServiceHandle, clnrm_core::CleanroomError>> + Send + '_>> {
+    fn start(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<clnrm_core::ServiceHandle, CleanroomError>> + Send + '_>> {
         Box::pin(async move {
             // Simulate startup time without blocking the runtime
             tokio::task::yield_now().await;
@@ -173,7 +173,7 @@ impl clnrm_core::ServicePlugin for FrameworkSelfTestPlugin {
         })
     }
 
-    fn stop(&self, _handle: clnrm_core::ServiceHandle) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), clnrm_core::CleanroomError>> + Send + '_>> {
+    fn stop(&self, _handle: clnrm_core::ServiceHandle) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CleanroomError>> + Send + '_>> {
         Box::pin(async move {
             tokio::task::yield_now().await;
             Ok(())

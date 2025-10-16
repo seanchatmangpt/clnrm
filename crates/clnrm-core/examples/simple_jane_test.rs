@@ -3,7 +3,7 @@
 //! This shows how Jane would actually use the cleanroom testing library
 //! with the new Jane-friendly API.
 
-use clnrm_core::{cleanroom_test, with_database, with_cache, database, cache, email_service, UserAssertions};
+use clnrm_core::{cleanroom_test, with_database, with_cache, database, cache, email_service, UserAssertions, CleanroomError, Result};
 
 /// Jane's simple user registration test
 /// 
@@ -36,6 +36,7 @@ async fn test_user_registration() -> Result<()> {
     email.should_have_sent_count(0).await?; // No emails sent yet
     
     println!("🎉 User registration test passed!");
+    Ok(())
 }
 
 /// Mock user registration function (Jane's business logic)
@@ -59,12 +60,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Jane-friendly API is ready to use!");
     println!("📝 Jane can now write tests like:");
     println!("   #[tokio::main]");
-    println!("   async fn test_my_feature() {{");
+    println!("   async fn test_my_feature() -> Result<(), CleanroomError> {{");
     println!("       with_database(\"postgres:15\").await?;");
     println!("       with_cache(\"redis:7\").await?;");
     println!("       // ... her business logic");
     println!("       user.should_exist_in_database().await?;");
+    println!("       Ok(())");
     println!("   }}");
-    
+
     Ok(())
 }
