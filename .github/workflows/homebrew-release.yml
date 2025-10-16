@@ -1,0 +1,170 @@
+name: Homebrew Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., v0.3.0)"
+        required: true
+        default: "v0.3.0"
+
+jobs:
+  build-bottles:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-13
+            arch: arm64
+            bottle_tag: arm64_sonoma
+          - os: macos-12
+            arch: x86_64
+            bottle_tag: ventura
+          - os: macos-11
+            arch: x86_64
+            bottle_tag: monterey
+          - os: ubuntu-latest
+            arch: x86_64
+            bottle_tag: x86_64_linux
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install rust
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev
+
+      - name: Build binary
+        run: |
+          cd crates/clnrm
+          cargo build --release --locked
+
+      - name: Create bottle directory
+        run: |
+          mkdir -p bottle
+
+      - name: Install to bottle directory
+        run: |
+          mkdir -p bottle/bin
+          cp target/release/clnrm bottle/bin/
+          chmod +x bottle/bin/clnrm
+
+      - name: Create bottle tarball
+        run: |
+          cd bottle
+          tar -czf ../clnrm-${{ matrix.bottle_tag }}.tar.gz .
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            SHA256=$(shasum -a 256 clnrm-${{ matrix.bottle_tag }}.tar.gz | cut -d' ' -f1)
+          else
+            SHA256=$(sha256sum clnrm-${{ matrix.bottle_tag }}.tar.gz | cut -d' ' -f1)
+          fi
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256 for ${{ matrix.bottle_tag }}: $SHA256"
+
+      - name: Upload bottle
+        uses: actions/upload-artifact@v4
+        with:
+          name: clnrm-${{ matrix.bottle_tag }}-bottle
+          path: |
+            clnrm-${{ matrix.bottle_tag }}.tar.gz
+            clnrm-${{ matrix.bottle_tag }}.tar.gz.sha256
+
+  update-formula:
+    needs: build-bottles
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all bottles
+        uses: actions/download-artifact@v4
+        with:
+          path: bottles/
+
+      - name: Extract bottle information
+        run: |
+          echo "Bottle information:"
+          for bottle in bottles/*/clnrm-*.tar.gz; do
+            if [ -f "$bottle" ]; then
+              filename=$(basename "$bottle")
+              tag=$(echo "$filename" | sed 's/clnrm-\(.*\)\.tar\.gz/\1/')
+              sha256=$(sha256sum "$bottle" | cut -d' ' -f1)
+              echo "$tag: $sha256"
+            fi
+          done
+
+      - name: Update formula with bottle hashes
+        run: |
+          # This would update the formula file with the actual SHA256 hashes
+          # For now, we'll just output the information needed for manual update
+          echo "## Bottle SHA256 Hashes for Manual Update"
+          echo "Update the bottle block in homebrew/Formula/clnrm.rb with these hashes:"
+          echo ""
+          for bottle in bottles/*/clnrm-*.tar.gz; do
+            if [ -f "$bottle" ]; then
+              filename=$(basename "$bottle")
+              tag=$(echo "$filename" | sed 's/clnrm-\(.*\)\.tar\.gz/\1/')
+              sha256=$(sha256sum "$bottle" | cut -d' ' -f1)
+              echo "    sha256 cellar: :any_skip_relocation, $tag: \"$sha256\""
+            fi
+          done
+
+      - name: Create release assets
+        run: |
+          # Copy bottles to release assets directory
+          mkdir -p release-assets
+          cp bottles/*/clnrm-*.tar.gz release-assets/ || true
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-bottles
+          path: release-assets/
+
+  validate-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Homebrew
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          echo "$(/opt/homebrew/bin/brew shellenv)" >> $GITHUB_ENV
+
+      - name: Test formula syntax
+        run: |
+          brew audit --strict homebrew/Formula/clnrm.rb
+
+      - name: Test formula installation (source)
+        run: |
+          # Test source installation
+          brew install --build-from-source homebrew/Formula/clnrm.rb
+
+      - name: Test installed binary
+        run: |
+          clnrm --version
+          clnrm --help

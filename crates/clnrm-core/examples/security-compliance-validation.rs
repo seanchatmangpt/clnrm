@@ -97,7 +97,7 @@ async fn validate_container_security() -> Result<String, CleanroomError> {
         "echo 'Testing resource limits' && ulimit -a | head -5".to_string()
     ]).await?;
 
-    if result.exit_code == 0 {
+    if result.succeeded() {
         println!("      ✅ Resource limits validated");
     } else {
         return Err(CleanroomError::internal_error("Resource limits validation failed"));
@@ -279,7 +279,7 @@ async fn perform_vulnerability_assessment() -> Result<String, CleanroomError> {
     let config_check = env.execute_in_container(&vuln_container, &[
         "sh".to_string(),
         "-c".to_string(),
-        "echo 'Configuration security check' && echo 'SECURE_CONFIG'"
+        "echo 'Configuration security check' && echo 'SECURE_CONFIG'".to_string()
     ]).await?;
 
     if config_check.exit_code == 0 && config_check.stdout.contains("SECURE_CONFIG") {

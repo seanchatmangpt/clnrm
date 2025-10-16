@@ -9,8 +9,8 @@ use clnrm_core::{cleanroom_test, with_database, with_cache, database, cache, ema
 /// 
 /// This is what Jane actually wants to write - simple, declarative, and focused
 /// on her business logic rather than infrastructure setup.
-#[cleanroom_test]
-async fn test_user_registration() {
+#[tokio::main]
+async fn test_user_registration() -> Result<()> {
     // 🚀 Declarative service setup (Jane's one-liners)
     with_database("postgres:15").await?;
     with_cache("redis:7").await?;
@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("✅ Jane-friendly API is ready to use!");
     println!("📝 Jane can now write tests like:");
-    println!("   #[cleanroom_test]");
+    println!("   #[tokio::main]");
     println!("   async fn test_my_feature() {{");
     println!("       with_database(\"postgres:15\").await?;");
     println!("       with_cache(\"redis:7\").await?;");

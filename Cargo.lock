@@ -849,7 +849,7 @@ name = "clnrm"
 version = "0.3.0"
 dependencies = [
  "clap",
- "clnrm-core",
+ "clnrm-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger",
  "log",
  "tokio",
@@ -858,6 +858,40 @@ dependencies = [
 [[package]]
 name = "clnrm-core"
 version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "env_logger",
+ "futures-util",
+ "junit-report",
+ "log",
+ "notify",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-stdout",
+ "opentelemetry_sdk",
+ "regex",
+ "serde",
+ "serde_json",
+ "surrealdb",
+ "tempfile",
+ "testcontainers",
+ "testcontainers-modules",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
+name = "clnrm-core"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f329fda612f642e493e2413dcfb2c5063e689994db9edbeef81353d19a084ca5"
 dependencies = [
  "anyhow",
  "chrono",

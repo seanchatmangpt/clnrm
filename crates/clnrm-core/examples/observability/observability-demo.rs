@@ -9,7 +9,7 @@ use clnrm_core::{cleanroom_test, CleanroomEnvironment, Result};
 use std::time::{Duration, Instant};
 
 /// Test that demonstrates automatic tracing and metrics collection
-#[cleanroom_test]
+#[tokio::main]
 async fn test_observability_framework_self_test() -> Result<()> {
     println!("📊 Testing framework observability features...");
     println!("📋 This validates README claims about automatic tracing and metrics");
@@ -38,8 +38,8 @@ async fn test_observability_framework_self_test() -> Result<()> {
     println!("📊 Traces collected: {} spans", traces.len());
 
     // Verify tracing is working
-    let has_container_spans = traces.iter().any(|span| span.operation_name.contains("container"));
-    let has_command_spans = traces.iter().any(|span| span.operation_name.contains("execute"));
+    let has_container_spans = traces.iter().any(|span| span.operation_name.as_str().contains("container"));
+    let has_command_spans = traces.iter().any(|span| span.operation_name.as_str().contains("execute"));
 
     println!("✅ Container operations traced: {}", has_container_spans);
     println!("✅ Command execution traced: {}", has_command_spans);
@@ -120,7 +120,7 @@ async fn test_observability_framework_self_test() -> Result<()> {
 }
 
 /// Comprehensive observability test
-#[cleanroom_test]
+#[tokio::main]
 async fn test_comprehensive_observability() -> Result<()> {
     println!("📊 Comprehensive observability test...");
 

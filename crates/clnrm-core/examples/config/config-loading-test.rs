@@ -7,7 +7,7 @@ use clnrm_core::{cleanroom_test, CleanroomEnvironment, CleanroomConfig};
 use clnrm_core::config::{load_cleanroom_config, load_cleanroom_config_from_file};
 
 /// Test that cleanroom.toml configuration loading works
-#[cleanroom_test]
+#[tokio::main]
 async fn test_cleanroom_config_loading() -> Result<(), clnrm_core::CleanroomError> {
     println!("🧪 Testing cleanroom.toml configuration loading...");
 
@@ -50,7 +50,7 @@ async fn test_cleanroom_config_loading() -> Result<(), clnrm_core::CleanroomErro
 }
 
 /// Test configuration with environment variable overrides
-#[cleanroom_test]
+#[tokio::main]
 async fn test_config_with_env_overrides() -> Result<(), clnrm_core::CleanroomError> {
     println!("🧪 Testing configuration with environment variable overrides...");
 
@@ -81,7 +81,7 @@ async fn test_config_with_env_overrides() -> Result<(), clnrm_core::CleanroomErr
 }
 
 /// Test configuration merging priority
-#[cleanroom_test]
+#[tokio::main]
 async fn test_config_merging_priority() -> Result<(), clnrm_core::CleanroomError> {
     println!("🧪 Testing configuration merging priority...");
 

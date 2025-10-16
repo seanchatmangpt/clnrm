@@ -6,13 +6,37 @@ This guide covers the complete CLI interface for the Cleanroom testing framework
 
 ## Installation
 
+### Homebrew (Recommended)
+
+```bash
+# Install via custom tap (immediate availability)
+brew tap seanchatmangpt/clnrm
+brew install clnrm
+
+# Verify installation
+clnrm --version
+# Output: clnrm 0.3.0
+```
+
+### Direct Installation
+
 ```bash
 # Install the CLI tool (no Rust required)
 curl -fsSL https://install.clnrm.dev | sh
 
 # Verify installation
 clnrm --version
-# Output: clnrm 1.0.0
+# Output: clnrm 0.3.0
+```
+
+### Build from Source
+
+```bash
+# Clone and build (requires Rust)
+git clone https://github.com/seanchatmangpt/clnrm.git
+cd clnrm
+cargo build --release
+sudo cp target/release/clnrm /usr/local/bin/
 ```
 
 ## Command Reference
