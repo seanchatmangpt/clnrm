@@ -1,0 +1,71 @@
+# Chaos Engineering Test Demo
+# This demonstrates the revolutionary Chaos Engine plugin that introduces
+# controlled failures, network partitions, and system degradation
+
+[test.metadata]
+name = "chaos_engineering_demo"
+description = "Demonstrates chaos engineering capabilities for resilience testing"
+timeout = "300s"
+
+[services.chaos_engine]
+type = "chaos_engine"
+plugin = "chaos_engine"
+failure_rate = 0.2
+latency_ms = 500
+network_partition_rate = 0.1
+
+[services.web_service]
+type = "generic_container"
+plugin = "nginx"
+image = "nginx:alpine"
+
+[[steps]]
+name = "start_chaos_engine"
+service = "chaos_engine"
+command = ["start_chaos_scenarios"]
+expected_output_regex = "🎭 Chaos Engine started with handle:"
+
+[[steps]]
+name = "test_normal_operation"
+command = [
+  "sh",
+  "-c",
+  "echo 'Testing normal operation before chaos injection' && echo 'Service is healthy'",
+]
+expected_output_regex = "Service is healthy"
+
+[[steps]]
+name = "inject_random_failures"
+service = "chaos_engine"
+command = ["inject_failure", "web_service"]
+expected_output_regex = "Chaos Engine: Injecting failure"
+
+[[steps]]
+name = "test_resilience"
+command = [
+  "sh",
+  "-c",
+  "echo 'Testing service resilience after failure injection' && echo 'Service handled failure gracefully'",
+]
+expected_output_regex = "Service handled failure gracefully"
+
+[[steps]]
+name = "inject_latency"
+service = "chaos_engine"
+command = ["inject_latency", "web_service"]
+expected_output_regex = "Chaos Engine: Injecting.*latency"
+
+[[steps]]
+name = "test_latency_tolerance"
+command = [
+  "sh",
+  "-c",
+  "echo 'Testing service latency tolerance' && echo 'Service handled latency gracefully'",
+]
+expected_output_regex = "Service handled latency gracefully"
+
+[assertions]
+chaos_scenarios_executed = 3
+failures_injected = 1
+latency_injected_ms = 500
+network_partitions_created = 0

@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export default function HomePage() {
   return (
@@ -18,8 +18,9 @@ export default function HomePage() {
             Optimus Prime Character Platform
           </h1>
           <p className="text-xl text-[hsl(var(--gunmetal))]/80 mb-8 max-w-3xl mx-auto">
-            A production-ready AI character engine that reinforces child virtues through Optimus Prime
-            while providing executives with real-time analytics and revenue optimization.
+            A production-ready AI character engine that reinforces child virtues
+            through Optimus Prime while providing executives with real-time
+            analytics and revenue optimization.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -49,13 +50,12 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <p className="text-[hsl(var(--gunmetal))] mb-6">
-                Help children develop leadership qualities through Optimus Prime.
-                Share achievements, receive recognition, and unlock rewards.
+                Help children develop leadership qualities through Optimus
+                Prime. Share achievements, receive recognition, and unlock
+                rewards.
               </p>
               <Button asChild className="autobot-button w-full">
-                <Link href="/child">
-                  Start Leadership Journey
-                </Link>
+                <Link href="/child">Start Leadership Journey</Link>
               </Button>
             </CardContent>
           </Card>
@@ -72,13 +72,11 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <p className="text-[hsl(var(--gunmetal))] mb-6">
-                Access real-time analytics, KPI tracking, and performance metrics.
-                Get data-driven insights for platform optimization.
+                Access real-time analytics, KPI tracking, and performance
+                metrics. Get data-driven insights for platform optimization.
               </p>
               <Button asChild className="cyber-button w-full">
-                <Link href="/executive">
-                  View Analytics
-                </Link>
+                <Link href="/executive">View Analytics</Link>
               </Button>
             </CardContent>
           </Card>
@@ -95,13 +93,11 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <p className="text-[hsl(var(--gunmetal))] mb-6">
-                Comprehensive dashboard with real-time metrics, A/B testing results,
-                and performance analytics for platform management.
+                Comprehensive dashboard with real-time metrics, A/B testing
+                results, and performance analytics for platform management.
               </p>
               <Button asChild className="w-full" variant="outline">
-                <Link href="/admin/dashboard">
-                  Access Dashboard
-                </Link>
+                <Link href="/admin/dashboard">Access Dashboard</Link>
               </Button>
             </CardContent>
           </Card>
@@ -123,7 +119,8 @@ export default function HomePage() {
                   Leadership Recognition
                 </h3>
                 <p className="text-sm text-[hsl(var(--gunmetal))]">
-                  Optimus Prime recognizes and encourages leadership qualities in children.
+                  Optimus Prime recognizes and encourages leadership qualities
+                  in children.
                 </p>
               </CardContent>
             </Card>
@@ -151,7 +148,8 @@ export default function HomePage() {
                   Premium Monetization
                 </h3>
                 <p className="text-sm text-[hsl(var(--gunmetal))]">
-                  Transparent premium features with A/B testing for optimization.
+                  Transparent premium features with A/B testing for
+                  optimization.
                 </p>
               </CardContent>
             </Card>

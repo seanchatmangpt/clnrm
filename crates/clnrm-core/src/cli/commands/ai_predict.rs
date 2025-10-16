@@ -278,7 +278,7 @@ async fn predict_test_failures() -> Result<Vec<FailurePrediction>> {
                 test_name: test_name.to_string(),
                 failure_probability,
                 confidence_score: 0.85,
-                risk_factors,
+                risk_factors: risk_factors.clone(),
                 mitigation_strategies: generate_mitigation_strategies(&risk_factors),
                 predicted_failure_time: estimate_failure_time(failure_probability),
             });
@@ -455,7 +455,7 @@ async fn display_historical_analysis(analysis: &HistoricalAnalysis, format: &Pre
             if !analysis.failure_patterns.is_empty() {
                 info!("🔍 Failure Patterns:");
                 for pattern in &analysis.failure_patterns {
-                    info!("   {}: {:.1}% failure rate ({})", pattern.test_name, pattern.failure_rate * 100.0, pattern.risk_level);
+                    info!("   {}: {:.1}% failure rate ({:?})", pattern.test_name, pattern.failure_rate * 100.0, pattern.risk_level);
                 }
             }
         },

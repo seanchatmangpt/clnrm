@@ -1,11 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ChildChat } from '@/components/child-chat';
-import { trackEvent } from '@/lib/telemetry';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ChildChat } from "@/components/child-chat";
+import { trackEvent } from "@/lib/telemetry";
 
 export default function ChildPage() {
   // Track page view
-  trackEvent('session_start', { mode: 'child' });
+  trackEvent("session_start", { mode: "child" });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--autobot-red))]/10 to-[hsl(var(--energon))]/10">
@@ -30,8 +30,8 @@ export default function ChildPage() {
               </Badge>
             </div>
             <p className="text-[hsl(var(--gunmetal))] text-lg">
-              Share your achievements and let Optimus Prime recognize your leadership qualities.
-              Unlock rewards and premium adventures!
+              Share your achievements and let Optimus Prime recognize your
+              leadership qualities. Unlock rewards and premium adventures!
             </p>
           </CardContent>
         </Card>

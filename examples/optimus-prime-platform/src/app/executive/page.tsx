@@ -1,11 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ExecutiveChat } from '@/components/executive-chat';
-import { trackEvent } from '@/lib/telemetry';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ExecutiveChat } from "@/components/executive-chat";
+import { trackEvent } from "@/lib/telemetry";
 
 export default function ExecutivePage() {
   // Track page view
-  trackEvent('session_start', { mode: 'executive' });
+  trackEvent("session_start", { mode: "executive" });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--cyber-blue))]/10 to-[hsl(var(--steel))]/10">
@@ -30,8 +30,8 @@ export default function ExecutivePage() {
               </Badge>
             </div>
             <p className="text-[hsl(var(--gunmetal))] text-lg">
-              Get instant insights into KPIs, revenue metrics, and performance data.
-              Ask questions and receive data-driven answers.
+              Get instant insights into KPIs, revenue metrics, and performance
+              data. Ask questions and receive data-driven answers.
             </p>
           </CardContent>
         </Card>

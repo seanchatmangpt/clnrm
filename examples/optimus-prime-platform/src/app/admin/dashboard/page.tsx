@@ -1,11 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dashboard } from '@/components/dashboard';
-import { trackEvent } from '@/lib/telemetry';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dashboard } from "@/components/dashboard";
+import { trackEvent } from "@/lib/telemetry";
 
 export default function DashboardPage() {
   // Track page view
-  trackEvent('session_start', { mode: 'admin' });
+  trackEvent("session_start", { mode: "admin" });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--gunmetal))]/10 to-[hsl(var(--steel))]/10">
@@ -30,8 +30,9 @@ export default function DashboardPage() {
               </Badge>
             </div>
             <p className="text-[hsl(var(--gunmetal))] text-lg">
-              Comprehensive analytics and performance metrics for the Optimus Prime platform.
-              Monitor KPIs, track user engagement, and optimize conversion rates.
+              Comprehensive analytics and performance metrics for the Optimus
+              Prime platform. Monitor KPIs, track user engagement, and optimize
+              conversion rates.
             </p>
           </CardContent>
         </Card>

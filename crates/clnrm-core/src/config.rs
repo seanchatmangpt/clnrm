@@ -73,6 +73,8 @@ pub struct StepConfig {
     pub expected_exit_code: Option<i32>,
     /// Whether to continue on failure
     pub continue_on_failure: Option<bool>,
+    /// Service to execute command on (optional)
+    pub service: Option<String>,
 }
 
 /// Security policy configuration

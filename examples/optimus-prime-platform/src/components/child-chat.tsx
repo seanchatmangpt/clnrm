@@ -1,43 +1,139 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useChat } from 'ai/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Message, detectVirtue, REWARD_URLS, PREMIUM_CTA_VARIANTS } from '@/lib/types';
-import { trackEvent, getABVariant, trackPremiumView, trackPremiumClick } from '@/lib/telemetry';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Message,
+  detectVirtue,
+  REWARD_URLS,
+  PREMIUM_CTA_VARIANTS,
+} from "@/lib/types";
+import {
+  trackEvent,
+  getABVariant,
+  trackPremiumView,
+  trackPremiumClick,
+} from "@/lib/telemetry";
 
 export function ChildChat() {
-  const [virtue, setVirtue] = useState<string>('');
-  const [rewardUrl, setRewardUrl] = useState<string>('');
-  const [premiumTitle, setPremiumTitle] = useState<string>('');
-  const [premiumLink, setPremiumLink] = useState<string>('');
-  const [abVariant, setAbVariant] = useState<'A' | 'B'>('A');
+  const [virtue, setVirtue] = useState<string>("");
+  const [rewardUrl, setRewardUrl] = useState<string>("");
+  const [premiumTitle, setPremiumTitle] = useState<string>("");
+  const [premiumLink, setPremiumLink] = useState<string>("");
+  const [abVariant, setAbVariant] = useState<"A" | "B">("A");
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-    api: '/api/chat',
-    body: { mode: 'child' },
-    onResponse: (response) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: input,
+      timestamp: Date.now(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+    setInput("");
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode: "child",
+          messages: [...messages, userMessage],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
       // Extract headers from response
-      const virtueHeader = response.headers.get('X-Virtue');
-      const rewardHeader = response.headers.get('X-Reward-Url');
-      const premiumTitleHeader = response.headers.get('X-Premium-Title');
-      const premiumLinkHeader = response.headers.get('X-Premium-Link');
+      const virtueHeader = response.headers.get("X-Virtue");
+      const rewardHeader = response.headers.get("X-Reward-Url");
+      const premiumTitleHeader = response.headers.get("X-Premium-Title");
+      const premiumLinkHeader = response.headers.get("X-Premium-Link");
 
       if (virtueHeader) setVirtue(virtueHeader);
       if (rewardHeader) setRewardUrl(rewardHeader);
       if (premiumTitleHeader) setPremiumTitle(premiumTitleHeader);
       if (premiumLinkHeader) setPremiumLink(premiumLinkHeader);
-    },
-  });
+
+      // Read streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      let assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "",
+        timestamp: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          // Parse Ollama streaming format
+          const lines = chunk.split('\n').filter(line => line.trim());
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line);
+              if (data.response) {
+                assistantMessage.content += data.response;
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessage.id
+                      ? { ...msg, content: assistantMessage.content }
+                      : msg
+                  )
+                );
+              }
+            } catch (e) {
+              // Ignore parsing errors for non-JSON lines
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
 
   useEffect(() => {
     // Initialize A/B variant and track session start
     const variant = getABVariant();
     setAbVariant(variant);
-    trackEvent('session_start', { mode: 'child', variant });
+    trackEvent("session_start", { mode: "child", variant });
   }, []);
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -51,7 +147,7 @@ export function ChildChat() {
   };
 
   const handleRewardClick = () => {
-    trackEvent('reward_click', { virtue, variant: abVariant });
+    trackEvent("reward_click", { virtue, variant: abVariant });
   };
 
   const handlePremiumClick = () => {
@@ -72,7 +168,8 @@ export function ChildChat() {
         </CardHeader>
         <CardContent>
           <p className="text-[hsl(var(--gunmetal))]">
-            Share your achievements and let Optimus Prime recognize your leadership qualities!
+            Share your achievements and let Optimus Prime recognize your
+            leadership qualities!
           </p>
         </CardContent>
       </Card>
@@ -80,18 +177,23 @@ export function ChildChat() {
       {/* Chat Messages */}
       <div className="space-y-4">
         {messages.map((message) => (
-          <Card key={message.id} className={`${
-            message.role === 'user'
-              ? 'child-panel ml-12'
-              : 'executive-panel mr-12'
-          }`}>
+          <Card
+            key={message.id}
+            className={`${
+              message.role === "user"
+                ? "child-panel ml-12"
+                : "executive-panel mr-12"
+            }`}
+          >
             <CardContent className="p-4">
-              <div className={`font-medium mb-2 ${
-                message.role === 'user'
-                  ? 'text-[hsl(var(--autobot-red))]'
-                  : 'text-[hsl(var(--cyber-blue))]'
-              }`}>
-                {message.role === 'user' ? 'You' : 'Optimus Prime'}
+              <div
+                className={`font-medium mb-2 ${
+                  message.role === "user"
+                    ? "text-[hsl(var(--autobot-red))]"
+                    : "text-[hsl(var(--cyber-blue))]"
+                }`}
+              >
+                {message.role === "user" ? "You" : "Optimus Prime"}
               </div>
               <div className="text-[hsl(var(--gunmetal))]">
                 {message.content}
@@ -187,7 +289,7 @@ export function ChildChat() {
               disabled={isLoading || !input.trim()}
               className="autobot-button"
             >
-              {isLoading ? 'Sending...' : 'Send'}
+              {isLoading ? "Sending..." : "Send"}
             </Button>
           </form>
         </CardContent>

@@ -48,6 +48,8 @@ tracing-subscriber = { workspace = true, optional = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 reqwest = { version = "0.12", features = ["json"] }
+rand = "0.8"
+semver = "1.0"
 
 [[example]]
 name = "validate-toml-format"
@@ -76,6 +78,10 @@ path = "examples/framework-self-testing/container-lifecycle-test.rs"
 [[example]]
 name = "config-loading-test"
 path = "examples/config/config-loading-test.rs"
+
+[[example]]
+name = "surrealdb-ollama-integration"
+path = "examples/surrealdb-ollama-integration.rs"
 
 [[example]]
 name = "hermetic-isolation-test"

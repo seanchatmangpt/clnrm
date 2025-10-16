@@ -18,6 +18,11 @@ pub fn list_plugins() -> Result<()> {
     println!("✅ ollama (local AI model integration)");
     println!("✅ vllm (high-performance LLM inference)");
     println!("✅ tgi (Hugging Face text generation inference)");
+    
+    // List revolutionary plugins
+    println!("\n🚀 Revolutionary Plugins:");
+    println!("🎭 chaos_engine (controlled failure injection, network partitions)");
+    println!("🤖 ai_test_generator (AI-powered test case generation)");
 
     // List plugin capabilities
     println!("\n🔧 Plugin Capabilities:");
@@ -29,6 +34,8 @@ pub fn list_plugins() -> Result<()> {
     println!("    ◦ Ollama (local development)");
     println!("    ◦ vLLM (production inference)");
     println!("    ◦ TGI (Hugging Face optimized)");
+    println!("  • Chaos engineering & resilience testing");
+    println!("  • AI-powered test generation");
     println!("  • Custom service plugins");
 
     println!("\n💡 Usage:");

@@ -108,6 +108,7 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
+
         Commands::AiOrchestrate {
             paths,
             predict_failures,
@@ -115,14 +116,7 @@ pub async fn run_cli() -> Result<()> {
             confidence_threshold,
             max_workers,
         } => {
-            println!("🤖 AI-Powered Test Orchestration");
-            println!("🚀 Paths: {:?}", paths);
-            println!("🔮 Predict failures: {}", predict_failures);
-            println!("⚡ Auto optimize: {}", auto_optimize);
-            println!("🎯 Confidence threshold: {}", confidence_threshold);
-            println!("👥 Max workers: {}", max_workers);
-            println!("💡 AI orchestration not yet implemented");
-            Ok(())
+            ai_orchestrate_tests(paths, predict_failures, auto_optimize, confidence_threshold, max_workers).await
         }
 
         Commands::AiPredict {
@@ -131,28 +125,31 @@ pub async fn run_cli() -> Result<()> {
             recommendations,
             format,
         } => {
-            println!("🔮 AI-Powered Predictive Analytics");
-            println!("📊 Analyze history: {}", analyze_history);
-            println!("🎯 Predict failures: {}", predict_failures);
-            println!("💡 Generate recommendations: {}", recommendations);
-            println!("📋 Output format: {:?}", format);
-            println!("💡 AI prediction not yet implemented");
-            Ok(())
+            ai_predict_analytics(analyze_history, predict_failures, recommendations, format).await
         }
 
         Commands::AiOptimize {
             execution_order,
-            parallelization,
             resource_allocation,
-            output,
+            parallel_execution,
+            auto_apply,
         } => {
-            println!("⚡ AI-Powered Optimization");
-            println!("🔄 Optimize execution order: {}", execution_order);
-            println!("🚀 Optimize parallelization: {}", parallelization);
-            println!("🛠️  Optimize resource allocation: {}", resource_allocation);
-            println!("📊 Output optimizations to: {:?}", output);
-            println!("💡 AI optimization not yet implemented");
-            Ok(())
+            ai_optimize_tests(execution_order, resource_allocation, parallel_execution, auto_apply).await
+        }
+
+        Commands::AiReal { analyze } => {
+            if analyze {
+                ai_real_analysis().await
+            } else {
+                println!("🤖 Real AI Intelligence Command");
+                println!("Use --analyze to run real AI analysis with SurrealDB and Ollama");
+                Ok(())
+            }
+        }
+
+        Commands::Marketplace { command } => {
+            let config = crate::marketplace::MarketplaceConfig::default();
+            crate::marketplace::commands::execute_marketplace_command(&config, command).await
         }
     };
 

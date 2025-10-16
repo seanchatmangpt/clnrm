@@ -185,6 +185,14 @@ pub enum Commands {
         #[arg(long)]
         auto_apply: bool,
     },
+
+    /// Real AI intelligence using SurrealDB and Ollama
+    AiReal {
+        /// Run real AI analysis with actual data and AI processing
+        #[arg(long)]
+        analyze: bool,
+    },
+
 }
 
 #[derive(Subcommand)]
@@ -337,6 +345,8 @@ pub struct TestStep {
     pub name: String,
     pub command: Vec<String>,
     pub expected_output_regex: Option<String>,
+    #[serde(default)]
+    pub service: Option<String>,
 }
 
 /// File extension constants

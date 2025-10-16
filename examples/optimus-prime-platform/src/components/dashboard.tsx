@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MetricsData } from '@/lib/types';
-import { trackEvent } from '@/lib/telemetry';
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MetricsData } from "@/lib/types";
+import { trackEvent } from "@/lib/telemetry";
 
 export function Dashboard() {
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
@@ -12,7 +12,7 @@ export function Dashboard() {
 
   useEffect(() => {
     // Track dashboard view
-    trackEvent('session_start', { mode: 'executive' });
+    trackEvent("session_start", { mode: "executive" });
 
     // Load initial metrics
     loadMetrics();
@@ -25,11 +25,11 @@ export function Dashboard() {
 
   const loadMetrics = async () => {
     try {
-      const response = await fetch('/api/metrics');
+      const response = await fetch("/api/metrics");
       const data = await response.json();
       setMetrics(data);
     } catch (error) {
-      console.error('Failed to load metrics:', error);
+      console.error("Failed to load metrics:", error);
     } finally {
       setLoading(false);
     }
@@ -46,8 +46,14 @@ export function Dashboard() {
     );
   }
 
-  const ctrA = metrics.ab.A.views > 0 ? (metrics.ab.A.clicks / metrics.ab.A.views) * 100 : 0;
-  const ctrB = metrics.ab.B.views > 0 ? (metrics.ab.B.clicks / metrics.ab.B.views) * 100 : 0;
+  const ctrA =
+    metrics.ab.A.views > 0
+      ? (metrics.ab.A.clicks / metrics.ab.A.views) * 100
+      : 0;
+  const ctrB =
+    metrics.ab.B.views > 0
+      ? (metrics.ab.B.clicks / metrics.ab.B.views) * 100
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -63,7 +69,8 @@ export function Dashboard() {
         </CardHeader>
         <CardContent>
           <p className="text-[hsl(var(--gunmetal))]">
-            Real-time analytics and performance metrics for the Optimus Prime platform.
+            Real-time analytics and performance metrics for the Optimus Prime
+            platform.
           </p>
         </CardContent>
       </Card>
@@ -86,9 +93,7 @@ export function Dashboard() {
             <div className="text-2xl font-bold text-[hsl(var(--cyber-blue))] mb-2">
               {metrics.totals.events}
             </div>
-            <p className="text-[hsl(var(--gunmetal))] text-sm">
-              Total Events
-            </p>
+            <p className="text-[hsl(var(--gunmetal))] text-sm">Total Events</p>
           </CardContent>
         </Card>
 
@@ -141,7 +146,8 @@ export function Dashboard() {
           {ctrA > ctrB && (
             <div className="mt-4 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
               <p className="text-green-300 text-sm">
-                🎯 Variant A is performing better! Consider making it the default.
+                🎯 Variant A is performing better! Consider making it the
+                default.
               </p>
             </div>
           )}
@@ -149,7 +155,8 @@ export function Dashboard() {
           {ctrB > ctrA && (
             <div className="mt-4 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
               <p className="text-green-300 text-sm">
-                🎯 Variant B is performing better! Consider making it the default.
+                🎯 Variant B is performing better! Consider making it the
+                default.
               </p>
             </div>
           )}
@@ -175,7 +182,11 @@ export function Dashboard() {
                     <div
                       className="h-full bg-[hsl(var(--energon))] transition-all duration-500"
                       style={{
-                        width: `${(metrics.revenue7.data[index] / Math.max(...metrics.revenue7.data)) * 100}%`
+                        width: `${
+                          (metrics.revenue7.data[index] /
+                            Math.max(...metrics.revenue7.data)) *
+                          100
+                        }%`,
                       }}
                     />
                   </div>
@@ -199,7 +210,10 @@ export function Dashboard() {
         <CardContent>
           <div className="space-y-4">
             {metrics.funnel.map((step, index) => (
-              <div key={step.label} className="flex items-center justify-between">
+              <div
+                key={step.label}
+                className="flex items-center justify-between"
+              >
                 <span className="text-[hsl(var(--gunmetal))] font-medium">
                   {step.label}
                 </span>
@@ -208,7 +222,11 @@ export function Dashboard() {
                     <div
                       className="h-full bg-[hsl(var(--autobot-red))] transition-all duration-500"
                       style={{
-                        width: `${(step.value / Math.max(...metrics.funnel.map(s => s.value))) * 100}%`
+                        width: `${
+                          (step.value /
+                            Math.max(...metrics.funnel.map((s) => s.value))) *
+                          100
+                        }%`,
                       }}
                     />
                   </div>
@@ -233,21 +251,36 @@ export function Dashboard() {
           <div className="space-y-3">
             <div className="p-3 bg-[hsl(var(--cyber-blue))]/10 border border-[hsl(var(--cyber-blue))]/20 rounded-lg">
               <p className="text-[hsl(var(--cyber-blue))] font-medium">
-                💡 Conversion Rate: {((metrics.funnel[5]?.value || 0) / (metrics.funnel[0]?.value || 1) * 100).toFixed(1)}% from session to premium click
+                💡 Conversion Rate:{" "}
+                {(
+                  ((metrics.funnel[5]?.value || 0) /
+                    (metrics.funnel[0]?.value || 1)) *
+                  100
+                ).toFixed(1)}
+                % from session to premium click
               </p>
             </div>
 
             {metrics.revenue7.data.length > 0 && (
               <div className="p-3 bg-[hsl(var(--energon))]/10 border border-[hsl(var(--energon))]/20 rounded-lg">
                 <p className="text-[hsl(var(--gunmetal))] font-medium">
-                  📈 Best Day: {metrics.revenue7.labels[metrics.revenue7.data.indexOf(Math.max(...metrics.revenue7.data))]} (${Math.max(...metrics.revenue7.data).toLocaleString()})
+                  📈 Best Day:{" "}
+                  {
+                    metrics.revenue7.labels[
+                      metrics.revenue7.data.indexOf(
+                        Math.max(...metrics.revenue7.data)
+                      )
+                    ]
+                  }{" "}
+                  (${Math.max(...metrics.revenue7.data).toLocaleString()})
                 </p>
               </div>
             )}
 
             <div className="p-3 bg-[hsl(var(--steel))]/10 border border-[hsl(var(--steel))]/20 rounded-lg">
               <p className="text-[hsl(var(--gunmetal))] font-medium">
-                🎯 Total Engagement: {metrics.totals.events} events tracked across all sessions
+                🎯 Total Engagement: {metrics.totals.events} events tracked
+                across all sessions
               </p>
             </div>
           </div>

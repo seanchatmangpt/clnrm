@@ -10,6 +10,10 @@ pub mod plugins;
 pub mod services;
 pub mod report;
 pub mod self_test;
+pub mod ai_orchestrate;
+pub mod ai_predict;
+pub mod ai_optimize;
+pub mod ai_real;
 
 // Re-export all public functions for easy access
 pub use run::{
@@ -46,3 +50,8 @@ pub use report::{
 };
 
 pub use self_test::run_self_tests;
+
+pub use ai_orchestrate::ai_orchestrate_tests;
+pub use ai_predict::ai_predict_analytics;
+pub use ai_optimize::ai_optimize_tests;
+pub use ai_real::ai_real_analysis;
