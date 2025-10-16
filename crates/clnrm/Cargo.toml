@@ -6,6 +6,9 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 description = "Cleanroom Testing Framework - CLI tool"
+readme = "../../README.md"
+keywords = ["testing", "integration", "containers", "hermetic", "ai", "ollama"]
+categories = ["development-tools", "testing"]
 
 [[bin]]
 name = "clnrm"
