@@ -16,9 +16,9 @@ pub fn generate_from_template(template: &str, name: Option<&str>) -> Result<()> 
     debug!("Template: {}", template);
 
     // Check if template exists
-    let available_templates = vec!["default", "advanced", "minimal", "database", "api"];
+    let available_templates = ["default", "advanced", "minimal", "database", "api"];
     if !available_templates.contains(&template) {
-        return Err(CleanroomError::validation_error(&format!(
+        return Err(CleanroomError::validation_error(format!(
             "Unknown template '{}'. Available templates: {}",
             template,
             available_templates.join(", ")

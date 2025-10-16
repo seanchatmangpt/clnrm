@@ -5,6 +5,7 @@
 
 use clnrm_core::policy::*;
 use proptest::prelude::*;
+use proptest::test_runner::TestCaseError;
 use std::collections::HashMap;
 
 // Import custom generators
@@ -24,14 +25,14 @@ proptest! {
     ///
     /// Invariant: policy == deserialize(serialize(policy))
     #[test]
-    fn prop_policy_roundtrip_serialization(policy in arb_policy()) {
+    fn prop_policy_roundtrip_serialization(policy in arb_policy()) -> Result<(), TestCaseError> {
         // Serialize to JSON
         let json = serde_json::to_string(&policy)
-            .expect("Failed to serialize policy");
+            .map_err(|e| TestCaseError::fail(format!("Failed to serialize policy: {}", e)))?;
 
         // Deserialize back
         let deserialized: Policy = serde_json::from_str(&json)
-            .expect("Failed to deserialize policy");
+            .map_err(|e| TestCaseError::fail(format!("Failed to deserialize policy: {}", e)))?;
 
         // Check critical fields are preserved
         prop_assert_eq!(
@@ -54,6 +55,8 @@ proptest! {
             deserialized.execution.max_parallel_tasks,
             "Parallel task limit must be preserved"
         );
+
+        Ok(())
     }
 }
 
@@ -255,13 +258,13 @@ proptest! {
     fn prop_policy_operation_permission_consistency(
         policy in arb_valid_policy(),
         port in 1u16..=65535,
-    ) {
+    ) -> Result<(), TestCaseError> {
         let mut context = HashMap::new();
         context.insert("port".to_string(), port.to_string());
 
         let is_allowed = policy
             .is_operation_allowed("network_operation", &context)
-            .expect("Operation check should not fail");
+            .map_err(|e| TestCaseError::fail(format!("Operation check failed: {}", e)))?;
 
         // If network isolation is enabled, check port permission logic
         if policy.security.enable_network_isolation {
@@ -283,6 +286,8 @@ proptest! {
         }
         // If no network isolation, operation should generally be allowed
         // (unless blocked by other constraints)
+
+        Ok(())
     }
 }
 

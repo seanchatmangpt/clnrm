@@ -2,7 +2,7 @@
 //!
 //! Handles listing and management of available service plugins.
 
-use crate::error::{CleanroomError, Result};
+use crate::error::Result;
 use tracing::info;
 
 /// List available plugins

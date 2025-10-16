@@ -7,10 +7,6 @@ pub mod commands;
 pub mod types;
 pub mod utils;
 
-use crate::cli::commands::*;
-use crate::cli::types::{Cli, Commands, ReportFormat, ServiceCommands};
-use crate::cli::utils::setup_logging;
-use crate::config::load_cleanroom_config;
 use crate::error::Result;
 use clap::Parser;
 use std::path::PathBuf;

@@ -1,0 +1,992 @@
+//! Integration Tests for AI Commands
+//!
+//! Comprehensive end-to-end tests for all AI-powered commands:
+//! - ai-orchestrate: AI-powered test orchestration
+//! - ai-predict: Predictive analytics and failure prediction
+//! - ai-optimize: Resource and execution optimization
+//! - ai-real: Real AI integration with SurrealDB and Ollama
+//! - ai-monitor: Anomaly detection (if implemented)
+//! - marketplace: Plugin marketplace operations
+//!
+//! ## Test Organization
+//! - Unit tests for individual components
+//! - Integration tests with mock services
+//! - End-to-end tests with real services (marked with #[ignore])
+//! - Performance benchmarks
+//!
+//! ## Running Tests
+//! ```bash
+//! # Run all tests (excluding ignored)
+//! cargo test --test integration_ai_commands
+//!
+//! # Run with real services (requires SurrealDB and Ollama)
+//! cargo test --test integration_ai_commands -- --ignored
+//!
+//! # Run specific test module
+//! cargo test --test integration_ai_commands orchestrate
+//! ```
+
+use clnrm_core::cleanroom::CleanroomEnvironment;
+use clnrm_core::cli::commands::{ai_optimize, ai_orchestrate, ai_predict, ai_real};
+use clnrm_core::cli::types::PredictionFormat;
+use clnrm_core::error::{CleanroomError, Result};
+use clnrm_core::marketplace::{Marketplace, MarketplaceConfig};
+use clnrm_core::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+// ============================================================================
+// Test Fixtures and Utilities
+// ============================================================================
+
+/// Create a temporary test directory with sample test files
+fn create_test_fixtures() -> Result<PathBuf> {
+    let temp_dir = std::env::temp_dir().join(format!("clnrm_test_{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&temp_dir).map_err(|e| {
+        CleanroomError::internal_error(format!("Failed to create test directory: {}", e))
+    })?;
+
+    // Create a sample test file
+    let test_file = temp_dir.join("sample_test.toml");
+    let test_content = r#"
+[test.metadata]
+name = "sample_integration_test"
+description = "A sample test for AI command testing"
+author = "Test Suite"
+version = "1.0.0"
+timeout = "60s"
+
+[[steps]]
+name = "test_step_1"
+command = "echo"
+args = ["Hello from test"]
+expected_output = "Hello from test"
+
+[[steps]]
+name = "test_step_2"
+command = "echo"
+args = ["Second step"]
+expected_output = "Second step"
+
+[services.test_service]
+type = "database"
+image = "postgres:latest"
+"#;
+
+    std::fs::write(&test_file, test_content)
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to write test file: {}", e)))?;
+
+    Ok(temp_dir)
+}
+
+/// Clean up test fixtures
+fn cleanup_test_fixtures(dir: PathBuf) {
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Generate sample test execution data for AI analysis
+fn generate_sample_executions(count: usize, success_rate: f64) -> Vec<TestExecution> {
+    let mut executions = Vec::new();
+    let now = chrono::Utc::now();
+
+    for i in 0..count {
+        let success = rand::random::<f64>() < success_rate;
+        executions.push(TestExecution {
+            test_name: format!("test_{}", i % 5),
+            timestamp: now - chrono::Duration::hours(i as i64),
+            success,
+            execution_time_ms: 1000 + (rand::random::<u64>() % 5000),
+            error_message: if success {
+                None
+            } else {
+                Some(format!("Test failed: timeout"))
+            },
+            resource_usage: ResourceUsage {
+                cpu_percent: 20.0 + rand::random::<f32>() * 30.0,
+                memory_mb: 100 + (rand::random::<u64>() % 400),
+                network_io_mb: rand::random::<u64>() % 100,
+                disk_io_mb: rand::random::<u64>() % 50,
+            },
+        });
+    }
+
+    executions
+}
+
+/// Check if Ollama is available
+async fn ollama_available() -> bool {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build();
+
+    if let Ok(client) = client {
+        let response = client
+            .get("http://localhost:11434/api/version")
+            .send()
+            .await;
+
+        response.is_ok() && response?.status().is_success()
+    } else {
+        false
+    }
+}
+
+/// Check if SurrealDB is available
+async fn surrealdb_available() -> bool {
+    use surrealdb::{
+        engine::remote::ws::{Client, Ws},
+        Surreal,
+    };
+
+    let db: Surreal<Client> = Surreal::init();
+    let result = db.connect::<Ws>("127.0.0.1:8000").await;
+
+    result.is_ok()
+}
+
+// ============================================================================
+// AI Orchestrate Command Tests
+// ============================================================================
+
+#[cfg(test)]
+mod orchestrate_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_orchestrate_basic_functionality() -> Result<()> {
+        // This test verifies basic orchestration without predictions or optimization
+        let temp_dir = create_test_fixtures()?;
+
+        let result = ai_orchestrate::ai_orchestrate_tests(
+            Some(vec![temp_dir.clone()]),
+            false, // No failure prediction
+            false, // No auto-optimization
+            0.7,   // Confidence threshold
+            4,     // Max workers
+        )
+        .await;
+
+        cleanup_test_fixtures(temp_dir);
+
+        // Should succeed even with no real tests
+        assert!(result.is_ok(), "Basic orchestration should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_orchestrate_with_prediction() -> Result<()> {
+        let temp_dir = create_test_fixtures()?;
+
+        let result = ai_orchestrate::ai_orchestrate_tests(
+            Some(vec![temp_dir.clone()]),
+            true,  // Enable failure prediction
+            false, // No auto-optimization
+            0.5,   // Lower confidence threshold for testing
+            4,
+        )
+        .await;
+
+        cleanup_test_fixtures(temp_dir);
+
+        assert!(
+            result.is_ok(),
+            "Orchestration with prediction should succeed"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_orchestrate_with_optimization() -> Result<()> {
+        let temp_dir = create_test_fixtures()?;
+
+        let result = ai_orchestrate::ai_orchestrate_tests(
+            Some(vec![temp_dir.clone()]),
+            false, // No prediction
+            true,  // Enable auto-optimization
+            0.7,
+            4,
+        )
+        .await;
+
+        cleanup_test_fixtures(temp_dir);
+
+        assert!(
+            result.is_ok(),
+            "Orchestration with optimization should succeed"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_orchestrate_full_features() -> Result<()> {
+        let temp_dir = create_test_fixtures()?;
+
+        let result = ai_orchestrate::ai_orchestrate_tests(
+            Some(vec![temp_dir.clone()]),
+            true, // Enable prediction
+            true, // Enable optimization
+            0.6,  // Medium confidence threshold
+            8,    // More workers
+        )
+        .await;
+
+        cleanup_test_fixtures(temp_dir);
+
+        assert!(result.is_ok(), "Full-featured orchestration should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_orchestrate_with_multiple_paths() -> Result<()> {
+        let temp_dir1 = create_test_fixtures()?;
+        let temp_dir2 = create_test_fixtures()?;
+
+        let result = ai_orchestrate::ai_orchestrate_tests(
+            Some(vec![temp_dir1.clone(), temp_dir2.clone()]),
+            true,
+            true,
+            0.7,
+            4,
+        )
+        .await;
+
+        cleanup_test_fixtures(temp_dir1);
+        cleanup_test_fixtures(temp_dir2);
+
+        assert!(
+            result.is_ok(),
+            "Orchestration with multiple paths should succeed"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_orchestrate_resource_estimation() -> Result<()> {
+        // Test that resource estimation works correctly
+        let temp_dir = create_test_fixtures()?;
+
+        // Should handle resource estimation even with complex tests
+        let result = ai_orchestrate::ai_orchestrate_tests(
+            Some(vec![temp_dir.clone()]),
+            true,
+            true,
+            0.8, // High confidence threshold
+            16,  // Many workers to test parallelization
+        )
+        .await;
+
+        cleanup_test_fixtures(temp_dir);
+
+        assert!(result.is_ok(), "Resource estimation should work correctly");
+        Ok(())
+    }
+}
+
+// ============================================================================
+// AI Predict Command Tests
+// ============================================================================
+
+#[cfg(test)]
+mod predict_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_predict_with_history_analysis() -> Result<()> {
+        let result = ai_predict::ai_predict_analytics(
+            true,  // Analyze history
+            false, // No failure prediction
+            false, // No recommendations
+            PredictionFormat::Human,
+        )
+        .await;
+
+        assert!(result.is_ok(), "History analysis should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_predict_with_failure_prediction() -> Result<()> {
+        let result = ai_predict::ai_predict_analytics(
+            false, // No history analysis
+            true,  // Enable failure prediction
+            false,
+            PredictionFormat::Human,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Failure prediction should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_predict_with_recommendations() -> Result<()> {
+        let result = ai_predict::ai_predict_analytics(
+            false,
+            false,
+            true, // Enable recommendations
+            PredictionFormat::Human,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Recommendation generation should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_predict_all_features() -> Result<()> {
+        let result = ai_predict::ai_predict_analytics(
+            true, // All features enabled
+            true,
+            true,
+            PredictionFormat::Human,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Full prediction analysis should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_predict_json_format() -> Result<()> {
+        let result =
+            ai_predict::ai_predict_analytics(true, true, true, PredictionFormat::Json).await;
+
+        assert!(result.is_ok(), "JSON format output should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_predict_markdown_format() -> Result<()> {
+        let result =
+            ai_predict::ai_predict_analytics(true, true, false, PredictionFormat::Markdown).await;
+
+        assert!(result.is_ok(), "Markdown format output should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_predict_csv_format() -> Result<()> {
+        let result =
+            ai_predict::ai_predict_analytics(true, false, false, PredictionFormat::Csv).await;
+
+        assert!(result.is_ok(), "CSV format output should succeed");
+        Ok(())
+    }
+}
+
+// ============================================================================
+// AI Optimize Command Tests
+// ============================================================================
+
+#[cfg(test)]
+mod optimize_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_optimize_execution_order() -> Result<()> {
+        let result = ai_optimize::ai_optimize_tests(
+            true,  // Enable execution order optimization
+            false, // No resource allocation
+            false, // No parallel execution
+            false, // No auto-apply
+        )
+        .await;
+
+        // Should succeed even with no test files
+        assert!(
+            result.is_ok(),
+            "Execution order optimization should succeed"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_optimize_resource_allocation() -> Result<()> {
+        let result = ai_optimize::ai_optimize_tests(
+            false, true, // Enable resource allocation optimization
+            false, false,
+        )
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "Resource allocation optimization should succeed"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_optimize_parallel_execution() -> Result<()> {
+        let result = ai_optimize::ai_optimize_tests(
+            false, false, true, // Enable parallel execution optimization
+            false,
+        )
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "Parallel execution optimization should succeed"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_optimize_all_features() -> Result<()> {
+        let result = ai_optimize::ai_optimize_tests(
+            true, // All optimizations enabled
+            true, true, false, // Don't auto-apply in tests
+        )
+        .await;
+
+        assert!(result.is_ok(), "Full optimization should succeed");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_optimize_with_auto_apply() -> Result<()> {
+        let result = ai_optimize::ai_optimize_tests(
+            true, true, true, true, // Enable auto-apply
+        )
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "Optimization with auto-apply should succeed"
+        );
+        Ok(())
+    }
+}
+
+// ============================================================================
+// AI Real Command Tests (requires external services)
+// ============================================================================
+
+#[cfg(test)]
+mod real_ai_tests {
+    use super::*;
+
+    #[tokio::test]
+    #[ignore] // Requires SurrealDB and Ollama
+    async fn test_real_ai_full_analysis() -> Result<()> {
+        // Check if required services are available
+        if !surrealdb_available().await {
+            println!("⚠️  SurrealDB not available, skipping test");
+            println!(
+                "   Start SurrealDB: docker run -p 8000:8000 surrealdb/surrealdb:latest start"
+            );
+            return Ok(());
+        }
+
+        if !ollama_available().await {
+            println!("⚠️  Ollama not available, skipping test");
+            println!("   Start Ollama: ollama serve");
+            return Ok(());
+        }
+
+        let result = ai_real::ai_real_analysis().await;
+
+        assert!(
+            result.is_ok(),
+            "Real AI analysis should succeed with services available"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_real_ai_graceful_failure() -> Result<()> {
+        // Test graceful failure when services are unavailable
+        let result = ai_real::ai_real_analysis().await;
+
+        // Should either succeed or fail gracefully
+        match result {
+            Ok(_) => println!("✅ Real AI analysis succeeded"),
+            Err(e) => {
+                println!(
+                    "ℹ️  Real AI analysis failed (expected if services unavailable): {}",
+                    e
+                );
+                // This is expected if SurrealDB or Ollama aren't running
+            }
+        }
+
+        Ok(())
+    }
+}
+
+// ============================================================================
+// AI Intelligence Service Tests
+// ============================================================================
+
+#[cfg(test)]
+mod ai_service_tests {
+    use super::*;
+    use clnrm_core::cleanroom::ServicePlugin;
+
+    #[tokio::test]
+    async fn test_ai_intelligence_service_creation() -> Result<()> {
+        let service = AIIntelligenceService::new();
+        assert_eq!(service.name(), "ai_intelligence");
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore] // Requires SurrealDB and Ollama
+    async fn test_ai_intelligence_lifecycle() -> Result<()> {
+        if !surrealdb_available().await || !ollama_available().await {
+            println!("⚠️  Services not available, skipping test");
+            return Ok(());
+        }
+
+        let service = AIIntelligenceService::new();
+
+        // Start service
+        let handle = service.start()?;
+        assert_eq!(handle.service_name, "ai_intelligence");
+        assert!(handle.metadata.contains_key("surrealdb_host"));
+        assert!(handle.metadata.contains_key("ollama_endpoint"));
+
+        // Stop service
+        service.stop(handle)?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore] // Requires SurrealDB and Ollama
+    async fn test_store_and_analyze_executions() -> Result<()> {
+        if !surrealdb_available().await || !ollama_available().await {
+            println!("⚠️  Services not available, skipping test");
+            return Ok(());
+        }
+
+        let service = AIIntelligenceService::new();
+        let _handle = service.start()?;
+
+        // Generate and store sample executions
+        let executions = generate_sample_executions(20, 0.85);
+        for execution in &executions {
+            service.store_test_execution(execution).await?;
+        }
+
+        // Analyze stored data
+        let analysis = service.analyze_test_history().await?;
+
+        assert!(
+            analysis.total_executions > 0,
+            "Should have stored executions"
+        );
+        assert!(analysis.success_rate > 0.0, "Should calculate success rate");
+        assert!(
+            analysis.avg_execution_time > 0.0,
+            "Should calculate avg execution time"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore] // Requires Ollama
+    async fn test_failure_prediction() -> Result<()> {
+        if !surrealdb_available().await || !ollama_available().await {
+            println!("⚠️  Services not available, skipping test");
+            return Ok(());
+        }
+
+        let service = AIIntelligenceService::new();
+        let _handle = service.start()?;
+
+        // Store executions with failures
+        let executions = generate_sample_executions(30, 0.7); // 30% failure rate
+        for execution in &executions {
+            service.store_test_execution(execution).await?;
+        }
+
+        // Predict failures
+        let predictions = service.predict_failures().await?;
+
+        // Should identify some high-risk tests
+        println!("Found {} failure predictions", predictions.len());
+
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Marketplace Integration Tests
+// ============================================================================
+
+#[cfg(test)]
+mod marketplace_tests {
+    use super::*;
+    use clnrm_core::marketplace::metadata::PluginMetadata;
+
+    #[tokio::test]
+    async fn test_marketplace_creation() -> Result<()> {
+        let config = MarketplaceConfig::default();
+        let marketplace = Marketplace::new(config)?;
+
+        assert!(
+            marketplace.search("").await.is_ok(),
+            "Marketplace search should work"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_plugin_registration() -> Result<()> {
+        let config = MarketplaceConfig::default();
+        let marketplace = Marketplace::new(config)?;
+
+        // Create a test plugin
+        let mut plugin = PluginMetadata::new(
+            "test-plugin",
+            "1.0.0",
+            "Test plugin for integration tests",
+            "Test Author",
+        )?;
+
+        plugin.keywords = vec!["test".to_string(), "integration".to_string()];
+
+        // Register plugin
+        marketplace.registry.register_plugin(plugin).await?;
+
+        // Search for plugin
+        let results = marketplace.search("test-plugin").await?;
+        assert!(!results.is_empty(), "Should find registered plugin");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_search() -> Result<()> {
+        let config = MarketplaceConfig::default();
+        let marketplace = Marketplace::new(config)?;
+
+        // Register multiple test plugins
+        for i in 0..5 {
+            let mut plugin = PluginMetadata::new(
+                &format!("plugin-{}", i),
+                "1.0.0",
+                &format!("Test plugin {}", i),
+                "Test Author",
+            )?;
+
+            plugin.keywords = vec!["database".to_string()];
+            marketplace.registry.register_plugin(plugin).await?;
+        }
+
+        // Search
+        let results = marketplace.search("database").await?;
+        assert!(results.len() >= 5, "Should find registered plugins");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_install_flow() -> Result<()> {
+        let config = MarketplaceConfig::default();
+        let marketplace = Marketplace::new(config)?;
+
+        // Register a plugin
+        let plugin = PluginMetadata::new(
+            "installable-plugin",
+            "1.0.0",
+            "Plugin to test installation",
+            "Test Author",
+        )?;
+
+        marketplace.registry.register_plugin(plugin).await?;
+
+        // Install plugin
+        let result = marketplace.install("installable-plugin").await;
+
+        match result {
+            Ok(installed) => {
+                assert_eq!(installed.name, "installable-plugin");
+                println!("✅ Plugin installed successfully");
+            }
+            Err(e) => {
+                // Installation might fail due to missing files, which is expected
+                println!("ℹ️  Installation failed (expected): {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_list_installed() -> Result<()> {
+        let config = MarketplaceConfig::default();
+        let marketplace = Marketplace::new(config)?;
+
+        // List should work even with no plugins
+        let installed = marketplace.list_installed()?;
+        println!("Found {} installed plugins", installed.len());
+
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Performance Benchmarks
+// ============================================================================
+
+#[cfg(test)]
+mod performance_tests {
+    use super::*;
+    use std::time::Instant;
+
+    #[tokio::test]
+    async fn bench_orchestrate_performance() -> Result<()> {
+        let temp_dir = create_test_fixtures()?;
+
+        let start = Instant::now();
+        let result =
+            ai_orchestrate::ai_orchestrate_tests(Some(vec![temp_dir.clone()]), true, true, 0.7, 4)
+                .await;
+        let duration = start.elapsed();
+
+        cleanup_test_fixtures(temp_dir);
+
+        assert!(result.is_ok());
+        println!("⚡ Orchestration completed in {:?}", duration);
+
+        // Should complete in reasonable time
+        assert!(
+            duration.as_secs() < 10,
+            "Orchestration should complete within 10 seconds"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn bench_predict_performance() -> Result<()> {
+        let start = Instant::now();
+        let result =
+            ai_predict::ai_predict_analytics(true, true, true, PredictionFormat::Human).await;
+        let duration = start.elapsed();
+
+        assert!(result.is_ok());
+        println!("⚡ Prediction analysis completed in {:?}", duration);
+
+        assert!(
+            duration.as_secs() < 5,
+            "Prediction should complete within 5 seconds"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn bench_optimize_performance() -> Result<()> {
+        let start = Instant::now();
+        let result = ai_optimize::ai_optimize_tests(true, true, true, false).await;
+        let duration = start.elapsed();
+
+        assert!(result.is_ok());
+        println!("⚡ Optimization completed in {:?}", duration);
+
+        assert!(
+            duration.as_secs() < 5,
+            "Optimization should complete within 5 seconds"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn bench_marketplace_search_performance() -> Result<()> {
+        let config = MarketplaceConfig::default();
+        let marketplace = Marketplace::new(config)?;
+
+        // Add many plugins
+        for i in 0..100 {
+            let plugin = PluginMetadata::new(
+                &format!("bench-plugin-{}", i),
+                "1.0.0",
+                &format!("Benchmark plugin {}", i),
+                "Bench Author",
+            )?;
+            marketplace.registry.register_plugin(plugin).await?;
+        }
+
+        let start = Instant::now();
+        let results = marketplace.search("bench").await?;
+        let duration = start.elapsed();
+
+        println!(
+            "⚡ Marketplace search (100 plugins) completed in {:?}",
+            duration
+        );
+        assert!(results.len() >= 100);
+        assert!(
+            duration.as_millis() < 1000,
+            "Search should complete within 1 second"
+        );
+
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Error Handling and Edge Cases
+// ============================================================================
+
+#[cfg(test)]
+mod error_handling_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_orchestrate_with_invalid_path() -> Result<()> {
+        let invalid_path = PathBuf::from("/nonexistent/path/that/does/not/exist");
+
+        let result =
+            ai_orchestrate::ai_orchestrate_tests(Some(vec![invalid_path]), false, false, 0.7, 4)
+                .await;
+
+        // Should handle gracefully - either succeed with no tests or return an error
+        match result {
+            Ok(_) => println!("✅ Handled invalid path gracefully"),
+            Err(e) => println!("ℹ️  Expected error for invalid path: {}", e),
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_predict_with_no_data() -> Result<()> {
+        // Should handle case with no historical data
+        let result =
+            ai_predict::ai_predict_analytics(true, true, false, PredictionFormat::Human).await;
+
+        assert!(result.is_ok(), "Should handle empty data gracefully");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_optimize_with_no_tests() -> Result<()> {
+        // Should handle case with no test files
+        let result = ai_optimize::ai_optimize_tests(true, true, false, false).await;
+
+        // Should either succeed or fail gracefully
+        match result {
+            Ok(_) => println!("✅ Handled no tests gracefully"),
+            Err(e) => println!("ℹ️  Expected behavior with no tests: {}", e),
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_search_nonexistent() -> Result<()> {
+        let config = MarketplaceConfig::default();
+        let marketplace = Marketplace::new(config)?;
+
+        let results = marketplace
+            .search("definitely-does-not-exist-12345")
+            .await?;
+        assert!(
+            results.is_empty(),
+            "Should return empty results for nonexistent plugin"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_ai_service_without_services() -> Result<()> {
+        // Test AI service behavior when SurrealDB/Ollama aren't available
+        let service = AIIntelligenceService::new();
+
+        // Should fail gracefully
+        let result = service.start();
+
+        match result {
+            Ok(_) => println!("✅ Service started (services may be available)"),
+            Err(e) => {
+                println!("ℹ️  Expected failure without services: {}", e);
+                assert!(
+                    e.to_string().contains("Failed") || e.to_string().contains("connection"),
+                    "Error should indicate service unavailability"
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Concurrent Operation Tests
+// ============================================================================
+
+#[cfg(test)]
+mod concurrent_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_concurrent_orchestration() -> Result<()> {
+        let temp_dir = create_test_fixtures()?;
+
+        // Launch multiple orchestration tasks concurrently
+        let mut handles = vec![];
+
+        for _ in 0..3 {
+            let dir = temp_dir.clone();
+            let handle = tokio::spawn(async move {
+                ai_orchestrate::ai_orchestrate_tests(Some(vec![dir]), false, false, 0.7, 2).await
+            });
+            handles.push(handle);
+        }
+
+        // Wait for all tasks
+        for handle in handles {
+            let result = handle.await;
+            assert!(
+                result.is_ok(),
+                "Concurrent orchestration task should succeed"
+            );
+        }
+
+        cleanup_test_fixtures(temp_dir);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_marketplace_operations() -> Result<()> {
+        let config = MarketplaceConfig::default();
+        let marketplace = Marketplace::new(config)?;
+
+        // Register plugins concurrently
+        let mut handles = vec![];
+
+        for i in 0..10 {
+            let mp = marketplace.clone();
+            let handle = tokio::spawn(async move {
+                let plugin = PluginMetadata::new(
+                    &format!("concurrent-plugin-{}", i),
+                    "1.0.0",
+                    "Concurrent test plugin",
+                    "Test Author",
+                )?;
+                mp.registry.register_plugin(plugin).await
+            });
+            handles.push(handle);
+        }
+
+        for handle in handles {
+            let result = handle.await;
+            assert!(
+                result.is_ok(),
+                "Concurrent plugin registration should succeed"
+            );
+        }
+
+        // Verify all plugins were registered
+        let results = marketplace.search("concurrent").await?;
+        assert!(results.len() >= 10, "All plugins should be registered");
+
+        Ok(())
+    }
+}

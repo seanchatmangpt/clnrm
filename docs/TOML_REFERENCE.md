@@ -22,12 +22,65 @@ type = "generic_container"          # Service type
 plugin = "alpine"                   # Plugin implementation
 image = "alpine:latest"             # Container image
 
-# Optional configuration
-[services.my_database.config]
-port = 8080                         # Port mapping
-environment = { DEBUG = "true" }    # Environment variables
-volumes = { "/host/path" = "/container/path" }  # Volume mounts
+# Optional: Port mappings
+ports = [8080, 5432]               # Expose container ports
+
+# Optional: Environment variables
+[services.my_database.env]
+DEBUG = "true"
+DATABASE_URL = "postgres://localhost/testdb"
+
+# Optional: Volume mounts (NEW in v0.4.0) ✅
+[[services.my_database.volumes]]
+host_path = "/tmp/test-data"       # Absolute path on host (must exist)
+container_path = "/data"            # Absolute path in container
+read_only = false                   # Allow writes (default: false)
+
+[[services.my_database.volumes]]
+host_path = "/tmp/config"          # Configuration directory
+container_path = "/config"          # Mount point in container
+read_only = true                    # Mount as read-only for security
 ```
+
+### Volume Mounting (v0.4.0+)
+
+Volume mounts enable sharing files between the host and container:
+
+**Security Features:**
+- Host paths must be absolute and exist before test execution
+- Container paths must be absolute
+- Default whitelist: `/tmp`, `/var/tmp`, current working directory
+- Path canonicalization prevents traversal attacks
+- Read-only enforcement at kernel level
+
+**Common Use Cases:**
+```toml
+# Test data input
+[[services.processor.volumes]]
+host_path = "/tmp/clnrm-test-data"
+container_path = "/data"
+read_only = true                    # Prevent accidental modification
+
+# Configuration files
+[[services.app.volumes]]
+host_path = "/tmp/clnrm-config"
+container_path = "/etc/app"
+read_only = true                    # Configuration should be immutable
+
+# Test output capture
+[[services.analyzer.volumes]]
+host_path = "/tmp/clnrm-output"
+container_path = "/output"
+read_only = false                   # Need write access for results
+
+# Shared workspace
+[[services.build.volumes]]
+host_path = "/tmp/clnrm-workspace"
+container_path = "/workspace"
+read_only = false                   # Build artifacts
+```
+
+**Example:** See [examples/volume-mount-demo.clnrm.toml](../examples/volume-mount-demo.clnrm.toml) for a complete working example.
 
 ### Built-in Service Types
 

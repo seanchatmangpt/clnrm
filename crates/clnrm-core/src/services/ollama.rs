@@ -5,10 +5,8 @@
 
 use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -77,7 +75,9 @@ impl OllamaPlugin {
         if client_guard.is_none() {
             *client_guard = Some(self.init_client().await?);
         }
-        let client = client_guard.as_ref().unwrap();
+        let client = client_guard
+            .as_ref()
+            .ok_or_else(|| CleanroomError::internal_error("HTTP client not initialized"))?;
 
         let url = format!("{}/api/generate", self.config.endpoint);
         let payload = json!({
@@ -121,7 +121,9 @@ impl OllamaPlugin {
         if client_guard.is_none() {
             *client_guard = Some(self.init_client().await?);
         }
-        let client = client_guard.as_ref().unwrap();
+        let client = client_guard
+            .as_ref()
+            .ok_or_else(|| CleanroomError::internal_error("HTTP client not initialized"))?;
 
         let url = format!("{}/api/tags", self.config.endpoint);
 
@@ -217,47 +219,45 @@ impl ServicePlugin for OllamaPlugin {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
-        Box::pin(async move {
-            // Test connection to Ollama service
-            let health_check = async {
-                // Simple health check - try to connect
-                match self.test_connection().await {
-                    Ok(_) => HealthStatus::Healthy,
-                    Err(_) => HealthStatus::Unhealthy,
-                }
-            };
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                // Test connection to Ollama service
+                let health_check = async {
+                    // Simple health check - try to connect
+                    match self.test_connection().await {
+                        Ok(_) => HealthStatus::Healthy,
+                        Err(_) => HealthStatus::Unhealthy,
+                    }
+                };
 
-            let health = health_check.await;
+                let health = health_check.await;
 
-            let mut metadata = HashMap::new();
-            metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
-            metadata.insert(
-                "default_model".to_string(),
-                self.config.default_model.clone(),
-            );
-            metadata.insert(
-                "timeout_seconds".to_string(),
-                self.config.timeout_seconds.to_string(),
-            );
-            metadata.insert("health_status".to_string(), format!("{:?}", health));
+                let mut metadata = HashMap::new();
+                metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
+                metadata.insert(
+                    "default_model".to_string(),
+                    self.config.default_model.clone(),
+                );
+                metadata.insert(
+                    "timeout_seconds".to_string(),
+                    self.config.timeout_seconds.to_string(),
+                );
+                metadata.insert("health_status".to_string(), format!("{:?}", health));
 
-            Ok(ServiceHandle {
-                id: Uuid::new_v4().to_string(),
-                service_name: self.name.clone(),
-                metadata,
+                Ok(ServiceHandle {
+                    id: Uuid::new_v4().to_string(),
+                    service_name: self.name.clone(),
+                    metadata,
+                })
             })
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            // HTTP-based service, no cleanup needed beyond dropping the client
-            Ok(())
-        })
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        // HTTP-based service, no cleanup needed beyond dropping the client
+        Ok(())
     }
 
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {

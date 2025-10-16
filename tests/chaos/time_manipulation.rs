@@ -3,7 +3,7 @@
 //! Tests system behavior under time-related chaos scenarios including
 //! clock skew, time travel, timezone changes, and leap second handling.
 
-use clnrm_core::error::Result;
+use clnrm_core::error::{Result, CleanroomError};
 use std::time::{Duration, SystemTime, UNIX_EPOCH, Instant};
 use chrono::{DateTime, Utc, TimeZone, offset::FixedOffset};
 
@@ -17,7 +17,7 @@ async fn test_clock_skew_detection() -> Result<()> {
 
     let end_time = SystemTime::now();
     let elapsed = end_time.duration_since(start_time)
-        .expect("Time went backwards!");
+        .map_err(|_| CleanroomError::internal_error("Time went backwards - system clock inconsistency detected"))?;
 
     println!("Clock skew test - Elapsed: {:?}", elapsed);
     assert!(elapsed >= Duration::from_millis(100));
@@ -331,7 +331,7 @@ async fn test_system_vs_monotonic_time() -> Result<()> {
 
     let instant_elapsed = instant_start.elapsed();
     let system_elapsed = system_start.elapsed()
-        .expect("SystemTime went backwards!");
+        .map_err(|_| CleanroomError::internal_error("SystemTime went backwards - system clock inconsistency detected"))?;
 
     println!("Instant (monotonic): {:?}", instant_elapsed);
     println!("SystemTime: {:?}", system_elapsed);

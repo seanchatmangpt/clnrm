@@ -6,6 +6,8 @@ import {
 } from "@/lib/types";
 import { trackEvent, trackVirtue } from "@/lib/telemetry";
 import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { ollama } from 'ollama-ai-provider-v2';
+import { streamText } from 'ai';
 
 const tracer = trace.getTracer('optimus-prime-platform-api', '0.1.0');
 
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
 
     let response: Response;
     if (mode === "child") {
-      response = await handleChildChat(lastMessage.content, request.headers);
+      response = await handleChildChat(messages, request.headers);
     } else if (mode === "executive") {
       response = await handleExecutiveChat(lastMessage.content);
     } else {
@@ -56,40 +58,47 @@ export async function POST(request: Request) {
 }
 
 async function handleChildChat(
-  userInput: string,
+  messages: Array<{ role: string; content: string }>,
   _headers: Headers
 ): Promise<Response> {
   const span = tracer.startSpan('handleChildChat');
 
   try {
+    const lastMessage = messages[messages.length - 1];
+    const userInput = lastMessage.content;
     const virtue = detectVirtue(userInput);
 
     span.setAttributes({
       'chat.child.virtue': virtue,
       'chat.child.input_length': userInput.length,
+      'chat.child.history_length': messages.length,
     });
 
     // Track virtue with achievement text for history
     trackVirtue(virtue, userInput);
 
-    const systemPrompt = `You are Optimus Prime, leader of the Autobots. Speak with noble leadership. Do not mirror the user's words. Recognize the virtue: ${virtue}. Provide one to two sentences. Encourage forward action.`;
+    const systemPrompt = `You are Optimus Prime, leader of the Autobots. Speak with wisdom, courage, and nobility. You are mentoring a child who shares their achievements with you.
 
-    // Use Ollama API directly
-    const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "qwen3-coder:30b",
-        prompt: systemPrompt + "\n\nUser: " + userInput,
-        stream: true,
-      }),
+Key traits:
+- Recognize virtues (${virtue} detected in their message)
+- Reference their specific actions naturally
+- Build on the conversation history
+- Vary your responses - don't repeat phrases
+- Keep responses 2-4 sentences
+- Encourage growth and forward action
+- Be warm but dignified
+
+Remember: You are an inspiring mentor, not a lecture-giver. Make each response unique and contextual.`;
+
+    // Use Vercel AI SDK with Ollama provider
+    const result = await streamText({
+      model: ollama('qwen3-coder:30b'),
+      system: systemPrompt,
+      messages: messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      })),
     });
-
-    if (!ollamaResponse.ok) {
-      throw new Error(`Ollama API error: ${ollamaResponse.status}`);
-    }
 
     // Set response headers for virtue, reward, and premium CTA
     const responseHeaders = new Headers();
@@ -110,7 +119,32 @@ async function handleChildChat(
     });
     span.setStatus({ code: SpanStatusCode.OK });
 
-    return new Response(ollamaResponse.body, {
+    // Convert AI SDK stream to Ollama JSON format for compatibility
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of result.textStream) {
+          const ollamaChunk = {
+            model: 'qwen3-coder:30b',
+            created_at: new Date().toISOString(),
+            message: { role: 'assistant', content: chunk },
+            done: false
+          };
+          controller.enqueue(encoder.encode(JSON.stringify(ollamaChunk) + '\n'));
+        }
+        // Send final done chunk
+        const doneChunk = {
+          model: 'qwen3-coder:30b',
+          created_at: new Date().toISOString(),
+          message: { role: 'assistant', content: '' },
+          done: true
+        };
+        controller.enqueue(encoder.encode(JSON.stringify(doneChunk) + '\n'));
+        controller.close();
+      }
+    });
+
+    return new Response(stream, {
       headers: responseHeaders,
     });
   } catch (error) {
@@ -167,25 +201,38 @@ Company Targets:
 Context:
 ${context}`;
 
-    // Use Ollama API directly
-    const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "qwen3-coder:30b",
-        prompt: systemPrompt + "\n\nQuestion: " + userInput,
-        stream: true,
-      }),
+    // Use Vercel AI SDK with Ollama provider
+    const result = await streamText({
+      model: ollama('qwen3-coder:30b'),
+      system: systemPrompt,
+      prompt: userInput,
     });
 
-    if (!ollamaResponse.ok) {
-      throw new Error(`Ollama API error: ${ollamaResponse.status}`);
-    }
-
     span.setStatus({ code: SpanStatusCode.OK });
-    return new Response(ollamaResponse.body);
+
+    // Convert AI SDK stream to Ollama JSON format for compatibility
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of result.textStream) {
+          const ollamaChunk = {
+            model: 'qwen3-coder:30b',
+            response: chunk,
+            done: false
+          };
+          controller.enqueue(encoder.encode(JSON.stringify(ollamaChunk) + '\n'));
+        }
+        const doneChunk = {
+          model: 'qwen3-coder:30b',
+          response: '',
+          done: true
+        };
+        controller.enqueue(encoder.encode(JSON.stringify(doneChunk) + '\n'));
+        controller.close();
+      }
+    });
+
+    return new Response(stream);
   } catch (error) {
     span.setStatus({
       code: SpanStatusCode.ERROR,

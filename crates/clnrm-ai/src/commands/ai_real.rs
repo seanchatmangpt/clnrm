@@ -3,9 +3,9 @@
 //! Uses actual SurrealDB and Ollama integration for genuine AI-powered analysis
 //! and predictions based on real test execution data.
 
+use crate::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
 use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin};
 use clnrm_core::error::{CleanroomError, Result};
-use crate::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
 use tracing::info;
 
 /// Real AI-powered analysis using SurrealDB and Ollama
@@ -26,7 +26,7 @@ pub async fn ai_real_analysis() -> Result<()> {
 
     // Start the AI service (this will start both SurrealDB and Ollama)
     info!("🚀 Starting AI Intelligence Service...");
-    let ai_handle = ai_service.start().await.map_err(|e| {
+    let ai_handle = ai_service.start().map_err(|e| {
         CleanroomError::service_error("Failed to start AI Intelligence service")
             .with_context("AI service startup failed")
             .with_source(e.to_string())
@@ -133,7 +133,7 @@ pub async fn ai_real_analysis() -> Result<()> {
 
     // Clean up
     info!("🧹 Cleaning up AI Intelligence Service...");
-    ai_service.stop(ai_handle).await?;
+    ai_service.stop(ai_handle)?;
 
     info!("🎉 Real AI Intelligence Analysis completed successfully!");
     info!("📊 This analysis used actual SurrealDB storage and Ollama AI processing");

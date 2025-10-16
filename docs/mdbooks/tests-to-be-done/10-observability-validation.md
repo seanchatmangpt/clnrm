@@ -426,3 +426,4 @@ impl TTBDValidator {
 ---
 
 **Observability validation extends TTBD's zero false positives philosophy to telemetry claims, ensuring that observability promises are backed by verifiable telemetry data, not just documentation assertions.**
+

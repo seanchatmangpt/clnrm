@@ -4,7 +4,6 @@
 //! and cleanroom environment settings.
 
 use crate::error::{CleanroomError, Result};
-use crate::policy::{Policy, SecurityLevel};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -21,6 +20,8 @@ pub struct TestConfig {
     pub steps: Vec<StepConfig>,
     /// Assertions
     pub assertions: Option<HashMap<String, serde_json::Value>>,
+    /// OpenTelemetry validation configuration
+    pub otel_validation: Option<OtelValidationSection>,
 }
 
 /// Test metadata section
@@ -122,6 +123,63 @@ pub struct VolumeConfig {
     pub container_path: String,
     /// Whether volume is read-only
     pub read_only: Option<bool>,
+}
+
+impl VolumeConfig {
+    /// Validate the volume configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Host path is empty
+    /// - Container path is empty
+    /// - Paths contain invalid characters
+    pub fn validate(&self) -> Result<()> {
+        use std::path::Path;
+
+        // Validate host path is not empty
+        if self.host_path.trim().is_empty() {
+            return Err(CleanroomError::validation_error(
+                "Volume host path cannot be empty",
+            ));
+        }
+
+        // Validate container path is not empty
+        if self.container_path.trim().is_empty() {
+            return Err(CleanroomError::validation_error(
+                "Volume container path cannot be empty",
+            ));
+        }
+
+        // Validate host path is absolute
+        let host_path = Path::new(&self.host_path);
+        if !host_path.is_absolute() {
+            return Err(CleanroomError::validation_error(format!(
+                "Volume host path must be absolute: {}",
+                self.host_path
+            )));
+        }
+
+        // Validate container path is absolute
+        let container_path = Path::new(&self.container_path);
+        if !container_path.is_absolute() {
+            return Err(CleanroomError::validation_error(format!(
+                "Volume container path must be absolute: {}",
+                self.container_path
+            )));
+        }
+
+        Ok(())
+    }
+
+    /// Convert to VolumeMount with validation
+    ///
+    /// This helper method creates a VolumeMount from the configuration
+    /// with full validation including path existence checks.
+    pub fn to_volume_mount(&self) -> Result<crate::backend::volume::VolumeMount> {
+        use crate::backend::volume::VolumeMount;
+        VolumeMount::from_config(self)
+    }
 }
 
 /// Health check configuration
@@ -316,6 +374,55 @@ pub struct SecurityConfig {
     pub security_level: String,
 }
 
+/// OpenTelemetry validation section in TOML
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OtelValidationSection {
+    /// Enable OTEL validation
+    pub enabled: bool,
+    /// Validate spans
+    pub validate_spans: Option<bool>,
+    /// Validate traces
+    pub validate_traces: Option<bool>,
+    /// Validate exports
+    pub validate_exports: Option<bool>,
+    /// Validate performance overhead
+    pub validate_performance: Option<bool>,
+    /// Maximum allowed performance overhead in milliseconds
+    pub max_overhead_ms: Option<f64>,
+    /// Expected spans configuration
+    pub expected_spans: Option<Vec<ExpectedSpanConfig>>,
+    /// Expected traces configuration
+    pub expected_traces: Option<Vec<ExpectedTraceConfig>>,
+}
+
+/// Expected span configuration from TOML
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ExpectedSpanConfig {
+    /// Span name (operation name)
+    pub name: String,
+    /// Expected attributes
+    pub attributes: Option<HashMap<String, String>>,
+    /// Whether span is required
+    pub required: Option<bool>,
+    /// Minimum duration in milliseconds
+    pub min_duration_ms: Option<f64>,
+    /// Maximum duration in milliseconds
+    pub max_duration_ms: Option<f64>,
+}
+
+/// Expected trace configuration from TOML
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ExpectedTraceConfig {
+    /// Trace ID (optional, for specific trace validation)
+    pub trace_id: Option<String>,
+    /// Expected span names in the trace
+    pub span_names: Vec<String>,
+    /// Whether all spans must be present
+    pub complete: Option<bool>,
+    /// Parent-child relationships (parent_name -> child_name)
+    pub parent_child: Option<Vec<(String, String)>>,
+}
+
 impl TestConfig {
     /// Validate the configuration
     pub fn validate(&self) -> Result<()> {
@@ -433,6 +540,15 @@ impl ServiceConfig {
             ));
         }
 
+        // Validate volumes if present
+        if let Some(ref volumes) = self.volumes {
+            for (i, volume) in volumes.iter().enumerate() {
+                volume.validate().map_err(|e| {
+                    CleanroomError::validation_error(format!("Volume {}: {}", i, e))
+                })?;
+            }
+        }
+
         Ok(())
     }
 }
@@ -452,7 +568,7 @@ impl PolicyConfig {
         }
 
         if let Some(max_cpu) = self.max_cpu_usage {
-            if max_cpu < 0.0 || max_cpu > 1.0 {
+            if !(0.0..=1.0).contains(&max_cpu) {
                 return Err(CleanroomError::validation_error(
                     "Max CPU usage must be between 0.0 and 1.0",
                 ));
@@ -650,7 +766,7 @@ pub fn load_cleanroom_config_from_file<P: AsRef<Path>>(path: P) -> Result<Cleanr
         CleanroomError::config_error(format!("Failed to read cleanroom.toml: {}", e))
     })?;
 
-    let mut config: CleanroomConfig = toml::from_str(&content).map_err(|e| {
+    let config: CleanroomConfig = toml::from_str(&content).map_err(|e| {
         CleanroomError::config_error(format!("Invalid cleanroom.toml format: {}", e))
     })?;
 
@@ -804,7 +920,7 @@ mod tests {
 
     #[test]
     #[ignore = "Test data incomplete - needs valid TOML structure"]
-    fn test_parse_valid_toml() {
+    fn test_parse_valid_toml() -> Result<()> {
         let toml_content = r#"
 name = "test_example"
 
@@ -820,9 +936,10 @@ security_level = "medium"
 max_execution_time = 300
 "#;
 
-        let config = parse_toml_config(toml_content).unwrap();
+        let config = parse_toml_config(toml_content)?;
         assert_eq!(config.test.metadata.name, "test_example");
         assert_eq!(config.steps.len(), 2);
+        Ok(())
     }
 
     #[test]
@@ -835,6 +952,7 @@ max_execution_time = 300
                     timeout: None,
                 },
             },
+            services: None,
             steps: vec![StepConfig {
                 name: "step".to_string(),
                 command: vec!["echo".to_string(), "test".to_string()],
@@ -845,8 +963,8 @@ max_execution_time = 300
                 expected_exit_code: None,
                 continue_on_failure: None,
             }],
-            services: None,
             assertions: None,
+            otel_validation: None,
         };
 
         assert!(config.validate().is_ok());
@@ -865,6 +983,7 @@ max_execution_time = 300
             steps: vec![],
             services: None,
             assertions: None,
+            otel_validation: None,
         };
 
         assert!(config.validate().is_err());
@@ -883,6 +1002,7 @@ max_execution_time = 300
             steps: vec![],
             services: None,
             assertions: None,
+            otel_validation: None,
         };
 
         assert!(config.validate().is_err());

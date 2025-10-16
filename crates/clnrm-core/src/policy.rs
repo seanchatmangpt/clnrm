@@ -668,28 +668,26 @@ mod tests {
     }
 
     #[test]
-    fn test_policy_operation_allowed() {
+    fn test_policy_operation_allowed() -> Result<()> {
         let policy = Policy::new();
         let mut context = HashMap::new();
         context.insert("port".to_string(), "5432".to_string());
         context.insert("cpu_usage".to_string(), "50.0".to_string());
         context.insert("memory_usage".to_string(), "256000000".to_string());
 
-        assert!(policy
-            .is_operation_allowed("test_operation", &context)
-            .unwrap());
+        assert!(policy.is_operation_allowed("test_operation", &context)?);
+        Ok(())
     }
 
     #[test]
-    fn test_policy_operation_denied() {
+    fn test_policy_operation_denied() -> Result<()> {
         let policy = Policy::new();
         let mut context = HashMap::new();
         context.insert("port".to_string(), "9999".to_string()); // Not in allowed ports
         context.insert("cpu_usage".to_string(), "90.0".to_string()); // Exceeds limit
 
-        assert!(!policy
-            .is_operation_allowed("test_operation", &context)
-            .unwrap());
+        assert!(!policy.is_operation_allowed("test_operation", &context)?);
+        Ok(())
     }
 
     #[test]
@@ -738,11 +736,14 @@ mod tests {
     }
 
     #[test]
-    fn test_policy_serialization() {
+    fn test_policy_serialization() -> Result<()> {
         let policy = Policy::new();
 
-        let json = serde_json::to_string(&policy).unwrap();
-        let deserialized: Policy = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&policy)
+            .map_err(|e| CleanroomError::internal_error(format!("Serialization failed: {}", e)))?;
+        let deserialized: Policy = serde_json::from_str(&json).map_err(|e| {
+            CleanroomError::internal_error(format!("Deserialization failed: {}", e))
+        })?;
 
         assert_eq!(
             policy.security.security_level,
@@ -756,6 +757,7 @@ mod tests {
             policy.security.enable_filesystem_isolation,
             deserialized.security.enable_filesystem_isolation
         );
+        Ok(())
     }
 
     #[test]
@@ -785,7 +787,7 @@ mod tests {
     }
 
     #[test]
-    fn test_security_level_serialization() {
+    fn test_security_level_serialization() -> Result<()> {
         let levels = vec![
             SecurityLevel::Low,
             SecurityLevel::Standard,
@@ -794,10 +796,15 @@ mod tests {
         ];
 
         for level in levels {
-            let json = serde_json::to_string(&level).unwrap();
-            let deserialized: SecurityLevel = serde_json::from_str(&json).unwrap();
+            let json = serde_json::to_string(&level).map_err(|e| {
+                CleanroomError::internal_error(format!("Serialization failed: {}", e))
+            })?;
+            let deserialized: SecurityLevel = serde_json::from_str(&json).map_err(|e| {
+                CleanroomError::internal_error(format!("Deserialization failed: {}", e))
+            })?;
             assert_eq!(level, deserialized);
         }
+        Ok(())
     }
 
     #[test]
@@ -842,7 +849,7 @@ mod tests {
     }
 
     #[test]
-    fn test_audit_level_serialization() {
+    fn test_audit_level_serialization() -> Result<()> {
         let levels = vec![
             AuditLevel::Debug,
             AuditLevel::Info,
@@ -851,10 +858,15 @@ mod tests {
         ];
 
         for level in levels {
-            let json = serde_json::to_string(&level).unwrap();
-            let deserialized: AuditLevel = serde_json::from_str(&json).unwrap();
+            let json = serde_json::to_string(&level).map_err(|e| {
+                CleanroomError::internal_error(format!("Serialization failed: {}", e))
+            })?;
+            let deserialized: AuditLevel = serde_json::from_str(&json).map_err(|e| {
+                CleanroomError::internal_error(format!("Deserialization failed: {}", e))
+            })?;
             assert_eq!(level, deserialized);
         }
+        Ok(())
     }
 
     #[test]
@@ -906,55 +918,51 @@ mod tests {
     }
 
     #[test]
-    fn test_policy_operation_allowed_with_valid_context() {
+    fn test_policy_operation_allowed_with_valid_context() -> Result<()> {
         let policy = Policy::new();
         let mut context = HashMap::new();
         context.insert("port".to_string(), "5432".to_string());
         context.insert("cpu_usage".to_string(), "50.0".to_string());
         context.insert("memory_usage".to_string(), "256000000".to_string());
 
-        assert!(policy
-            .is_operation_allowed("test_operation", &context)
-            .unwrap());
+        assert!(policy.is_operation_allowed("test_operation", &context)?);
+        Ok(())
     }
 
     #[test]
-    fn test_policy_operation_denied_with_invalid_port() {
+    fn test_policy_operation_denied_with_invalid_port() -> Result<()> {
         let policy = Policy::new();
         let mut context = HashMap::new();
         context.insert("port".to_string(), "9999".to_string()); // Not in allowed ports
         context.insert("cpu_usage".to_string(), "50.0".to_string());
         context.insert("memory_usage".to_string(), "256000000".to_string());
 
-        assert!(!policy
-            .is_operation_allowed("test_operation", &context)
-            .unwrap());
+        assert!(!policy.is_operation_allowed("test_operation", &context)?);
+        Ok(())
     }
 
     #[test]
-    fn test_policy_operation_denied_with_high_cpu() {
+    fn test_policy_operation_denied_with_high_cpu() -> Result<()> {
         let policy = Policy::new();
         let mut context = HashMap::new();
         context.insert("port".to_string(), "5432".to_string());
         context.insert("cpu_usage".to_string(), "90.0".to_string()); // Exceeds limit
         context.insert("memory_usage".to_string(), "256000000".to_string());
 
-        assert!(!policy
-            .is_operation_allowed("test_operation", &context)
-            .unwrap());
+        assert!(!policy.is_operation_allowed("test_operation", &context)?);
+        Ok(())
     }
 
     #[test]
-    fn test_policy_operation_denied_with_high_memory() {
+    fn test_policy_operation_denied_with_high_memory() -> Result<()> {
         let policy = Policy::new();
         let mut context = HashMap::new();
         context.insert("port".to_string(), "5432".to_string());
         context.insert("cpu_usage".to_string(), "50.0".to_string());
         context.insert("memory_usage".to_string(), "2000000000".to_string()); // Exceeds limit
 
-        assert!(!policy
-            .is_operation_allowed("test_operation", &context)
-            .unwrap());
+        assert!(!policy.is_operation_allowed("test_operation", &context)?);
+        Ok(())
     }
 
     #[test]

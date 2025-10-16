@@ -5,10 +5,8 @@
 
 use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -69,7 +67,9 @@ impl TgiPlugin {
         if client_guard.is_none() {
             *client_guard = Some(self.init_client().await?);
         }
-        let client = client_guard.as_ref().unwrap();
+        let client = client_guard
+            .as_ref()
+            .ok_or_else(|| CleanroomError::internal_error("HTTP client not initialized"))?;
 
         let url = format!("{}/health", self.config.endpoint);
 
@@ -94,7 +94,9 @@ impl TgiPlugin {
         if client_guard.is_none() {
             *client_guard = Some(self.init_client().await?);
         }
-        let client = client_guard.as_ref().unwrap();
+        let client = client_guard
+            .as_ref()
+            .ok_or_else(|| CleanroomError::internal_error("HTTP client not initialized"))?;
 
         let url = format!("{}/generate", self.config.endpoint);
 
@@ -104,7 +106,11 @@ impl TgiPlugin {
         });
 
         // Set default parameters if not provided
-        let params = payload["parameters"].as_object_mut().unwrap();
+        let params = payload["parameters"].as_object_mut().ok_or_else(|| {
+            CleanroomError::internal_error(
+                "Invalid JSON structure: parameters field missing or not an object",
+            )
+        })?;
         params.entry("max_new_tokens").or_insert(json!(100));
         params.entry("temperature").or_insert(json!(0.7));
         params.entry("do_sample").or_insert(json!(true));
@@ -144,7 +150,9 @@ impl TgiPlugin {
         if client_guard.is_none() {
             *client_guard = Some(self.init_client().await?);
         }
-        let client = client_guard.as_ref().unwrap();
+        let client = client_guard
+            .as_ref()
+            .ok_or_else(|| CleanroomError::internal_error("HTTP client not initialized"))?;
 
         let url = format!("{}/info", self.config.endpoint);
 
@@ -270,47 +278,45 @@ impl ServicePlugin for TgiPlugin {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
-        Box::pin(async move {
-            // Test connection to TGI service
-            let health_check = async {
-                match self.test_connection().await {
-                    Ok(_) => HealthStatus::Healthy,
-                    Err(_) => HealthStatus::Unhealthy,
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                // Test connection to TGI service
+                let health_check = async {
+                    match self.test_connection().await {
+                        Ok(_) => HealthStatus::Healthy,
+                        Err(_) => HealthStatus::Unhealthy,
+                    }
+                };
+
+                let health = health_check.await;
+
+                let mut metadata = HashMap::new();
+                metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
+                metadata.insert("model_id".to_string(), self.config.model_id.clone());
+                metadata.insert(
+                    "timeout_seconds".to_string(),
+                    self.config.timeout_seconds.to_string(),
+                );
+                metadata.insert("health_status".to_string(), format!("{:?}", health));
+
+                if let Some(max_total_tokens) = self.config.max_total_tokens {
+                    metadata.insert("max_total_tokens".to_string(), max_total_tokens.to_string());
                 }
-            };
 
-            let health = health_check.await;
-
-            let mut metadata = HashMap::new();
-            metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
-            metadata.insert("model_id".to_string(), self.config.model_id.clone());
-            metadata.insert(
-                "timeout_seconds".to_string(),
-                self.config.timeout_seconds.to_string(),
-            );
-            metadata.insert("health_status".to_string(), format!("{:?}", health));
-
-            if let Some(max_total_tokens) = self.config.max_total_tokens {
-                metadata.insert("max_total_tokens".to_string(), max_total_tokens.to_string());
-            }
-
-            Ok(ServiceHandle {
-                id: Uuid::new_v4().to_string(),
-                service_name: self.name.clone(),
-                metadata,
+                Ok(ServiceHandle {
+                    id: Uuid::new_v4().to_string(),
+                    service_name: self.name.clone(),
+                    metadata,
+                })
             })
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            // HTTP-based service, no cleanup needed beyond dropping the client
-            Ok(())
-        })
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        // HTTP-based service, no cleanup needed beyond dropping the client
+        Ok(())
     }
 
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {

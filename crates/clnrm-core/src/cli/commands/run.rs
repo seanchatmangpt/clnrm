@@ -65,7 +65,7 @@ pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
             info!("Test Results: {} passed, {} failed", passed, failed);
 
             if failed > 0 {
-                return Err(CleanroomError::validation_error(&format!(
+                return Err(CleanroomError::validation_error(format!(
                     "{} test(s) failed",
                     failed
                 )));
@@ -134,7 +134,7 @@ pub async fn run_tests_sequential(paths: &[PathBuf], config: &CliConfig) -> Resu
     );
 
     if tests_failed > 0 {
-        Err(CleanroomError::validation_error(&format!(
+        Err(CleanroomError::validation_error(format!(
             "{} test(s) failed",
             tests_failed
         )))
@@ -223,7 +223,7 @@ pub async fn run_tests_parallel(paths: &[PathBuf], config: &CliConfig) -> Result
     );
 
     if tests_failed > 0 {
-        Err(CleanroomError::validation_error(&format!(
+        Err(CleanroomError::validation_error(format!(
             "{} test(s) failed",
             tests_failed
         )))
@@ -241,7 +241,7 @@ pub async fn run_tests_parallel(paths: &[PathBuf], config: &CliConfig) -> Result
 /// - ✅ No unwrap() or expect() calls
 /// - ✅ Use tracing for structured logging
 pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> {
-    use tracing::{debug, error, info, warn};
+    use tracing::{debug, info, warn};
 
     // Parse TOML configuration using CLI's own config structure
     let content = std::fs::read_to_string(path)
@@ -293,7 +293,7 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
                     // Note: AI Test Generator moved to clnrm-ai crate
                     warn!("ai_test_generator service type is now in clnrm-ai crate - skipping");
                     return Err(CleanroomError::validation_error(
-                        "ai_test_generator service requires clnrm-ai crate (experimental feature)"
+                        "ai_test_generator service requires clnrm-ai crate (experimental feature)",
                     ));
                 }
                 "generic_container" => {
@@ -304,7 +304,7 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
                     info!("📦 Generic Container plugin registered: {}", service_name);
                 }
                 _ => {
-                    return Err(CleanroomError::validation_error(&format!(
+                    return Err(CleanroomError::validation_error(format!(
                         "Unknown service type: {}",
                         service_config.r#type
                     )));
@@ -319,7 +319,7 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
 
         // Validate the step configuration
         if step.command.is_empty() {
-            return Err(CleanroomError::validation_error(&format!(
+            return Err(CleanroomError::validation_error(format!(
                 "Step '{}' has empty command",
                 step.name
             )));
@@ -338,7 +338,7 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
                 .args(&step.command[1..])
                 .output()
                 .map_err(|e| {
-                    CleanroomError::internal_error(&format!(
+                    CleanroomError::internal_error(format!(
                         "Failed to execute command '{}': {}",
                         step.command.join(" "),
                         e
@@ -355,7 +355,7 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
 
             // Check exit status
             if !output.status.success() {
-                return Err(CleanroomError::validation_error(&format!(
+                return Err(CleanroomError::validation_error(format!(
                     "Step '{}' failed with exit code: {}",
                     step.name,
                     output.status.code().unwrap_or(-1)
@@ -372,14 +372,14 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
         if let Some(regex) = &step.expected_output_regex {
             debug!("Expected output regex: {}", regex);
             let re = regex::Regex::new(regex).map_err(|e| {
-                CleanroomError::validation_error(&format!(
+                CleanroomError::validation_error(format!(
                     "Invalid regex '{}' in step '{}': {}",
                     regex, step.name, e
                 ))
             })?;
 
             if !re.is_match(&stdout) {
-                return Err(CleanroomError::validation_error(&format!(
+                return Err(CleanroomError::validation_error(format!(
                     "Step '{}' output did not match expected regex '{}'. Output: {}",
                     step.name,
                     regex,
@@ -427,7 +427,7 @@ async fn execute_plugin_command(
             ))
         }
         "inject_failure" => {
-            if let Some(target_service) = args.get(0) {
+            if let Some(target_service) = args.first() {
                 // This would need access to the chaos engine plugin instance
                 // For now, simulate the injection
                 Ok(format!(
@@ -441,7 +441,7 @@ async fn execute_plugin_command(
             }
         }
         "inject_latency" => {
-            if let Some(target_service) = args.get(0) {
+            if let Some(target_service) = args.first() {
                 // This would need access to the chaos engine plugin instance
                 // For now, simulate the injection
                 Ok(format!(
@@ -465,7 +465,7 @@ async fn execute_plugin_command(
         "generate_tests" => {
             if args.len() >= 2 {
                 let component_name = &args[0];
-                let component_spec = &args[1..].join(" ");
+                let _component_spec = &args[1..].join(" ");
                 Ok(format!(
                     "🤖 AI Test Generator: Generated 15 tests for '{}' in 2500ms",
                     component_name
@@ -477,7 +477,7 @@ async fn execute_plugin_command(
             }
         }
         "generate_edge_cases" => {
-            if let Some(component_name) = args.get(0) {
+            if let Some(component_name) = args.first() {
                 Ok(format!(
                     "🤖 AI Test Generator: Generated 5 edge case tests for '{}'",
                     component_name
@@ -489,7 +489,7 @@ async fn execute_plugin_command(
             }
         }
         "generate_security_tests" => {
-            if let Some(component_name) = args.get(0) {
+            if let Some(component_name) = args.first() {
                 Ok(format!(
                     "🤖 AI Test Generator: Generated 3 security tests for '{}'",
                     component_name
@@ -500,7 +500,7 @@ async fn execute_plugin_command(
                 ))
             }
         }
-        _ => Err(CleanroomError::validation_error(&format!(
+        _ => Err(CleanroomError::validation_error(format!(
             "Unknown plugin command: {}",
             command_name
         ))),

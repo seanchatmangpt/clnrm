@@ -35,7 +35,14 @@ export type EventType =
   | "reward_view"
   | "premium_view"
   | "premium_click"
-  | "purchase";
+  | "purchase"
+  | "report_card_requested"
+  | "report_card_generated"
+  | "report_card_pdf_generated"
+  | "report_card_uploaded"
+  | "report_card_analyzed"
+  | "report_card_evaluation_started"
+  | "report_card_evaluation_completed";
 
 export interface VirtueHistory {
   id: string;

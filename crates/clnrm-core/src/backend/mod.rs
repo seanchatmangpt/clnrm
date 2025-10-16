@@ -9,8 +9,10 @@ use std::path::PathBuf;
 
 // Module structure for backends
 pub mod testcontainer;
+pub mod volume;
 
 pub use testcontainer::TestcontainerBackend;
+pub use volume::{VolumeMount, VolumeValidator};
 
 /// Command to execute with all configuration
 #[derive(Debug, Clone)]

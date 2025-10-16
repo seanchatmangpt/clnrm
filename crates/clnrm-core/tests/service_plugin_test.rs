@@ -57,13 +57,11 @@ async fn test_multiple_services_registration() -> Result<(), CleanroomError> {
     env.register_service(surreal_plugin).await?;
 
     // Assert - both services should be registered by trying to start them
-    let mock_handle = env.start_service("mock_database").await;
-    assert!(mock_handle.is_ok());
-    env.stop_service(&mock_handle.unwrap().id).await.unwrap();
+    let mock_handle = env.start_service("mock_database").await?;
+    env.stop_service(&mock_handle.id).await?;
 
-    let surreal_handle = env.start_service("surrealdb").await;
-    assert!(surreal_handle.is_ok());
-    env.stop_service(&surreal_handle.unwrap().id).await.unwrap();
+    let surreal_handle = env.start_service("surrealdb").await?;
+    env.stop_service(&surreal_handle.id).await?;
 
     Ok(())
 }

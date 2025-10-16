@@ -2,10 +2,9 @@
 //!
 //! Implements the CLI interface for the plugin marketplace functionality.
 
-use crate::error::{CleanroomError, Result};
+use crate::error::Result;
 use crate::marketplace::{Marketplace, MarketplaceConfig};
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
 
 /// Update operation result
 #[derive(Debug, Clone)]
@@ -550,7 +549,7 @@ mod tests {
         let marketplace = Marketplace::new(config)?;
 
         // Test search functionality
-        let results = marketplace.search("test").await?;
+        let _results = marketplace.search("test").await?;
         // Should find our test plugins or return empty results
 
         // Test list functionality

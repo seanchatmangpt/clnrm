@@ -5,10 +5,10 @@
 //!
 //! This command uses REAL Ollama AI integration for genuine AI-powered analysis.
 
+use crate::services::ai_intelligence::AIIntelligenceService;
 use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin};
 use clnrm_core::cli::types::{CliConfig, PredictionFormat};
 use clnrm_core::error::{CleanroomError, Result};
-use crate::services::ai_intelligence::AIIntelligenceService;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
@@ -50,7 +50,7 @@ pub async fn ai_orchestrate_tests(
 
     // Initialize AI Intelligence Service with fallback
     let ai_service = AIIntelligenceService::new();
-    let ai_handle = match ai_service.start().await {
+    let ai_handle = match ai_service.start() {
         Ok(handle) => {
             info!("✅ Real AI service initialized with Ollama");
             Some(handle)
@@ -101,7 +101,7 @@ pub async fn ai_orchestrate_tests(
     // Clean up AI service if it was started
     if let Some(handle) = ai_handle {
         info!("🧹 Cleaning up AI service");
-        ai_service.stop(handle).await?;
+        ai_service.stop(handle)?;
     }
 
     info!("🎉 AI orchestration completed successfully!");
@@ -253,7 +253,9 @@ fn calculate_test_complexity(test_config: &clnrm_core::config::TestConfig) -> f6
 }
 
 /// Estimate resource requirements for AI orchestration
-fn estimate_resource_requirements(test_config: &clnrm_core::config::TestConfig) -> ResourceRequirements {
+fn estimate_resource_requirements(
+    test_config: &clnrm_core::config::TestConfig,
+) -> ResourceRequirements {
     let mut cpu_cores = 1.0;
     let mut memory_mb = 512.0;
     let mut network_io = 0;
@@ -752,7 +754,14 @@ async fn analyze_results_with_ai(
         )
         .await?
     } else {
-        generate_ai_insights(Some(ai_service), results, success_rate, performance_score, reliability_score).await?
+        generate_ai_insights(
+            Some(ai_service),
+            results,
+            success_rate,
+            performance_score,
+            reliability_score,
+        )
+        .await?
     };
 
     Ok(AIAnalysisResults {
@@ -806,15 +815,28 @@ async fn generate_real_ai_insights(
 
             if insights.is_empty() {
                 warn!("⚠️ AI response was empty, using fallback");
-                generate_ai_insights(Some(ai_service), results, success_rate, performance_score, reliability_score)
-                    .await
+                generate_ai_insights(
+                    Some(ai_service),
+                    results,
+                    success_rate,
+                    performance_score,
+                    reliability_score,
+                )
+                .await
             } else {
                 Ok(insights)
             }
         }
         Err(e) => {
             warn!("⚠️ Real AI insights failed, using fallback: {}", e);
-            generate_ai_insights(Some(ai_service), results, success_rate, performance_score, reliability_score).await
+            generate_ai_insights(
+                Some(ai_service),
+                results,
+                success_rate,
+                performance_score,
+                reliability_score,
+            )
+            .await
         }
     }
 }

@@ -55,7 +55,7 @@ pub async fn generate_report(
             );
         }
         _ => {
-            return Err(CleanroomError::validation_error(&format!(
+            return Err(CleanroomError::validation_error(format!(
                 "Unsupported format: {}",
                 format
             )))
@@ -94,7 +94,7 @@ fn generate_html_report(results: &FrameworkTestResults) -> Result<String> {
     html.push_str("</head>\n<body>\n");
 
     html.push_str("<div class=\"header\">\n");
-    html.push_str(&format!("<h1>Cleanroom Test Report</h1>\n"));
+    html.push_str(&"<h1>Cleanroom Test Report</h1>\n".to_string());
     html.push_str(&format!(
         "<p><strong>Total Tests:</strong> {}</p>\n",
         results.total_tests
@@ -165,7 +165,7 @@ fn generate_markdown_report(results: &FrameworkTestResults) -> Result<String> {
         if let Some(error) = &test.error {
             markdown.push_str(&format!("- **Error:** {}\n", error));
         }
-        markdown.push_str("\n");
+        markdown.push('\n');
     }
 
     Ok(markdown)

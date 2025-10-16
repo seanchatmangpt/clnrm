@@ -11,8 +11,6 @@ use clnrm_core::services::{
 };
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use surrealdb::{
     engine::remote::ws::{Client, Ws},
@@ -322,7 +320,9 @@ impl AIIntelligenceService {
         if client_guard.is_none() {
             *client_guard = Some(self.init_ollama_client().await?);
         }
-        let client = client_guard.as_ref().unwrap();
+        let client = client_guard
+            .as_ref()
+            .ok_or_else(|| CleanroomError::internal_error("HTTP client not initialized"))?;
 
         let url = "http://localhost:11434/api/generate";
         let payload = json!({
@@ -461,63 +461,68 @@ impl ServicePlugin for AIIntelligenceService {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
-        Box::pin(async move {
-            // Start SurrealDB first
-            let db_handle = self.surrealdb_plugin.start().await?;
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                // Start SurrealDB first
+                let db_handle = self.surrealdb_plugin.start()?;
 
-            // Extract connection details
-            let host = db_handle.metadata.get("host").ok_or_else(|| {
-                CleanroomError::service_error("Missing host in SurrealDB metadata")
-            })?;
-            let port = db_handle
-                .metadata
-                .get("port")
-                .ok_or_else(|| CleanroomError::service_error("Missing port in SurrealDB metadata"))?
-                .parse::<u16>()
-                .map_err(|e| CleanroomError::service_error(format!("Invalid port: {}", e)))?;
+                // Extract connection details
+                let host = db_handle.metadata.get("host").ok_or_else(|| {
+                    CleanroomError::service_error("Missing host in SurrealDB metadata")
+                })?;
+                let port = db_handle
+                    .metadata
+                    .get("port")
+                    .ok_or_else(|| {
+                        CleanroomError::service_error("Missing port in SurrealDB metadata")
+                    })?
+                    .parse::<u16>()
+                    .map_err(|e| CleanroomError::service_error(format!("Invalid port: {}", e)))?;
 
-            // Initialize database connection
-            self.init_db_connection(host, port).await?;
+                // Initialize database connection
+                self.init_db_connection(host, port).await?;
 
-            // Start Ollama service
-            let _ollama_handle = self.ollama_plugin.start().await?;
+                // Start Ollama service
+                let _ollama_handle = self.ollama_plugin.start()?;
 
-            // Initialize Ollama client
-            let mut client_guard = self.ollama_client.write().await;
-            *client_guard = Some(self.init_ollama_client().await?);
+                // Initialize Ollama client
+                let mut client_guard = self.ollama_client.write().await;
+                *client_guard = Some(self.init_ollama_client().await?);
 
-            let mut metadata = HashMap::new();
-            metadata.insert("surrealdb_host".to_string(), host.clone());
-            metadata.insert("surrealdb_port".to_string(), port.to_string());
-            metadata.insert(
-                "ollama_endpoint".to_string(),
-                "http://localhost:11434".to_string(),
-            );
-            metadata.insert("ai_model".to_string(), "llama3.2:3b".to_string());
-            metadata.insert("status".to_string(), "initialized".to_string());
+                let mut metadata = HashMap::new();
+                metadata.insert("surrealdb_host".to_string(), host.clone());
+                metadata.insert("surrealdb_port".to_string(), port.to_string());
+                metadata.insert(
+                    "ollama_endpoint".to_string(),
+                    "http://localhost:11434".to_string(),
+                );
+                metadata.insert("ai_model".to_string(), "llama3.2:3b".to_string());
+                metadata.insert("status".to_string(), "initialized".to_string());
 
-            Ok(ServiceHandle {
-                id: Uuid::new_v4().to_string(),
-                service_name: self.name.clone(),
-                metadata,
+                Ok(ServiceHandle {
+                    id: Uuid::new_v4().to_string(),
+                    service_name: self.name.clone(),
+                    metadata,
+                })
             })
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            // Clean up connections
-            let mut db_guard = self.db_connection.write().await;
-            *db_guard = None;
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                // Clean up connections
+                let mut db_guard = self.db_connection.write().await;
+                *db_guard = None;
 
-            let mut client_guard = self.ollama_client.write().await;
-            *client_guard = None;
+                let mut client_guard = self.ollama_client.write().await;
+                *client_guard = None;
 
-            Ok(())
+                Ok(())
+            })
         })
     }
 

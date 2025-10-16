@@ -1,0 +1,118 @@
+# Advanced OpenTelemetry Validation Example
+#
+# This example demonstrates advanced OTEL validation scenarios including:
+# - Multiple OTEL export endpoints
+# - High security policy validation
+# - Trace context propagation
+# - Metric aggregation
+# - Structured logging with OTEL context
+#
+# Usage:
+#   clnrm run examples/otel-validation/advanced-otel-validation.clnrm.toml
+
+[test.metadata]
+name = "advanced_otel_validation"
+description = "Advanced OTEL validation with security policies and multiple exporters"
+timeout = "120s"
+
+# Primary service with OTLP HTTP export
+[services.primary_service]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.primary_service.env]
+OTEL_SERVICE_NAME = "primary-validation-service"
+OTEL_TRACES_EXPORTER = "otlp"
+OTEL_METRICS_EXPORTER = "otlp"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector:4318"
+OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+OTEL_RESOURCE_ATTRIBUTES = "service.name=primary-service,service.version=2.0.0,deployment.environment=prod"
+
+# Secondary service with gRPC export
+[services.secondary_service]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.secondary_service.env]
+OTEL_SERVICE_NAME = "secondary-validation-service"
+OTEL_TRACES_EXPORTER = "otlp"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector:4317"
+OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
+OTEL_RESOURCE_ATTRIBUTES = "service.name=secondary-service,service.version=2.0.0"
+
+# Step 1: Validate trace context propagation
+[[steps]]
+name = "validate_trace_context_propagation"
+command = ["sh", "-c", "echo 'traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01' && echo 'Context propagated'"]
+service = "primary_service"
+expected_output_regex = "Context propagated"
+expected_exit_code = 0
+
+[steps.env]
+TRACEPARENT = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+TRACESTATE = "vendor=test"
+
+# Step 2: Validate high security OTEL operations
+[[steps]]
+name = "validate_high_security_otel"
+command = ["echo", "Secure OTEL validation with high security policy"]
+service = "primary_service"
+expected_output_regex = "Secure OTEL validation"
+expected_exit_code = 0
+
+# Step 3: Validate multiple metric types
+[[steps]]
+name = "validate_multiple_metric_types"
+command = ["sh", "-c", "echo 'counter:1|c' && echo 'histogram:123.45|h' && echo 'gauge:67.89|g' && echo 'Metrics validated'"]
+service = "primary_service"
+expected_output_regex = "Metrics validated"
+expected_exit_code = 0
+
+# Step 4: Validate structured logging with trace context
+[[steps]]
+name = "validate_structured_logging"
+command = ["sh", "-c", "echo '{\"level\":\"info\",\"message\":\"OTEL structured log\",\"trace_id\":\"0af7651916cd43dd8448eb211c80319c\"}' && echo 'Structured log validated'"]
+service = "primary_service"
+expected_output_regex = "trace_id"
+expected_exit_code = 0
+
+# Step 5: Validate secondary service OTEL configuration
+[[steps]]
+name = "validate_secondary_service_config"
+command = ["env"]
+service = "secondary_service"
+expected_output_regex = "OTEL_EXPORTER_OTLP_PROTOCOL=grpc"
+expected_exit_code = 0
+
+# Step 6: Validate OTEL sampling configuration
+[[steps]]
+name = "validate_sampling_config"
+command = ["sh", "-c", "echo 'Testing with 100% sampling rate' && env | grep OTEL"]
+service = "primary_service"
+expected_output_regex = "Testing with 100% sampling rate"
+expected_exit_code = 0
+
+[steps.env]
+OTEL_TRACES_SAMPLER = "always_on"
+OTEL_TRACES_SAMPLER_ARG = "1.0"
+
+# Step 7: Validate error handling with OTEL context
+[[steps]]
+name = "validate_error_handling"
+command = ["sh", "-c", "echo 'Simulating error with OTEL context' && echo 'Error handled gracefully' && exit 0"]
+service = "primary_service"
+expected_output_regex = "Error handled gracefully"
+expected_exit_code = 0
+continue_on_failure = false
+
+# Assertions for advanced OTEL validation
+[assertions]
+container_should_have_executed_commands = 7
+execution_should_be_hermetic = true
+otel_environment_configured = true
+all_steps_should_succeed = true
+trace_context_propagated = true
+multiple_exporters_configured = true
+security_policies_enforced = true

@@ -15,7 +15,7 @@ pub fn validate_config(path: &PathBuf) -> Result<()> {
 
     // Check if this is a single file or directory
     if !path.exists() {
-        return Err(CleanroomError::validation_error(&format!(
+        return Err(CleanroomError::validation_error(format!(
             "Path does not exist: {}",
             path.display()
         )));
@@ -45,7 +45,7 @@ pub fn validate_config(path: &PathBuf) -> Result<()> {
 
         println!("✅ All configurations valid");
     } else {
-        return Err(CleanroomError::validation_error(&format!(
+        return Err(CleanroomError::validation_error(format!(
             "Path is neither a file nor a directory: {}",
             path.display()
         )));
@@ -58,7 +58,7 @@ pub fn validate_config(path: &PathBuf) -> Result<()> {
 pub fn validate_single_config(path: &PathBuf) -> Result<()> {
     // Check file exists
     if !path.exists() {
-        return Err(CleanroomError::validation_error(&format!(
+        return Err(CleanroomError::validation_error(format!(
             "Test file does not exist: {}",
             path.display()
         )));
@@ -70,7 +70,7 @@ pub fn validate_single_config(path: &PathBuf) -> Result<()> {
         .iter()
         .any(|ext| path_str.ends_with(ext))
     {
-        return Err(CleanroomError::validation_error(&format!(
+        return Err(CleanroomError::validation_error(format!(
             "File must have .toml or .clnrm.toml extension: {}",
             path.display()
         )));

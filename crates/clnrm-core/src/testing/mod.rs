@@ -7,13 +7,7 @@
 pub mod property_generators;
 
 // Re-export framework test types and functions for CLI commands
-use crate::backend::{Backend, Cmd, TestcontainerBackend};
-use crate::cleanroom::{CleanroomEnvironment, HealthStatus, ServiceHandle, ServicePlugin};
-use crate::cli::{list_plugins, validate_config};
-use crate::error::{CleanroomError, Result};
-use crate::policy::{Policy, SecurityLevel};
-use std::collections::HashMap;
-use tempfile::TempDir;
+use crate::error::Result;
 
 /// Framework test results
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

@@ -5,8 +5,6 @@
 
 use clnrm_core::{ServicePlugin, ServiceHandle, ServiceRegistry, HealthStatus, CleanroomError};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 
 /// Test plugin that implements the ServicePlugin trait
 struct TestPlugin {
@@ -26,25 +24,21 @@ impl ServicePlugin for TestPlugin {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
+    fn start(&self) -> Result<ServiceHandle, CleanroomError> {
         let name = self.name.clone();
-        Box::pin(async move {
-            let handle = ServiceHandle {
-                id: format!("{}-instance-{}", name, uuid::Uuid::new_v4()),
-                service_name: name,
-                metadata: HashMap::new(),
-            };
-            println!("   🔧 Starting plugin: {}", handle.service_name);
-            Ok(handle)
-        })
+        let handle = ServiceHandle {
+            id: format!("{}-instance-{}", name, uuid::Uuid::new_v4()),
+            service_name: name,
+            metadata: HashMap::new(),
+        };
+        println!("   🔧 Starting plugin: {}", handle.service_name);
+        Ok(handle)
     }
 
-    fn stop(&self, handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
+    fn stop(&self, handle: ServiceHandle) -> Result<(), CleanroomError> {
         let service_name = handle.service_name.clone();
-        Box::pin(async move {
-            println!("   🛑 Stopping plugin: {}", service_name);
-            Ok(())
-        })
+        println!("   🛑 Stopping plugin: {}", service_name);
+        Ok(())
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {

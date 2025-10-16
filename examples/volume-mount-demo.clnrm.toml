@@ -1,0 +1,107 @@
+# Volume Mount Demo - clnrm Testing Framework
+#
+# This example demonstrates volume mounting capabilities for sharing
+# files between host and container during integration tests.
+
+[test.metadata]
+name = "volume_mount_demo"
+description = "Demonstrates volume mounting with file I/O operations"
+
+# Service with volume mounts
+[services.data_processor]
+type = "generic_container"
+plugin = "alpine"
+image = "alpine:latest"
+
+# Mount host directories into container
+# Note: Host paths must exist before test execution
+[[services.data_processor.volumes]]
+host_path = "/tmp/clnrm-test-data"      # Host directory (must exist)
+container_path = "/data"                  # Container mount point
+read_only = false                         # Allow writes
+
+[[services.data_processor.volumes]]
+host_path = "/tmp/clnrm-test-config"    # Configuration directory
+container_path = "/config"                # Mount as read-only
+read_only = true
+
+[[services.data_processor.volumes]]
+host_path = "/tmp/clnrm-test-output"    # Output directory
+container_path = "/output"
+read_only = false
+
+# Test Steps
+
+[[steps]]
+name = "setup_test_directories"
+description = "Create test directories on host"
+service = "data_processor"
+command = ["sh", "-c", "echo 'Setup complete' > /output/setup.txt"]
+
+[[steps]]
+name = "read_input_file"
+description = "Read input data from mounted volume"
+service = "data_processor"
+command = ["cat", "/data/input.txt"]
+expected_output_regex = ".*"
+
+[[steps]]
+name = "read_config"
+description = "Read configuration from read-only volume"
+service = "data_processor"
+command = ["cat", "/config/settings.conf"]
+expected_output_regex = ".*"
+
+[[steps]]
+name = "process_data"
+description = "Process data and write results"
+service = "data_processor"
+command = ["sh", "-c", "cat /data/input.txt | wc -l > /output/result.txt"]
+
+[[steps]]
+name = "verify_output"
+description = "Verify output file was created"
+service = "data_processor"
+command = ["cat", "/output/result.txt"]
+expected_output_regex = "\\d+"
+
+[[steps]]
+name = "test_read_only_enforcement"
+description = "Verify read-only mount prevents writes (should fail)"
+service = "data_processor"
+command = ["sh", "-c", "echo 'test' > /config/newfile.txt"]
+should_fail = true
+
+[[steps]]
+name = "list_mounted_volumes"
+description = "Show all mounted volumes"
+service = "data_processor"
+command = ["sh", "-c", "mount | grep '/data\\|/config\\|/output'"]
+expected_output_regex = ".*"
+
+# Assertions
+[assertions]
+container_should_have_executed_commands = 7
+execution_should_be_hermetic = true
+
+# Notes:
+#
+# 1. Before running this test, create the required directories:
+#    mkdir -p /tmp/clnrm-test-{data,config,output}
+#    echo "Sample data" > /tmp/clnrm-test-data/input.txt
+#    echo "key=value" > /tmp/clnrm-test-config/settings.conf
+#
+# 2. Run the test:
+#    cargo run -- run examples/volume-mount-demo.clnrm.toml
+#
+# 3. Volume mounting enables:
+#    - Sharing test data between host and container
+#    - Reading configuration files from host
+#    - Capturing test output on host filesystem
+#    - Testing file I/O operations in isolated environment
+#
+# 4. Security considerations:
+#    - Host paths must be absolute
+#    - Only mount necessary directories
+#    - Use read_only = true for configuration files
+#    - Volume validator enforces whitelist by default (/tmp, CWD)

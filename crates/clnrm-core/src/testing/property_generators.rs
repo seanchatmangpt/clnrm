@@ -3,13 +3,13 @@
 //! This module provides proptest strategies for generating valid instances
 //! of CLNRM domain types with controlled randomness and shrinking behavior.
 
-#![cfg(test)]
 
+use crate::error::Result;
 use crate::policy::{
     ComplianceStandard, ExecutionPolicy, Policy, PolicyValidationAction, PolicyValidationRule,
     PolicyValidationSeverity, ResourcePolicy, SecurityLevel, SecurityPolicy,
 };
-use crate::scenario::{Scenario, StepSource};
+use crate::scenario::Scenario;
 use proptest::prelude::*;
 use std::time::Duration;
 
@@ -422,22 +422,29 @@ mod tests {
     use proptest::strategy::ValueTree;
 
     #[test]
-    fn test_generators_produce_valid_values() {
+    fn test_generators_produce_valid_values() -> Result<()> {
         // Test that generators produce valid samples
         let mut runner = proptest::test_runner::TestRunner::default();
 
         // Test policy generator
         let policy_strategy = arb_policy();
-        let policy = policy_strategy.new_tree(&mut runner).unwrap().current();
+        let policy = policy_strategy.new_tree(&mut runner)
+            .map_err(|e| crate::error::CleanroomError::internal_error(format!("Policy generation failed: {}", e)))?
+            .current();
         assert!(policy.security.allowed_ports.len() > 0);
 
         // Test scenario generator
         let scenario_strategy = arb_scenario();
-        let _scenario = scenario_strategy.new_tree(&mut runner).unwrap().current();
+        let _scenario = scenario_strategy.new_tree(&mut runner)
+            .map_err(|e| crate::error::CleanroomError::internal_error(format!("Scenario generation failed: {}", e)))?
+            .current();
 
         // Test regex generator
         let regex_strategy = arb_safe_regex();
-        let pattern = regex_strategy.new_tree(&mut runner).unwrap().current();
+        let pattern = regex_strategy.new_tree(&mut runner)
+            .map_err(|e| crate::error::CleanroomError::internal_error(format!("Regex generation failed: {}", e)))?
+            .current();
         assert!(!pattern.is_empty());
+        Ok(())
     }
 }

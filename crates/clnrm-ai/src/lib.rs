@@ -18,9 +18,7 @@ pub mod commands;
 pub mod services;
 
 // Re-export main types
-pub use commands::{
-    ai_monitor, ai_optimize, ai_orchestrate, ai_predict, ai_real,
-};
+pub use commands::{ai_monitor, ai_optimize, ai_orchestrate, ai_predict, ai_real};
 pub use services::{
     ai_intelligence::AIIntelligenceService,
     ai_test_generator::{AITestGeneratorConfig, AITestGeneratorPlugin},

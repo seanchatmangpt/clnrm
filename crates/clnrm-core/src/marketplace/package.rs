@@ -214,7 +214,7 @@ impl PluginInstaller {
     }
 
     /// Check for plugin updates
-    pub async fn check_updates(&self, current: &PluginMetadata) -> Result<Option<PluginMetadata>> {
+    pub async fn check_updates(&self, _current: &PluginMetadata) -> Result<Option<PluginMetadata>> {
         // TODO: Check remote registry for newer versions
         // For now, return None (no updates)
         Ok(None)
@@ -253,6 +253,12 @@ pub struct DependencyResolver {
     graph: HashMap<String, Vec<String>>,
 }
 
+impl Default for DependencyResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyResolver {
     pub fn new() -> Self {
         Self {
@@ -263,10 +269,7 @@ impl DependencyResolver {
 
     /// Add a dependency relationship
     pub fn add_dependency(&mut self, plugin: String, depends_on: String) {
-        self.graph
-            .entry(plugin)
-            .or_insert_with(Vec::new)
-            .push(depends_on);
+        self.graph.entry(plugin).or_default().push(depends_on);
     }
 
     /// Resolve all dependencies
@@ -360,9 +363,12 @@ mod tests {
         let order = resolver.resolve()?;
 
         // plugin-c should come before plugin-b, which should come before plugin-a
-        let pos_a = order.iter().position(|p| p == "plugin-a").unwrap();
-        let pos_b = order.iter().position(|p| p == "plugin-b").unwrap();
-        let pos_c = order.iter().position(|p| p == "plugin-c").unwrap();
+        let pos_a = order.iter().position(|p| p == "plugin-a")
+            .ok_or_else(|| CleanroomError::internal_error("plugin-a not found in resolution order"))?;
+        let pos_b = order.iter().position(|p| p == "plugin-b")
+            .ok_or_else(|| CleanroomError::internal_error("plugin-b not found in resolution order"))?;
+        let pos_c = order.iter().position(|p| p == "plugin-c")
+            .ok_or_else(|| CleanroomError::internal_error("plugin-c not found in resolution order"))?;
 
         assert!(pos_c < pos_b);
         assert!(pos_b < pos_a);

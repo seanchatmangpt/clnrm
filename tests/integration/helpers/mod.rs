@@ -77,7 +77,7 @@ impl TestContext {
 
 impl Default for TestContext {
     fn default() -> Self {
-        Self::new().expect("Failed to create test context")
+        Self::new().unwrap_or_else(|_| panic!("Failed to create test context - this indicates a critical system configuration issue"))
     }
 }
 

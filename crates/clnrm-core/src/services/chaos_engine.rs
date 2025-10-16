@@ -4,11 +4,8 @@
 //! network partitions, and system degradation to test resilience.
 
 use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
-use crate::error::{CleanroomError, Result};
-use serde_json::{json, Value};
+use crate::error::Result;
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -336,51 +333,54 @@ impl ServicePlugin for ChaosEnginePlugin {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
-        Box::pin(async move {
-            println!("🎭 Chaos Engine: Starting chaos testing service");
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                println!("🎭 Chaos Engine: Starting chaos testing service");
 
-            // Run initial chaos scenarios
-            for scenario in &self.config.scenarios {
-                if let Err(e) = self.run_scenario(scenario).await {
-                    eprintln!("⚠️  Chaos scenario failed: {}", e);
+                // Run initial chaos scenarios
+                for scenario in &self.config.scenarios {
+                    if let Err(e) = self.run_scenario(scenario).await {
+                        eprintln!("⚠️  Chaos scenario failed: {}", e);
+                    }
                 }
-            }
 
-            let mut metadata = HashMap::new();
-            metadata.insert("chaos_engine_version".to_string(), "1.0.0".to_string());
-            metadata.insert(
-                "failure_rate".to_string(),
-                self.config.failure_rate.to_string(),
-            );
-            metadata.insert("latency_ms".to_string(), self.config.latency_ms.to_string());
-            metadata.insert(
-                "scenarios_count".to_string(),
-                self.config.scenarios.len().to_string(),
-            );
-            metadata.insert("service_type".to_string(), "chaos_engine".to_string());
-            metadata.insert("status".to_string(), "running".to_string());
+                let mut metadata = HashMap::new();
+                metadata.insert("chaos_engine_version".to_string(), "1.0.0".to_string());
+                metadata.insert(
+                    "failure_rate".to_string(),
+                    self.config.failure_rate.to_string(),
+                );
+                metadata.insert("latency_ms".to_string(), self.config.latency_ms.to_string());
+                metadata.insert(
+                    "scenarios_count".to_string(),
+                    self.config.scenarios.len().to_string(),
+                );
+                metadata.insert("service_type".to_string(), "chaos_engine".to_string());
+                metadata.insert("status".to_string(), "running".to_string());
 
-            Ok(ServiceHandle {
-                id: Uuid::new_v4().to_string(),
-                service_name: self.name.clone(),
-                metadata,
+                Ok(ServiceHandle {
+                    id: Uuid::new_v4().to_string(),
+                    service_name: self.name.clone(),
+                    metadata,
+                })
             })
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            println!("🎭 Chaos Engine: Stopping chaos testing service");
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                println!("🎭 Chaos Engine: Stopping chaos testing service");
 
-            // Stop all active scenarios
-            let mut active = self.active_scenarios.write().await;
-            active.clear();
+                // Stop all active scenarios
+                let mut active = self.active_scenarios.write().await;
+                active.clear();
 
-            Ok(())
+                Ok(())
+            })
         })
     }
 

@@ -7,8 +7,6 @@ use clnrm_core::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use clnrm_core::error::{CleanroomError, Result};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -548,42 +546,35 @@ impl ServicePlugin for AITestGeneratorPlugin {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
-        Box::pin(async move {
-            println!("🤖 AI Test Generator: Starting AI-powered test generation service");
+    fn start(&self) -> Result<ServiceHandle> {
+        println!("🤖 AI Test Generator: Starting AI-powered test generation service");
 
-            let mut metadata = HashMap::new();
-            metadata.insert("ai_model".to_string(), self.config.model.clone());
-            metadata.insert(
-                "strategy".to_string(),
-                format!("{:?}", self.config.strategy),
-            );
-            metadata.insert(
-                "coverage_target".to_string(),
-                self.config.coverage_target.to_string(),
-            );
-            metadata.insert(
-                "max_test_cases".to_string(),
-                self.config.max_test_cases.to_string(),
-            );
-            metadata.insert("service_type".to_string(), "ai_test_generator".to_string());
+        let mut metadata = HashMap::new();
+        metadata.insert("ai_model".to_string(), self.config.model.clone());
+        metadata.insert(
+            "strategy".to_string(),
+            format!("{:?}", self.config.strategy),
+        );
+        metadata.insert(
+            "coverage_target".to_string(),
+            self.config.coverage_target.to_string(),
+        );
+        metadata.insert(
+            "max_test_cases".to_string(),
+            self.config.max_test_cases.to_string(),
+        );
+        metadata.insert("service_type".to_string(), "ai_test_generator".to_string());
 
-            Ok(ServiceHandle {
-                id: Uuid::new_v4().to_string(),
-                service_name: self.name.clone(),
-                metadata,
-            })
+        Ok(ServiceHandle {
+            id: Uuid::new_v4().to_string(),
+            service_name: self.name.clone(),
+            metadata,
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            println!("🤖 AI Test Generator: Stopping AI-powered test generation service");
-            Ok(())
-        })
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        println!("🤖 AI Test Generator: Stopping AI-powered test generation service");
+        Ok(())
     }
 
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {
@@ -616,13 +607,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_generate_tests_for_component() {
+    async fn test_generate_tests_for_component() -> Result<(), CleanroomError> {
         let plugin = AITestGeneratorPlugin::new("test");
         let tests = plugin
             .generate_tests_for_component("UserService", "User management service")
-            .await;
-        assert!(tests.is_ok());
-        assert!(!tests.unwrap().is_empty());
+            .await?;
+        assert!(!tests.is_empty());
+        Ok(())
     }
 
     #[tokio::test]

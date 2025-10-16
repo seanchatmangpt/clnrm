@@ -7,7 +7,7 @@ use crate::error::{CleanroomError, Result};
 use crate::marketplace::{metadata::*, MarketplaceConfig};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::sync::RwLock;
 
 /// Plugin registry for managing installed and available plugins

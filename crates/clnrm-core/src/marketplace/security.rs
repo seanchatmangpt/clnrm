@@ -6,7 +6,6 @@
 use crate::error::{CleanroomError, Result};
 use crate::marketplace::metadata::PluginMetadata;
 use std::collections::HashSet;
-use std::path::Path;
 
 /// Security level for plugin execution
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

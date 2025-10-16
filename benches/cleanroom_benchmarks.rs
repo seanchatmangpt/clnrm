@@ -9,8 +9,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin, ServiceHandle, HealthStatus};
 use clnrm_core::error::Result;
-use std::pin::Pin;
-use std::future::Future;
 use tokio::runtime::Runtime;
 
 // Mock service plugin for benchmarking
@@ -31,22 +29,28 @@ impl ServicePlugin for MockServicePlugin {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
-        Box::pin(async move {
-            // Simulate lightweight service startup
-            tokio::time::sleep(tokio::time::Duration::from_micros(10)).await;
-            Ok(ServiceHandle {
-                id: uuid::Uuid::new_v4().to_string(),
-                service_name: self.name.clone(),
-                metadata: std::collections::HashMap::new(),
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                // Simulate lightweight service startup
+                tokio::time::sleep(tokio::time::Duration::from_micros(10)).await;
+                Ok(ServiceHandle {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    service_name: self.name.clone(),
+                    metadata: std::collections::HashMap::new(),
+                })
             })
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            tokio::time::sleep(tokio::time::Duration::from_micros(5)).await;
-            Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                tokio::time::sleep(tokio::time::Duration::from_micros(5)).await;
+                Ok(())
+            })
         })
     }
 

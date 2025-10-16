@@ -2,7 +2,7 @@
 //!
 //! Contains shared utility functions used across CLI commands.
 
-use crate::cli::types::{CliTestResult, CliTestResults, ACCEPTED_EXTENSIONS};
+use crate::cli::types::{CliTestResults, ACCEPTED_EXTENSIONS};
 use crate::config::load_config_from_file;
 use crate::error::{CleanroomError, Result};
 use std::path::PathBuf;
@@ -27,7 +27,7 @@ pub fn discover_test_files(path: &PathBuf) -> Result<Vec<PathBuf>> {
         {
             test_files.push(path.clone());
         } else {
-            return Err(CleanroomError::validation_error(&format!(
+            return Err(CleanroomError::validation_error(format!(
                 "File must have .toml or .clnrm.toml extension: {}",
                 path.display()
             )));
@@ -56,7 +56,7 @@ pub fn discover_test_files(path: &PathBuf) -> Result<Vec<PathBuf>> {
         }
 
         if test_files.is_empty() {
-            return Err(CleanroomError::validation_error(&format!(
+            return Err(CleanroomError::validation_error(format!(
                 "No test files (.toml or .clnrm.toml) found in directory: {}",
                 path.display()
             )));
@@ -64,7 +64,7 @@ pub fn discover_test_files(path: &PathBuf) -> Result<Vec<PathBuf>> {
 
         info!("Discovered {} test file(s)", test_files.len());
     } else {
-        return Err(CleanroomError::validation_error(&format!(
+        return Err(CleanroomError::validation_error(format!(
             "Path is neither a file nor a directory: {}",
             path.display()
         )));
@@ -248,10 +248,10 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert!(result
             .iter()
-            .any(|p| p.file_name().unwrap() == "test1.clnrm.toml"));
+            .any(|p| p.file_name().unwrap_or_default() == "test1.clnrm.toml"));
         assert!(result
             .iter()
-            .any(|p| p.file_name().unwrap() == "test2.clnrm.toml"));
+            .any(|p| p.file_name().unwrap_or_default() == "test2.clnrm.toml"));
         Ok(())
     }
 
@@ -325,13 +325,13 @@ mod tests {
         // Arrange
         let results = CliTestResults {
             tests: vec![
-                CliTestResult {
+                crate::cli::types::CliTestResult {
                     name: "test1".to_string(),
                     passed: true,
                     duration_ms: 1000,
                     error: None,
                 },
-                CliTestResult {
+                crate::cli::types::CliTestResult {
                     name: "test2".to_string(),
                     passed: false,
                     duration_ms: 500,

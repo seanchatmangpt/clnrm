@@ -4,9 +4,9 @@
 //! proactive failure prediction, and automatic healing triggers.
 //! This fulfills Gap #6: "Intelligent monitoring with AI-powered anomaly detection"
 
+use crate::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
 use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin};
 use clnrm_core::error::{CleanroomError, Result};
-use crate::services::ai_intelligence::{AIIntelligenceService, ResourceUsage, TestExecution};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -72,7 +72,7 @@ impl AutonomousMonitor {
         let ai_service = Arc::new(AIIntelligenceService::new());
 
         // Start AI service
-        let ai_handle = ai_service.start().await.map_err(|e| {
+        let ai_handle = ai_service.start().map_err(|e| {
             CleanroomError::service_error("Failed to start AI service")
                 .with_context("Monitoring requires AI intelligence service")
                 .with_source(e.to_string())
@@ -879,11 +879,11 @@ mod tests {
         // Test anomaly detection
         let normal_score = baseline.calculate_anomaly_score(105.0);
         assert!(normal_score.is_some());
-        assert!(normal_score.unwrap() < 0.5);
+        assert!(normal_score.unwrap_or(0.0) < 0.5);
 
         let anomaly_score = baseline.calculate_anomaly_score(150.0);
         assert!(anomaly_score.is_some());
-        assert!(anomaly_score.unwrap() > 0.5);
+        assert!(anomaly_score.unwrap_or(0.0) > 0.5);
     }
 
     #[test]

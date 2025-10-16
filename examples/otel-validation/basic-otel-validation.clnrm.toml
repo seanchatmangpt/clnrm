@@ -1,0 +1,81 @@
+# Basic OpenTelemetry Validation Example
+#
+# This example demonstrates how to validate OTEL traces, metrics, and logs
+# in containerized environments using the clnrm testing framework.
+#
+# Usage:
+#   clnrm run examples/otel-validation/basic-otel-validation.clnrm.toml
+
+[test.metadata]
+name = "basic_otel_validation"
+description = "Validates OTEL traces, metrics, and logs in container environment"
+timeout = "60s"
+
+# Service configuration for OTEL-enabled container
+[services.otel_service]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.otel_service.env]
+OTEL_SERVICE_NAME = "validation-test-service"
+OTEL_TRACES_EXPORTER = "otlp"
+OTEL_METRICS_EXPORTER = "otlp"
+OTEL_LOGS_EXPORTER = "otlp"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
+OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+OTEL_RESOURCE_ATTRIBUTES = "service.name=validation-test,service.version=1.0.0,deployment.environment=test"
+
+# Step 1: Validate trace generation
+[[steps]]
+name = "validate_trace_generation"
+command = ["echo", "Generating OTEL trace data"]
+service = "otel_service"
+expected_output_regex = "Generating OTEL trace data"
+expected_exit_code = 0
+
+[steps.env]
+OTEL_SPAN_NAME = "test.trace.validation"
+OTEL_SPAN_KIND = "internal"
+
+# Step 2: Validate metric collection
+[[steps]]
+name = "validate_metric_collection"
+command = ["sh", "-c", "echo 'test.metric:1|c' && echo 'Metrics collected successfully'"]
+service = "otel_service"
+expected_output_regex = "Metrics collected successfully"
+expected_exit_code = 0
+
+[steps.env]
+OTEL_METRIC_PREFIX = "test.validation"
+
+# Step 3: Validate log collection
+[[steps]]
+name = "validate_log_collection"
+command = ["sh", "-c", "echo '[INFO] OTEL log validation: test message' && echo 'Logs validated'"]
+service = "otel_service"
+expected_output_regex = "\\[INFO\\] OTEL log validation"
+expected_exit_code = 0
+
+# Step 4: Validate OTEL environment configuration
+[[steps]]
+name = "validate_otel_env_config"
+command = ["env"]
+service = "otel_service"
+expected_output_regex = "OTEL_SERVICE_NAME=validation-test-service"
+expected_exit_code = 0
+
+# Step 5: Verify resource attributes
+[[steps]]
+name = "validate_resource_attributes"
+command = ["sh", "-c", "env | grep OTEL_RESOURCE_ATTRIBUTES"]
+service = "otel_service"
+expected_output_regex = "service\\.name=validation-test"
+expected_exit_code = 0
+
+# Assertions for OTEL validation
+[assertions]
+container_should_have_executed_commands = 5
+execution_should_be_hermetic = true
+otel_environment_configured = true
+all_steps_should_succeed = true

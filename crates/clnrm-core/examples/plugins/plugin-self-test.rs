@@ -7,8 +7,6 @@
 use clnrm_core::error::Result;
 use clnrm_core::{CleanroomEnvironment, HealthStatus, ServiceHandle, ServicePlugin};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::time::{Duration, Instant};
 use tracing::{debug, info};
 
@@ -184,26 +182,19 @@ impl ServicePlugin for PluginSelfTestPlugin {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
-        Box::pin(async move {
-            info!("Starting plugin self-test service: {}", self.name);
+    fn start(&self) -> Result<ServiceHandle> {
+        info!("Starting plugin self-test service: {}", self.name);
 
-            Ok(ServiceHandle {
-                id: format!("plugin_test_{}_{}", self.name, uuid::Uuid::new_v4()),
-                service_name: self.name.clone(),
-                metadata: self.metadata.clone(),
-            })
+        Ok(ServiceHandle {
+            id: format!("plugin_test_{}_{}", self.name, uuid::Uuid::new_v4()),
+            service_name: self.name.clone(),
+            metadata: self.metadata.clone(),
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            info!("Stopping plugin self-test service: {}", self.name);
-            Ok(())
-        })
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        info!("Stopping plugin self-test service: {}", self.name);
+        Ok(())
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {

@@ -5,9 +5,9 @@
 //!
 //! This command uses REAL Ollama AI integration for genuine optimization recommendations.
 
+use crate::services::ai_intelligence::AIIntelligenceService;
 use clnrm_core::cleanroom::{CleanroomEnvironment, ServicePlugin};
 use clnrm_core::error::{CleanroomError, Result};
-use crate::services::ai_intelligence::AIIntelligenceService;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
@@ -58,7 +58,7 @@ pub async fn ai_optimize_tests(
 
     // Initialize AI Intelligence Service with fallback
     let ai_service = AIIntelligenceService::new();
-    let (use_real_ai, ai_handle) = match ai_service.start().await {
+    let (use_real_ai, ai_handle) = match ai_service.start() {
         Ok(handle) => {
             info!("✅ Real AI service initialized with Ollama");
             (true, Some(handle))
@@ -120,7 +120,7 @@ pub async fn ai_optimize_tests(
     // Clean up AI service if it was started
     if let Some(handle) = ai_handle {
         info!("🧹 Cleaning up AI service");
-        ai_service.stop(handle).await?;
+        ai_service.stop(handle)?;
     }
 
     info!("🎉 AI optimization completed successfully!");
@@ -426,7 +426,9 @@ fn calculate_test_complexity(test_config: &clnrm_core::config::TestConfig) -> f6
 }
 
 /// Estimate resource requirements for a test
-fn estimate_resource_requirements(test_config: &clnrm_core::config::TestConfig) -> ResourceRequirements {
+fn estimate_resource_requirements(
+    test_config: &clnrm_core::config::TestConfig,
+) -> ResourceRequirements {
     let mut cpu_cores = 1.0;
     let mut memory_mb = 512.0;
     let mut network_io = 0;

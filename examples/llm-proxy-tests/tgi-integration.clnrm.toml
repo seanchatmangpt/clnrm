@@ -78,3 +78,4 @@ tgi_health_check = "TGI service should respond to health checks"
 model_loading = "TGI should successfully load the specified model"
 batch_processing = "TGI should handle batch requests efficiently"
 performance_optimization = "TGI should demonstrate optimized inference performance"
+

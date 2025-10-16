@@ -1,6 +1,6 @@
 # Cleanroom Testing Framework
 
-[![Version](https://img.shields.io/badge/version-0.3.2-blue.svg)](https://github.com/seanchatmangpt/clnrm)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![Build Status](https://img.shields.io/badge/build-passing-green.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -14,13 +14,14 @@ A testing framework for hermetic integration testing with container-based isolat
 - **`clnrm init`** - Zero-config project initialization with working TOML files
 - **`clnrm run`** - Real container execution with regex validation and output capture
 - **`clnrm validate`** - TOML configuration validation
-- **`clnrm self-test`** - Framework validates itself (5/5 tests pass)
+- **`clnrm self-test`** - Framework validates itself across 5 test suites (framework, container, plugin, cli, otel)
 
 ### ✅ **Plugin Ecosystem**
-- **`clnrm plugins`** - 6 service plugins including container and database integration
+- **`clnrm plugins`** - Core service plugins for container and database integration
 - **GenericContainerPlugin** - Any Docker image with custom configuration
 - **SurrealDbPlugin** - SurrealDB database with WebSocket support
 - **NetworkToolsPlugin** - curl, wget, netcat for HTTP testing
+- **AI Plugins** 🔬 - Ollama, vLLM, TGI (experimental, require separate crate)
 
 ### ✅ **Service Management**
 - **`clnrm services status`** - Real-time service monitoring
@@ -144,6 +145,10 @@ $ clnrm plugins
 | `clnrm template` | ✅ **Working** | Generate projects from templates |
 | `clnrm services` | ✅ **Working** | Service lifecycle management |
 | `clnrm report` | ✅ **Working** | Generate test reports |
+| `clnrm ai-orchestrate` | 🔬 **Experimental** | AI-powered test orchestration (requires clnrm-ai crate) |
+| `clnrm ai-predict` | 🔬 **Experimental** | AI failure prediction (requires clnrm-ai crate) |
+| `clnrm ai-optimize` | 🔬 **Experimental** | AI test optimization (requires clnrm-ai crate) |
+| `clnrm ai-monitor` | 🔬 **Experimental** | AI monitoring system (requires clnrm-ai crate) |
 
 ## 🚀 **Getting Started**
 
@@ -189,7 +194,6 @@ Single `.clnrm.toml` files can test any technology stack - databases, APIs, AI m
 
 - [CLI Guide](docs/CLI_GUIDE.md) - Complete command reference
 - [TOML Reference](docs/TOML_REFERENCE.md) - Configuration format
-- [Plugin Guide](docs/PLUGIN_GUIDE.md) - Service plugin development
 
 ## 🤝 **Contributing**
 

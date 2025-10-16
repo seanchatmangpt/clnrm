@@ -72,7 +72,7 @@ cargo tree | grep clnrm >> version_before_upgrade.txt
 
 ### 1. Workspace Version Update
 
-**Change**: Version bumped from `0.3.2` to `0.4.0`
+**Change**: Version bumped from `0.3.2` to `0.4.0` (already completed)
 
 **Impact**: Internal version change only, no user action required
 
@@ -1011,7 +1011,7 @@ cp Cargo.lock.backup Cargo.lock
 ### Step 2: Downgrade Dependencies
 
 ```bash
-# Update Cargo.toml to v0.3.2
+# Update Cargo.toml to v0.3.2 (for downgrade only)
 sed -i 's/0\.4\.0/0.3.2/g' Cargo.toml
 
 # Update and rebuild
@@ -1023,7 +1023,7 @@ cargo build --release
 
 ```bash
 # Check version
-clnrm --version  # Should show v0.3.2
+clnrm --version  # Should show v0.3.2 (downgrade verification)
 
 # Run tests
 cargo test --all

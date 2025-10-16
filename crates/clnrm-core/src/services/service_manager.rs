@@ -10,7 +10,7 @@ use crate::cleanroom::{HealthStatus, ServiceHandle};
 use crate::error::{CleanroomError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{debug, info, warn};
 
 /// Service metrics for tracking resource usage and performance
@@ -65,7 +65,7 @@ impl ServiceMetrics {
         let error_score = (1.0 - self.error_rate) * 100.0;
         let response_score = (1000.0 / (self.response_time_ms + 1.0)).min(100.0);
 
-        (cpu_score * 0.3 + memory_score * 0.3 + error_score * 0.2 + response_score * 0.2)
+        cpu_score * 0.3 + memory_score * 0.3 + error_score * 0.2 + response_score * 0.2
     }
 }
 
@@ -595,7 +595,7 @@ mod tests {
     }
 
     #[test]
-    fn test_metrics_history_average() {
+    fn test_metrics_history_average() -> Result<()> {
         let mut history = MetricsHistory::new("test-1".to_string());
 
         for i in 0..10 {
@@ -604,12 +604,14 @@ mod tests {
             history.add_metrics(metrics);
         }
 
-        let avg = history.average_metrics(5).unwrap();
+        let avg = history.average_metrics(5)
+            .ok_or_else(|| CleanroomError::internal_error("No metrics available for average calculation"))?;
         assert!((avg.cpu_usage - 70.0).abs() < 1.0);
+        Ok(())
     }
 
     #[test]
-    fn test_load_prediction() {
+    fn test_load_prediction() -> Result<()> {
         let mut history = MetricsHistory::new("test-1".to_string());
 
         for i in 0..20 {
@@ -621,12 +623,14 @@ mod tests {
 
         let predicted = history.predict_load(5);
         assert!(predicted.is_some());
-        let pred = predicted.unwrap();
+        let pred = predicted
+            .ok_or_else(|| CleanroomError::internal_error("Load prediction failed"))?;
         assert!(pred.cpu_usage > 50.0);
+        Ok(())
     }
 
     #[test]
-    fn test_auto_scale_decision() {
+    fn test_auto_scale_decision() -> Result<()> {
         let mut manager = ServiceManager::new();
         let service_id = "test-1";
 
@@ -642,12 +646,13 @@ mod tests {
             manager.record_metrics(metrics);
         }
 
-        let action = manager.determine_scaling_action(service_id).unwrap();
+        let action = manager.determine_scaling_action(service_id)?;
         assert!(matches!(action, ScalingAction::ScaleUp(_)));
+        Ok(())
     }
 
     #[test]
-    fn test_resource_pool() {
+    fn test_resource_pool() -> Result<()> {
         let mut pool = ResourcePool::new("test-service".to_string(), 5);
 
         let handle = ServiceHandle {
@@ -663,9 +668,11 @@ mod tests {
         assert_eq!(pool.in_use.len(), 1);
         assert_eq!(pool.available.len(), 0);
 
-        pool.release(acquired.unwrap());
+        pool.release(acquired
+            .ok_or_else(|| CleanroomError::internal_error("Failed to acquire resource from pool"))?);
         assert_eq!(pool.available.len(), 1);
         assert_eq!(pool.in_use.len(), 0);
+        Ok(())
     }
 
     #[test]
@@ -691,7 +698,7 @@ mod tests {
     }
 
     #[test]
-    fn test_health_prediction() {
+    fn test_health_prediction() -> Result<()> {
         let mut manager = ServiceManager::new();
         let service_id = "test-1";
 
@@ -704,7 +711,8 @@ mod tests {
             manager.record_metrics(metrics);
         }
 
-        let health = manager.predict_service_health(service_id).unwrap();
+        let health = manager.predict_service_health(service_id)?;
         assert_eq!(health, HealthStatus::Healthy);
+        Ok(())
     }
 }

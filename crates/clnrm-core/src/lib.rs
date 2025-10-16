@@ -20,6 +20,7 @@ pub mod scenario;
 pub mod services;
 pub mod telemetry;
 pub mod utils;
+pub mod validation;
 
 // Testing utilities (includes property-based test generators)
 pub mod testing;
@@ -43,6 +44,7 @@ pub use config::{
 pub use macros::{with_cache, with_database, with_message_queue, with_web_server};
 pub use services::generic::GenericContainerPlugin;
 pub use services::surrealdb::SurrealDbPlugin;
+pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
 
 // The cleanroom_test macro is already exported via #[macro_export] in macros.rs
 

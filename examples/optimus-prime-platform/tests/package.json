@@ -1,0 +1,12 @@
+{
+  "name": "optimus-prime-tests",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "self-play": "node self-play-conversation.js"
+  },
+  "dependencies": {
+    "ai": "^5.0.73",
+    "ollama-ai-provider-v2": "^1.5.0"
+  }
+}

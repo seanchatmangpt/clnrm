@@ -2,11 +2,11 @@
 //!
 //! Provides comprehensive health status for the Cleanroom Autonomic System
 
-use crate::cleanroom::{CleanroomEnvironment, HealthStatus, ServicePlugin};
+use crate::cleanroom::CleanroomEnvironment;
 use crate::error::{CleanroomError, Result};
 // Note: AIIntelligenceService moved to clnrm-ai crate
 use std::time::Instant;
-use tracing::{info, warn};
+use tracing::info;
 
 /// System health check command
 pub async fn system_health_check(verbose: bool) -> Result<()> {

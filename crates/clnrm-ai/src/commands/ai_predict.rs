@@ -5,10 +5,10 @@
 //!
 //! This command uses REAL Ollama AI integration for genuine predictive analysis.
 
+use crate::services::ai_intelligence::AIIntelligenceService;
 use clnrm_core::cleanroom::ServicePlugin;
 use clnrm_core::cli::types::PredictionFormat;
 use clnrm_core::error::{CleanroomError, Result};
-use crate::services::ai_intelligence::AIIntelligenceService;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
@@ -49,7 +49,7 @@ pub async fn ai_predict_analytics(
 
     // Initialize AI Intelligence Service with fallback
     let ai_service = AIIntelligenceService::new();
-    let (use_real_ai, ai_handle) = match ai_service.start().await {
+    let (use_real_ai, ai_handle) = match ai_service.start() {
         Ok(handle) => {
             info!("✅ Real AI service initialized with Ollama");
             (true, Some(handle))
@@ -99,7 +99,7 @@ pub async fn ai_predict_analytics(
     // Clean up AI service if it was started
     if let Some(handle) = ai_handle {
         info!("🧹 Cleaning up AI service");
-        ai_service.stop(handle).await?;
+        ai_service.stop(handle)?;
     }
 
     info!("🎉 AI predictive analytics completed successfully!");
@@ -658,7 +658,9 @@ async fn analyze_trends() -> Result<TrendAnalysis> {
 }
 
 /// Generate predictive insights using AI
-async fn generate_predictive_insights(ai_service: Option<&AIIntelligenceService>) -> Result<Vec<PredictiveInsight>> {
+async fn generate_predictive_insights(
+    ai_service: Option<&AIIntelligenceService>,
+) -> Result<Vec<PredictiveInsight>> {
     // Try to use real AI first if available
     if let Some(service) = ai_service {
         let prompt = "You are an AI expert analyzing test execution patterns. \
@@ -674,7 +676,7 @@ async fn generate_predictive_insights(ai_service: Option<&AIIntelligenceService>
             Ok(ai_response) => {
                 info!("🧠 Real AI predictive insights generated");
                 return parse_ai_response_to_insights(&ai_response).await;
-            },
+            }
             Err(e) => {
                 warn!("Real AI predictive insights failed, using fallback: {}", e);
             }
@@ -741,15 +743,16 @@ async fn parse_ai_response_to_insights(ai_response: &str) -> Result<Vec<Predicti
 
     for (i, line) in lines.iter().enumerate().take(5) {
         // Simple parsing - in a real implementation, you'd use more sophisticated NLP
-        let category = if line.to_lowercase().contains("fail")
-            || line.to_lowercase().contains("error") {
-            "Failure Prediction"
-        } else if line.to_lowercase().contains("performance")
-            || line.to_lowercase().contains("optim") {
-            "Performance Optimization"
-        } else {
-            "Resource Management"
-        };
+        let category =
+            if line.to_lowercase().contains("fail") || line.to_lowercase().contains("error") {
+                "Failure Prediction"
+            } else if line.to_lowercase().contains("performance")
+                || line.to_lowercase().contains("optim")
+            {
+                "Performance Optimization"
+            } else {
+                "Resource Management"
+            };
 
         insights.push(PredictiveInsight {
             category: category.to_string(),
@@ -764,9 +767,7 @@ async fn parse_ai_response_to_insights(ai_response: &str) -> Result<Vec<Predicti
             }
             .to_string(),
             actionable: true,
-            recommended_actions: vec![
-                "Implement suggested improvements".to_string(),
-            ],
+            recommended_actions: vec!["Implement suggested improvements".to_string()],
         });
     }
 
@@ -778,9 +779,7 @@ async fn parse_ai_response_to_insights(ai_response: &str) -> Result<Vec<Predicti
             confidence: 0.8,
             timeframe: "Immediate".to_string(),
             actionable: true,
-            recommended_actions: vec![
-                "Monitor test execution patterns".to_string(),
-            ],
+            recommended_actions: vec!["Monitor test execution patterns".to_string()],
         });
     }
 

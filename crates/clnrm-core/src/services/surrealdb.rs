@@ -6,8 +6,6 @@
 use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use surrealdb::{
     engine::remote::ws::{Client, Ws},
@@ -25,6 +23,12 @@ pub struct SurrealDbPlugin {
     username: String,
     password: String,
     strict: bool,
+}
+
+impl Default for SurrealDbPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SurrealDbPlugin {
@@ -74,59 +78,62 @@ impl ServicePlugin for SurrealDbPlugin {
         &self.name
     }
 
-    fn start(&self) -> Pin<Box<dyn Future<Output = Result<ServiceHandle>> + Send + '_>> {
-        Box::pin(async move {
-            let db_config = SurrealDb::default()
-                .with_user(&self.username)
-                .with_password(&self.password)
-                .with_strict(self.strict)
-                .with_all_capabilities(true);
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let db_config = SurrealDb::default()
+                    .with_user(&self.username)
+                    .with_password(&self.password)
+                    .with_strict(self.strict)
+                    .with_all_capabilities(true);
 
-            let node = db_config.start().await.map_err(|e| {
-                CleanroomError::container_error("Failed to start SurrealDB container")
-                    .with_context("Container startup failed")
-                    .with_source(e.to_string())
-            })?;
+                let node = db_config.start().await.map_err(|e| {
+                    CleanroomError::container_error("Failed to start SurrealDB container")
+                        .with_context("Container startup failed")
+                        .with_source(e.to_string())
+                })?;
 
-            let host_port = node.get_host_port_ipv4(SURREALDB_PORT).await.map_err(|e| {
-                CleanroomError::container_error("Failed to get container port")
-                    .with_source(e.to_string())
-            })?;
+                let host_port = node.get_host_port_ipv4(SURREALDB_PORT).await.map_err(|e| {
+                    CleanroomError::container_error("Failed to get container port")
+                        .with_source(e.to_string())
+                })?;
 
-            // Verify connection works
-            self.verify_connection(host_port).await?;
+                // Verify connection works
+                self.verify_connection(host_port).await?;
 
-            let mut container_guard = self.container_id.write().await;
-            *container_guard = Some(format!("container-{}", host_port));
+                let mut container_guard = self.container_id.write().await;
+                *container_guard = Some(format!("container-{}", host_port));
 
-            let mut metadata = HashMap::new();
-            metadata.insert("host".to_string(), "127.0.0.1".to_string());
-            metadata.insert("port".to_string(), host_port.to_string());
-            metadata.insert("username".to_string(), self.username.clone());
-            metadata.insert("database_type".to_string(), "surrealdb".to_string());
-            metadata.insert(
-                "connection_string".to_string(),
-                format!("ws://127.0.0.1:{}", host_port),
-            );
+                let mut metadata = HashMap::new();
+                metadata.insert("host".to_string(), "127.0.0.1".to_string());
+                metadata.insert("port".to_string(), host_port.to_string());
+                metadata.insert("username".to_string(), self.username.clone());
+                metadata.insert("database_type".to_string(), "surrealdb".to_string());
+                metadata.insert(
+                    "connection_string".to_string(),
+                    format!("ws://127.0.0.1:{}", host_port),
+                );
 
-            Ok(ServiceHandle {
-                id: Uuid::new_v4().to_string(),
-                service_name: self.name.clone(),
-                metadata,
+                Ok(ServiceHandle {
+                    id: Uuid::new_v4().to_string(),
+                    service_name: self.name.clone(),
+                    metadata,
+                })
             })
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move {
-            let mut container_guard = self.container_id.write().await;
-            if container_guard.is_some() {
-                *container_guard = None; // Drop triggers container cleanup
-            }
-            Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        // Use tokio::task::block_in_place for async operations
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let mut container_guard = self.container_id.write().await;
+                if container_guard.is_some() {
+                    *container_guard = None; // Drop triggers container cleanup
+                }
+                Ok(())
+            })
         })
     }
 

@@ -12,7 +12,7 @@ pub fn validate_file_path(path: &str) -> Result<()> {
 
     // Check if path exists
     if !path_obj.exists() {
-        return Err(crate::error::CleanroomError::validation_error(&format!(
+        return Err(crate::error::CleanroomError::validation_error(format!(
             "Path does not exist: {}",
             path
         )));
@@ -26,7 +26,7 @@ pub fn validate_file_path(path: &str) -> Result<()> {
         // For directories, check if we can read the directory
         std::fs::read_dir(path_obj)?;
     } else {
-        return Err(crate::error::CleanroomError::validation_error(&format!(
+        return Err(crate::error::CleanroomError::validation_error(format!(
             "Path is neither a file nor directory: {}",
             path
         )));
@@ -39,12 +39,12 @@ pub fn validate_file_path(path: &str) -> Result<()> {
 pub fn parse_toml_config(content: &str) -> Result<serde_json::Value> {
     // Parse TOML content
     let toml_value: toml::Value = toml::from_str(content).map_err(|e| {
-        crate::error::CleanroomError::validation_error(&format!("Invalid TOML syntax: {}", e))
+        crate::error::CleanroomError::validation_error(format!("Invalid TOML syntax: {}", e))
     })?;
 
     // Convert TOML to JSON for consistent handling
     let json_value = serde_json::to_value(toml_value).map_err(|e| {
-        crate::error::CleanroomError::internal_error(&format!(
+        crate::error::CleanroomError::internal_error(format!(
             "Failed to convert TOML to JSON: {}",
             e
         ))
@@ -75,7 +75,7 @@ pub fn validate_regex(pattern: &str) -> Result<()> {
 
     // Try to compile the regex pattern
     Regex::new(pattern).map_err(|e| {
-        crate::error::CleanroomError::validation_error(&format!(
+        crate::error::CleanroomError::validation_error(format!(
             "Invalid regex pattern '{}': {}",
             pattern, e
         ))
@@ -90,7 +90,7 @@ pub fn execute_regex_match(text: &str, pattern: &str) -> Result<bool> {
 
     // Compile and execute regex
     let regex = Regex::new(pattern).map_err(|e| {
-        crate::error::CleanroomError::validation_error(&format!(
+        crate::error::CleanroomError::validation_error(format!(
             "Invalid regex pattern '{}': {}",
             pattern, e
         ))

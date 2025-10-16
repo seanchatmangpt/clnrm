@@ -143,13 +143,14 @@ async fn test_readme_observability_claims() -> Result<()> {
     let final_metrics = env.get_metrics().await;
 
     // Verify metrics were collected
-    let final_metrics_unwrapped = final_metrics.unwrap();
+    let final_metrics_unwrapped = final_metrics?;
+    let initial_metrics_unwrapped = initial_metrics?;
     assert!(
-        final_metrics_unwrapped.tests_executed > initial_metrics.unwrap().tests_executed,
+        final_metrics_unwrapped.tests_executed > initial_metrics_unwrapped.tests_executed,
         "Metrics should be collected automatically"
     );
     assert!(
-        final_metrics_unwrapped.tests_passed > initial_metrics.unwrap().tests_passed,
+        final_metrics_unwrapped.tests_passed > initial_metrics_unwrapped.tests_passed,
         "Test success metrics should be recorded"
     );
 
@@ -255,7 +256,7 @@ fn test_readme_regex_validation_claims() -> Result<()> {
     let test_text = "Container started successfully";
     let match_result = clnrm_core::utils::execute_regex_match(test_text, valid_pattern);
     assert!(match_result.is_ok(), "Regex execution should work");
-    assert!(match_result.unwrap(), "Pattern should match expected text");
+    assert!(match_result?, "Pattern should match expected text");
 
     // Test invalid regex
     let invalid_pattern = r"[invalid regex";
@@ -299,7 +300,7 @@ fn test_readme_rich_assertions_claims() -> Result<()> {
         retrieved_value.is_some(),
         "Assertion context should store and retrieve data"
     );
-    assert_eq!(retrieved_value.unwrap().as_str(), Some("test_value"));
+    assert_eq!(retrieved_value?.as_str(), Some("test_value"));
 
     Ok(())
 }
@@ -561,7 +562,7 @@ async fn test_readme_plugin_development_claims() -> Result<()> {
     assert_eq!(custom_plugin.name(), "custom_service");
 
     // Test plugin lifecycle
-    let handle = custom_plugin.start().await?;
+    let handle = custom_plugin.start()?;
     assert_eq!(handle.service_name, "custom_service");
     assert!(!handle.id.is_empty());
 
@@ -570,7 +571,7 @@ async fn test_readme_plugin_development_claims() -> Result<()> {
     assert_eq!(health, HealthStatus::Healthy);
 
     // Test stop
-    custom_plugin.stop(handle).await?;
+    custom_plugin.stop(handle)?;
 
     Ok(())
 }
@@ -597,8 +598,8 @@ async fn test_readme_observability_detailed_claims() -> Result<()> {
     let final_metrics = env.get_metrics().await;
 
     // Verify metrics collection
-    let final_metrics_unwrapped = final_metrics.unwrap();
-    let initial_metrics_unwrapped = initial_metrics.unwrap();
+    let final_metrics_unwrapped = final_metrics?;
+    let initial_metrics_unwrapped = initial_metrics?;
     assert!(
         final_metrics_unwrapped.tests_executed >= initial_metrics_unwrapped.tests_executed + 3,
         "Metrics should be automatically collected"
@@ -644,25 +645,42 @@ command = ["echo", "Container started successfully"]
     );
     assert!(parsed.get("steps").is_some(), "Should parse steps array");
 
-    let test_section = parsed.get("test").unwrap();
+    let test_section = parsed.get("test")
+        .ok_or_else(|| CleanroomError::internal_error("Missing test section in parsed JSON"))?;
     assert_eq!(
-        test_section.get("name").unwrap().as_str(),
+        test_section.get("name")
+            .ok_or_else(|| CleanroomError::internal_error("Missing name in test section"))?
+            .as_str(),
         Some("container_lifecycle_test")
     );
     assert_eq!(
-        test_section.get("description").unwrap().as_str(),
+        test_section.get("description")
+            .ok_or_else(|| CleanroomError::internal_error("Missing description in test section"))?
+            .as_str(),
         Some("Test that containers start, execute commands, and cleanup properly")
     );
 
-    let steps = parsed.get("steps").unwrap().as_array().unwrap();
+    let steps = parsed.get("steps")
+        .ok_or_else(|| CleanroomError::internal_error("Missing steps in parsed JSON"))?
+        .as_array()
+        .ok_or_else(|| CleanroomError::internal_error("Steps is not an array"))?;
     assert_eq!(steps.len(), 1, "Should parse steps array");
 
     let step = &steps[0];
     assert_eq!(
-        step.get("name").unwrap().as_str(),
+        step.get("name")
+            .ok_or_else(|| CleanroomError::internal_error("Missing name in step"))?
+            .as_str(),
         Some("verify_container_startup")
     );
-    assert_eq!(step.get("command").unwrap().as_array().unwrap().len(), 2);
+    assert_eq!(
+        step.get("command")
+            .ok_or_else(|| CleanroomError::internal_error("Missing command in step"))?
+            .as_array()
+            .ok_or_else(|| CleanroomError::internal_error("Command is not an array"))?
+            .len(), 
+        2
+    );
 
     Ok(())
 }
@@ -912,9 +930,9 @@ command = ["echo", "version test"]
     let _db_assertions = clnrm_core::assertions::DatabaseAssertions::new("version_test_db");
 
     // ✅ Comprehensive observability
-    let metrics = env.get_metrics().await;
+    let metrics = env.get_metrics().await?;
     assert!(
-        !metrics.unwrap().session_id.is_nil(),
+        !metrics.session_id.is_nil(),
         "Observability should be comprehensive"
     );
 
@@ -939,28 +957,20 @@ impl ServicePlugin for TestPlugin {
         &self.name
     }
 
-    fn start(
-        &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<ServiceHandle>> + Send + '_>>
-    {
+    fn start(&self) -> Result<ServiceHandle> {
         let name = self.name.clone();
-        Box::pin(async move {
-            Ok(ServiceHandle {
-                id: format!("test_{}", uuid::Uuid::new_v4()),
-                service_name: name,
-                metadata: HashMap::from([
-                    ("type".to_string(), "test".to_string()),
-                    ("status".to_string(), "running".to_string()),
-                ]),
-            })
+        Ok(ServiceHandle {
+            id: format!("test_{}", uuid::Uuid::new_v4()),
+            service_name: name,
+            metadata: HashMap::from([
+                ("type".to_string(), "test".to_string()),
+                ("status".to_string(), "running".to_string()),
+            ]),
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        Ok(())
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -992,8 +1002,8 @@ mod tests {
         assert_eq!(result, "Container started successfully");
 
         // Test metrics collection (simulates the timing information)
-        let metrics = env.get_metrics().await;
-        let metrics_unwrapped = metrics.unwrap();
+        let metrics = env.get_metrics().await?;
+        let metrics_unwrapped = metrics;
         assert!(
             metrics_unwrapped.tests_executed > 0,
             "Should record test execution"
@@ -1059,13 +1069,13 @@ mod tests {
         assert_eq!(custom_plugin.name(), "development_test");
 
         // Test plugin lifecycle
-        let handle = custom_plugin.start().await?;
+        let handle = custom_plugin.start()?;
         assert_eq!(handle.service_name, "development_test");
 
         let health = custom_plugin.health_check(&handle);
         assert_eq!(health, HealthStatus::Healthy);
 
-        custom_plugin.stop(handle).await?;
+        custom_plugin.stop(handle)?;
 
         // Test custom assertions capability
         let mut context = clnrm_core::assertions::AssertionContext::new();

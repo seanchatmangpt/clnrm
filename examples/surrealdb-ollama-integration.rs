@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     // Phase 1: Start SurrealDB
     println!("📊 Phase 1: Starting SurrealDB");
     let surrealdb_plugin = SurrealDbPlugin::new();
-    let db_handle = surrealdb_plugin.start().await?;
+    let db_handle = surrealdb_plugin.start()?;
     
     let host = db_handle.metadata.get("host").unwrap();
     let port = db_handle.metadata.get("port").unwrap().parse::<u16>()?;
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
     };
     let ollama_plugin = OllamaPlugin::new("ollama", ollama_config);
     
-    match ollama_plugin.start().await {
+    match ollama_plugin.start() {
         Ok(ollama_handle) => {
             println!("✅ Ollama started successfully");
             println!("   Endpoint: {}", ollama_handle.metadata.get("endpoint").unwrap_or(&"unknown".to_string()));
@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
 
     // Phase 6: Cleanup
     println!("\n🧹 Phase 6: Cleanup");
-    surrealdb_plugin.stop(db_handle).await?;
+    surrealdb_plugin.stop(db_handle)?;
     println!("✅ SurrealDB stopped");
 
     println!("\n🎉 SurrealDB + Ollama integration demo completed!");

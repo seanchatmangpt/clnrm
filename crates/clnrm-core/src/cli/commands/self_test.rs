@@ -3,7 +3,7 @@
 //! Handles framework self-testing with comprehensive validation and reporting.
 
 use crate::error::{CleanroomError, Result};
-use crate::testing::{run_framework_tests, FrameworkTestResults};
+use crate::testing::run_framework_tests;
 use tracing::info;
 
 /// Run framework self-tests
@@ -21,7 +21,7 @@ pub async fn run_self_tests(suite: Option<String>, report: bool) -> Result<()> {
     if let Some(ref suite_name) = suite {
         const VALID_SUITES: &[&str] = &["framework", "container", "plugin", "cli", "otel"];
         if !VALID_SUITES.contains(&suite_name.as_str()) {
-            return Err(CleanroomError::validation_error(&format!(
+            return Err(CleanroomError::validation_error(format!(
                 "Invalid test suite '{}'. Valid suites: {}",
                 suite_name,
                 VALID_SUITES.join(", ")
@@ -52,7 +52,7 @@ pub async fn run_self_tests(suite: Option<String>, report: bool) -> Result<()> {
 
     // Return proper error with context
     if results.failed_tests > 0 {
-        Err(CleanroomError::validation_error(&format!(
+        Err(CleanroomError::validation_error(format!(
             "{} test(s) failed out of {}",
             results.failed_tests, results.total_tests
         )))
@@ -125,8 +125,16 @@ mod tests {
         let suite = None;
         let report = true;
 
+        // Create temp directory for report
+        let temp_dir = std::env::temp_dir();
+        let original_dir = std::env::current_dir()?;
+        std::env::set_current_dir(&temp_dir)?;
+
         // Act - Execute self-tests with report
         let result = run_self_tests(suite, report).await;
+
+        // Restore original directory
+        std::env::set_current_dir(original_dir)?;
 
         // Assert - Should succeed (framework self-tests should pass)
         assert!(
@@ -135,8 +143,9 @@ mod tests {
             result.err()
         );
 
-        // Verify report file was created
-        let report_exists = std::fs::metadata("framework-test-report.json").is_ok();
+        // Verify report file was created in temp directory
+        let report_path = temp_dir.join("framework-test-report.json");
+        let report_exists = std::fs::metadata(&report_path).is_ok();
         assert!(
             report_exists,
             "Report file should be created when report=true"

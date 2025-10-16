@@ -5,12 +5,8 @@
 
 use crate::cleanroom::CleanroomEnvironment;
 use crate::error::{CleanroomError, Result};
-use crate::services::service_manager::{
-    AutoScaleConfig, CostRecommendation, ServiceManager, ServiceMetrics,
-};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tracing::{debug, info, warn};
+use crate::services::service_manager::{AutoScaleConfig, ServiceManager, ServiceMetrics};
+use tracing::warn;
 
 /// Show service status
 pub async fn show_service_status() -> Result<()> {
@@ -29,7 +25,7 @@ pub async fn show_service_status() -> Result<()> {
         println!("💡 Run 'clnrm run <test_file>' to start services");
     } else {
         println!("Active Services: {}", services.active_services().len());
-        for (_handle_id, handle) in services.active_services() {
+        for handle in services.active_services().values() {
             println!("Service: {} (ID: {})", handle.service_name, handle.id);
             if !handle.metadata.is_empty() {
                 for (key, value) in &handle.metadata {
@@ -95,7 +91,7 @@ pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
         None => {
             println!("❌ Service '{}' not found in active services", service);
             println!("Available services:");
-            for (_, handle) in services.active_services() {
+            for handle in services.active_services().values() {
                 println!("  - {}", handle.service_name);
             }
             if services.active_services().is_empty() {
@@ -157,7 +153,7 @@ pub async fn restart_service(service: &str) -> Result<()> {
         None => {
             println!("❌ Service '{}' not found in active services", service);
             println!("Available services:");
-            for (_, handle) in services.active_services() {
+            for handle in services.active_services().values() {
                 println!("  - {}", handle.service_name);
             }
             if services.active_services().is_empty() {
@@ -204,7 +200,7 @@ pub async fn ai_manage(
 
     // Collect current service metrics
     println!("\n📊 Collecting service metrics...");
-    for (_handle_id, handle) in services.active_services() {
+    for handle in services.active_services().values() {
         // Filter services if specified
         if let Some(ref filter) = service_filter {
             if !handle.service_name.contains(filter) {
@@ -239,7 +235,7 @@ pub async fn ai_manage(
 
     // Simulate historical data for better predictions
     println!("\n📈 Simulating historical data for predictions...");
-    for (_handle_id, handle) in services.active_services() {
+    for handle in services.active_services().values() {
         if let Some(ref filter) = service_filter {
             if !handle.service_name.contains(filter) {
                 continue;
@@ -266,7 +262,7 @@ pub async fn ai_manage(
         println!("\n🔮 Load Prediction ({}min horizon):", horizon_minutes);
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        for (_handle_id, handle) in services.active_services() {
+        for handle in services.active_services().values() {
             if let Some(ref filter) = service_filter {
                 if !handle.service_name.contains(filter) {
                     continue;
@@ -323,7 +319,7 @@ pub async fn ai_manage(
         println!("\n⚡ Auto-Scaling Analysis:");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        for (_handle_id, handle) in services.active_services() {
+        for handle in services.active_services().values() {
             if let Some(ref filter) = service_filter {
                 if !handle.service_name.contains(filter) {
                     continue;
@@ -377,7 +373,7 @@ pub async fn ai_manage(
         println!("\n🎯 Resource Optimization:");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        for (_handle_id, handle) in services.active_services() {
+        for handle in services.active_services().values() {
             if let Some(ref filter) = service_filter {
                 if !handle.service_name.contains(filter) {
                     continue;
@@ -406,7 +402,7 @@ pub async fn ai_manage(
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         let mut all_recommendations = Vec::new();
-        for (_handle_id, handle) in services.active_services() {
+        for handle in services.active_services().values() {
             if let Some(ref filter) = service_filter {
                 if !handle.service_name.contains(filter) {
                     continue;

@@ -163,29 +163,16 @@ async fn main() -> Result<(), CleanroomError> {
             &self.name
         }
 
-        fn start(
-            &self,
-        ) -> std::pin::Pin<
-            Box<
-                dyn std::future::Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_,
-            >,
-        > {
-            Box::pin(async move {
-                Ok(ServiceHandle {
-                    id: format!("test-{}", uuid::Uuid::new_v4()),
-                    service_name: self.name.clone(),
-                    metadata: std::collections::HashMap::new(),
-                })
+        fn start(&self) -> Result<ServiceHandle, CleanroomError> {
+            Ok(ServiceHandle {
+                id: format!("test-{}", uuid::Uuid::new_v4()),
+                service_name: self.name.clone(),
+                metadata: std::collections::HashMap::new(),
             })
         }
 
-        fn stop(
-            &self,
-            _handle: ServiceHandle,
-        ) -> std::pin::Pin<
-            Box<dyn std::future::Future<Output = Result<(), CleanroomError>> + Send + '_>,
-        > {
-            Box::pin(async move { Ok(()) })
+        fn stop(&self, _handle: ServiceHandle) -> Result<(), CleanroomError> {
+            Ok(())
         }
 
         fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {

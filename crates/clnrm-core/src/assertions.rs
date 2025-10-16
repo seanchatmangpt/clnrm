@@ -30,6 +30,12 @@ pub struct ServiceState {
     pub metrics: HashMap<String, f64>,
 }
 
+impl Default for AssertionContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AssertionContext {
     /// Create a new assertion context
     pub fn new() -> Self {
@@ -110,7 +116,7 @@ impl DatabaseAssertions {
             }
         }
 
-        Err(CleanroomError::validation_error(&format!(
+        Err(CleanroomError::validation_error(format!(
             "User {} not found in database",
             _user_id
         )))
@@ -127,7 +133,7 @@ impl DatabaseAssertions {
 
         // Count users in test data
         let mut user_count = 0;
-        for (key, _value) in &context.test_data {
+        for key in context.test_data.keys() {
             if key.starts_with("user_") && !key.contains("session") && !key.contains("email") {
                 user_count += 1;
             }
@@ -136,7 +142,7 @@ impl DatabaseAssertions {
         if user_count == _expected_count {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "Expected {} users, found {}",
                 _expected_count, user_count
             )))
@@ -156,7 +162,7 @@ impl DatabaseAssertions {
         if let Some(_table_data) = context.get_test_data(&format!("table_{}", _table_name)) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "Table '{}' not found in database",
                 _table_name
             )))
@@ -190,7 +196,7 @@ impl DatabaseAssertions {
         if let Some(_record_data) = context.get_test_data(&record_key) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "Record not found in table '{}' with conditions: {:?}",
                 _table, _conditions
             )))
@@ -245,7 +251,7 @@ impl CacheAssertions {
         if let Some(_key_data) = context.get_test_data(&format!("cache_key_{}", _key)) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "Key '{}' not found in cache",
                 _key
             )))
@@ -267,19 +273,19 @@ impl CacheAssertions {
                 if actual_value == _expected_value {
                     Ok(())
                 } else {
-                    Err(CleanroomError::validation_error(&format!(
+                    Err(CleanroomError::validation_error(format!(
                         "Key '{}' has value '{}', expected '{}'",
                         _key, actual_value, _expected_value
                     )))
                 }
             } else {
-                Err(CleanroomError::validation_error(&format!(
+                Err(CleanroomError::validation_error(format!(
                     "Key '{}' exists but value is not a string",
                     _key
                 )))
             }
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "Key '{}' not found in cache",
                 _key
             )))
@@ -299,7 +305,7 @@ impl CacheAssertions {
         if let Some(_session_data) = context.get_test_data(&format!("user_session_{}", _user_id)) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "User session for user {} not found in cache",
                 _user_id
             )))
@@ -355,7 +361,7 @@ impl EmailServiceAssertions {
         if let Some(_email_data) = context.get_test_data(&email_key) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "Email to '{}' with subject '{}' was not sent",
                 _to, _subject
             )))
@@ -373,7 +379,7 @@ impl EmailServiceAssertions {
 
         // Count emails in test data
         let mut email_count = 0;
-        for (key, _value) in &context.test_data {
+        for key in context.test_data.keys() {
             if key.starts_with("email_") {
                 email_count += 1;
             }
@@ -382,7 +388,7 @@ impl EmailServiceAssertions {
         if email_count == _expected_count {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "Expected {} emails sent, found {}",
                 _expected_count, email_count
             )))
@@ -403,7 +409,7 @@ impl EmailServiceAssertions {
         if let Some(_welcome_data) = context.get_test_data(&welcome_key) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "Welcome email to '{}' was not sent",
                 _user_email
             )))
@@ -463,7 +469,7 @@ impl UserAssertions {
         if let Some(_user_data) = context.get_test_data(&format!("user_{}", self.user_id)) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "User {} does not exist in database",
                 self.user_id
             )))
@@ -485,19 +491,19 @@ impl UserAssertions {
                 if role == _expected_role {
                     Ok(())
                 } else {
-                    Err(CleanroomError::validation_error(&format!(
+                    Err(CleanroomError::validation_error(format!(
                         "User {} has role '{}', expected '{}'",
                         self.user_id, role, _expected_role
                     )))
                 }
             } else {
-                Err(CleanroomError::validation_error(&format!(
+                Err(CleanroomError::validation_error(format!(
                     "User {} exists but has no role information",
                     self.user_id
                 )))
             }
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "User {} does not exist in database",
                 self.user_id
             )))
@@ -518,7 +524,7 @@ impl UserAssertions {
         if let Some(_email_data) = context.get_test_data(&email_key) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "User {} did not receive any email",
                 self.user_id
             )))
@@ -539,7 +545,7 @@ impl UserAssertions {
         if let Some(_session_data) = context.get_test_data(&session_key) {
             Ok(())
         } else {
-            Err(CleanroomError::validation_error(&format!(
+            Err(CleanroomError::validation_error(format!(
                 "User {} does not have a session in cache",
                 self.user_id
             )))
@@ -549,7 +555,7 @@ impl UserAssertions {
 
 thread_local! {
     // Global assertion context for the current test
-    static ASSERTION_CONTEXT: std::cell::RefCell<Option<AssertionContext>> = std::cell::RefCell::new(None);
+    static ASSERTION_CONTEXT: std::cell::RefCell<Option<AssertionContext>> = const { std::cell::RefCell::new(None) };
 }
 
 /// Set the assertion context for the current test
@@ -655,16 +661,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_simple_assertions() {
+    async fn test_simple_assertions() -> Result<()> {
         // Test the simplified assertion functions
-        let db = database().await.unwrap();
+        let db = database().await?;
         assert_eq!(db.service_name, "database");
 
-        let cache = cache().await.unwrap();
+        let cache = cache().await?;
         assert_eq!(cache.service_name, "cache");
 
-        let email = email_service().await.unwrap();
+        let email = email_service().await?;
         assert_eq!(email.service_name, "email_service");
+        Ok(())
     }
 
     #[tokio::test]

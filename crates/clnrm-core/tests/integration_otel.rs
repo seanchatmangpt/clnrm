@@ -18,7 +18,9 @@ fn docker_available() -> bool {
 
     let handle = thread::spawn(move || {
         let output = Command::new("docker").args(&["ps"]).output();
-        *result_clone.lock().unwrap() = Some(output);
+        if let Ok(mut guard) = result_clone.lock() {
+            *guard = Some(output);
+        }
     });
 
     // Wait maximum 2 seconds for Docker to respond
@@ -30,9 +32,12 @@ fn docker_available() -> bool {
     }
 
     // Get the result
-    let final_result = match result.lock().unwrap().take() {
-        Some(Ok(output)) => output.status.success(),
-        _ => false,
+    let final_result = match result.lock() {
+        Ok(mut guard) => match guard.take() {
+            Some(Ok(output)) => output.status.success(),
+            _ => false,
+        },
+        Err(_) => false,
     };
     final_result
 }
@@ -50,7 +55,7 @@ macro_rules! skip_if_no_docker {
 /// Test comprehensive OpenTelemetry tracing functionality
 #[test]
 #[ignore] // Requires Docker and OTel features - run with: cargo test --features otel-traces -- --ignored
-fn test_otel_tracing_comprehensive() {
+fn test_otel_tracing_comprehensive() -> Result<(), CleanroomError> {
     skip_if_no_docker!();
 
     // Initialize tracing subscriber to capture spans
@@ -60,16 +65,13 @@ fn test_otel_tracing_comprehensive() {
         .try_init();
 
     // Test 1: Basic tracing with Alpine
-    let alpine_backend =
-        TestcontainerBackend::new("alpine:latest").expect("Failed to create Alpine backend");
+    let alpine_backend = TestcontainerBackend::new("alpine:latest")?;
 
     let cmd1 = Cmd::new("echo")
         .arg("Hello, OTel!")
         .policy(Policy::default());
 
-    let result1 = alpine_backend
-        .run_cmd(cmd1)
-        .expect("Alpine command should succeed");
+    let result1 = alpine_backend.run_cmd(cmd1)?;
 
     assert_eq!(result1.exit_code, 0, "Alpine command should succeed");
     assert!(
@@ -78,16 +80,13 @@ fn test_otel_tracing_comprehensive() {
     );
 
     // Test 2: Tracing with different image and security policy
-    let ubuntu_backend =
-        TestcontainerBackend::new("ubuntu:20.04").expect("Failed to create Ubuntu backend");
+    let ubuntu_backend = TestcontainerBackend::new("ubuntu:20.04")?;
 
     let cmd2 = Cmd::new("uname")
         .arg("-a")
         .policy(Policy::with_security_level(SecurityLevel::High));
 
-    let result2 = ubuntu_backend
-        .run_cmd(cmd2)
-        .expect("Ubuntu command should succeed");
+    let result2 = ubuntu_backend.run_cmd(cmd2)?;
 
     assert_eq!(result2.exit_code, 0, "Ubuntu command should succeed");
     assert!(
@@ -99,16 +98,17 @@ fn test_otel_tracing_comprehensive() {
     // - name: "testcontainer.execute"
     // - fields: image="alpine"/"ubuntu", tag="latest"/"20.04"
     // - timing information
+
+    Ok(())
 }
 
 /// Test that tracing works with environment variables
 #[test]
 #[ignore] // Requires Docker and OTel features - run with: cargo test --features otel-traces -- --ignored
-fn test_otel_tracing_with_env_vars() {
+fn test_otel_tracing_with_env_vars() -> Result<(), CleanroomError> {
     skip_if_no_docker!();
 
-    let backend =
-        TestcontainerBackend::new("alpine:latest").expect("Failed to create testcontainer backend");
+    let backend = TestcontainerBackend::new("alpine:latest")?;
 
     let cmd = Cmd::new("env")
         .env("OTEL_SERVICE_NAME", "test-service")
@@ -121,9 +121,7 @@ fn test_otel_tracing_with_env_vars() {
         .env("TEST_VAR", "test-value")
         .policy(Policy::default());
 
-    let result = backend
-        .run_cmd(cmd)
-        .expect("Command execution should succeed");
+    let result = backend.run_cmd(cmd)?;
 
     assert_eq!(result.exit_code, 0, "Command should succeed");
     assert!(
@@ -142,18 +140,19 @@ fn test_otel_tracing_with_env_vars() {
     );
 
     // The trace span should include the OTel service information
+
+    Ok(())
 }
 
 /// Test OpenTelemetry Collector container data inspection (80/20 rule)
 #[test]
 #[ignore] // Requires Docker - run with: cargo test -- --ignored
-fn test_otel_collector_container_inspection() {
+fn test_otel_collector_container_inspection() -> Result<(), CleanroomError> {
     skip_if_no_docker!();
 
     // Start the official OTel Collector container
     let collector_backend =
-        TestcontainerBackend::new("otel/opentelemetry-collector-contrib:latest")
-            .expect("Failed to create OTel collector backend");
+        TestcontainerBackend::new("otel/opentelemetry-collector-contrib:latest")?;
 
     // Test 1: Container starts successfully (most important - 80% of value)
     // The OTel collector container is distroless and only contains the otelcol-contrib binary
@@ -162,13 +161,11 @@ fn test_otel_collector_container_inspection() {
 
     // Test 2: Verify the container is accessible by checking if we can create multiple backends
     let _collector_backend2 =
-        TestcontainerBackend::new("otel/opentelemetry-collector-contrib:latest")
-            .expect("Should be able to create multiple collector backends");
+        TestcontainerBackend::new("otel/opentelemetry-collector-contrib:latest")?;
 
     // Test 3: Verify different image tags work
     let _collector_backend_latest =
-        TestcontainerBackend::new("otel/opentelemetry-collector-contrib")
-            .expect("Should work without explicit tag");
+        TestcontainerBackend::new("otel/opentelemetry-collector-contrib")?;
 
     // Test 4: Test with different security policies
     let high_security_cmd = Cmd::new("echo")
@@ -204,4 +201,6 @@ fn test_otel_collector_container_inspection() {
     // Note: The container is distroless and only contains /otelcol-contrib binary.
     // It doesn't have shell utilities, so command execution will fail with exit code 127.
     // This is expected behavior for this type of container.
+
+    Ok(())
 }

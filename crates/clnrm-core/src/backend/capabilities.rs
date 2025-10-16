@@ -612,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_validation() {
+    fn test_capability_validation() -> Result<(), CleanroomError> {
         let mut registry = BackendCapabilityRegistry::new();
         
         let capability = BackendCapability {
@@ -625,17 +625,18 @@ mod tests {
             metadata: HashMap::new(),
         };
         
-        registry.register_capability(capability).unwrap();
+        registry.register_capability(capability)?;
         
         let capabilities = vec!["test_capability".to_string()];
         assert!(registry.validate_capability_set(&capabilities).is_ok());
         
         let invalid_capabilities = vec!["nonexistent".to_string()];
         assert!(registry.validate_capability_set(&invalid_capabilities).is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_capability_conflicts() {
+    fn test_capability_conflicts() -> Result<(), CleanroomError> {
         let mut registry = BackendCapabilityRegistry::new();
         
         let capability1 = BackendCapability {
@@ -658,13 +659,14 @@ mod tests {
             metadata: HashMap::new(),
         };
         
-        registry.register_capability(capability1).unwrap();
-        registry.register_capability(capability2).unwrap();
+        registry.register_capability(capability1)?;
+        registry.register_capability(capability2)?;
         
-        registry.add_conflict("capability1", "capability2").unwrap();
+        registry.add_conflict("capability1", "capability2")?;
         
         let capabilities = vec!["capability1".to_string(), "capability2".to_string()];
         assert!(registry.validate_capability_set(&capabilities).is_err());
+        Ok(())
     }
 
     #[test]
@@ -683,17 +685,18 @@ mod tests {
     }
 
     #[test]
-    fn test_capability_discovery_service() {
+    fn test_capability_discovery_service() -> Result<(), CleanroomError> {
         let mut service = CapabilityDiscoveryService::new();
         
         // Add standard capabilities
         let capabilities = StandardCapabilities::all_standard_capabilities();
         for capability in capabilities {
-            service.registry_mut().register_capability(capability).unwrap();
+            service.registry_mut().register_capability(capability)?;
         }
         
         let stats = service.registry().get_statistics();
         assert!(stats.total_capabilities > 0);
+        Ok(())
     }
 
     #[test]

@@ -39,12 +39,11 @@ macro_rules! skip_if_no_docker {
 
 /// Comprehensive testcontainer integration test (80/20 rule)
 #[test]
-fn test_testcontainer_comprehensive() {
+fn test_testcontainer_comprehensive() -> Result<(), CleanroomError> {
     skip_if_no_docker!();
 
     // Test 1: Basic functionality and backend capabilities
-    let alpine_backend = TestcontainerBackend::new("alpine:latest")
-        .expect("Failed to create testcontainer backend - check Docker is running and try: docker pull alpine:latest");
+    let alpine_backend = TestcontainerBackend::new("alpine:latest")?;
 
     // Verify backend capabilities
     assert!(
@@ -70,9 +69,7 @@ fn test_testcontainer_comprehensive() {
         .arg("Hello, World!")
         .policy(Policy::default());
 
-    let basic_result = alpine_backend
-        .run_cmd(basic_cmd)
-        .expect("Command execution should succeed - check container logs if this fails");
+    let basic_result = alpine_backend.run_cmd(basic_cmd)?;
 
     assert_eq!(basic_result.exit_code, 0, "Command should succeed");
     assert!(
@@ -95,9 +92,7 @@ fn test_testcontainer_comprehensive() {
         .env("ANOTHER_VAR", "another_value")
         .policy(Policy::default());
 
-    let env_result = alpine_backend
-        .run_cmd(env_cmd)
-        .expect("Command execution should succeed");
+    let env_result = alpine_backend.run_cmd(env_cmd)?;
 
     assert_eq!(env_result.exit_code, 0, "Command should succeed");
     assert!(
@@ -115,9 +110,7 @@ fn test_testcontainer_comprehensive() {
         .arg("High security test")
         .policy(high_security_policy);
 
-    let security_result = alpine_backend
-        .run_cmd(security_cmd)
-        .expect("Command execution should succeed even with high security");
+    let security_result = alpine_backend.run_cmd(security_cmd)?;
 
     assert_eq!(security_result.exit_code, 0, "Command should succeed");
     assert!(
@@ -126,16 +119,13 @@ fn test_testcontainer_comprehensive() {
     );
 
     // Test 5: Different container images
-    let ubuntu_backend =
-        TestcontainerBackend::new("ubuntu:20.04").expect("Failed to create Ubuntu backend");
+    let ubuntu_backend = TestcontainerBackend::new("ubuntu:20.04")?;
 
     let ubuntu_cmd = Cmd::new("cat")
         .arg("/etc/os-release")
         .policy(Policy::default());
 
-    let ubuntu_result = ubuntu_backend
-        .run_cmd(ubuntu_cmd)
-        .expect("Ubuntu command should succeed");
+    let ubuntu_result = ubuntu_backend.run_cmd(ubuntu_cmd)?;
 
     assert_eq!(ubuntu_result.exit_code, 0, "Ubuntu command should succeed");
     assert!(
@@ -147,9 +137,7 @@ fn test_testcontainer_comprehensive() {
     let failure_cmd = Cmd::new("false") // false command always returns non-zero exit code
         .policy(Policy::default());
 
-    let failure_result = alpine_backend
-        .run_cmd(failure_cmd)
-        .expect("Command execution should complete even if command fails");
+    let failure_result = alpine_backend.run_cmd(failure_cmd)?;
 
     assert_ne!(failure_result.exit_code, 0, "Command should fail");
     assert!(
@@ -164,4 +152,6 @@ fn test_testcontainer_comprehensive() {
     // - Security policy integration
     // - Multi-image support
     // - Error handling
+
+    Ok(())
 }

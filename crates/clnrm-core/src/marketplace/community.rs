@@ -201,7 +201,7 @@ impl CommunityManager {
     pub fn add_review(&mut self, review: PluginReview) -> Result<()> {
         self.reviews
             .entry(review.plugin_name.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(review);
         Ok(())
     }
@@ -227,7 +227,7 @@ impl CommunityManager {
         let thread_id = thread.id.clone();
         self.discussions
             .entry(thread.plugin_name.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(thread);
         Ok(thread_id)
     }

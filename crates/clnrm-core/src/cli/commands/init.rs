@@ -4,8 +4,6 @@
 //! structure creation.
 
 use crate::error::{CleanroomError, Result};
-use std::path::Path;
-use tracing::{debug, info};
 
 /// Initialize a new test project in the current directory
 pub fn init_project(force: bool, with_config: bool) -> Result<()> {
@@ -125,6 +123,7 @@ version = "0.1.0"
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     #[test]
@@ -174,6 +173,7 @@ mod tests {
             CleanroomError::internal_error("Failed to create temp dir").with_source(e.to_string())
         })?;
 
+        let original_dir = std::env::current_dir()?;
         std::env::set_current_dir(temp_dir.path()).map_err(|e| {
             CleanroomError::internal_error("Failed to change directory").with_source(e.to_string())
         })?;
@@ -181,18 +181,21 @@ mod tests {
         // Act
         let result = init_project(false, true);
 
+        // Restore original directory
+        std::env::set_current_dir(original_dir)?;
+
         // Assert
         assert!(result.is_ok());
 
         // Verify directory structure was created
-        assert!(Path::new("tests").exists());
-        assert!(Path::new("scenarios").exists());
-        assert!(Path::new("README.md").exists());
-        assert!(Path::new("tests/basic.clnrm.toml").exists());
-        assert!(Path::new("cleanroom.toml").exists());
+        assert!(temp_dir.path().join("tests").exists());
+        assert!(temp_dir.path().join("scenarios").exists());
+        assert!(temp_dir.path().join("README.md").exists());
+        assert!(temp_dir.path().join("tests/basic.clnrm.toml").exists());
+        assert!(temp_dir.path().join("cleanroom.toml").exists());
 
         // Verify cleanroom.toml content
-        let config_content = fs::read_to_string("cleanroom.toml").map_err(|e| {
+        let config_content = fs::read_to_string(temp_dir.path().join("cleanroom.toml")).map_err(|e| {
             CleanroomError::internal_error("Failed to read config file").with_source(e.to_string())
         })?;
         assert!(config_content.contains("[project]"));

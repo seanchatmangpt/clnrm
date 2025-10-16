@@ -77,3 +77,4 @@ vllm_health_check = "vLLM service should respond to health checks"
 model_availability = "vLLM should serve the configured model"
 concurrent_request_handling = "vLLM should handle concurrent requests efficiently"
 performance_acceptable = "vLLM response times should be acceptable for production use"
+
