@@ -9,10 +9,12 @@
 
 pub mod assertions;
 pub mod backend;
+pub mod cache;
 pub mod cleanroom;
 pub mod cli;
 pub mod config;
 pub mod error;
+pub mod formatting;
 pub mod macros;
 pub mod marketplace;
 pub mod policy;
@@ -23,6 +25,7 @@ pub mod telemetry;
 pub mod template;
 pub mod utils;
 pub mod validation;
+pub mod watch;
 
 // Testing utilities (includes property-based test generators)
 pub mod testing;
@@ -49,7 +52,15 @@ pub use services::generic::GenericContainerPlugin;
 pub use services::surrealdb::SurrealDbPlugin;
 pub use template::{DeterminismConfig, TemplateContext, TemplateRenderer};
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
-pub use validation::{PrdExpectations, ValidationReport};
+pub use validation::{PrdExpectations, ShapeValidator, ValidationReport};
+pub use watch::{WatchConfig, debouncer::FileDebouncer};
+pub use cache::{Cache, CacheManager, CacheStats, FileCache, MemoryCache};
+pub use formatting::{
+    format_toml_content, format_toml_file, needs_formatting,
+    format_test_results, Formatter, FormatterType,
+    HumanFormatter, JsonFormatter, JunitFormatter, TapFormatter,
+    TestResult, TestStatus, TestSuite,
+};
 
 // The cleanroom_test macro is already exported via #[macro_export] in macros.rs
 

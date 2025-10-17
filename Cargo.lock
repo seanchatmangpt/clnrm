@@ -893,7 +893,7 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "clnrm"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "clap",
  "clnrm-core 0.4.1",
@@ -907,7 +907,7 @@ name = "clnrm-ai"
 version = "0.5.0"
 dependencies = [
  "chrono",
- "clnrm-core 0.6.0",
+ "clnrm-core 0.7.0",
  "rand 0.8.5",
  "reqwest",
  "serde",
@@ -959,7 +959,7 @@ dependencies = [
 
 [[package]]
 name = "clnrm-core"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -967,6 +967,7 @@ dependencies = [
  "env_logger",
  "futures-util",
  "glob",
+ "globset",
  "junit-report",
  "log",
  "notify",
@@ -989,6 +990,7 @@ dependencies = [
  "testcontainers-modules",
  "tokio",
  "toml 0.9.8",
+ "toml_edit 0.22.27",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
@@ -998,7 +1000,7 @@ dependencies = [
 
 [[package]]
 name = "clnrm-shared"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "serde",
  "serde_json",

@@ -29,6 +29,7 @@ pub async fn run_cli() -> Result<()> {
             fail_fast,
             watch,
             interactive,
+            force,
         } => {
             let config = crate::cli::types::CliConfig {
                 parallel,
@@ -38,6 +39,7 @@ pub async fn run_cli() -> Result<()> {
                 watch,
                 interactive,
                 verbose: cli.verbose,
+                force,
             };
 
             // If no paths provided, discover all test files automatically
@@ -194,6 +196,74 @@ pub async fn run_cli() -> Result<()> {
         }
 
         Commands::Health { verbose } => system_health_check(verbose).await,
+
+        Commands::Fmt { files, check, verify } => {
+            format_files(&files, check, verify)?;
+            Ok(())
+        }
+
+        Commands::DryRun { files, verbose } => {
+            use crate::CleanroomError;
+            let file_refs: Vec<_> = files.iter().map(|p| p.as_path()).collect();
+            let results = dry_run_validate(file_refs, verbose)?;
+
+            // Count failures
+            let failed_count = results.iter().filter(|r| !r.valid).count();
+
+            // Exit with error if any validations failed
+            if failed_count > 0 {
+                return Err(CleanroomError::validation_error(format!(
+                    "{} file(s) failed validation",
+                    failed_count
+                )));
+            }
+
+            Ok(())
+        }
+
+        Commands::Dev { paths, debounce_ms, clear } => {
+            let config = crate::cli::types::CliConfig {
+                format: cli.format.clone(),
+                verbose: cli.verbose,
+                ..Default::default()
+            };
+
+            run_dev_mode(paths, debounce_ms, clear, config).await
+        }
+
+        Commands::Lint { files, format, deny_warnings } => {
+            let file_refs: Vec<_> = files.iter().map(|p| p.as_path()).collect();
+
+            // Convert format enum to string
+            let format_str = match format {
+                crate::cli::types::LintFormat::Human => "human",
+                crate::cli::types::LintFormat::Json => "json",
+                crate::cli::types::LintFormat::Github => "github",
+            };
+
+            // This will print diagnostics and return error if needed
+            lint_files(file_refs, format_str, deny_warnings)?;
+
+            Ok(())
+        }
+
+        Commands::Diff { baseline, current, format, only_changes } => {
+            // Convert format enum to string
+            let format_str = match format {
+                crate::cli::types::DiffFormat::Tree => "tree",
+                crate::cli::types::DiffFormat::Json => "json",
+                crate::cli::types::DiffFormat::SideBySide => "side-by-side",
+            };
+
+            let result = diff_traces(&baseline, &current, format_str, only_changes)?;
+
+            // Exit with error code if differences found
+            if result.added_count > 0 || result.removed_count > 0 || result.modified_count > 0 {
+                std::process::exit(1);
+            }
+
+            Ok(())
+        }
 
         Commands::AiMonitor {
             interval: _,

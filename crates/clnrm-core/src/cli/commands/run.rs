@@ -3,10 +3,12 @@
 //! Handles test execution, both sequential and parallel, with comprehensive
 //! error handling and result reporting.
 
+use crate::cache::{Cache, CacheManager};
 use crate::cleanroom::CleanroomEnvironment;
 use crate::cli::types::{CliConfig, CliTestResult, OutputFormat};
 use crate::cli::utils::{discover_test_files, generate_junit_xml};
 use crate::error::{CleanroomError, Result};
+use crate::template::TemplateRenderer;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
@@ -15,7 +17,7 @@ use tracing::{debug, error, info, warn};
 #[cfg(feature = "otel-traces")]
 use crate::telemetry::spans;
 
-/// Run tests from TOML files
+/// Run tests from TOML files with cache support
 pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
     // Create root span for entire test run (OTEL self-testing)
     #[cfg(feature = "otel-traces")]
@@ -33,7 +35,7 @@ pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
 
     info!("Running cleanroom tests (framework self-testing)");
     debug!("Test paths: {:?}", paths);
-    debug!("Config: parallel={}, jobs={}", config.parallel, config.jobs);
+    debug!("Config: parallel={}, jobs={}, force={}", config.parallel, config.jobs, config.force);
 
     // Handle watch mode
     if config.watch {
@@ -57,14 +59,58 @@ pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
 
     info!("Found {} test file(s) to execute", all_test_files.len());
 
+    // Initialize cache manager
+    let cache_manager = CacheManager::new()?;
+
+    // Filter tests based on cache (unless --force is specified)
+    let tests_to_run = if config.force {
+        info!("🔨 Force mode enabled - bypassing cache");
+        all_test_files.clone()
+    } else {
+        info!("🔍 Checking cache...");
+        filter_changed_tests(&all_test_files, &cache_manager).await?
+    };
+
+    let skipped_count = all_test_files.len() - tests_to_run.len();
+
+    if !config.force && skipped_count > 0 {
+        println!("⚡ {} scenario(s) changed, {} unchanged", tests_to_run.len(), skipped_count);
+        info!("Cache hit: {} scenarios skipped", skipped_count);
+    }
+
+    if tests_to_run.is_empty() {
+        println!("✅ All scenarios unchanged (cache hit)");
+        println!("Skipped {} scenarios", skipped_count);
+        info!("All tests unchanged - skipping execution");
+
+        // Save cache to update timestamps
+        cache_manager.save()?;
+        return Ok(());
+    }
+
+    println!("Running {} scenario(s)...", tests_to_run.len());
+
     let start_time = std::time::Instant::now();
     let results = if config.parallel {
-        run_tests_parallel_with_results(&all_test_files, config).await?
+        run_tests_parallel_with_results(&tests_to_run, config).await?
     } else {
-        run_tests_sequential_with_results(&all_test_files, config).await?
+        run_tests_sequential_with_results(&tests_to_run, config).await?
     };
 
     let total_duration = start_time.elapsed().as_millis() as u64;
+
+    // Update cache for successfully executed tests
+    update_cache_for_results(&results, &cache_manager).await?;
+    cache_manager.save()?;
+
+    if !config.force && skipped_count == 0 {
+        println!("\nCache created: {} files tracked", all_test_files.len());
+        info!("Cache created with {} files", all_test_files.len());
+    } else if !config.force {
+        println!("\nCache updated");
+        info!("Cache updated");
+    }
+
     let cli_results = crate::cli::types::CliTestResults {
         tests: results,
         total_duration_ms: total_duration,
@@ -80,6 +126,19 @@ pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
             // Default human-readable output
             let passed = cli_results.tests.iter().filter(|t| t.passed).count();
             let failed = cli_results.tests.iter().filter(|t| !t.passed).count();
+
+            println!();
+            for result in &cli_results.tests {
+                if result.passed {
+                    println!("✅ {} - PASS ({}ms)", result.name, result.duration_ms);
+                } else {
+                    println!("❌ {} - FAIL ({}ms)", result.name, result.duration_ms);
+                    if let Some(error) = &result.error {
+                        println!("   Error: {}", error);
+                    }
+                }
+            }
+
             info!("Test Results: {} passed, {} failed", passed, failed);
 
             if failed > 0 {
@@ -87,6 +146,75 @@ pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
                     "{} test(s) failed",
                     failed
                 )));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Filter tests that have changed since last cache update
+///
+/// Returns only test files whose rendered content has changed.
+async fn filter_changed_tests(
+    test_files: &[PathBuf],
+    cache_manager: &CacheManager,
+) -> Result<Vec<PathBuf>> {
+    let mut renderer = TemplateRenderer::new()?;
+    let mut changed_tests = Vec::new();
+
+    for test_file in test_files {
+        // Read and render the test file
+        let content = std::fs::read_to_string(test_file).map_err(|e| {
+            CleanroomError::io_error(format!(
+                "Failed to read test file '{}': {}",
+                test_file.display(),
+                e
+            ))
+        })?;
+
+        // Render template to get final content for hashing
+        let template_name = test_file.to_str().unwrap_or("unknown");
+        let rendered_content = renderer.render_str(&content, template_name)?;
+
+        // Check if file has changed
+        if cache_manager.has_changed(test_file, &rendered_content)? {
+            changed_tests.push(test_file.clone());
+        }
+    }
+
+    Ok(changed_tests)
+}
+
+/// Update cache for test results
+///
+/// Updates cache hashes for successfully executed tests.
+async fn update_cache_for_results(
+    results: &[CliTestResult],
+    cache_manager: &CacheManager,
+) -> Result<()> {
+    let mut renderer = TemplateRenderer::new()?;
+
+    for result in results {
+        // Only update cache for passed tests
+        if result.passed {
+            // Reconstruct the file path from test name
+            // This assumes test names match file names (which they should)
+            let test_path = PathBuf::from(&result.name);
+
+            // Check if file exists and update cache
+            if test_path.exists() {
+                let content = std::fs::read_to_string(&test_path).map_err(|e| {
+                    CleanroomError::io_error(format!(
+                        "Failed to read test file '{}': {}",
+                        test_path.display(),
+                        e
+                    ))
+                })?;
+
+                let template_name = test_path.to_str().unwrap_or("unknown");
+                let rendered_content = renderer.render_str(&content, template_name)?;
+                cache_manager.update(&test_path, &rendered_content)?;
             }
         }
     }

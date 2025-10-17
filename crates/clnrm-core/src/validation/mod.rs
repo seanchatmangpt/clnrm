@@ -9,6 +9,7 @@ pub mod hermeticity_validator;
 pub mod orchestrator;
 pub mod order_validator;
 pub mod otel;
+pub mod shape;
 pub mod span_validator;
 pub mod status_validator;
 pub mod window_validator;
@@ -23,6 +24,7 @@ pub use order_validator::OrderExpectation;
 pub use otel::{
     OtelValidationConfig, OtelValidator, SpanAssertion as OtelSpanAssertion, TraceAssertion,
 };
+pub use shape::{ErrorCategory, ShapeValidationError, ShapeValidationResult, ShapeValidator};
 pub use span_validator::{SpanAssertion, SpanData, SpanKind, SpanValidator};
 pub use status_validator::{StatusCode, StatusExpectation};
 pub use window_validator::{WindowExpectation, WindowValidator};

@@ -60,6 +60,10 @@ pub enum Commands {
         /// Interactive debugging mode
         #[arg(short, long)]
         interactive: bool,
+
+        /// Force run all tests (bypass cache)
+        #[arg(long)]
+        force: bool,
     },
 
     /// Initialize a new test project
@@ -236,6 +240,77 @@ pub enum Commands {
         #[command(subcommand)]
         command: crate::marketplace::MarketplaceSubcommands,
     },
+
+    /// Development mode with file watching (v0.7.0)
+    Dev {
+        /// Test files or directories to watch
+        paths: Option<Vec<PathBuf>>,
+
+        /// Watch debounce delay in milliseconds
+        #[arg(long, default_value = "300")]
+        debounce_ms: u64,
+
+        /// Clear screen on each run
+        #[arg(long)]
+        clear: bool,
+    },
+
+    /// Dry-run validation without execution (v0.7.0)
+    DryRun {
+        /// Files to validate
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+
+        /// Show detailed validation output
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Format Tera templates (v0.7.0)
+    Fmt {
+        /// Files to format
+        files: Vec<PathBuf>,
+
+        /// Check formatting without modifying files
+        #[arg(long)]
+        check: bool,
+
+        /// Verify idempotency after formatting
+        #[arg(long)]
+        verify: bool,
+    },
+
+    /// Lint TOML test configurations (v0.7.0)
+    Lint {
+        /// Files to lint
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+
+        /// Output format for diagnostics
+        #[arg(short, long, default_value = "human")]
+        format: LintFormat,
+
+        /// Fail on warnings
+        #[arg(long)]
+        deny_warnings: bool,
+    },
+
+    /// Diff OpenTelemetry traces (v0.7.0)
+    Diff {
+        /// First trace file or test run
+        baseline: PathBuf,
+
+        /// Second trace file or test run to compare
+        current: PathBuf,
+
+        /// Output format
+        #[arg(short, long, default_value = "tree")]
+        format: DiffFormat,
+
+        /// Show only differences
+        #[arg(long)]
+        only_changes: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -321,6 +396,26 @@ pub enum PredictionFormat {
     Csv,
 }
 
+#[derive(Clone, Debug, ValueEnum)]
+pub enum LintFormat {
+    /// Human-readable diagnostics
+    Human,
+    /// JSON format for IDE integration
+    Json,
+    /// GitHub Actions annotations
+    Github,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum DiffFormat {
+    /// ASCII tree visualization
+    Tree,
+    /// JSON structured diff
+    Json,
+    /// Side-by-side comparison
+    SideBySide,
+}
+
 /// CLI configuration
 #[derive(Debug, Clone)]
 pub struct CliConfig {
@@ -338,6 +433,8 @@ pub struct CliConfig {
     pub interactive: bool,
     /// Verbosity level
     pub verbose: u8,
+    /// Force bypass cache
+    pub force: bool,
 }
 
 impl Default for CliConfig {
@@ -350,6 +447,7 @@ impl Default for CliConfig {
             watch: false,
             interactive: false,
             verbose: 0,
+            force: false,
         }
     }
 }

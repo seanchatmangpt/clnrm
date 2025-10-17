@@ -10,6 +10,7 @@ pub mod run;
 pub mod self_test;
 pub mod services;
 pub mod template;
+pub mod v0_7_0;
 pub mod validate;
 
 // Re-export all public functions for easy access
@@ -37,3 +38,10 @@ pub use report::{display_test_results, generate_framework_report, generate_repor
 pub use self_test::run_self_tests;
 
 pub use health::system_health_check;
+
+// Re-export v0.7.0 commands
+pub use v0_7_0::dev::run_dev_mode;
+pub use v0_7_0::diff::diff_traces;
+pub use v0_7_0::dry_run::{dry_run_validate, ValidationResult as DryRunValidationResult};
+pub use v0_7_0::fmt::format_files;
+pub use v0_7_0::lint::lint_files;

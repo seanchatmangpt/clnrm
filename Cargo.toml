@@ -13,7 +13,7 @@ members = [
 default-members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared"]
 
 [workspace.package]
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 license = "MIT"
 authors = ["Sean Chatman <seanchatmangpt@gmail.com>"]
@@ -43,6 +43,7 @@ walkdir = "2.5"
 tempfile = "3.0"
 junit-report = "0.8"
 notify = "6.0"
+toml_edit = "0.22"
 
 # OpenTelemetry dependencies
 opentelemetry = { version = "0.31", default-features = false, features = [

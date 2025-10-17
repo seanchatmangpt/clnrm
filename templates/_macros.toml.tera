@@ -1,0 +1,227 @@
+{# _macros.toml.tera - Cleanroom v0.7.0 Tera Macro Library
+
+   This file provides reusable macros for generating common TOML patterns
+   in OpenTelemetry validation configurations. Import with:
+
+   {% import "_macros.toml.tera" as m %}
+
+   All macros generate flat TOML structures compatible with clnrm's parser.
+#}
+
+{# ============================================================================
+   MACRO: span(name, kind, attrs={})
+
+   Generate a [[expect.span]] block for OpenTelemetry span validation.
+
+   Parameters:
+     - name (string): Span name to match
+     - kind (string): Span kind ("internal", "server", "client", "producer", "consumer")
+     - attrs (object): Optional attribute key-value pairs for validation
+
+   Example:
+     {{ m::span("http.request", "server", {"http.method": "GET", "http.status_code": "200"}) }}
+
+   Produces:
+     [[expect.span]]
+     name = "http.request"
+     kind = "server"
+     attrs.all = { "http.method" = "GET", "http.status_code" = "200" }
+============================================================================ #}
+{% macro span(name, kind, attrs={}) -%}
+[[expect.span]]
+name = "{{ name }}"
+kind = "{{ kind }}"
+{% if attrs and attrs | length > 0 -%}
+attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}, {% endif %}{% endfor %} }
+{% endif -%}
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: lifecycle(service)
+
+   Generate complete service lifecycle span expectations with ordering constraints.
+   Creates three spans: {service}.start, {service}.exec, {service}.stop
+   and ensures they execute in the correct order.
+
+   Parameters:
+     - service (string): Service name prefix
+
+   Example:
+     {{ m::lifecycle("postgres") }}
+
+   Produces:
+     [[expect.span]]
+     name = "postgres.start"
+     kind = "internal"
+
+     [[expect.span]]
+     name = "postgres.exec"
+     kind = "internal"
+
+     [[expect.span]]
+     name = "postgres.stop"
+     kind = "internal"
+
+     [expect.order]
+     must_precede = [
+       ["postgres.start", "postgres.exec"],
+       ["postgres.exec", "postgres.stop"]
+     ]
+============================================================================ #}
+{% macro lifecycle(service) -%}
+# Service lifecycle: {{ service }}
+[[expect.span]]
+name = "{{ service }}.start"
+kind = "internal"
+
+[[expect.span]]
+name = "{{ service }}.exec"
+kind = "internal"
+
+[[expect.span]]
+name = "{{ service }}.stop"
+kind = "internal"
+
+[expect.order]
+must_precede = [
+  ["{{ service }}.start", "{{ service }}.exec"],
+  ["{{ service }}.exec", "{{ service }}.stop"]
+]
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: edges(pairs)
+
+   Generate parent-child graph edge constraints for span relationships.
+
+   Parameters:
+     - pairs (array): Array of [parent, child] tuples
+
+   Example:
+     {{ m::edges([["root", "child1"], ["root", "child2"], ["child1", "grandchild"]]) }}
+
+   Produces:
+     [expect.graph]
+     must_include = [
+       ["root", "child1"],
+       ["root", "child2"],
+       ["child1", "grandchild"]
+     ]
+============================================================================ #}
+{% macro edges(pairs) -%}
+{% if pairs and pairs | length > 0 -%}
+[expect.graph]
+must_include = [
+{% for pair in pairs -%}
+  ["{{ pair.0 }}", "{{ pair.1 }}"]{% if not loop.last %},{% endif %}
+
+{% endfor -%}
+]
+{% endif -%}
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: window(start, end)
+
+   Generate time window constraint ensuring one span contains another.
+
+   Parameters:
+     - start (string): Outer span name (must start before and end after)
+     - end (string): Inner span name (must be contained within outer span)
+
+   Example:
+     {{ m::window("transaction", "db.query") }}
+
+   Produces:
+     [expect.window]
+     "transaction" = { contains = ["db.query"] }
+============================================================================ #}
+{% macro window(start, end) -%}
+[expect.window]
+"{{ start }}" = { contains = ["{{ end }}"] }
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: count(kind, min, max=none)
+
+   Generate span count constraint by kind.
+
+   Parameters:
+     - kind (string): Span kind to count ("internal", "server", "client", etc.)
+     - min (number): Minimum expected span count
+     - max (number): Optional maximum expected span count
+
+   Example:
+     {{ m::count("server", 1, 5) }}
+     {{ m::count("internal", 3) }}
+
+   Produces:
+     [expect.count]
+     by_kind.server = { min = 1, max = 5 }
+
+     [expect.count]
+     by_kind.internal = { min = 3 }
+============================================================================ #}
+{% macro count(kind, min, max=none) -%}
+[expect.count]
+by_kind.{{ kind }} = { min = {{ min }}{% if max %}, max = {{ max }}{% endif %} }
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: attrs(pairs)
+
+   Generate attribute constraints as a TOML inline table.
+   Helper macro for building attribute validation blocks.
+
+   Parameters:
+     - pairs (object): Key-value pairs of attributes
+
+   Example:
+     {{ m::attrs({"http.method": "GET", "http.status_code": "200"}) }}
+
+   Produces:
+     { "http.method" = "GET", "http.status_code" = "200" }
+============================================================================ #}
+{% macro attrs(pairs) -%}
+{ {% for k, v in pairs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}, {% endif %}{% endfor %} }
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: multi_lifecycle(services)
+
+   Generate lifecycle spans for multiple services at once.
+
+   Parameters:
+     - services (array): Array of service names
+
+   Example:
+     {{ m::multi_lifecycle(["postgres", "redis", "api"]) }}
+
+   Produces:
+     Complete lifecycle blocks for each service
+============================================================================ #}
+{% macro multi_lifecycle(services) -%}
+{% for service in services -%}
+{{ self::lifecycle(service) }}
+{% if not loop.last %}
+
+{% endif -%}
+{% endfor -%}
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: span_with_attrs(name, kind, attr_pairs)
+
+   Convenience wrapper combining span() with inline attributes.
+
+   Parameters:
+     - name (string): Span name
+     - kind (string): Span kind
+     - attr_pairs (object): Attribute key-value pairs
+
+   Example:
+     {{ m::span_with_attrs("api.request", "server", {"method": "POST", "endpoint": "/users"}) }}
+============================================================================ #}
+{% macro span_with_attrs(name, kind, attr_pairs) -%}
+{{ self::span(name, kind, attr_pairs) }}
+{%- endmacro %}

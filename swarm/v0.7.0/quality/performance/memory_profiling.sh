@@ -1,0 +1,191 @@
+#!/bin/bash
+# Memory Profiling for v0.7.0 DX Features
+#
+# This script profiles memory usage and generates reports for optimization.
+#
+# Requirements:
+# - valgrind (Linux) or instruments (macOS)
+# - heaptrack (optional, Linux only)
+#
+# Usage:
+#   ./memory_profiling.sh
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../../" && pwd)"
+OUTPUT_DIR="$SCRIPT_DIR/memory_profiles"
+
+mkdir -p "$OUTPUT_DIR"
+
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║  Memory Profiling for v0.7.0 DX Features                  ║"
+echo "╚═══════════════════════════════════════════════════════════╝"
+echo ""
+
+cd "$PROJECT_ROOT"
+
+# Build with debug symbols for better profiling
+echo "Building with debug symbols..."
+cargo build --release --features debug
+
+# Detect OS for appropriate profiling tool
+OS="$(uname)"
+
+profile_memory() {
+    local test_name=$1
+    local command=$2
+
+    echo ""
+    echo "═══════════════════════════════════════════════════════════"
+    echo "Profiling: $test_name"
+    echo "═══════════════════════════════════════════════════════════"
+
+    if [ "$OS" = "Linux" ]; then
+        if command -v heaptrack &> /dev/null; then
+            echo "Using heaptrack..."
+            heaptrack --output "$OUTPUT_DIR/${test_name}.heaptrack" $command
+            echo "✓ Profile saved: $OUTPUT_DIR/${test_name}.heaptrack"
+        elif command -v valgrind &> /dev/null; then
+            echo "Using valgrind massif..."
+            valgrind --tool=massif \
+                --massif-out-file="$OUTPUT_DIR/${test_name}.massif" \
+                $command > /dev/null 2>&1
+            echo "✓ Profile saved: $OUTPUT_DIR/${test_name}.massif"
+
+            # Generate report
+            ms_print "$OUTPUT_DIR/${test_name}.massif" > "$OUTPUT_DIR/${test_name}.massif.txt"
+            echo "✓ Report saved: $OUTPUT_DIR/${test_name}.massif.txt"
+        else
+            echo "⚠️  No memory profiler found (install heaptrack or valgrind)"
+        fi
+    elif [ "$OS" = "Darwin" ]; then
+        echo "Using macOS /usr/bin/time..."
+        /usr/bin/time -l $command 2>&1 | tee "$OUTPUT_DIR/${test_name}_time.txt"
+        echo "✓ Memory stats saved: $OUTPUT_DIR/${test_name}_time.txt"
+    else
+        echo "⚠️  Unsupported OS: $OS"
+    fi
+}
+
+# Profile different scenarios
+profile_memory "hot_reload_workflow" \
+    "cargo bench --bench dx_features_benchmarks -- hot_reload_workflow --sample-size 10"
+
+profile_memory "sustained_load" \
+    "cargo bench --bench dx_features_benchmarks -- memory_usage/sustained_load --sample-size 10"
+
+profile_memory "scalability_100_files" \
+    "cargo bench --bench dx_features_benchmarks -- scalability/100_files --sample-size 10"
+
+# Generate summary report
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "Generating Memory Usage Summary"
+echo "═══════════════════════════════════════════════════════════"
+
+REPORT_FILE="$OUTPUT_DIR/memory_summary.md"
+
+cat > "$REPORT_FILE" << 'EOF'
+# Memory Usage Profile - v0.7.0 DX Features
+
+**Generated:** $(date)
+
+## Memory Targets
+
+| Component | Target | Measured | Status |
+|-----------|--------|----------|--------|
+| File watcher | <10MB | TBD | - |
+| Worker pool base | <100MB | TBD | - |
+| Template cache | <50MB | TBD | - |
+| Per-container overhead | TBD | TBD | - |
+
+## Test Scenarios
+
+### 1. Hot Reload Workflow
+
+**Description:** Single file change → render → validate cycle
+
+**Measurements:**
+- Peak memory: TBD
+- Average memory: TBD
+- Memory growth: TBD
+
+### 2. Sustained Load (1000 templates)
+
+**Description:** Process 1000 templates consecutively
+
+**Measurements:**
+- Peak memory: TBD
+- Average memory: TBD
+- Memory growth: TBD
+- Leak detected: TBD
+
+### 3. Scalability (100 concurrent files)
+
+**Description:** Process 100 template files in parallel
+
+**Measurements:**
+- Peak memory: TBD
+- Per-file overhead: TBD
+- Memory efficiency: TBD
+
+## Memory Hotspots
+
+### Top Memory Consumers
+
+1. **TBD** - XX MB (XX%)
+2. **TBD** - XX MB (XX%)
+3. **TBD** - XX MB (XX%)
+
+### Allocation Patterns
+
+- Total allocations: TBD
+- Peak heap size: TBD
+- Average allocation size: TBD
+
+## Optimization Opportunities
+
+### High Priority
+
+1. **TBD**
+   - Current: XX MB
+   - Potential saving: XX MB
+   - Approach: TBD
+
+### Medium Priority
+
+1. **TBD**
+2. **TBD**
+
+## Recommendations
+
+1. **Template caching**: Consider implementing template caching to reduce re-parsing overhead
+2. **String interning**: Use string interning for frequently repeated strings
+3. **Lazy loading**: Defer loading of large data structures until needed
+4. **Memory pooling**: Consider object pooling for frequently allocated objects
+
+## Conclusion
+
+**Overall Memory Efficiency:** TBD
+
+- ✅ Meets all memory targets
+- ⚠️  Some concerns (acceptable)
+- ❌ Exceeds targets (requires optimization)
+
+---
+
+**Generated By:** Performance Validator Agent
+**Date:** $(date)
+**Framework Version:** v0.7.0
+EOF
+
+echo "✓ Memory summary saved: $REPORT_FILE"
+echo ""
+echo "Memory profiles saved in: $OUTPUT_DIR"
+echo ""
+echo "Next steps:"
+echo "  1. Review memory profiles for leaks and excessive allocations"
+echo "  2. Identify hotspots and optimization opportunities"
+echo "  3. Implement caching and pooling strategies"
+echo "  4. Re-run profiling to validate improvements"

@@ -38,6 +38,7 @@ walkdir = { workspace = true }
 tempfile = { workspace = true }
 junit-report = { workspace = true }
 notify = { workspace = true }
+toml_edit = { workspace = true }
 
 # OpenTelemetry dependencies
 opentelemetry = { workspace = true, optional = true }
@@ -58,6 +59,7 @@ glob = "0.3"
 # Template rendering
 tera = "1.19"
 sha2 = "0.10"
+globset = "0.4.17"
 
 [dev-dependencies]
 # Property-based testing

@@ -1,8 +1,9 @@
-# Tera Template Guide for Cleanroom v0.6.0
+# Tera Template Guide for Cleanroom v0.7.0
 
 ## Table of Contents
 
 - [Introduction](#introduction)
+- [Macro Library](#macro-library)
 - [Basic Syntax](#basic-syntax)
 - [Template Variables](#template-variables)
 - [Custom Functions](#custom-functions)
@@ -13,13 +14,410 @@
 
 ## Introduction
 
-Cleanroom v0.6.0 introduces **Tera templating** for dynamic test configuration. Tera uses Jinja2-like syntax to enable:
+Cleanroom v0.7.0 introduces **Tera templating** for dynamic test configuration. Tera uses Jinja2-like syntax to enable:
 
 - Dynamic test names and descriptions
 - Environment-based configuration
 - Matrix testing (cross-product of variables)
 - Reproducible timestamps and identifiers
 - Conditional configuration blocks
+- **NEW in v0.7.0**: Macro library for eliminating TOML boilerplate
+
+## Macro Library
+
+Cleanroom v0.7.0 introduces a comprehensive macro library (`_macros.toml.tera`) that eliminates TOML boilerplate for common OpenTelemetry validation patterns.
+
+### Installation
+
+The macro library is automatically installed to `~/.clnrm/templates/` when you run:
+
+```bash
+clnrm init
+```
+
+### Usage
+
+Import the macro library in your `.clnrm.toml.tera` template files:
+
+```tera
+{% import "_macros.toml.tera" as m %}
+```
+
+### Available Macros
+
+#### 1. `span(name, kind, attrs={})`
+
+Generate a `[[expect.span]]` block for OpenTelemetry span validation.
+
+**Parameters:**
+- `name` (string): Span name to match
+- `kind` (string): Span kind (`"internal"`, `"server"`, `"client"`, `"producer"`, `"consumer"`)
+- `attrs` (object, optional): Attribute key-value pairs for validation
+
+**Example:**
+
+```tera
+{{ m::span("http.request", "server", {"http.method": "GET", "http.status_code": "200"}) }}
+```
+
+**Produces:**
+
+```toml
+[[expect.span]]
+name = "http.request"
+kind = "server"
+attrs.all = { "http.method" = "GET", "http.status_code" = "200" }
+```
+
+#### 2. `lifecycle(service)`
+
+Generate complete service lifecycle span expectations with ordering constraints.
+
+Creates three spans: `{service}.start`, `{service}.exec`, `{service}.stop` and ensures they execute in the correct order.
+
+**Parameters:**
+- `service` (string): Service name prefix
+
+**Example:**
+
+```tera
+{{ m::lifecycle("postgres") }}
+```
+
+**Produces:**
+
+```toml
+# Service lifecycle: postgres
+[[expect.span]]
+name = "postgres.start"
+kind = "internal"
+
+[[expect.span]]
+name = "postgres.exec"
+kind = "internal"
+
+[[expect.span]]
+name = "postgres.stop"
+kind = "internal"
+
+[expect.order]
+must_precede = [
+  ["postgres.start", "postgres.exec"],
+  ["postgres.exec", "postgres.stop"]
+]
+```
+
+#### 3. `edges(pairs)`
+
+Generate parent-child graph edge constraints for span relationships.
+
+**Parameters:**
+- `pairs` (array): Array of `[parent, child]` tuples
+
+**Example:**
+
+```tera
+{{ m::edges([
+  ["root", "child1"],
+  ["root", "child2"],
+  ["child1", "grandchild"]
+]) }}
+```
+
+**Produces:**
+
+```toml
+[expect.graph]
+must_include = [
+  ["root", "child1"],
+  ["root", "child2"],
+  ["child1", "grandchild"]
+]
+```
+
+#### 4. `window(start, end)`
+
+Generate time window constraint ensuring one span contains another.
+
+**Parameters:**
+- `start` (string): Outer span name (must start before and end after)
+- `end` (string): Inner span name (must be contained within outer span)
+
+**Example:**
+
+```tera
+{{ m::window("transaction", "db.query") }}
+```
+
+**Produces:**
+
+```toml
+[expect.window]
+"transaction" = { contains = ["db.query"] }
+```
+
+#### 5. `count(kind, min, max=none)`
+
+Generate span count constraint by kind.
+
+**Parameters:**
+- `kind` (string): Span kind to count
+- `min` (number): Minimum expected span count
+- `max` (number, optional): Maximum expected span count
+
+**Example:**
+
+```tera
+{{ m::count("server", 1, 5) }}
+{{ m::count("internal", 3) }}
+```
+
+**Produces:**
+
+```toml
+[expect.count]
+by_kind.server = { min = 1, max = 5 }
+
+[expect.count]
+by_kind.internal = { min = 3 }
+```
+
+#### 6. `multi_lifecycle(services)`
+
+Generate lifecycle spans for multiple services at once.
+
+**Parameters:**
+- `services` (array): Array of service names
+
+**Example:**
+
+```tera
+{{ m::multi_lifecycle(["postgres", "redis", "api"]) }}
+```
+
+**Produces:**
+
+Complete lifecycle blocks for each service (see `lifecycle()` macro output).
+
+#### 7. `span_with_attrs(name, kind, attr_pairs)`
+
+Convenience wrapper combining `span()` with inline attributes.
+
+**Parameters:**
+- `name` (string): Span name
+- `kind` (string): Span kind
+- `attr_pairs` (object): Attribute key-value pairs
+
+**Example:**
+
+```tera
+{{ m::span_with_attrs("api.request", "server", {
+  "method": "POST",
+  "endpoint": "/users"
+}) }}
+```
+
+**Produces:**
+
+```toml
+[[expect.span]]
+name = "api.request"
+kind = "server"
+attrs.all = { "method" = "POST", "endpoint" = "/users" }
+```
+
+#### 8. `attrs(pairs)`
+
+Generate attribute constraints as a TOML inline table (helper macro).
+
+**Parameters:**
+- `pairs` (object): Key-value pairs of attributes
+
+**Example:**
+
+```tera
+{{ m::attrs({"http.method": "GET", "http.status_code": "200"}) }}
+```
+
+**Produces:**
+
+```toml
+{ "http.method" = "GET", "http.status_code" = "200" }
+```
+
+### Complete Macro Example
+
+```tera
+{% import "_macros.toml.tera" as m %}
+
+[test.metadata]
+name = "microservices-otel-validation"
+description = "Validate OpenTelemetry traces across microservices"
+
+[services.api]
+type = "generic_container"
+image = "nginx:alpine"
+
+[services.postgres]
+type = "generic_container"
+image = "postgres:15"
+
+[services.redis]
+type = "generic_container"
+image = "redis:7-alpine"
+
+# Generate lifecycle spans for all services
+{{ m::lifecycle("api") }}
+{{ m::lifecycle("postgres") }}
+{{ m::lifecycle("redis") }}
+
+# Define parent-child relationships
+{{ m::edges([
+  ["test-root", "api.start"],
+  ["api.exec", "postgres.exec"],
+  ["api.exec", "redis.exec"]
+]) }}
+
+# Ensure database queries happen within API execution window
+{{ m::window("api.exec", "postgres.exec") }}
+{{ m::window("api.exec", "redis.exec") }}
+
+# Validate span counts
+{{ m::count("internal", 9) }}
+{{ m::count("client", 2, 4) }}
+
+# Validate HTTP request span
+{{ m::span("http.request", "server", {
+  "http.method": "GET",
+  "http.route": "/api/users"
+}) }}
+
+[[steps]]
+name = "execute_test"
+command = ["sh", "-c", "echo 'Test execution complete'"]
+
+[assertions]
+container_should_have_executed_commands = 1
+execution_should_be_hermetic = true
+```
+
+### Macro Best Practices
+
+#### 1. Use Lifecycle for Services
+
+Instead of manually defining start/exec/stop spans:
+
+```tera
+# ❌ Verbose
+[[expect.span]]
+name = "postgres.start"
+kind = "internal"
+
+[[expect.span]]
+name = "postgres.exec"
+kind = "internal"
+
+[[expect.span]]
+name = "postgres.stop"
+kind = "internal"
+
+[expect.order]
+must_precede = [
+  ["postgres.start", "postgres.exec"],
+  ["postgres.exec", "postgres.stop"]
+]
+
+# ✅ Concise
+{{ m::lifecycle("postgres") }}
+```
+
+#### 2. Combine Macros for Complex Validation
+
+```tera
+# Define transaction span with attributes
+{{ m::span("transaction.commit", "internal", {"tx.id": "12345"}) }}
+
+# Ensure DB operations happen within transaction
+{{ m::window("transaction.commit", "postgres.exec") }}
+{{ m::window("transaction.commit", "redis.exec") }}
+
+# Validate relationships
+{{ m::edges([
+  ["transaction.commit", "postgres.exec"],
+  ["transaction.commit", "redis.exec"]
+]) }}
+```
+
+#### 3. Parameterize Service Names
+
+```tera
+{% set db_service = "postgres" %}
+{% set cache_service = "redis" %}
+
+{{ m::lifecycle(db_service) }}
+{{ m::lifecycle(cache_service) }}
+
+{{ m::edges([[db_service ~ ".exec", cache_service ~ ".exec"]]) }}
+```
+
+#### 4. Use Multi-Lifecycle for Common Patterns
+
+```tera
+# ❌ Repetitive
+{{ m::lifecycle("service1") }}
+{{ m::lifecycle("service2") }}
+{{ m::lifecycle("service3") }}
+
+# ✅ Batch operation
+{{ m::multi_lifecycle(["service1", "service2", "service3"]) }}
+```
+
+### Macro Troubleshooting
+
+#### Macro Not Found
+
+```
+Error: Macro 'span' not found
+```
+
+**Solution**: Ensure you've imported the macro library:
+
+```tera
+{% import "_macros.toml.tera" as m %}
+```
+
+#### Invalid TOML Output
+
+```
+Error: Invalid TOML: duplicate key 'expect.graph'
+```
+
+**Solution**: Macros that generate section headers (`[expect.graph]`) can only be used once per file. Combine multiple edges into a single `edges()` call:
+
+```tera
+# ❌ Wrong - duplicate sections
+{{ m::edges([["a", "b"]]) }}
+{{ m::edges([["c", "d"]]) }}
+
+# ✅ Correct - single call
+{{ m::edges([["a", "b"], ["c", "d"]]) }}
+```
+
+#### Empty Attributes
+
+```tera
+# This works - attrs will be omitted
+{{ m::span("my.span", "internal", {}) }}
+{{ m::span("my.span", "internal") }}
+```
+
+Both produce the same output:
+
+```toml
+[[expect.span]]
+name = "my.span"
+kind = "internal"
+```
 
 ## Basic Syntax
 

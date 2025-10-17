@@ -1,0 +1,92 @@
+{# example_usage.clnrm.toml.tera - Demonstration of _macros.toml.tera usage #}
+{% import "_macros.toml.tera" as m %}
+
+[test.metadata]
+name = "macro-usage-example"
+description = "Demonstrates all available Tera macros for TOML generation"
+
+[services.postgres]
+type = "generic_container"
+image = "postgres:15"
+env.POSTGRES_PASSWORD = "test"
+
+[services.redis]
+type = "generic_container"
+image = "redis:7-alpine"
+
+[services.api]
+type = "generic_container"
+image = "nginx:alpine"
+
+# ==============================================================================
+# EXAMPLE 1: Single span validation with attributes
+# ==============================================================================
+{{ m::span("http.request", "server", {"http.method": "GET", "http.status_code": "200"}) }}
+
+# ==============================================================================
+# EXAMPLE 2: Service lifecycle with automatic ordering
+# ==============================================================================
+{{ m::lifecycle("postgres") }}
+
+{{ m::lifecycle("redis") }}
+
+# ==============================================================================
+# EXAMPLE 3: Multiple services at once
+# ==============================================================================
+# {{ m::multi_lifecycle(["postgres", "redis", "api"]) }}
+
+# ==============================================================================
+# EXAMPLE 4: Parent-child graph edges
+# ==============================================================================
+{{ m::edges([
+  ["test-root", "postgres.start"],
+  ["test-root", "redis.start"],
+  ["postgres.start", "postgres.exec"],
+  ["redis.start", "redis.exec"]
+]) }}
+
+# ==============================================================================
+# EXAMPLE 5: Time window constraints
+# ==============================================================================
+{{ m::window("test-root", "postgres.exec") }}
+
+{{ m::window("test-root", "redis.exec") }}
+
+# ==============================================================================
+# EXAMPLE 6: Span count validation
+# ==============================================================================
+{{ m::count("internal", 6, 12) }}
+
+{{ m::count("server", 1, 3) }}
+
+# ==============================================================================
+# EXAMPLE 7: Complex span with multiple attributes
+# ==============================================================================
+{{ m::span_with_attrs("database.query", "client", {
+  "db.system": "postgresql",
+  "db.name": "testdb",
+  "db.operation": "SELECT"
+}) }}
+
+# ==============================================================================
+# EXAMPLE 8: Combining macros for complex validation
+# ==============================================================================
+{{ m::span("transaction.start", "internal", {"transaction.id": "tx-001"}) }}
+
+{{ m::edges([["transaction.start", "postgres.exec"], ["transaction.start", "redis.exec"]]) }}
+
+{{ m::window("transaction.start", "postgres.exec") }}
+
+{{ m::window("transaction.start", "redis.exec") }}
+
+[[steps]]
+name = "start_services"
+command = ["sh", "-c", "echo 'Services started'"]
+
+[[steps]]
+name = "verify_otel"
+command = ["sh", "-c", "echo 'OTEL validation complete'"]
+
+[assertions]
+container_should_have_executed_commands = 2
+execution_should_be_hermetic = true

@@ -1,0 +1,15 @@
+[package]
+name = "clnrm-v0-7-0-tests"
+version = "0.7.0"
+edition = "2021"
+
+[lib]
+name = "clnrm_v0_7_0_tests"
+path = "lib.rs"
+
+[dependencies]
+serde_json = "1.0"
+tempfile = "3.8"
+
+[dev-dependencies]
+# Test dependencies would go here in real implementation

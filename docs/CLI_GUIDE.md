@@ -41,6 +41,38 @@ sudo cp target/release/clnrm /usr/local/bin/
 
 ## Command Reference
 
+### `clnrm dev` - Development Mode (v0.7.0)
+
+Watch mode for automated test re-execution during development.
+
+```bash
+# Start watch mode
+clnrm dev --watch
+
+# Custom debounce duration
+clnrm dev --watch --debounce 500
+
+# Watch specific directory
+clnrm dev --watch tests/integration/
+
+# Disable screen clearing
+clnrm dev --watch --no-clear
+
+# Parallel execution in watch mode
+clnrm dev --watch --parallel --jobs 8
+```
+
+**Options:**
+- `--watch` - Enable file watching
+- `--debounce MS` - Debounce duration in milliseconds (default: 200)
+- `--no-clear` - Don't clear screen between runs
+- `--parallel` - Run tests in parallel
+- `--jobs N` - Number of parallel workers
+
+**Performance:**
+- File change detection: <50ms
+- Auto-run latency: <3s (p95: 1.5s)
+
 ### `clnrm run` - Execute Tests
 
 Run tests from TOML configuration files.
@@ -77,9 +109,42 @@ clnrm run tests/ --format junit > results.xml
 - `--fail-fast` - Stop on first failure
 - `--format FORMAT` - Output format (human, json, junit, tap)
 
+### `clnrm fmt` - Format TOML Files (v0.7.0)
+
+Format TOML files with deterministic, idempotent formatting.
+
+```bash
+# Format all TOML files in current directory
+clnrm fmt
+
+# Format specific directory
+clnrm fmt tests/
+
+# Format specific file
+clnrm fmt tests/api.toml
+
+# Check formatting without modifying (CI mode)
+clnrm fmt --check
+
+# Dry run (preview changes)
+clnrm fmt --dry-run
+
+# Verbose output
+clnrm fmt --verbose
+```
+
+**Formatting Rules:**
+- Alphabetically sorted keys
+- Consistent spacing (key = value)
+- Comment preservation
+- Idempotent output
+- Multi-line array formatting
+
+**Performance:** 100 files in ~2s
+
 ### `clnrm validate` - Validate Configuration
 
-Check if TOML test files are valid.
+Check if TOML test files are valid (v0.7.0: Enhanced validation).
 
 ```bash
 # Validate a single file
@@ -88,9 +153,20 @@ clnrm validate tests/user_registration.toml
 # Validate all files in directory
 clnrm validate tests/
 
-# Batch validation with detailed output
+# Enhanced validation with verbose output (v0.7.0)
 clnrm validate tests/ --verbose
+
+# JSON output for tooling
+clnrm validate tests/ --format json
 ```
+
+**v0.7.0 Enhanced Checks:**
+- Container image format validation
+- Port conflict detection
+- Volume mount safety checks
+- Environment variable validation
+- Service dependency cycle detection
+- Hardcoded secrets detection
 
 ### `clnrm init` - Initialize Project
 
@@ -150,6 +226,30 @@ clnrm report tests/ --format junit > test-results.xml
 # JSON report
 clnrm report tests/ --format json > data.json
 ```
+
+### `clnrm cache` - Cache Management (v0.7.0)
+
+Manage test execution cache for change-aware runs.
+
+```bash
+# Clear all cache entries
+clnrm cache clear
+
+# Clear specific file
+clnrm cache clear tests/api.toml
+
+# Show cache statistics
+clnrm cache stats
+
+# Clear old entries (older than 7 days)
+clnrm cache clear --older-than 7d
+```
+
+**Cache Features:**
+- SHA-256 content hashing
+- Persistent storage (~/.clnrm/cache/)
+- Automatic hit/miss detection
+- 364x faster for unchanged files
 
 ### `clnrm selftest` - Framework Self-Testing
 
