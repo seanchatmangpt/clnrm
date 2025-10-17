@@ -3,6 +3,10 @@
 //! Provides a professional command-line interface using clap for running tests,
 //! managing services, and generating reports.
 
+// Allow shadow warnings - we intentionally import items for internal use
+// while also re-exporting them via glob exports at the end of the module
+#![allow(hidden_glob_reexports)]
+
 pub mod commands;
 pub mod types;
 pub mod utils;
@@ -12,9 +16,16 @@ use clap::Parser;
 use std::path::PathBuf;
 use tracing::error;
 
-// Import utilities
-use crate::cli::utils::setup_logging;
-use commands::run::run_tests_with_shard_and_report;
+// Import utilities - using explicit paths to avoid shadowing pub use exports
+use self::types::{Cli, Commands};
+use self::utils::setup_logging;
+use self::commands::run::run_tests_with_shard_and_report;
+
+// Import all command functions - using self:: to avoid shadowing pub use exports
+use self::commands::health::system_health_check;
+use self::commands::init::init_project;
+use self::commands::report::generate_report;
+use self::commands::validate::validate_config;
 
 // Remove global config - we'll load it per command as needed
 
@@ -370,6 +381,51 @@ pub async fn run_cli() -> Result<()> {
     }
 
     Ok(())
+}
+
+// Command implementations (stubs for missing commands)
+#[allow(dead_code)]
+async fn run_command(
+    _paths: &[std::path::PathBuf],
+    _config: crate::cli::types::CliConfig,
+    _report_junit: Option<&str>,
+) -> Result<()> {
+    unimplemented!("run command: needs proper implementation")
+}
+
+#[allow(dead_code)]
+async fn report_command(_format: String, _output: Option<std::path::PathBuf>) -> Result<()> {
+    unimplemented!("report command: needs proper implementation")
+}
+
+#[allow(dead_code)]
+async fn init_command(_path: Option<std::path::PathBuf>) -> Result<()> {
+    unimplemented!("init command: needs proper implementation")
+}
+
+#[allow(dead_code)]
+async fn list_command(_format: String) -> Result<()> {
+    unimplemented!("list command: needs proper implementation")
+}
+
+#[allow(dead_code)]
+async fn validate_command(_paths: &[std::path::PathBuf]) -> Result<()> {
+    unimplemented!("validate command: needs proper implementation")
+}
+
+#[allow(dead_code)]
+async fn health_command(_verbose: bool) -> Result<()> {
+    unimplemented!("health command: needs proper implementation")
+}
+
+#[allow(dead_code)]
+async fn version_command() -> Result<()> {
+    unimplemented!("version command: needs proper implementation")
+}
+
+#[allow(dead_code)]
+async fn completion_command(_shell: String) -> Result<()> {
+    unimplemented!("completion command: needs proper implementation")
 }
 
 // Re-export all public types and functions for backward compatibility

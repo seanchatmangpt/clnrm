@@ -441,11 +441,6 @@ impl CleanroomEnvironment {
 
         Ok(Self {
             session_id: Uuid::new_v4(),
-            #[cfg(feature = "otel-metrics")]
-            meter: {
-                let meter_provider = global::meter_provider();
-                meter_provider.meter("clnrm-cleanroom")
-            },
             backend: Arc::new(TestcontainerBackend::new(&default_image).map_err(|e| {
                 CleanroomError::container_error("Failed to initialize test container backend")
                     .with_context(format!("Cannot use default image '{}'", default_image))
@@ -454,11 +449,12 @@ impl CleanroomEnvironment {
             services: Arc::new(RwLock::new(ServiceRegistry::new().with_default_plugins())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
-            telemetry: Arc::new(RwLock::new(TelemetryState {
-                tracing_enabled: false,
-                metrics_enabled: false,
-                traces: Vec::new(),
-            })),
+            #[cfg(feature = "otel-metrics")]
+            meter: {
+                let meter_provider = global::meter_provider();
+                meter_provider.meter("clnrm-cleanroom")
+            },
+            telemetry: Arc::new(RwLock::new(TelemetryState::new())),
         })
     }
 
@@ -992,15 +988,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_container() {
-        let env = CleanroomEnvironment::default();
+    async fn test_register_container() -> Result<()> {
+        // Arrange
+        let env = CleanroomEnvironment::new().await?;
+
+        // Act
         let result = env
             .register_container("test-container".to_string(), "container-123".to_string())
             .await;
-        assert!(result.is_ok());
 
-        // Verify container was registered
+        // Assert
+        assert!(result.is_ok());
         assert!(env.has_container("test-container").await);
+        Ok(())
     }
 
     #[tokio::test]

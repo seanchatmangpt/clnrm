@@ -8,7 +8,8 @@
 
 pub mod cli {
     //! CLI module re-exports from core
-    pub use clnrm_core::cli::{validate_config, CliConfig};
+    pub use clnrm_core::cli::types::CliConfig;
+    pub use clnrm_core::cli::commands::validate::validate_config;
     use std::path::PathBuf;
 
     /// Run tests with the specified configuration

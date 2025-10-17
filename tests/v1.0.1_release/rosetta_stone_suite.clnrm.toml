@@ -1,0 +1,148 @@
+# ====================================================================================
+# Rosetta Stone Test Suite - v1.0.1 Release Validation
+# Purpose: Master test suite orchestrating all 5 validation scenarios
+# Confidence: 100% release readiness based on hermetic, deterministic validation
+# ====================================================================================
+
+[meta]
+name = "rosetta_stone_suite_v1_0_1"
+version = "1.0.1"
+description = "Complete v1.0.1 release validation suite - Homebrew installation verification"
+author = "clnrm core team"
+tags = ["release", "v1.0.1", "rosetta-stone", "homebrew", "otel", "hermetic", "deterministic"]
+
+# Determinism configuration for reproducible suite execution
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+# Suite-level OTEL configuration
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = {
+    "service.name" = "clnrm-release-suite",
+    "service.version" = "1.0.1",
+    "env" = "ci",
+    "suite.type" = "rosetta-stone"
+}
+
+# Test suite configuration
+[suite]
+name = "v1.0.1 Release Validation"
+parallel = false  # Run scenarios sequentially for isolation
+fail_fast = false  # Run all scenarios even if one fails
+timeout_minutes = 60
+
+# Scenario 1: Minimal Validation (smoke test)
+[[suite.scenario]]
+name = "01_minimal_validation"
+file = "scenario_01_minimal.clnrm.toml"
+description = "Basic Homebrew install + self-test validation"
+required = true
+timeout_minutes = 10
+
+# Scenario 2: Full Surface Validation (comprehensive)
+[[suite.scenario]]
+name = "02_full_surface_validation"
+file = "scenario_02_full_surface.clnrm.toml"
+description = "All self-test suites (basic, container, service, otel)"
+required = true
+timeout_minutes = 20
+
+# Scenario 3: OTLP Collector Integration (telemetry pipeline)
+[[suite.scenario]]
+name = "03_otlp_validation"
+file = "scenario_03_otlp.clnrm.toml"
+description = "OTLP exporter with real collector"
+required = true
+timeout_minutes = 15
+
+# Scenario 4: Hermetic Isolation (state leakage detection)
+[[suite.scenario]]
+name = "04_hermetic_isolation"
+file = "scenario_04_hermetic.clnrm.toml"
+description = "Multiple sequential runs with isolation verification"
+required = true
+timeout_minutes = 15
+
+# Scenario 5: Determinism Validation (5-iteration hash comparison)
+[[suite.scenario]]
+name = "05_determinism_validation"
+file = "scenario_05_determinism.clnrm.toml"
+description = "5-iteration determinism with identical hash verification"
+required = true
+timeout_minutes = 20
+
+# Suite-level expectations (ALL must pass)
+[expect.suite]
+all_scenarios_pass = true
+zero_failures = true
+zero_errors = true
+
+# Release confidence criteria (ALL must be true)
+[release.confidence]
+# Minimal validation passed
+scenario_01_pass = { required = true, weight = 1.0 }
+# Full surface validation passed
+scenario_02_pass = { required = true, weight = 1.5 }
+# OTLP integration passed
+scenario_03_pass = { required = true, weight = 1.0 }
+# Hermetic isolation verified
+scenario_04_pass = { required = true, weight = 2.0 }
+# Determinism verified (5/5 identical hashes)
+scenario_05_pass = { required = true, weight = 2.5 }
+
+# Confidence calculation: sum(weights) / total_weight >= 1.0
+# Total weight: 8.0
+# Required: 8.0/8.0 = 100% confidence
+
+# Pass criteria for v1.0.1 release (ALL must be true)
+[release.criteria]
+all_scenarios_pass = true
+zero_hermetic_violations = true
+determinism_hash_match = "5/5"  # All 5 iterations identical
+span_validations_pass = true
+graph_acyclic = true
+errors_total = 0
+container_cleanup_verified = true
+homebrew_install_succeeds = true
+self_test_passes = true
+otel_validation_passes = true
+
+# Reporting configuration
+[report]
+format = "comprehensive"
+json = "rosetta_stone_suite.report.json"
+junit = "rosetta_stone_suite.junit.xml"
+html = "rosetta_stone_suite.report.html"
+digest = "rosetta_stone_suite.trace.sha256"
+
+# Detailed reports
+[report.details]
+scenario_reports = true
+span_graphs = true
+isolation_verification = true
+determinism_hashes = true
+confidence_assessment = true
+
+# Final verdict format
+[report.verdict]
+# Format: "✅ SHIP v1.0.1 - 100% CONFIDENCE" or "❌ BLOCK v1.0.1 - FAILURES DETECTED"
+show_confidence_percentage = true
+show_scenario_summary = true
+show_pass_criteria = true
+show_recommendations = true
+
+# Resource limits for suite execution
+[limits]
+total_cpu_millicores = 2000
+total_memory_mb = 4096
+max_concurrent_containers = 5
+
+# Cleanup policy
+[cleanup]
+containers = "always"
+networks = "always"
+volumes = "always"
+artifacts = "on_failure"  # Keep artifacts if any scenario fails

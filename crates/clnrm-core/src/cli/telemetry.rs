@@ -1,0 +1,296 @@
+//! CLI OpenTelemetry Integration
+//!
+//! Provides secure, configuration-driven OpenTelemetry initialization for the CLI.
+//! Follows core team best practices: no unwrap(), no hardcoded values, proper error handling.
+
+use crate::{
+    error::{CleanroomError, Result},
+    telemetry::{init_otel, OtelConfig, OtelGuard},
+};
+use std::env;
+use tracing::{Level, span};
+
+/// CLI-specific telemetry configuration
+/// Secure by design - no hardcoded secrets or environment variables
+#[derive(Clone, Debug)]
+pub struct CliOtelConfig {
+    /// Service identification
+    pub service_name: String,
+    pub service_version: String,
+    /// Environment configuration
+    pub deployment_env: String,
+    /// Sampling configuration
+    pub sample_ratio: f64,
+    /// Export configuration (secure - no secrets stored)
+    pub export_endpoint: Option<String>,
+    pub export_format: ExportFormat,
+    /// Local development settings
+    pub enable_console_output: bool,
+}
+
+#[derive(Clone, Debug)]
+pub enum ExportFormat {
+    /// OTLP HTTP to collector
+    OtlpHttp,
+    /// OTLP gRPC to collector
+    OtlpGrpc,
+    /// Console output for local development
+    Stdout,
+    /// NDJSON output for log aggregation
+    StdoutNdjson,
+}
+
+/// CLI telemetry manager
+/// Handles OTel lifecycle and provides span creation capabilities
+pub struct CliTelemetry {
+    /// OTel guard (automatically flushes on drop)
+    _guard: Option<OtelGuard>,
+    /// Configuration for reference
+    config: CliOtelConfig,
+}
+
+impl CliTelemetry {
+    /// Initialize CLI telemetry with secure configuration
+    /// No unwrap() calls - proper error handling throughout
+    pub fn init(config: CliOtelConfig) -> Result<Self> {
+        // Create OTel configuration from CLI config
+        let otel_config = Self::create_otel_config(&config)?;
+
+        // Initialize OTel if enabled (lazy initialization)
+        let guard = if config.is_enabled() {
+            Some(init_otel(otel_config)?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            _guard: guard,
+            config,
+        })
+    }
+
+    /// Check if telemetry is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.config.is_enabled()
+    }
+
+    /// Create a CLI operation span
+    /// Returns None if OTel is disabled
+    pub fn create_cli_span(&self, operation: &str) -> Option<tracing::Span> {
+        if !self.is_enabled() {
+            return None;
+        }
+
+        Some(span!(
+            Level::INFO,
+            "clnrm.cli.operation",
+            operation = operation,
+            cli.version = %self.config.service_version,
+            deployment.env = %self.config.deployment_env,
+        ))
+    }
+
+    /// Create a command execution span
+    pub fn create_command_span(&self, command: &str, args: &[String]) -> Option<tracing::Span> {
+        if !self.is_enabled() {
+            return None;
+        }
+
+        Some(span!(
+            Level::INFO,
+            "clnrm.cli.command",
+            command = command,
+            args = ?args,
+            deployment.env = %self.config.deployment_env,
+        ))
+    }
+
+    /// Convert CLI config to OTel config
+    /// Secure - no hardcoded values, all from configuration
+    fn create_otel_config(&self, config: &CliOtelConfig) -> Result<OtelConfig> {
+        use crate::telemetry::Export;
+
+        let export = match config.export_format {
+            ExportFormat::OtlpHttp => Export::OtlpHttp {
+                endpoint: config.export_endpoint.as_deref().unwrap_or("http://localhost:4318"),
+            },
+            ExportFormat::OtlpGrpc => Export::OtlpGrpc {
+                endpoint: config.export_endpoint.as_deref().unwrap_or("http://localhost:4317"),
+            },
+            ExportFormat::Stdout => Export::Stdout,
+            ExportFormat::StdoutNdjson => Export::StdoutNdjson,
+        };
+
+        Ok(OtelConfig {
+            service_name: config.service_name.as_str(),
+            deployment_env: config.deployment_env.as_str(),
+            sample_ratio: config.sample_ratio,
+            export,
+            enable_fmt_layer: config.enable_console_output,
+            headers: self.load_secure_headers()?,
+        })
+    }
+
+    /// Load secure headers from environment variables
+    /// No hardcoded secrets - all from env vars
+    fn load_secure_headers(&self) -> Result<Option<std::collections::HashMap<String, String>>> {
+        let mut headers = std::collections::HashMap::new();
+
+        // Load OTLP headers from environment variables
+        // Format: OTEL_EXPORTER_OTLP_HEADERS_key=value
+        for (key, value) in env::vars() {
+            if key.starts_with("OTEL_EXPORTER_OTLP_HEADERS_") {
+                let header_key = key.strip_prefix("OTEL_EXPORTER_OTLP_HEADERS_")
+                    .ok_or_else(|| CleanroomError::internal_error("Invalid header key format"))?
+                    .to_lowercase();
+
+                // Validate header key for security
+                if self.is_safe_header_key(&header_key) {
+                    headers.insert(header_key, value);
+                }
+            }
+        }
+
+        Ok(if headers.is_empty() { None } else { Some(headers) })
+    }
+
+    /// Validate header key for security
+    fn is_safe_header_key(&self, key: &str) -> bool {
+        // Only allow safe header keys, no injection vulnerabilities
+        let safe_keys = ["authorization", "api-key", "user-agent"];
+        safe_keys.contains(&key.to_lowercase().as_str())
+    }
+}
+
+impl CliOtelConfig {
+    /// Check if telemetry is enabled
+    pub fn is_enabled(&self) -> bool {
+        // Enable if sample ratio > 0 and endpoint is configured
+        self.sample_ratio > 0.0 && self.export_endpoint.is_some()
+    }
+
+    /// Create default development configuration
+    pub fn development() -> Self {
+        Self {
+            service_name: "clnrm-cli".to_string(),
+            service_version: env!("CARGO_PKG_VERSION").to_string(),
+            deployment_env: "development".to_string(),
+            sample_ratio: 1.0, // Sample everything in dev
+            export_endpoint: Some("http://localhost:4318".to_string()),
+            export_format: ExportFormat::Stdout, // Console output for dev
+            enable_console_output: true,
+        }
+    }
+
+    /// Create production configuration
+    pub fn production() -> Self {
+        Self {
+            service_name: "clnrm-cli".to_string(),
+            service_version: env!("CARGO_PKG_VERSION").to_string(),
+            deployment_env: "production".to_string(),
+            sample_ratio: 0.1, // Sample 10% in production
+            export_endpoint: env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok(),
+            export_format: ExportFormat::OtlpHttp,
+            enable_console_output: false, // No console output in prod
+        }
+    }
+
+    /// Load configuration from environment variables
+    pub fn from_env() -> Result<Self> {
+        Ok(Self {
+            service_name: env::var("OTEL_SERVICE_NAME")
+                .unwrap_or_else(|_| "clnrm-cli".to_string()),
+            service_version: env!("CARGO_PKG_VERSION").to_string(),
+            deployment_env: env::var("OTEL_DEPLOYMENT_ENV")
+                .unwrap_or_else(|_| "development".to_string()),
+            sample_ratio: env::var("OTEL_SAMPLE_RATIO")
+                .unwrap_or_else(|_| "1.0".to_string())
+                .parse()
+                .map_err(|e| CleanroomError::internal_error(format!("Invalid sample ratio: {}", e)))?,
+            export_endpoint: env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok(),
+            export_format: Self::parse_export_format(&env::var("OTEL_EXPORT_FORMAT")
+                .unwrap_or_else(|_| "stdout".to_string()))?,
+            enable_console_output: env::var("OTEL_ENABLE_CONSOLE")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse()
+                .map_err(|e| CleanroomError::internal_error(format!("Invalid console setting: {}", e)))?,
+        })
+    }
+
+    /// Parse export format from string
+    fn parse_export_format(format: &str) -> Result<ExportFormat> {
+        match format.to_lowercase().as_str() {
+            "otlp-http" | "otlp_http" => Ok(ExportFormat::OtlpHttp),
+            "otlp-grpc" | "otlp_grpc" => Ok(ExportFormat::OtlpGrpc),
+            "stdout" => Ok(ExportFormat::Stdout),
+            "ndjson" => Ok(ExportFormat::StdoutNdjson),
+            _ => Err(CleanroomError::internal_error(format!("Unknown export format: {}", format))),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cli_otel_config_creation() -> Result<()> {
+        let config = CliOtelConfig::development();
+        assert_eq!(config.service_name, "clnrm-cli");
+        assert_eq!(config.deployment_env, "development");
+        assert_eq!(config.sample_ratio, 1.0);
+        assert!(config.enable_console_output);
+        Ok(())
+    }
+
+    #[test]
+    fn test_production_config() -> Result<()> {
+        let config = CliOtelConfig::production();
+        assert_eq!(config.deployment_env, "production");
+        assert_eq!(config.sample_ratio, 0.1);
+        assert!(!config.enable_console_output);
+        Ok(())
+    }
+
+    #[test]
+    fn test_export_format_parsing() -> Result<()> {
+        assert!(matches!(CliOtelConfig::parse_export_format("stdout")?, ExportFormat::Stdout));
+        assert!(matches!(CliOtelConfig::parse_export_format("OTLP-HTTP")?, ExportFormat::OtlpHttp));
+        assert!(matches!(CliOtelConfig::parse_export_format("otlp-grpc")?, ExportFormat::OtlpGrpc));
+        Ok(())
+    }
+
+    #[test]
+    fn test_cli_telemetry_initialization() -> Result<()> {
+        let config = CliOtelConfig::development();
+        let telemetry = CliTelemetry::init(config)?;
+
+        assert!(telemetry.is_enabled());
+        Ok(())
+    }
+
+    #[test]
+    fn test_span_creation() -> Result<()> {
+        let config = CliOtelConfig::development();
+        let telemetry = CliTelemetry::init(config)?;
+
+        let span = telemetry.create_cli_span("test_operation");
+        assert!(span.is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_disabled_telemetry() -> Result<()> {
+        let mut config = CliOtelConfig::development();
+        config.sample_ratio = 0.0; // Disable telemetry
+
+        let telemetry = CliTelemetry::init(config)?;
+        assert!(!telemetry.is_enabled());
+
+        let span = telemetry.create_cli_span("test_operation");
+        assert!(span.is_none());
+
+        Ok(())
+    }
+}

@@ -1,0 +1,132 @@
+# ====================================================================================
+# Scenario 02: Full Surface Validation
+# Purpose: Run ALL self-test suites (basic, container, service, otel)
+# Validation: Comprehensive span coverage across all framework capabilities
+# ====================================================================================
+
+[meta]
+name = "scenario_02_full_surface_validation"
+version = "1.0.1"
+description = "Complete self-test suite coverage with all framework features"
+
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[vars]
+svc = "clnrm"
+env = "ci"
+exporter = "stdout"
+image = "homebrew/brew:latest"
+
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = { "service.name" = "clnrm", "service.version" = "1.0.1", "env" = "ci" }
+
+[service.brew]
+type = "generic_container"
+plugin = "generic_container"
+image = "homebrew/brew:latest"
+args = ["bash", "-lc", "echo ready"]
+env = { "HOMEBREW_NO_ANALYTICS" = "1", "HOMEBREW_NO_AUTO_UPDATE" = "1" }
+wait_for_span = "clnrm.run"
+
+# Scenario: Run ALL self-test suites for comprehensive validation
+[[scenario]]
+name = "full_surface_selftest"
+service = "brew"
+run = "bash -lc 'brew tap seanchatmangpt/clnrm && brew install clnrm && clnrm self-test --suite basic --suite container --suite service --suite otel --otel-exporter stdout'"
+artifacts.collect = ["spans:default"]
+
+# Root span validation
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+duration_ms = { min = 10, max = 1200000 }  # Longer timeout for full suite
+
+# Basic suite validation
+[[expect.span]]
+name = "clnrm.step:hello_world"
+parent = "clnrm.run"
+kind = "internal"
+events.any = ["container.start", "container.exec", "container.stop"]
+
+# Container suite validation
+[[expect.span]]
+name = "clnrm.step:container_lifecycle"
+parent = "clnrm.run"
+kind = "internal"
+attrs.any = { "test.suite" = "container" }
+
+# Service suite validation
+[[expect.span]]
+name = "clnrm.step:service_registration"
+parent = "clnrm.run"
+kind = "internal"
+attrs.any = { "test.suite" = "service" }
+
+# OTEL suite validation
+[[expect.span]]
+name = "clnrm.step:otel_validation"
+parent = "clnrm.run"
+kind = "internal"
+attrs.any = { "test.suite" = "otel" }
+
+# Plugin registry span
+[[expect.span]]
+name = "clnrm.plugin.registry"
+parent = "clnrm.run"
+kind = "internal"
+attrs.any = { component = "plugin.registry" }
+
+# Graph topology validation - comprehensive edges
+[expect.graph]
+must_include = [
+    ["clnrm.run", "clnrm.step:hello_world"],
+    ["clnrm.run", "clnrm.plugin.registry"]
+]
+acyclic = true
+
+# Span count validation - higher thresholds for full suite
+[expect.counts]
+spans_total = { gte = 10, lte = 500 }  # More spans expected
+errors_total = { eq = 0 }
+by_name = {
+    "clnrm.run" = { eq = 1 },
+    "clnrm.step:hello_world" = { gte = 1 }
+}
+
+# Temporal containment validation
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.step:hello_world", "clnrm.plugin.registry"]
+
+# Ordering validation
+[expect.order]
+must_precede = [
+    ["clnrm.run", "clnrm.step:hello_world"],
+    ["clnrm.run", "clnrm.plugin.registry"]
+]
+
+# Status validation
+[expect.status]
+all = "OK"
+
+# Hermeticity validation
+[expect.hermeticity]
+no_external_services = true
+resource_attrs.must_match = { "service.name" = "clnrm", "env" = "ci" }
+span_attrs.forbid_keys = ["net.peer.name", "db.connection_string", "http.url"]
+
+# Resource limits
+[limits]
+cpu_millicores = 1000  # More resources for full suite
+memory_mb = 1024
+
+# Reporting
+[report]
+json = "scenario_02_full_surface.report.json"
+junit = "scenario_02_full_surface.junit.xml"
+digest = "scenario_02_full_surface.trace.sha256"

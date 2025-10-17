@@ -1,0 +1,99 @@
+# ====================================================================================
+# Scenario 01: Minimal Validation
+# Purpose: Basic Homebrew installation + self-test with stdout OTEL
+# Validation: Minimal span graph proves installation and execution work
+# ====================================================================================
+
+[meta]
+name = "scenario_01_minimal_validation"
+version = "1.0.1"
+description = "Minimal Homebrew install + self-test validation via OTEL spans"
+
+# Determinism configuration for reproducible test runs
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+# Authoring-only variables for readability
+[vars]
+svc = "clnrm"
+env = "ci"
+exporter = "stdout"
+image = "homebrew/brew:latest"
+
+# OTEL configuration - stdout exporter for zero-infrastructure validation
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = { "service.name" = "clnrm", "service.version" = "1.0.1", "env" = "ci" }
+
+# Service definition - Homebrew container
+[service.brew]
+type = "generic_container"
+plugin = "generic_container"
+image = "homebrew/brew:latest"
+args = ["bash", "-lc", "echo ready"]
+env = { "HOMEBREW_NO_ANALYTICS" = "1", "HOMEBREW_NO_AUTO_UPDATE" = "1" }
+wait_for_span = "clnrm.run"
+
+# Scenario: Install clnrm via Homebrew and run basic self-test
+[[scenario]]
+name = "minimal_brew_install_selftest"
+service = "brew"
+run = "bash -lc 'brew tap seanchatmangpt/clnrm && brew install clnrm && clnrm self-test --suite basic --otel-exporter stdout'"
+artifacts.collect = ["spans:default"]
+
+# Root span validation - proves test ran and passed
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+duration_ms = { min = 10, max = 600000 }
+
+# Step span validation - proves actual execution (not fake green)
+[[expect.span]]
+name = "clnrm.step:hello_world"
+parent = "clnrm.run"
+kind = "internal"
+events.any = ["container.start", "container.exec", "container.stop"]
+
+# Graph topology validation
+[expect.graph]
+must_include = [["clnrm.run", "clnrm.step:hello_world"]]
+acyclic = true
+
+# Span count validation
+[expect.counts]
+spans_total = { gte = 2, lte = 200 }
+errors_total = { eq = 0 }
+by_name = { "clnrm.run" = { eq = 1 }, "clnrm.step:hello_world" = { gte = 1 } }
+
+# Temporal containment validation
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.step:hello_world"]
+
+# Ordering validation
+[expect.order]
+must_precede = [["clnrm.run", "clnrm.step:hello_world"]]
+
+# Status validation
+[expect.status]
+all = "OK"
+
+# Hermeticity validation
+[expect.hermeticity]
+no_external_services = true
+resource_attrs.must_match = { "service.name" = "clnrm", "env" = "ci" }
+span_attrs.forbid_keys = ["net.peer.name", "db.connection_string", "http.url"]
+
+# Resource limits
+[limits]
+cpu_millicores = 500
+memory_mb = 512
+
+# Reporting
+[report]
+json = "scenario_01_minimal.report.json"
+junit = "scenario_01_minimal.junit.xml"
+digest = "scenario_01_minimal.trace.sha256"

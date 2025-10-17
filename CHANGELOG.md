@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`clnrm graph`** - Visualize trace graphs (ascii, dot, json, mermaid)
 - **`clnrm record`** - Record deterministic test baselines with SHA-256 digests
 - **`clnrm repro`** - Reproduce from baseline and verify identical digests
-- **`clnrm redgreen`** - TDD workflow validation (red-green-refactor cycle)
+- **`clnrm red-green`** - TDD workflow validation (red-green-refactor cycle)
 - **`clnrm render`** - Preview template variable resolution
 - **`clnrm spans`** - Query and filter collected spans with regex
 - **`clnrm collector`** - OTEL collector management (up/down/status/logs)

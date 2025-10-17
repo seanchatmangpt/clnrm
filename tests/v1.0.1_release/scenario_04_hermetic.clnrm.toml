@@ -1,0 +1,128 @@
+# ====================================================================================
+# Scenario 04: Hermetic Isolation Verification
+# Purpose: Run multiple sequential tests and verify no state leakage
+# Validation: Each run produces isolated, independent results
+# ====================================================================================
+
+[meta]
+name = "scenario_04_hermetic_isolation"
+version = "1.0.1"
+description = "Verify hermetic isolation across multiple sequential test runs"
+
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[vars]
+svc = "clnrm"
+env = "ci"
+exporter = "stdout"
+image = "homebrew/brew:latest"
+
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = { "service.name" = "clnrm", "service.version" = "1.0.1", "env" = "ci" }
+
+# Service definition - fresh container per scenario iteration
+[service.brew]
+type = "generic_container"
+plugin = "generic_container"
+image = "homebrew/brew:latest"
+args = ["bash", "-lc", "echo ready"]
+env = { "HOMEBREW_NO_ANALYTICS" = "1", "HOMEBREW_NO_AUTO_UPDATE" = "1" }
+wait_for_span = "clnrm.run"
+cleanup_policy = "always"  # Force cleanup after each run
+
+# Scenario 1: First independent run
+[[scenario]]
+name = "hermetic_run_01"
+service = "brew"
+run = "bash -lc 'brew tap seanchatmangpt/clnrm && brew install clnrm && clnrm self-test --suite basic --otel-exporter stdout'"
+artifacts.collect = ["spans:default"]
+isolation_id = "run_01"  # Unique isolation boundary
+
+# Scenario 2: Second independent run (must be isolated from first)
+[[scenario]]
+name = "hermetic_run_02"
+service = "brew"
+run = "bash -lc 'brew tap seanchatmangpt/clnrm && brew install clnrm && clnrm self-test --suite basic --otel-exporter stdout'"
+artifacts.collect = ["spans:default"]
+isolation_id = "run_02"
+require_fresh_container = true
+
+# Scenario 3: Third independent run (verify no cumulative leakage)
+[[scenario]]
+name = "hermetic_run_03"
+service = "brew"
+run = "bash -lc 'brew tap seanchatmangpt/clnrm && brew install clnrm && clnrm self-test --suite basic --otel-exporter stdout'"
+artifacts.collect = ["spans:default"]
+isolation_id = "run_03"
+require_fresh_container = true
+
+# Root span validation (applies to all scenarios)
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+duration_ms = { min = 10, max = 600000 }
+
+# Step span validation
+[[expect.span]]
+name = "clnrm.step:hello_world"
+parent = "clnrm.run"
+kind = "internal"
+events.any = ["container.start", "container.exec", "container.stop"]
+
+# Graph topology validation
+[expect.graph]
+must_include = [["clnrm.run", "clnrm.step:hello_world"]]
+acyclic = true
+
+# Span count validation
+[expect.counts]
+spans_total = { gte = 2, lte = 200 }
+errors_total = { eq = 0 }
+by_name = { "clnrm.run" = { eq = 1 }, "clnrm.step:hello_world" = { gte = 1 } }
+
+# Temporal containment validation
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.step:hello_world"]
+
+# Ordering validation
+[expect.order]
+must_precede = [["clnrm.run", "clnrm.step:hello_world"]]
+
+# Status validation
+[expect.status]
+all = "OK"
+
+# Hermeticity validation - STRICT
+[expect.hermeticity]
+no_external_services = true
+no_shared_state = true  # Critical: no state leakage between runs
+no_container_reuse = true  # Critical: fresh container per run
+resource_attrs.must_match = { "service.name" = "clnrm", "env" = "ci" }
+span_attrs.forbid_keys = ["net.peer.name", "db.connection_string", "http.url", "cache.hit", "previous_run"]
+
+# Container isolation validation
+[expect.isolation]
+# Verify each scenario has unique container ID
+unique_container_ids = true
+# Verify no filesystem artifacts from previous runs
+no_persistent_state = true
+# Verify network isolation
+no_shared_networks = true
+
+# Resource limits
+[limits]
+cpu_millicores = 500
+memory_mb = 512
+
+# Reporting - separate reports per scenario
+[report]
+json = "scenario_04_hermetic.report.json"
+junit = "scenario_04_hermetic.junit.xml"
+digest = "scenario_04_hermetic.trace.sha256"
+isolation_report = "scenario_04_isolation_verification.json"  # Detailed isolation report

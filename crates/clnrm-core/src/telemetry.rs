@@ -9,6 +9,7 @@ pub mod json_exporter;
 
 // New telemetry modules
 pub mod config;
+pub mod exporters;
 pub mod init;
 pub mod testing;
 

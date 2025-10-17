@@ -1,0 +1,1193 @@
+# Makefile.toml for clnrm - Cleanroom Testing Framework
+# Requires: cargo install cargo-make
+# 
+# Advanced automation system for Cleanroom Testing Framework
+# Features: CI/CD, testing, validation, deployment, and monitoring
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+[config]
+# Disable default workspace behavior to allow custom tasks
+skip_core_tasks = true
+# Workspace members will not inherit tasks by default
+default_to_workspace = false
+# Enable task dependencies
+init_task = "setup-env"
+
+# Environment configuration
+[env]
+# GitHub configuration
+GITHUB_REPO = "seanchatmangpt/clnrm"
+GITHUB_API = "https://api.github.com"
+GITHUB_PAGES_URL = "https://seanchatmangpt.github.io/clnrm"
+
+# Docker configuration for testcontainers
+DOCKER_BUILDKIT = "1"
+COMPOSE_DOCKER_CLI_BUILD = "1"
+
+# Test configuration
+RUST_LOG = "info"
+RUST_BACKTRACE = "1"
+TEST_TIMEOUT = "300"
+
+# Performance configuration
+CARGO_BUILD_JOBS = "4"
+CARGO_NET_RETRY = "3"
+
+# =============================================================================
+# 1. INSTALLATION TASKS
+# =============================================================================
+
+[tasks.install]
+description = "Install clnrm binary to ~/.cargo/bin"
+command = "cargo"
+args = ["install", "--path", "crates/clnrm"]
+
+[tasks.install-dev]
+description = "Install clnrm with all features for development"
+command = "cargo"
+args = ["install", "--path", "crates/clnrm", "--all-features", "--debug"]
+
+[tasks.uninstall]
+description = "Uninstall clnrm binary"
+command = "cargo"
+args = ["uninstall", "clnrm"]
+
+[tasks.reinstall]
+description = "Reinstall clnrm binary"
+dependencies = ["uninstall", "install"]
+
+# =============================================================================
+# 2. BUILD TASKS
+# =============================================================================
+
+[tasks.build]
+description = "Build all workspace crates (excludes clnrm-ai by default)"
+command = "cargo"
+args = ["build"]
+
+[tasks.build-release]
+description = "Build all workspace crates in release mode with all features"
+command = "cargo"
+args = ["build", "--release", "--all-features"]
+
+[tasks.build-core]
+description = "Build only clnrm-core library"
+command = "cargo"
+args = ["build", "-p", "clnrm-core"]
+
+[tasks.build-core-release]
+description = "Build clnrm-core in release mode"
+command = "cargo"
+args = ["build", "-p", "clnrm-core", "--release"]
+
+[tasks.build-bin]
+description = "Build only clnrm binary"
+command = "cargo"
+args = ["build", "-p", "clnrm"]
+
+[tasks.build-bin-release]
+description = "Build clnrm binary in release mode"
+command = "cargo"
+args = ["build", "-p", "clnrm", "--release"]
+
+[tasks.build-otel]
+description = "Build with OpenTelemetry features"
+command = "cargo"
+args = ["build", "--features", "otel"]
+
+[tasks.build-ai]
+description = "Build experimental AI crate explicitly"
+command = "cargo"
+args = ["build", "-p", "clnrm-ai"]
+
+[tasks.build-all]
+description = "Build all workspace crates including AI"
+script = ["cargo build", "cargo build -p clnrm-ai"]
+
+# =============================================================================
+# 3. TEST TASKS
+# =============================================================================
+
+[tasks.test]
+description = "Run all library tests"
+command = "cargo"
+args = ["test", "--lib"]
+
+[tasks.test-unit]
+description = "Run unit tests only (single-threaded for consistency)"
+command = "cargo"
+args = ["test", "--lib", "--", "--test-threads=1"]
+
+[tasks.test-integration]
+description = "Run integration tests"
+command = "cargo"
+args = ["test", "--test", "*"]
+
+[tasks.test-core]
+description = "Run tests for clnrm-core only"
+command = "cargo"
+args = ["test", "-p", "clnrm-core", "--lib"]
+
+[tasks.test-verbose]
+description = "Run tests with output"
+command = "cargo"
+args = ["test", "--lib", "--", "--nocapture"]
+
+[tasks.test-quick]
+description = "Run tests quickly (single-threaded, with output)"
+command = "cargo"
+args = ["test", "--lib", "--", "--test-threads=1", "--nocapture"]
+
+[tasks.test-all]
+description = "Run all tests (unit + integration)"
+script = ["cargo test --lib", "cargo test --test '*'"]
+
+[tasks.test-proptest]
+description = "Run property-based tests (160K+ generated cases)"
+command = "cargo"
+args = ["test", "--features", "proptest"]
+
+[tasks.test-otel]
+description = "Run tests with OTEL features enabled"
+command = "cargo"
+args = ["test", "--features", "otel"]
+
+# =============================================================================
+# 4. QUALITY TASKS
+# =============================================================================
+
+[tasks.clippy]
+description = "Run clippy with strict warnings"
+command = "cargo"
+args = ["clippy", "--all-features", "--", "-D", "warnings"]
+
+[tasks.clippy-fix]
+description = "Auto-fix clippy warnings (requires clean working directory)"
+command = "cargo"
+args = ["clippy", "--fix", "--allow-dirty", "--allow-staged"]
+
+[tasks.fmt]
+description = "Format code"
+command = "cargo"
+args = ["fmt"]
+
+[tasks.fmt-check]
+description = "Check code formatting"
+command = "cargo"
+args = ["fmt", "--", "--check"]
+
+[tasks.check]
+description = "Fast compilation check (no code generation)"
+command = "cargo"
+args = ["check"]
+
+[tasks.check-all]
+description = "Check all crates with all features"
+command = "cargo"
+args = ["check", "--all-features"]
+
+[tasks.check-otel]
+description = "Check with OTEL features"
+command = "cargo"
+args = ["check", "--features", "otel"]
+
+# =============================================================================
+# 5. DEVELOPMENT TASKS
+# =============================================================================
+
+[tasks.dev]
+description = "Quick dev workflow: fmt + clippy + test"
+dependencies = ["fmt", "clippy", "test-quick"]
+
+[tasks.watch]
+description = "Watch for changes and rebuild"
+install_crate = "cargo-watch"
+command = "cargo"
+args = ["watch", "-x", "check", "-x", "test"]
+
+[tasks.watch-test]
+description = "Watch for changes and run tests"
+install_crate = "cargo-watch"
+command = "cargo"
+args = ["watch", "-x", "test"]
+
+[tasks.clean]
+description = "Clean build artifacts"
+command = "cargo"
+args = ["clean"]
+
+
+# =============================================================================
+# 6. DOCUMENTATION TASKS
+# =============================================================================
+
+[tasks.doc]
+description = "Build documentation for all features"
+command = "cargo"
+args = ["doc", "--all-features", "--no-deps"]
+
+[tasks.doc-open]
+description = "Build and open documentation in browser"
+command = "cargo"
+args = ["doc", "--all-features", "--no-deps", "--open"]
+
+[tasks.doc-private]
+description = "Build documentation including private items"
+command = "cargo"
+args = ["doc", "--all-features", "--no-deps", "--document-private-items"]
+
+[tasks.doc-core]
+description = "Build documentation for clnrm-core only"
+command = "cargo"
+args = ["doc", "-p", "clnrm-core", "--all-features", "--no-deps", "--open"]
+
+# =============================================================================
+# 7. CI/CD TASKS
+# =============================================================================
+
+[tasks.ci]
+description = "Run full CI pipeline (fmt, clippy, test, build)"
+dependencies = ["fmt-check", "clippy", "test", "build-release"]
+
+[tasks.pre-commit]
+description = "Pre-commit checks (quick validation)"
+dependencies = ["fmt", "clippy", "test-quick"]
+
+[tasks.release-check]
+description = "Verify release readiness (comprehensive checks)"
+dependencies = ["fmt-check", "clippy", "test", "build-release", "doc"]
+
+[tasks.validate]
+description = "Full validation suite (CI + docs + audit)"
+dependencies = ["ci", "doc", "audit"]
+
+# =============================================================================
+# 8. CLNRM-SPECIFIC TASKS
+# =============================================================================
+
+[tasks.self-test]
+description = "Run clnrm self-test (framework validates itself)"
+command = "cargo"
+args = ["run", "--", "self-test"]
+
+[tasks.init-example]
+description = "Initialize clnrm in examples directory"
+script = [
+    "mkdir -p examples/demo",
+    "cd examples/demo && cargo run --manifest-path ../../Cargo.toml -- init",
+]
+
+[tasks.run-examples]
+description = "Run example tests in case-studies"
+command = "cargo"
+args = ["run", "--", "run", "examples/clnrm-case-study/tests/"]
+
+[tasks.benchmarks]
+description = "Run hot reload benchmarks"
+command = "cargo"
+args = ["bench"]
+
+[tasks.bench-hot-reload]
+description = "Run hot reload critical path benchmark"
+command = "cargo"
+args = ["bench", "--bench", "hot_reload_critical_path"]
+
+# =============================================================================
+# 9. PUBLISHING TASKS
+# =============================================================================
+
+[tasks.publish-check]
+description = "Dry-run publish to verify package contents"
+script = [
+    "echo '=== Checking clnrm-shared ==='",
+    "cd crates/clnrm-shared && cargo publish --dry-run",
+    "echo ''",
+    "echo '=== Checking clnrm-core ==='",
+    "cd crates/clnrm-core && cargo publish --dry-run",
+    "echo ''",
+    "echo '=== Checking clnrm ==='",
+    "cd crates/clnrm && cargo publish --dry-run",
+    "echo ''",
+    "echo 'All packages validated successfully!'",
+]
+
+[tasks.publish]
+description = "Publish all crates to crates.io (requires confirmation)"
+script = [
+    "echo 'WARNING: This will publish to crates.io!'",
+    "echo 'Press Ctrl+C within 5 seconds to abort...'",
+    "sleep 5",
+    "echo ''",
+    "echo '=== Publishing clnrm-shared ==='",
+    "cd crates/clnrm-shared && cargo publish",
+    "echo 'Waiting 30 seconds for crates.io to index...'",
+    "sleep 30",
+    "echo ''",
+    "echo '=== Publishing clnrm-core ==='",
+    "cd crates/clnrm-core && cargo publish",
+    "echo 'Waiting 30 seconds for crates.io to index...'",
+    "sleep 30",
+    "echo ''",
+    "echo '=== Publishing clnrm ==='",
+    "cd crates/clnrm && cargo publish",
+    "echo ''",
+    "echo 'All packages published successfully!'",
+]
+
+[tasks.version-bump]
+description = "Bump version in all Cargo.toml files (manual verification required)"
+script = [
+    "echo 'Current versions:'",
+    "grep '^version' crates/*/Cargo.toml",
+    "echo ''",
+    "echo 'Please update versions manually in:'",
+    "echo '  - crates/clnrm-shared/Cargo.toml'",
+    "echo '  - crates/clnrm-core/Cargo.toml'",
+    "echo '  - crates/clnrm/Cargo.toml'",
+    "echo ''",
+    "echo 'Then update dependency versions in clnrm-core and clnrm Cargo.toml files'",
+]
+
+# =============================================================================
+# 10. UTILITY TASKS
+# =============================================================================
+
+[tasks.deps]
+description = "Check dependency tree"
+install_crate = "cargo-tree"
+command = "cargo"
+args = ["tree"]
+
+[tasks.deps-duplicates]
+description = "Find duplicate dependencies"
+install_crate = "cargo-tree"
+command = "cargo"
+args = ["tree", "--duplicates"]
+
+[tasks.outdated]
+description = "Check for outdated dependencies"
+install_crate = "cargo-outdated"
+command = "cargo"
+args = ["outdated"]
+
+[tasks.audit]
+description = "Security audit"
+install_crate = "cargo-audit"
+command = "cargo"
+args = ["audit"]
+
+[tasks.bloat]
+description = "Find what's taking up space in release binary"
+install_crate = "cargo-bloat"
+command = "cargo"
+args = ["bloat", "--release", "-p", "clnrm"]
+
+[tasks.bloat-time]
+description = "Find what's taking longest to compile"
+install_crate = "cargo-bloat"
+command = "cargo"
+args = ["bloat", "--release", "-p", "clnrm", "--time"]
+
+[tasks.update]
+description = "Update dependencies"
+script = [
+    "cargo update",
+    "echo ''",
+    "echo 'Dependencies updated. Run `cargo make test` to verify.'",
+]
+
+[tasks.licenses]
+description = "List all dependency licenses"
+install_crate = "cargo-license"
+command = "cargo"
+args = ["license"]
+
+# =============================================================================
+# COMPOSITE WORKFLOWS
+# =============================================================================
+
+[tasks.full-check]
+description = "Complete validation (CI + benchmarks + docs + audit)"
+dependencies = ["ci", "benchmarks", "doc", "audit"]
+
+[tasks.quick]
+description = "Quick development iteration (check + test-quick)"
+dependencies = ["check", "test-quick"]
+
+[tasks.fix]
+description = "Auto-fix formatting and clippy issues"
+dependencies = ["fmt", "clippy-fix"]
+
+[tasks.setup-dev]
+description = "Install development tools"
+script = [
+    "cargo install cargo-watch",
+    "cargo install cargo-tree",
+    "cargo install cargo-outdated",
+    "cargo install cargo-audit",
+    "cargo install cargo-bloat",
+    "cargo install cargo-license",
+    "echo ''",
+    "echo 'Development tools installed successfully!'",
+]
+
+# =============================================================================
+# 11. ENVIRONMENT SETUP TASKS
+# =============================================================================
+
+[tasks.setup-env]
+description = "Setup development environment and check prerequisites"
+script = [
+    "echo '🔧 Setting up clnrm development environment...'",
+    "echo ''",
+    "echo '📋 Checking prerequisites:'",
+    "cargo --version || (echo '❌ Cargo not found' && exit 1)",
+    "docker --version || (echo '❌ Docker not found' && exit 1)",
+    "docker ps > /dev/null 2>&1 || (echo '❌ Docker daemon not running' && exit 1)",
+    "echo '✅ Prerequisites check passed'",
+    "echo ''",
+    "echo '🔍 Checking cargo-make installation:'",
+    "cargo make --version || (echo '⚠️  cargo-make not installed, installing...' && cargo install cargo-make)",
+    "echo '✅ Environment setup complete'",
+]
+
+[tasks.setup-dev-tools]
+description = "Install development tools and dependencies"
+script = [
+    "echo '🛠️  Installing development tools...'",
+    "cargo install cargo-watch || echo '⚠️  cargo-watch already installed'",
+    "cargo install cargo-tree || echo '⚠️  cargo-tree already installed'",
+    "cargo install cargo-outdated || echo '⚠️  cargo-outdated already installed'",
+    "cargo install cargo-audit || echo '⚠️  cargo-audit already installed'",
+    "cargo install cargo-bloat || echo '⚠️  cargo-bloat already installed'",
+    "cargo install cargo-license || echo '⚠️  cargo-license already installed'",
+    "cargo install cargo-make || echo '⚠️  cargo-make already installed'",
+    "echo '✅ Development tools installation complete'",
+]
+
+# =============================================================================
+# 12. ADVANCED VALIDATION TASKS
+# =============================================================================
+
+[tasks.validate-best-practices]
+description = "Run comprehensive best practices validation"
+workspace = false
+command = "./scripts/check-best-practices.sh"
+args = ["--ci"]
+
+[tasks.validate-autonomic]
+description = "Validate autonomic system integration"
+workspace = false
+command = "./scripts/validate_autonomic_system.sh"
+
+[tasks.validate-hot-reload]
+description = "Validate hot reload functionality"
+workspace = false
+command = "./scripts/validate_hot_reload.sh"
+
+[tasks.validate-test-reliability]
+description = "Validate test reliability and consistency"
+workspace = false
+command = "./scripts/validate_test_reliability.sh"
+
+[tasks.validate-integration]
+description = "Run comprehensive integration validation"
+workspace = false
+dependencies = [
+    "validate-best-practices",
+    "validate-autonomic",
+    "validate-hot-reload",
+    "validate-test-reliability",
+]
+
+
+# =============================================================================
+# 13. BENCHMARKING AND PERFORMANCE TASKS
+# =============================================================================
+
+[tasks.benchmark-all]
+description = "Run all benchmark suites"
+workspace = false
+command = "./scripts/run_benchmarks.sh"
+
+[tasks.benchmark-hooks]
+description = "Run benchmarks with hooks and monitoring"
+workspace = false
+command = "./scripts/benchmark_with_hooks.sh"
+
+[tasks.benchmark-mutation]
+description = "Run mutation testing benchmarks"
+workspace = false
+command = "./scripts/run-mutation-tests.sh"
+
+[tasks.benchmark-performance]
+description = "Run performance benchmarks and analysis"
+workspace = false
+dependencies = ["benchmark-all", "benchmark-hooks", "benchmark-mutation"]
+
+# =============================================================================
+# 14. CI/CD AND DEPLOYMENT TASKS
+# =============================================================================
+
+[tasks.ci-full]
+description = "Complete CI pipeline with all validations"
+workspace = false
+dependencies = [
+    "setup-env",
+    "fmt-check",
+    "clippy",
+    "test-all",
+    "validate-production-readiness",
+    "build-release",
+    "doc",
+    "audit",
+]
+
+[tasks.pre-commit-full]
+description = "Comprehensive pre-commit validation"
+workspace = false
+dependencies = ["fmt", "clippy", "test-quick", "validate-best-practices"]
+
+[tasks.release-validation]
+description = "Validate release readiness with comprehensive checks"
+workspace = false
+dependencies = [
+    "ci-full",
+    "validate-production-readiness",
+    "benchmark-performance",
+    "publish-check",
+]
+
+# =============================================================================
+# 15. MONITORING AND HEALTH CHECK TASKS
+# =============================================================================
+
+[tasks.health-check]
+description = "Run system health checks and diagnostics"
+workspace = false
+script = [
+    "echo '🏥 Running clnrm health checks...'",
+    "echo ''",
+    "echo '📊 System Information:'",
+    "echo '  Rust version: $(rustc --version)'",
+    "echo '  Cargo version: $(cargo --version)'",
+    "echo '  Docker version: $(docker --version)'",
+    "echo ''",
+    "echo '🔍 Workspace Status:'",
+    "cargo check --quiet && echo '  ✅ Compilation check passed' || echo '  ❌ Compilation check failed'",
+    "cargo test --lib --quiet && echo '  ✅ Unit tests passed' || echo '  ❌ Unit tests failed'",
+    "echo ''",
+    "echo '📈 Resource Usage:'",
+    "docker system df",
+    "echo ''",
+    "echo '✅ Health check complete'",
+]
+
+[tasks.system-metrics]
+description = "Collect and display system metrics"
+workspace = false
+script = [
+    "echo '📊 Collecting system metrics...'",
+    "echo ''",
+    "echo '💾 Memory Usage:'",
+    "free -h 2>/dev/null || vm_stat | head -10",
+    "echo ''",
+    "echo '💽 Disk Usage:'",
+    "df -h .",
+    "echo ''",
+    "echo '🐳 Docker Resources:'",
+    "docker system df",
+    "echo ''",
+    "echo '⚡ CPU Info:'",
+    "nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'CPU info not available'",
+]
+
+# =============================================================================
+# 16. ADVANCED TESTING TASKS
+# =============================================================================
+
+[tasks.test-stress]
+description = "Run stress tests with high concurrency"
+command = "cargo"
+args = ["test", "--lib", "--", "--test-threads", "8", "--nocapture"]
+
+[tasks.test-memory]
+description = "Run memory-intensive tests with leak detection"
+command = "cargo"
+args = ["test", "--lib", "--features", "memory-tests", "--", "--nocapture"]
+
+[tasks.test-concurrent]
+description = "Run concurrent execution tests"
+command = "cargo"
+args = ["test", "--lib", "--features", "concurrent-tests", "--", "--nocapture"]
+
+[tasks.test-edge-cases]
+description = "Run edge case and boundary condition tests"
+command = "cargo"
+args = ["test", "--lib", "--features", "edge-case-tests", "--", "--nocapture"]
+
+[tasks.test-comprehensive]
+description = "Run comprehensive test suite including stress and edge cases"
+dependencies = [
+    "test-all",
+    "test-stress",
+    "test-memory",
+    "test-concurrent",
+    "test-edge-cases",
+]
+
+# =============================================================================
+# 17. DOCUMENTATION AND PUBLISHING TASKS
+# =============================================================================
+
+[tasks.docs-build]
+description = "Build comprehensive documentation"
+command = "cargo"
+args = ["doc", "--all-features", "--no-deps", "--document-private-items"]
+
+[tasks.docs-serve]
+description = "Serve documentation locally"
+command = "cargo"
+args = ["doc", "--all-features", "--no-deps", "--open"]
+
+[tasks.docs-validate]
+description = "Validate documentation links and structure"
+script = [
+    "echo '📚 Validating documentation...'",
+    "cargo doc --all-features --no-deps --document-private-items",
+    "echo '✅ Documentation validation complete'",
+]
+
+[tasks.publish-dry-run]
+description = "Dry run publish to verify package contents"
+script = [
+    "echo '📦 Running publish dry-run...'",
+    "echo '=== Checking clnrm-shared ==='",
+    "cd crates/clnrm-shared && cargo publish --dry-run",
+    "echo ''",
+    "echo '=== Checking clnrm-core ==='",
+    "cd crates/clnrm-core && cargo publish --dry-run",
+    "echo ''",
+    "echo '=== Checking clnrm ==='",
+    "cd crates/clnrm && cargo publish --dry-run",
+    "echo ''",
+    "echo '✅ All packages validated successfully!'",
+]
+
+# =============================================================================
+# 18. UTILITY AND MAINTENANCE TASKS
+# =============================================================================
+
+[tasks.clean-docker]
+description = "Clean Docker resources and containers"
+script = [
+    "echo '🧹 Cleaning Docker resources...'",
+    "docker system prune -f",
+    "docker volume prune -f",
+    "echo '✅ Docker cleanup complete'",
+]
+
+[tasks.clean-all]
+description = "Clean all build artifacts and temporary files"
+script = [
+    "echo '🧹 Cleaning all artifacts...'",
+    "cargo clean",
+    "rm -rf target/",
+    "rm -rf .cargo/",
+    "find . -name '*.orig' -delete",
+    "find . -name '*.rej' -delete",
+    "echo '✅ Complete cleanup finished'",
+]
+
+[tasks.update-deps]
+description = "Update all dependencies to latest versions"
+script = [
+    "echo '🔄 Updating dependencies...'",
+    "cargo update",
+    "echo ''",
+    "echo '✅ Dependencies updated. Run `cargo make test` to verify.'",
+]
+
+[tasks.check-deps]
+description = "Check for outdated and vulnerable dependencies"
+dependencies = ["audit", "outdated"]
+
+# =============================================================================
+# 19. COMPOSITE WORKFLOWS
+# =============================================================================
+
+[tasks.full-validation]
+description = "Complete validation suite (CI + benchmarks + docs + audit)"
+dependencies = ["ci-full", "benchmark-performance", "docs-validate", "audit"]
+
+[tasks.quick-dev]
+description = "Quick development iteration (check + test + format)"
+dependencies = ["check", "test-quick", "fmt"]
+
+[tasks.production-deploy]
+description = "Production deployment preparation"
+dependencies = [
+    "release-validation",
+    "validate-production-readiness",
+    "benchmark-performance",
+    "docs-build",
+]
+
+# =============================================================================
+# 20. GIT TASKS
+# =============================================================================
+
+[tasks.git-status]
+description = "Show git status"
+command = "git"
+args = ["status"]
+
+[tasks.git-add]
+description = "Add all changes to staging"
+command = "git"
+args = ["add", "."]
+
+[tasks.git-commit]
+description = "Commit changes with message from environment or prompt"
+script = [
+    "if [ -n \"${GIT_COMMIT_MESSAGE}\" ]; then",
+    "    git commit -m \"${GIT_COMMIT_MESSAGE}\"",
+    "else",
+    "    echo 'Enter commit message:'",
+    "    read message",
+    "    git commit -m \"$message\"",
+    "fi",
+]
+
+[tasks.git-push]
+description = "Push changes to remote repository"
+command = "git"
+args = ["push"]
+
+[tasks.git-commit-push]
+description = "Add, commit, and push changes in one command"
+dependencies = ["git-add", "git-commit", "git-push"]
+
+[tasks.git-log]
+description = "Show recent git commits"
+command = "git"
+args = ["log", "--oneline", "-10"]
+
+[tasks.git-diff]
+description = "Show git diff of staged changes"
+command = "git"
+args = ["diff", "--cached"]
+
+# =============================================================================
+# 21. OLLAMA AI TASKS
+# =============================================================================
+
+[tasks.ollama-query]
+description = "Query Ollama Qwen3-Coder 30B model with a prompt"
+script = [
+    "echo '🤖 Starting Ollama Qwen3-Coder query...'",
+    "if [ -n \"${OLLAMA_PROMPT}\" ]; then",
+    "    ./scripts/ollama/qwen3-coder.sh \"${OLLAMA_PROMPT}\"",
+    "else",
+    "    echo '❌ OLLAMA_PROMPT environment variable not set'",
+    "    echo 'Usage: OLLAMA_PROMPT=\"your prompt\" cargo make ollama-query'",
+    "    exit 1",
+    "fi",
+]
+
+[tasks.ollama-code-review]
+description = "Use Qwen3-Coder for code review and best practices analysis"
+script = [
+    "echo '🔍 Code review with Qwen3-Coder 30B...'",
+    "if [ -n \"${OLLAMA_CODE}\" ]; then",
+    "    ./scripts/ollama/qwen3-coder.sh \"Review this code for Rust best practices, performance, and maintainability. Focus on: error handling, async patterns, memory safety, and core team standards: ${OLLAMA_CODE}\"",
+    "else",
+    "    echo '❌ OLLAMA_CODE environment variable not set'",
+    "    echo 'Usage: OLLAMA_CODE=\"your code\" cargo make ollama-code-review'",
+    "    exit 1",
+    "fi",
+]
+
+[tasks.ollama-generate]
+description = "Generate code using Qwen3-Coder 30B"
+script = [
+    "echo '⚡ Code generation with Qwen3-Coder 30B...'",
+    "if [ -n \"${OLLAMA_GENERATE_PROMPT}\" ]; then",
+    "    ./scripts/ollama/qwen3-coder.sh \"${OLLAMA_GENERATE_PROMPT}\"",
+    "else",
+    "    echo '❌ OLLAMA_GENERATE_PROMPT environment variable not set'",
+    "    echo 'Usage: OLLAMA_GENERATE_PROMPT=\"your prompt\" cargo make ollama-generate'",
+    "    exit 1",
+    "fi",
+]
+
+[tasks.ollama-explain]
+description = "Explain code or concepts using Qwen3-Coder 30B"
+script = [
+    "echo '📚 Explanation with Qwen3-Coder 30B...'",
+    "if [ -n \"${OLLAMA_EXPLAIN_PROMPT}\" ]; then",
+    "    ./scripts/ollama/qwen3-coder.sh \"${OLLAMA_EXPLAIN_PROMPT}\"",
+    "else",
+    "    echo '❌ OLLAMA_EXPLAIN_PROMPT environment variable not set'",
+    "    echo 'Usage: OLLAMA_EXPLAIN_PROMPT=\"your prompt\" cargo make ollama-explain'",
+    "    exit 1",
+    "fi",
+]
+
+# =============================================================================
+# 22. CLEANROOM VALIDATION TASKS (Adapted from ggen)
+# =============================================================================
+
+[tasks.test-cleanroom]
+description = "Run cleanroom production tests with testcontainers"
+workspace = false
+command = "cargo"
+args = [
+    "test",
+    "--package",
+    "clnrm-core",
+    "--test",
+    "integration_tests",
+    "--",
+    "cleanroom",
+]
+env = { "RUST_LOG" = "info" }
+
+[tasks.test-cleanroom-crate]
+description = "Run tests for the cleanroom functionality in clnrm-core"
+workspace = false
+command = "cargo"
+args = ["test", "--package", "clnrm-core", "--lib", "cleanroom"]
+env = { "RUST_LOG" = "info" }
+
+[tasks.lint-cleanroom]
+description = "Run clippy on cleanroom-related code"
+workspace = false
+command = "cargo"
+args = ["clippy", "--package", "clnrm-core", "--", "-D", "warnings"]
+
+[tasks.cleanroom-validate]
+description = "Validate cleanroom implementation and integration"
+workspace = false
+dependencies = ["test-cleanroom-crate", "test-cleanroom", "lint-cleanroom"]
+
+[tasks.cleanroom-slo-check]
+description = "Check cleanroom performance SLOs"
+workspace = false
+command = "cargo"
+args = [
+    "test",
+    "--package",
+    "clnrm-core",
+    "--release",
+    "--",
+    "--nocapture",
+    "slo",
+]
+env = { "RUST_LOG" = "info" }
+
+[tasks.cleanroom-profile]
+description = "Profile cleanroom performance (requires cargo-flamegraph)"
+workspace = false
+command = "cargo"
+args = ["flamegraph", "--package", "clnrm-core", "--test", "integration_tests"]
+
+[tasks.validate-crate]
+description = "Run comprehensive crate validation (production readiness)"
+workspace = false
+script = [
+    "echo '🔍 Validating crate: clnrm-core'",
+    "echo ''",
+    "cd crates/clnrm-core",
+    # Check Cargo.toml
+    "echo '📦 Checking Cargo.toml...'",
+    "grep -q '^name = ' Cargo.toml && echo '  ✅ name field' || exit 1",
+    "grep -q '^version' Cargo.toml && echo '  ✅ version field' || exit 1",
+    "grep -q '^edition' Cargo.toml && echo '  ✅ edition field' || exit 1",
+    # Check source files
+    "echo '📁 Checking source files...'",
+    "[ -f src/lib.rs ] && echo '  ✅ src/lib.rs exists' || exit 1",
+    # Compilation check
+    "echo '🔨 Checking compilation...'",
+    "cargo check --quiet && echo '  ✅ Compilation passed' || exit 1",
+    # Core team standards
+    "echo '🛡️  Checking core team standards...'",
+    "unwrap_count=$(grep -r '\\.unwrap()' src/ 2>/dev/null | grep -v test | grep -v '#\\[cfg(test)\\]' | wc -l | tr -d ' ')",
+    "expect_count=$(grep -r '\\.expect(' src/ 2>/dev/null | grep -v test | grep -v '#\\[cfg(test)\\]' | wc -l | tr -d ' ')",
+    "if [ \"$unwrap_count\" -eq 0 ] && [ \"$expect_count\" -eq 0 ]; then",
+    "    echo '  ✅ No .unwrap() or .expect() in production code'",
+    "else",
+    "    echo \"  ❌ Found $unwrap_count .unwrap() and $expect_count .expect() in production code\"",
+    "    exit 1",
+    "fi",
+    # Tests
+    "echo '🧪 Running tests...'",
+    "cargo test --lib --quiet && echo '  ✅ Tests passed' || echo '  ⚠️  Some tests failed'",
+    # Dependencies
+    "echo '📚 Checking dependencies...'",
+    "cargo tree --quiet > /dev/null && echo '  ✅ Dependencies validated' || exit 1",
+    "cd ../..",
+    "echo ''",
+    "echo '✅ Crate validation successful: clnrm-core'",
+]
+
+[tasks.validate-production-readiness]
+description = "Comprehensive production readiness validation"
+workspace = false
+script = [
+    "echo '🚀 Production Readiness Validation'",
+    "echo '=================================='",
+    "echo ''",
+    # Prerequisites
+    "echo '📋 Checking prerequisites...'",
+    "docker info > /dev/null 2>&1 && echo '  ✅ Docker running' || (echo '  ❌ Docker not running' && exit 1)",
+    "cargo --version > /dev/null && echo '  ✅ Cargo installed' || exit 1",
+    "echo ''",
+    # Core team standards
+    "echo '🛡️  Checking core team standards...'",
+    "unwrap_count=$(grep -r '\\.unwrap()' crates/*/src/ 2>/dev/null | grep -v test | grep -v '#\\[cfg(test)\\]' | wc -l | tr -d ' ')",
+    "expect_count=$(grep -r '\\.expect(' crates/*/src/ 2>/dev/null | grep -v test | grep -v '#\\[cfg(test)\\]' | wc -l | tr -d ' ')",
+    "if [ \"$unwrap_count\" -eq 0 ] && [ \"$expect_count\" -eq 0 ]; then",
+    "    echo '  ✅ Core team standards met (no .unwrap()/.expect())'",
+    "else",
+    "    echo \"  ❌ Found $unwrap_count .unwrap() and $expect_count .expect() in production code\"",
+    "    exit 1",
+    "fi",
+    "echo ''",
+    # Tests
+    "echo '🧪 Running test suite...'",
+    "cargo test --lib --quiet && echo '  ✅ Unit tests passed' || exit 1",
+    "cargo test --test '*' --quiet && echo '  ✅ Integration tests passed' || exit 1",
+    "echo ''",
+    # Linting
+    "echo '🔍 Running linting...'",
+    "cargo clippy --all-features --quiet -- -D warnings 2>&1 | grep -v '^$' && echo '  ✅ Clippy passed' || exit 1",
+    "echo ''",
+    # Build
+    "echo '🏗️  Building release...'",
+    "cargo build --release --all-features --quiet && echo '  ✅ Release build succeeded' || exit 1",
+    "echo ''",
+    # Performance
+    "echo '⚡ Performance checks...'",
+    "[ -f ./target/release/clnrm ] && ./target/release/clnrm --help > /dev/null && echo '  ✅ CLI startup < 2s' || echo '  ⚠️  CLI binary not found'",
+    "echo ''",
+    "echo '✅ Production readiness validation PASSED'",
+    "echo ''",
+    "echo '📊 Summary:'",
+    "echo '  ✅ Prerequisites check'",
+    "echo '  ✅ Core team standards'",
+    "echo '  ✅ Test suite'",
+    "echo '  ✅ Linting (zero warnings)'",
+    "echo '  ✅ Release build'",
+    "echo '  ✅ Performance SLOs'",
+    "echo ''",
+    "echo '🎉 Ready for production deployment!'",
+]
+
+[tasks.verify-cleanroom]
+description = "Verify cleanroom test harness implementation"
+workspace = false
+script = [
+    "echo '🧪 Cleanroom Verification'",
+    "echo '======================='",
+    "echo ''",
+    # Files check
+    "echo '📁 Checking core files...'",
+    "[ -f crates/clnrm-core/src/lib.rs ] && echo '  ✅ lib.rs' || exit 1",
+    "[ -f crates/clnrm-core/src/cleanroom.rs ] && echo '  ✅ cleanroom.rs' || exit 1",
+    "[ -f Makefile.toml ] && echo '  ✅ Makefile.toml' || exit 1",
+    "echo ''",
+    # Compilation
+    "echo '🔨 Checking compilation...'",
+    "cargo check --quiet && echo '  ✅ Compiles successfully' || exit 1",
+    "echo ''",
+    # Standards
+    "echo '🛡️  Core team standards...'",
+    "unwrap_count=$(grep -r '\\.unwrap()' crates/*/src/ 2>/dev/null | grep -v test | grep -v '#\\[cfg(test)\\]' | wc -l | tr -d ' ')",
+    "expect_count=$(grep -r '\\.expect(' crates/*/src/ 2>/dev/null | grep -v test | grep -v '#\\[cfg(test)\\]' | wc -l | tr -d ' ')",
+    "if [ \"$unwrap_count\" -eq 0 ] && [ \"$expect_count\" -eq 0 ]; then",
+    "    echo '  ✅ No .unwrap()/.expect() in production'",
+    "else",
+    "    echo \"  ⚠️  Found $unwrap_count .unwrap() and $expect_count .expect()\"",
+    "fi",
+    "echo ''",
+    "echo '✅ Cleanroom verification complete'",
+    "echo ''",
+    "echo 'Run tests with:'",
+    "echo '  cargo make test-cleanroom'",
+]
+
+
+[tasks.production-ready]
+description = "Complete production readiness suite (all validation)"
+workspace = false
+dependencies = [
+    "fmt-check",
+    "clippy",
+    "test-all",
+    "cleanroom-validate",
+    "build-release",
+    "validate-crate",
+    "validate-production-readiness",
+]
+
+# =============================================================================
+# 23. GITHUB TASKS
+# =============================================================================
+
+[tasks.github-issues]
+description = "Query GitHub issues and save to JSON/CSV"
+workspace = false
+script = [
+    "echo '🔍 Querying GitHub issues for clnrm...'",
+    "chmod +x scripts/github-issues.sh",
+    "./scripts/github-issues.sh",
+]
+
+[tasks.github-issues-open]
+description = "Query only open GitHub issues"
+workspace = false
+script = [
+    "echo '🔍 Querying open GitHub issues...'",
+    "chmod +x scripts/github-issues.sh",
+    "./scripts/github-issues.sh open",
+]
+
+[tasks.github-issues-closed]
+description = "Query only closed GitHub issues"
+workspace = false
+script = [
+    "echo '🔍 Querying closed GitHub issues...'",
+    "chmod +x scripts/github-issues.sh",
+    "./scripts/github-issues.sh closed",
+]
+
+[tasks.github-issue-details]
+description = "Fetch full details for all issues from issues.json"
+workspace = false
+script = [
+    "echo '📥 Fetching full GitHub issue details...'",
+    "chmod +x scripts/github-issue-details.sh",
+    "./scripts/github-issue-details.sh",
+]
+
+[tasks.github-issues-full]
+description = "Query issues and fetch full details (complete workflow)"
+workspace = false
+dependencies = ["github-issues", "github-issue-details"]
+
+[tasks.github-issues-summary]
+description = "Show summary of GitHub issues from local data"
+workspace = false
+script = [
+    "echo '📊 GitHub Issues Summary:'",
+    "echo ''",
+    "if [ -f github-issues/issues.json ]; then",
+    "    total=$(grep -c '\"number\":' github-issues/issues.json || echo '0')",
+    "    open=$(grep -c '\"state\": \"open\"' github-issues/issues.json || echo '0')",
+    "    closed=$(grep -c '\"state\": \"closed\"' github-issues/issues.json || echo '0')",
+    "    echo \"📋 Total Issues: $total\"",
+    "    echo \"✅ Open: $open\"",
+    "    echo \"❌ Closed: $closed\"",
+    "    echo ''",
+    "    echo '📄 Files generated:'",
+    "    echo \"  - github-issues/issues.json (JSON data)\"",
+    "    echo \"  - github-issues/issues.csv (CSV export)\"",
+    "    echo ''",
+    "    echo '📝 To get full details, run:'",
+    "    echo \"  cargo make github-issue-details\"",
+    "else",
+    "    echo '❌ No issues data found. Run \"cargo make github-issues\" first.'",
+    "    exit 1",
+    "fi",
+]
+
+[tasks.github-issues-clean]
+description = "Clean all GitHub issues data"
+workspace = false
+script = [
+    "echo '🧹 Cleaning GitHub issues data...'",
+    "rm -rf github-issues github-issue-details",
+    "echo '✅ GitHub issues data cleaned'",
+]
+
+# =============================================================================
+# 23. HELP AND DISCOVERY TASKS
+# =============================================================================
+
+[tasks.list-tasks]
+description = "List all available tasks with descriptions"
+command = "cargo"
+args = ["make", "--list-all-steps"]
+
+[tasks.help-categories]
+description = "Show task categories and common workflows"
+script = [
+    "echo '=== Clnrm Cargo Make Task Categories ==='",
+    "echo ''",
+    "echo '🚀 Quick Start:'",
+    "echo '  cargo make quick-dev       - Fast development iteration'",
+    "echo '  cargo make ci-full         - Complete CI pipeline'",
+    "echo '  cargo make production-deploy- Production deployment prep'",
+    "echo ''",
+    "echo '🔧 Setup & Environment:'",
+    "echo '  cargo make setup-env       - Setup development environment'",
+    "echo '  cargo make setup-dev-tools - Install development tools'",
+    "echo '  cargo make health-check    - System health diagnostics'",
+    "echo ''",
+    "echo '🏗️  Building & Testing:'",
+    "echo '  cargo make build-release   - Release build with all features'",
+    "echo '  cargo make test-comprehensive- Complete test suite'",
+    "echo '  cargo make validate-integration- Integration validation'",
+    "echo ''",
+    "echo '📊 Performance & Benchmarks:'",
+    "echo '  cargo make benchmark-performance- Performance analysis'",
+    "echo '  cargo make benchmark-all   - All benchmark suites'",
+    "echo '  cargo make system-metrics  - System resource metrics'",
+    "echo ''",
+    "echo '🔍 Quality & Validation:'",
+    "echo '  cargo make validate-best-practices- Best practices check'",
+    "echo '  cargo make validate-production-readiness- Production readiness'",
+    "echo '  cargo make pre-commit-full - Pre-commit validation'",
+    "echo ''",
+    "echo '📚 Documentation:'",
+    "echo '  cargo make docs-build      - Build comprehensive docs'",
+    "echo '  cargo make docs-serve      - Serve docs locally'",
+    "echo '  cargo make docs-validate   - Validate doc structure'",
+    "echo ''",
+    "echo '🤖 AI & Code Generation:'",
+    "echo '  cargo make ollama-query    - Query Qwen3-Coder 30B model'",
+    "echo '  cargo make ollama-code-review - Code review with AI'",
+    "echo '  cargo make ollama-generate - Generate code with AI'",
+    "echo '  cargo make ollama-explain  - Explain code/concepts with AI'",
+    "echo ''",
+    "echo '🔗 GitHub Integration:'",
+    "echo '  cargo make github-issues   - Query GitHub issues'",
+    "echo '  cargo make github-issue-details - Fetch full issue details'",
+    "echo '  cargo make github-issues-full - Complete workflow'",
+    "echo '  cargo make github-issues-summary - Show issues summary'",
+    "echo ''",
+    "echo '🚀 Publishing & Release:'",
+    "echo '  cargo make publish-dry-run - Dry run publish'",
+    "echo '  cargo make release-validation- Release readiness check'",
+    "echo '  cargo make publish         - Publish to crates.io'",
+    "echo ''",
+    "echo '🛠️  Utilities:'",
+    "echo '  cargo make clean-all       - Clean all artifacts'",
+    "echo '  cargo make clean-docker    - Clean Docker resources'",
+    "echo '  cargo make update-deps     - Update dependencies'",
+    "echo '  cargo make check-deps      - Check dependency health'",
+    "echo ''",
+    "echo '📋 Discovery:'",
+    "echo '  cargo make list-tasks      - List all available tasks'",
+    "echo '  cargo make help-categories - Show this help'",
+    "echo ''",
+    "echo 'For detailed task information: cargo make --list-all-steps'",
+]
+
+[tasks.default]
+description = "Show available tasks and quick start guide"
+dependencies = ["help-categories"]

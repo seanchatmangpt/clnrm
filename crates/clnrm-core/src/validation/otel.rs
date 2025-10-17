@@ -152,6 +152,10 @@
 //! - **Network impact**: None - validates existing telemetry, doesn't generate additional traffic
 //! - **Configuration**: Validation can be disabled entirely via configuration
 
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[cfg(feature = "otel-traces")]
 use crate::error::{CleanroomError, Result};
 
 #[cfg(feature = "otel-traces")]
@@ -159,8 +163,8 @@ use opentelemetry::trace::TraceId;
 
 #[cfg(feature = "otel-traces")]
 use opentelemetry_sdk::trace::{InMemorySpanExporter, SpanData as OtelSpanData, SpanProcessor};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
+#[cfg(feature = "otel-traces")]
 use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "otel-traces")]
