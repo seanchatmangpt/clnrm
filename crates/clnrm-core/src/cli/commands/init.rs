@@ -181,27 +181,25 @@ mod tests {
         // Act
         let result = init_project(false, true);
 
-        // Restore original directory
-        std::env::set_current_dir(original_dir)?;
-
-        // Assert
+        // Assert - check files while still in temp directory
         assert!(result.is_ok());
-
-        // Verify directory structure was created
-        assert!(temp_dir.path().join("tests").exists());
-        assert!(temp_dir.path().join("scenarios").exists());
-        assert!(temp_dir.path().join("README.md").exists());
-        assert!(temp_dir.path().join("tests/basic.clnrm.toml").exists());
-        assert!(temp_dir.path().join("cleanroom.toml").exists());
+        assert!(Path::new("tests").exists(), "tests directory should exist");
+        assert!(Path::new("scenarios").exists(), "scenarios directory should exist");
+        assert!(Path::new("README.md").exists(), "README.md should exist");
+        assert!(Path::new("tests/basic.clnrm.toml").exists(), "basic test file should exist");
+        assert!(Path::new("cleanroom.toml").exists(), "config file should exist");
 
         // Verify cleanroom.toml content
         let config_content =
-            fs::read_to_string(temp_dir.path().join("cleanroom.toml")).map_err(|e| {
+            fs::read_to_string(Path::new("cleanroom.toml")).map_err(|e| {
                 CleanroomError::internal_error("Failed to read config file")
                     .with_source(e.to_string())
             })?;
         assert!(config_content.contains("[project]"));
         assert!(config_content.contains("name = \"my-project\""));
+
+        // Restore original directory
+        std::env::set_current_dir(original_dir)?;
 
         Ok(())
     }

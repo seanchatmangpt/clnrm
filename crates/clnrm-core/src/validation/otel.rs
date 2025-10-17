@@ -140,15 +140,11 @@ impl OtelValidator {
     /// - No .unwrap() or .expect()
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
-    pub fn validate_span(&self, assertion: &SpanAssertion) -> Result<SpanValidationResult> {
+    pub fn validate_span(&self, _assertion: &SpanAssertion) -> Result<SpanValidationResult> {
         if !self.config.validate_spans {
-            return Ok(SpanValidationResult {
-                passed: true,
-                span_name: assertion.name.clone(),
-                errors: vec!["Span validation disabled".to_string()],
-                actual_attributes: HashMap::new(),
-                actual_duration_ms: None,
-            });
+            return Err(CleanroomError::validation_error(
+                "Span validation is disabled in configuration",
+            ));
         }
 
         // CRITICAL: This is a placeholder implementation
@@ -171,16 +167,11 @@ impl OtelValidator {
     /// - No .unwrap() or .expect()
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
-    pub fn validate_trace(&self, assertion: &TraceAssertion) -> Result<TraceValidationResult> {
+    pub fn validate_trace(&self, _assertion: &TraceAssertion) -> Result<TraceValidationResult> {
         if !self.config.validate_traces {
-            return Ok(TraceValidationResult {
-                passed: true,
-                trace_id: assertion.trace_id.clone(),
-                expected_span_count: assertion.expected_spans.len(),
-                actual_span_count: 0,
-                span_results: Vec::new(),
-                errors: vec!["Trace validation disabled".to_string()],
-            });
+            return Err(CleanroomError::validation_error(
+                "Trace validation is disabled in configuration",
+            ));
         }
 
         // CRITICAL: This is a placeholder implementation
@@ -205,7 +196,9 @@ impl OtelValidator {
     /// - Returns Result<T, CleanroomError>
     pub fn validate_export(&self, _endpoint: &str) -> Result<bool> {
         if !self.config.validate_exports {
-            return Ok(true);
+            return Err(CleanroomError::validation_error(
+                "Export validation is disabled in configuration",
+            ));
         }
 
         // CRITICAL: This is a placeholder implementation
@@ -237,7 +230,9 @@ impl OtelValidator {
         with_telemetry_duration_ms: f64,
     ) -> Result<bool> {
         if !self.config.validate_performance {
-            return Ok(true);
+            return Err(CleanroomError::validation_error(
+                "Performance validation is disabled in configuration",
+            ));
         }
 
         let overhead_ms = with_telemetry_duration_ms - baseline_duration_ms;
@@ -418,8 +413,10 @@ mod tests {
         // Act
         let result = validator.validate_performance_overhead(baseline, with_telemetry);
 
-        // Assert
-        assert!(result.is_ok());
+        // Assert - should error when validation is disabled
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(error.message.contains("Performance validation is disabled"));
     }
 
     #[test]

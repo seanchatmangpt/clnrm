@@ -61,6 +61,7 @@ impl Default for MarketplaceConfig {
 
 /// Main marketplace client
 pub struct Marketplace {
+    #[allow(dead_code)]
     config: MarketplaceConfig,
     registry: registry::PluginRegistry,
     discovery: discovery::PluginDiscovery,

@@ -9,8 +9,10 @@ use std::collections::HashMap;
 
 /// Plugin discovery engine
 pub struct PluginDiscovery {
+    #[allow(dead_code)]
     config: MarketplaceConfig,
     /// Cached search index
+    #[allow(dead_code)]
     search_index: HashMap<String, Vec<PluginMetadata>>,
 }
 

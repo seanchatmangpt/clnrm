@@ -1,0 +1,71 @@
+# Advanced Validators Example
+# This demonstrates new v0.6.0 validators (order, status) with templates
+
+[template.vars]
+service_name = "clnrm"
+test_type = "integration"
+
+[template.matrix]
+lifecycle_phases = [
+    { phase = "start", expected_status = "OK" },
+    { phase = "exec", expected_status = "OK" },
+    { phase = "stop", expected_status = "OK" }
+]
+
+[meta]
+name = "advanced_validators_test"
+description = "Demonstrates order and status validators with template expansion"
+
+[otel]
+exporter = "stdout"
+resources = {
+    "service.name" = "{{ vars.service_name }}",
+    "test.type" = "{{ vars.test_type }}"
+}
+
+[[scenario]]
+name = "test_container_lifecycle"
+service = "alpine"
+run = """
+echo 'Step 1: Initialize'
+echo 'Step 2: Execute'
+echo 'Step 3: Cleanup'
+"""
+
+[services.alpine]
+type = "generic_container"
+image = "alpine:latest"
+
+# Order validator: Ensure temporal ordering
+[expect.order]
+must_precede = [
+    ["container.start", "container.exec"],
+    ["container.exec", "container.stop"]
+]
+must_follow = [
+    ["container.stop", "container.start"],
+    ["container.stop", "container.exec"]
+]
+
+# Status validator: All spans must be OK
+[expect.status]
+all = "OK"
+
+# Per-pattern status requirements
+[expect.status.by_name]
+"container.*" = "OK"
+"clnrm.step:*" = "OK"
+"error_*" = "ERROR"  # Any span starting with "error_" must be ERROR
+
+# Generate span expectations for each lifecycle phase
+{% for phase in matrix.lifecycle_phases %}
+[[expect.span]]
+name = "container.{{ phase.phase }}"
+status = "{{ phase.expected_status }}"
+{% endfor %}
+
+[expect.counts]
+spans.min = 4  # start + exec + stop + step span
+
+[expect.window]
+max_duration_ms = 10000

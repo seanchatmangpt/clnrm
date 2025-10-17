@@ -5,7 +5,7 @@
 use crate::cli::types::{CliTestResults, ACCEPTED_EXTENSIONS};
 use crate::config::load_config_from_file;
 use crate::error::{CleanroomError, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 use walkdir::WalkDir;
 
@@ -74,7 +74,7 @@ pub fn discover_test_files(path: &PathBuf) -> Result<Vec<PathBuf>> {
 }
 
 /// Parse a TOML test configuration file
-pub fn parse_toml_test(path: &PathBuf) -> Result<crate::config::TestConfig> {
+pub fn parse_toml_test(path: &Path) -> Result<crate::config::TestConfig> {
     load_config_from_file(path)
 }
 
@@ -396,7 +396,7 @@ steps = [
         let config = parse_toml_test(&test_file)?;
 
         // Assert
-        assert_eq!(config.test.metadata.name, "test_example");
+        assert_eq!(config.get_name().unwrap(), "test_example");
         assert_eq!(config.steps.len(), 1);
         assert_eq!(config.steps[0].name, "test_step");
         assert_eq!(config.steps[0].command, vec!["echo", "hello world"]);

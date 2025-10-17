@@ -85,7 +85,8 @@ pub fn validate_single_config(path: &PathBuf) -> Result<()> {
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
 
     // Basic validation
-    if test_config.test.metadata.name.is_empty() {
+    let test_name = test_config.get_name()?;
+    if test_name.is_empty() {
         return Err(CleanroomError::validation_error(
             "Test name cannot be empty",
         ));
@@ -101,7 +102,7 @@ pub fn validate_single_config(path: &PathBuf) -> Result<()> {
     let service_count = test_config.services.as_ref().map(|s| s.len()).unwrap_or(0);
     info!(
         "✅ Configuration valid: {} ({} steps, {} services)",
-        test_config.test.metadata.name,
+        test_name,
         test_config.steps.len(),
         service_count
     );

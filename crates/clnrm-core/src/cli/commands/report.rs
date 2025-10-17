@@ -94,7 +94,7 @@ fn generate_html_report(results: &FrameworkTestResults) -> Result<String> {
     html.push_str("</head>\n<body>\n");
 
     html.push_str("<div class=\"header\">\n");
-    html.push_str(&"<h1>Cleanroom Test Report</h1>\n".to_string());
+    html.push_str("<h1>Cleanroom Test Report</h1>\n");
     html.push_str(&format!(
         "<p><strong>Total Tests:</strong> {}</p>\n",
         results.total_tests

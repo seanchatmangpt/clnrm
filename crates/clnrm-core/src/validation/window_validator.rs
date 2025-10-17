@@ -83,20 +83,13 @@ impl WindowExpectation {
     }
 
     /// Find a span by name
-    fn find_span_by_name<'a>(
-        &self,
-        spans: &'a [SpanData],
-        name: &str,
-    ) -> Result<&'a SpanData> {
-        spans
-            .iter()
-            .find(|s| s.name == name)
-            .ok_or_else(|| {
-                CleanroomError::validation_error(format!(
-                    "Window validation failed: span '{}' not found in trace",
-                    name
-                ))
-            })
+    fn find_span_by_name<'a>(&self, spans: &'a [SpanData], name: &str) -> Result<&'a SpanData> {
+        spans.iter().find(|s| s.name == name).ok_or_else(|| {
+            CleanroomError::validation_error(format!(
+                "Window validation failed: span '{}' not found in trace",
+                name
+            ))
+        })
     }
 
     /// Extract and validate timestamps from a span
@@ -163,10 +156,7 @@ impl WindowValidator {
     /// # Returns
     /// * `Ok(())` if all expectations pass
     /// * `Err` with the first validation failure
-    pub fn validate_windows(
-        expectations: &[WindowExpectation],
-        spans: &[SpanData],
-    ) -> Result<()> {
+    pub fn validate_windows(expectations: &[WindowExpectation], spans: &[SpanData]) -> Result<()> {
         for expectation in expectations {
             expectation.validate(spans)?;
         }
@@ -180,11 +170,7 @@ mod tests {
     use std::collections::HashMap;
 
     /// Helper to create a span for testing
-    fn create_test_span(
-        name: &str,
-        start_nano: Option<u64>,
-        end_nano: Option<u64>,
-    ) -> SpanData {
+    fn create_test_span(name: &str, start_nano: Option<u64>, end_nano: Option<u64>) -> SpanData {
         SpanData {
             name: name.to_string(),
             attributes: HashMap::new(),
@@ -221,10 +207,8 @@ mod tests {
             create_test_span("child_b", Some(3500), Some(4500)),
         ];
 
-        let expectation = WindowExpectation::new(
-            "root",
-            vec!["child_a".to_string(), "child_b".to_string()],
-        );
+        let expectation =
+            WindowExpectation::new("root", vec!["child_a".to_string(), "child_b".to_string()]);
 
         // Act
         let result = expectation.validate(&spans);
@@ -296,8 +280,7 @@ mod tests {
         // Arrange
         let spans = vec![create_test_span("root", Some(1000), Some(5000))];
 
-        let expectation =
-            WindowExpectation::new("root", vec!["nonexistent_child".to_string()]);
+        let expectation = WindowExpectation::new("root", vec!["nonexistent_child".to_string()]);
 
         // Act
         let result = expectation.validate(&spans);
@@ -457,7 +440,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_ok(), "Child starting exactly when parent starts should be valid");
+        assert!(
+            result.is_ok(),
+            "Child starting exactly when parent starts should be valid"
+        );
     }
 
     #[test]
@@ -474,7 +460,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_ok(), "Child ending exactly when parent ends should be valid");
+        assert!(
+            result.is_ok(),
+            "Child ending exactly when parent ends should be valid"
+        );
     }
 
     #[test]
@@ -491,7 +480,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_ok(), "Child with exact same window as parent should be valid");
+        assert!(
+            result.is_ok(),
+            "Child with exact same window as parent should be valid"
+        );
     }
 
     #[test]
@@ -548,7 +540,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_ok(), "Empty contains list should validate successfully");
+        assert!(
+            result.is_ok(),
+            "Empty contains list should validate successfully"
+        );
     }
 
     #[test]

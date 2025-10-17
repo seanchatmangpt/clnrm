@@ -177,10 +177,7 @@ impl ValidationReport {
     /// Generate human-readable summary
     pub fn summary(&self) -> String {
         if self.is_success() {
-            format!(
-                "✓ All {} validations passed",
-                self.pass_count()
-            )
+            format!("✓ All {} validations passed", self.pass_count())
         } else {
             format!(
                 "✗ {} passed, {} failed\n{}",
@@ -204,11 +201,7 @@ mod tests {
     use crate::validation::hermeticity_validator::HermeticityExpectation;
     use std::collections::HashMap;
 
-    fn create_test_span(
-        name: &str,
-        span_id: &str,
-        parent_id: Option<&str>,
-    ) -> SpanData {
+    fn create_test_span(name: &str, span_id: &str, parent_id: Option<&str>) -> SpanData {
         SpanData {
             name: name.to_string(),
             trace_id: "test_trace".to_string(),
@@ -231,9 +224,7 @@ mod tests {
             create_test_span("child", "s2", Some("s1")),
         ];
 
-        let graph = GraphExpectation::new(vec![
-            ("root".to_string(), "child".to_string()),
-        ]);
+        let graph = GraphExpectation::new(vec![("root".to_string(), "child".to_string())]);
 
         let counts = CountExpectation::new()
             .with_name_count("root".to_string(), CountBound::eq(1))
@@ -259,9 +250,7 @@ mod tests {
         // Arrange
         let spans = vec![create_test_span("root", "s1", None)];
 
-        let graph = GraphExpectation::new(vec![
-            ("root".to_string(), "missing_child".to_string()),
-        ]);
+        let graph = GraphExpectation::new(vec![("root".to_string(), "missing_child".to_string())]);
 
         let expectations = PrdExpectations::new().with_graph(graph);
 
@@ -279,8 +268,7 @@ mod tests {
         // Arrange
         let spans = vec![create_test_span("root", "s1", None)];
 
-        let counts = CountExpectation::new()
-            .with_name_count("root".to_string(), CountBound::eq(2)); // Expect 2, have 1
+        let counts = CountExpectation::new().with_name_count("root".to_string(), CountBound::eq(2)); // Expect 2, have 1
 
         let expectations = PrdExpectations::new().with_counts(counts);
 
@@ -315,8 +303,7 @@ mod tests {
         // Arrange
         let spans = vec![create_test_span("root", "s1", None)];
 
-        let counts = CountExpectation::new()
-            .with_name_count("root".to_string(), CountBound::eq(2));
+        let counts = CountExpectation::new().with_name_count("root".to_string(), CountBound::eq(2));
 
         let expectations = PrdExpectations::new().with_counts(counts);
 

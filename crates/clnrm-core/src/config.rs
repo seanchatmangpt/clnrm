@@ -12,16 +12,129 @@ use std::time::Duration;
 /// Main test configuration structure
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TestConfig {
-    /// Test metadata section
-    pub test: TestMetadataSection,
+    /// Test metadata section (v0.4.x format)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub test: Option<TestMetadataSection>,
+    /// Meta section (v0.6.0 - alternative to test.metadata)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub meta: Option<MetaConfig>,
     /// Service configurations (as a table)
+    #[serde(default)]
     pub services: Option<HashMap<String, ServiceConfig>>,
+    /// Service configurations (v0.6.0 - using [service.name] syntax)
+    #[serde(default)]
+    pub service: Option<HashMap<String, ServiceConfig>>,
     /// Test steps to execute
+    #[serde(default)]
     pub steps: Vec<StepConfig>,
+    /// Scenario configurations (v0.6.0)
+    #[serde(default)]
+    pub scenario: Vec<ScenarioConfig>,
     /// Assertions
+    #[serde(default)]
     pub assertions: Option<HashMap<String, serde_json::Value>>,
     /// OpenTelemetry validation configuration
+    #[serde(default)]
     pub otel_validation: Option<OtelValidationSection>,
+    /// OTEL configuration (v0.6.0)
+    #[serde(default)]
+    pub otel: Option<OtelConfig>,
+    /// Template variables (v0.6.0)
+    #[serde(default)]
+    pub vars: Option<HashMap<String, serde_json::Value>>,
+    /// Matrix variables (v0.6.0)
+    #[serde(default)]
+    pub matrix: Option<HashMap<String, Vec<String>>>,
+    /// Span expectations (v0.6.0 - using [[expect.span]])
+    #[serde(default, rename = "expect")]
+    pub expect: Option<ExpectationsConfig>,
+    /// Report configuration (v0.6.0)
+    #[serde(default)]
+    pub report: Option<ReportConfig>,
+    /// Determinism configuration (v0.6.0)
+    #[serde(default)]
+    pub determinism: Option<DeterminismConfig>,
+    /// Resource limits (v0.6.0)
+    #[serde(default)]
+    pub limits: Option<LimitsConfig>,
+    /// OTEL headers (v0.6.0)
+    #[serde(default)]
+    pub otel_headers: Option<OtelHeadersConfig>,
+    /// OTEL propagators (v0.6.0)
+    #[serde(default)]
+    pub otel_propagators: Option<OtelPropagatorsConfig>,
+}
+
+/// Meta configuration (v0.6.0 - simplified metadata section)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct MetaConfig {
+    /// Test name
+    pub name: String,
+    /// Version
+    pub version: String,
+    /// Test description
+    pub description: Option<String>,
+}
+
+/// OTEL configuration (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OtelConfig {
+    /// OTEL exporter type
+    pub exporter: String,
+    /// Sample ratio
+    pub sample_ratio: Option<f64>,
+    /// Resource attributes
+    pub resources: Option<HashMap<String, String>>,
+    /// OTEL headers
+    pub headers: Option<HashMap<String, String>>,
+    /// OTEL propagators
+    pub propagators: Option<OtelPropagatorsConfig>,
+}
+
+/// Expectations configuration (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct ExpectationsConfig {
+    /// Span expectations
+    #[serde(default)]
+    pub span: Vec<SpanExpectationConfig>,
+    /// Order expectations
+    #[serde(default)]
+    pub order: Option<OrderExpectationConfig>,
+    /// Status expectations
+    #[serde(default)]
+    pub status: Option<StatusExpectationConfig>,
+    /// Count expectations
+    #[serde(default)]
+    pub counts: Option<CountExpectationConfig>,
+    /// Window expectations
+    #[serde(default)]
+    pub window: Vec<WindowExpectationConfig>,
+    /// Graph expectations
+    #[serde(default)]
+    pub graph: Option<GraphExpectationConfig>,
+    /// Hermeticity expectations
+    #[serde(default)]
+    pub hermeticity: Option<HermeticityExpectationConfig>,
+}
+
+/// Span expectation configuration (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct SpanExpectationConfig {
+    /// Span name (can be glob pattern)
+    pub name: String,
+    /// Span kind
+    pub kind: Option<String>,
+    /// Attribute expectations
+    pub attrs: Option<SpanAttributesConfig>,
+}
+
+/// Span attributes configuration
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct SpanAttributesConfig {
+    /// All attributes must match
+    pub all: Option<HashMap<String, String>>,
+    /// Any attribute must match
+    pub any: Option<HashMap<String, String>>,
 }
 
 /// Test metadata section
@@ -418,6 +531,12 @@ pub struct OtelValidationSection {
     /// Hermeticity expectations
     #[serde(default)]
     pub expect_hermeticity: Option<HermeticityExpectationConfig>,
+    /// Temporal ordering expectations (v0.6.0)
+    #[serde(default)]
+    pub expect_order: Option<OrderExpectationConfig>,
+    /// Status code expectations (v0.6.0)
+    #[serde(default)]
+    pub expect_status: Option<StatusExpectationConfig>,
 }
 
 /// Expected span configuration from TOML
@@ -515,11 +634,120 @@ pub struct HermeticityExpectationConfig {
     pub span_attrs_forbid_keys: Option<Vec<String>>,
 }
 
+/// Temporal ordering expectations (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OrderExpectationConfig {
+    /// Edges where first must temporally precede second
+    #[serde(default)]
+    pub must_precede: Option<Vec<(String, String)>>,
+    /// Edges where first must temporally follow second
+    #[serde(default)]
+    pub must_follow: Option<Vec<(String, String)>>,
+}
+
+/// Status code expectations (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct StatusExpectationConfig {
+    /// Expected status for all spans ("OK", "ERROR", "UNSET")
+    #[serde(default)]
+    pub all: Option<String>,
+    /// Expected status by span name pattern (supports globs)
+    #[serde(default)]
+    pub by_name: Option<HashMap<String, String>>,
+}
+
+/// Report output configuration (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ReportConfig {
+    /// Path to JSON report output
+    #[serde(default)]
+    pub json: Option<String>,
+    /// Path to JUnit XML output
+    #[serde(default)]
+    pub junit: Option<String>,
+    /// Path to SHA-256 digest file
+    #[serde(default)]
+    pub digest: Option<String>,
+}
+
+/// Determinism configuration for reproducible tests (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct DeterminismConfig {
+    /// Random seed for deterministic ordering
+    #[serde(default)]
+    pub seed: Option<u64>,
+    /// Frozen clock timestamp (RFC3339 format)
+    #[serde(default)]
+    pub freeze_clock: Option<String>,
+}
+
+impl DeterminismConfig {
+    pub fn is_deterministic(&self) -> bool {
+        self.seed.is_some() || self.freeze_clock.is_some()
+    }
+}
+
+/// Resource limits configuration (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct LimitsConfig {
+    /// CPU limit in millicores
+    #[serde(default)]
+    pub cpu_millicores: Option<u32>,
+    /// Memory limit in megabytes
+    #[serde(default)]
+    pub memory_mb: Option<u32>,
+}
+
+/// OTEL headers configuration (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct OtelHeadersConfig {
+    /// Custom OTLP headers (e.g., Authorization)
+    #[serde(flatten)]
+    pub headers: HashMap<String, String>,
+}
+
+/// OTEL propagators configuration (v0.6.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct OtelPropagatorsConfig {
+    /// Propagators to use (e.g., ["tracecontext", "baggage"])
+    pub r#use: Vec<String>,
+}
+
 impl TestConfig {
+    /// Get test name (works with both v0.4.x [test.metadata] and v0.6.0 [meta])
+    pub fn get_name(&self) -> Result<String> {
+        if let Some(ref meta) = self.meta {
+            Ok(meta.name.clone())
+        } else if let Some(ref test) = self.test {
+            Ok(test.metadata.name.clone())
+        } else {
+            Err(CleanroomError::validation_error(
+                "Configuration must have either [meta] or [test.metadata] section"
+            ))
+        }
+    }
+
+    /// Get test version (v0.6.0 only)
+    pub fn get_version(&self) -> Option<String> {
+        self.meta.as_ref().map(|m| m.version.clone())
+    }
+
+    /// Get test description (works with both formats)
+    pub fn get_description(&self) -> Option<String> {
+        if let Some(ref meta) = self.meta {
+            meta.description.clone()
+        } else if let Some(ref test) = self.test {
+            test.metadata.description.clone()
+        } else {
+            None
+        }
+    }
+
     /// Validate the configuration
     pub fn validate(&self) -> Result<()> {
         // Validate name is not empty
-        if self.test.metadata.name.trim().is_empty() {
+        let name = self.get_name()?;
+        if name.trim().is_empty() {
             return Err(CleanroomError::validation_error(
                 "Test name cannot be empty",
             ));
@@ -677,12 +905,28 @@ pub fn parse_toml_config(content: &str) -> Result<TestConfig> {
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))
 }
 
-/// Load configuration from file
+/// Load configuration from file with template rendering support
 pub fn load_config_from_file(path: &std::path::Path) -> Result<TestConfig> {
+    use crate::template::{is_template, TemplateRenderer};
+
+    // Read file content
     let content = std::fs::read_to_string(path)
         .map_err(|e| CleanroomError::config_error(format!("Failed to read config file: {}", e)))?;
 
-    let config = parse_toml_config(&content)?;
+    // Check if template rendering is needed
+    let toml_content = if is_template(&content) {
+        // Render as Tera template
+        let mut renderer = TemplateRenderer::new()?;
+
+        // Render with default context (environment variables accessible via env() function)
+        renderer.render_str(&content, path.to_str().unwrap_or("config"))?
+    } else {
+        // Use content as-is (backward compatible)
+        content
+    };
+
+    // Parse TOML
+    let config = parse_toml_config(&toml_content)?;
     config.validate()?;
 
     Ok(config)
@@ -1029,7 +1273,7 @@ max_execution_time = 300
 "#;
 
         let config = parse_toml_config(toml_content)?;
-        assert_eq!(config.test.metadata.name, "test_example");
+        assert_eq!(config.get_name()?, "test_example");
         assert_eq!(config.steps.len(), 2);
         Ok(())
     }
@@ -1037,14 +1281,16 @@ max_execution_time = 300
     #[test]
     fn test_validate_config() {
         let config = TestConfig {
-            test: TestMetadataSection {
+            test: Some(TestMetadataSection {
                 metadata: TestMetadata {
                     name: "test".to_string(),
                     description: Some("test description".to_string()),
                     timeout: None,
                 },
-            },
+            }),
+            meta: None,
             services: None,
+            service: None,
             steps: vec![StepConfig {
                 name: "step".to_string(),
                 command: vec!["echo".to_string(), "test".to_string()],
@@ -1055,8 +1301,18 @@ max_execution_time = 300
                 expected_exit_code: None,
                 continue_on_failure: None,
             }],
+            scenario: vec![],
             assertions: None,
             otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
         };
 
         assert!(config.validate().is_ok());
@@ -1065,17 +1321,29 @@ max_execution_time = 300
     #[test]
     fn test_validate_empty_name() {
         let config = TestConfig {
-            test: TestMetadataSection {
+            test: Some(TestMetadataSection {
                 metadata: TestMetadata {
                     name: "".to_string(),
                     description: Some("test description".to_string()),
                     timeout: None,
                 },
-            },
+            }),
+            meta: None,
             steps: vec![],
+            scenario: vec![],
             services: None,
+            service: None,
             assertions: None,
             otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
         };
 
         assert!(config.validate().is_err());
@@ -1084,17 +1352,29 @@ max_execution_time = 300
     #[test]
     fn test_validate_empty_scenarios() {
         let config = TestConfig {
-            test: TestMetadataSection {
+            test: Some(TestMetadataSection {
                 metadata: TestMetadata {
                     name: "test".to_string(),
                     description: Some("test description".to_string()),
                     timeout: None,
                 },
-            },
+            }),
+            meta: None,
             steps: vec![],
+            scenario: vec![],
             services: None,
+            service: None,
             assertions: None,
             otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
         };
 
         assert!(config.validate().is_err());

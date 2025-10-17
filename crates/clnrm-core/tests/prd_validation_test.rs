@@ -22,8 +22,7 @@ fn test_prd_minimal_happy_path_validates_span_existence() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     // Assert: Both required spans exist
     assert!(
@@ -45,13 +44,14 @@ fn test_prd_minimal_happy_path_validates_hierarchy() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     // Assert: Verify parent-child relationship
-    let run_span = validator.get_span("clnrm.run")
+    let run_span = validator
+        .get_span("clnrm.run")
         .expect("clnrm.run span should exist");
-    let step_span = validator.get_span("clnrm.step:hello_world")
+    let step_span = validator
+        .get_span("clnrm.step:hello_world")
         .expect("clnrm.step:hello_world span should exist");
 
     assert!(
@@ -74,8 +74,7 @@ fn test_prd_minimal_happy_path_validates_counts() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     // Assert: Verify counts match PRD expectations
     assert_eq!(
@@ -99,17 +98,24 @@ fn test_prd_minimal_happy_path_validates_temporal_window() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let run_span = validator.get_span("clnrm.run").unwrap();
     let step_span = validator.get_span("clnrm.step:hello_world").unwrap();
 
     // Assert: Child span is temporally contained in parent
-    let run_start = run_span.start_time_unix_nano.expect("run span should have start time");
-    let run_end = run_span.end_time_unix_nano.expect("run span should have end time");
-    let step_start = step_span.start_time_unix_nano.expect("step span should have start time");
-    let step_end = step_span.end_time_unix_nano.expect("step span should have end time");
+    let run_start = run_span
+        .start_time_unix_nano
+        .expect("run span should have start time");
+    let run_end = run_span
+        .end_time_unix_nano
+        .expect("run span should have end time");
+    let step_start = step_span
+        .start_time_unix_nano
+        .expect("step span should have start time");
+    let step_end = step_span
+        .end_time_unix_nano
+        .expect("step span should have end time");
 
     assert!(
         step_start >= run_start,
@@ -139,8 +145,7 @@ fn test_graph_validation_must_include_edges_present() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     // Assert: Verify edges exist using parent_span_id relationships
     let step1 = validator.get_span("clnrm.step:step1").unwrap();
@@ -167,8 +172,7 @@ fn test_graph_validation_must_include_edges_missing_fails() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let step1 = validator.get_span("clnrm.step:step1").unwrap();
 
@@ -190,8 +194,7 @@ fn test_graph_validation_acyclic_detects_no_cycles_in_valid_dag() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     // Assert: Verify it's a valid tree (no cycles possible in tree structure)
     // In a tree, every span has at most one parent
@@ -219,8 +222,7 @@ fn test_graph_validation_detects_self_reference_cycle() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let span = validator.get_span("self_ref").unwrap();
 
@@ -246,8 +248,7 @@ fn test_count_validation_gte_bound_satisfied() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let count = validator.count_spans("clnrm.step");
 
@@ -267,8 +268,7 @@ fn test_count_validation_gte_bound_violated() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let count = validator.count_spans("clnrm.step");
 
@@ -289,8 +289,7 @@ fn test_count_validation_lte_bound_satisfied() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let count = validator.count_spans("clnrm.step");
 
@@ -313,8 +312,7 @@ fn test_count_validation_lte_bound_violated() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let count = validator.count_spans("clnrm.step");
 
@@ -334,15 +332,13 @@ fn test_count_validation_eq_bound_satisfied() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let count = validator.count_spans("clnrm.run");
 
     // Assert: eq(1) bound is satisfied
     assert_eq!(
-        count,
-        1,
+        count, 1,
         "Count validation eq(1) failed: got {} spans",
         count
     );
@@ -357,15 +353,13 @@ fn test_count_validation_eq_bound_violated_too_many() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let count = validator.count_spans("clnrm.run");
 
     // Assert: eq(1) bound is violated (too many)
     assert_ne!(
-        count,
-        1,
+        count, 1,
         "Count validation eq(1) should be violated: got {} spans (expected != 1)",
         count
     );
@@ -377,15 +371,13 @@ fn test_count_validation_eq_bound_violated_too_few() {
     let json = "";
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let count = validator.count_spans("clnrm.run");
 
     // Assert: eq(1) bound is violated (too few)
     assert_eq!(
-        count,
-        0,
+        count, 0,
         "Count validation eq(1) should be violated: got {} spans (expected 0)",
         count
     );
@@ -399,17 +391,12 @@ fn test_count_validation_zero_spans_for_nonexistent_name() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let count = validator.count_spans("nonexistent.span");
 
     // Assert: Count is 0 for nonexistent span name
-    assert_eq!(
-        count,
-        0,
-        "Count for nonexistent span should be 0"
-    );
+    assert_eq!(count, 0, "Count for nonexistent span should be 0");
 }
 
 // ============================================================================
@@ -425,8 +412,7 @@ fn test_temporal_window_containment_valid() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let parent = validator.get_span("parent").unwrap();
     let child = validator.get_span("child").unwrap();
@@ -460,8 +446,7 @@ fn test_temporal_window_containment_child_starts_before_parent_invalid() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let parent = validator.get_span("parent").unwrap();
     let child = validator.get_span("child").unwrap();
@@ -487,8 +472,7 @@ fn test_temporal_window_containment_child_ends_after_parent_invalid() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let parent = validator.get_span("parent").unwrap();
     let child = validator.get_span("child").unwrap();
@@ -514,8 +498,7 @@ fn test_temporal_window_containment_exact_boundaries_valid() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let parent = validator.get_span("parent").unwrap();
     let child = validator.get_span("child").unwrap();
@@ -543,8 +526,7 @@ fn test_temporal_window_sibling_spans_can_overlap() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let child1 = validator.get_span("child1").unwrap();
     let child2 = validator.get_span("child2").unwrap();
@@ -578,8 +560,7 @@ fn test_hermeticity_no_external_services_all_internal() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let spans = validator.all_spans();
 
@@ -602,8 +583,7 @@ fn test_hermeticity_external_service_detected() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let external_span = validator.get_span("http.request").unwrap();
 
@@ -623,8 +603,7 @@ fn test_hermeticity_forbidden_attributes_http_url() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let span = validator.get_span("clnrm.step").unwrap();
 
@@ -643,8 +622,7 @@ fn test_hermeticity_forbidden_attributes_db_connection_string() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let span = validator.get_span("clnrm.step").unwrap();
 
@@ -663,8 +641,7 @@ fn test_hermeticity_forbidden_attributes_net_peer_name() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let span = validator.get_span("clnrm.step").unwrap();
 
@@ -683,13 +660,17 @@ fn test_hermeticity_allowed_attributes_only() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Failed to parse valid JSON");
+    let validator = SpanValidator::from_json(json).expect("Failed to parse valid JSON");
 
     let span = validator.get_span("clnrm.step").unwrap();
 
     // Assert: Only allowed attributes present
-    let forbidden_attrs = ["http.url", "db.connection_string", "net.peer.name", "rpc.service"];
+    let forbidden_attrs = [
+        "http.url",
+        "db.connection_string",
+        "net.peer.name",
+        "rpc.service",
+    ];
     for attr in &forbidden_attrs {
         assert!(
             !span.attributes.contains_key(*attr),
@@ -712,8 +693,8 @@ fn test_invalid_json_silently_skipped() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Parser should skip invalid lines and continue");
+    let validator =
+        SpanValidator::from_json(json).expect("Parser should skip invalid lines and continue");
 
     // Assert: Valid span was parsed, invalid line was skipped
     assert_eq!(
@@ -734,8 +715,7 @@ fn test_empty_json_returns_empty_validator() {
     let json = "";
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Empty JSON should be valid");
+    let validator = SpanValidator::from_json(json).expect("Empty JSON should be valid");
 
     // Assert: Validator has no spans
     assert_eq!(
@@ -754,8 +734,8 @@ fn test_malformed_span_missing_required_fields_silently_skipped() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Parser should skip malformed spans and continue");
+    let validator =
+        SpanValidator::from_json(json).expect("Parser should skip malformed spans and continue");
 
     // Assert: Malformed span was skipped, valid span was parsed
     assert_eq!(
@@ -779,8 +759,7 @@ fn test_duplicate_span_ids_last_wins() {
 "#;
 
     // Act
-    let validator = SpanValidator::from_json(json)
-        .expect("Duplicate span_id should be handled");
+    let validator = SpanValidator::from_json(json).expect("Duplicate span_id should be handled");
 
     // Assert: Last span with duplicate ID wins (or implementation-defined behavior)
     let span = validator.get_span_by_id("1").unwrap();

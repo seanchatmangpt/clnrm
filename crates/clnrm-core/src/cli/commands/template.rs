@@ -5,6 +5,374 @@
 use crate::error::{CleanroomError, Result};
 use tracing::{debug, info};
 
+/// Generate a basic OTEL template with Tera syntax
+pub fn generate_otel_template() -> Result<String> {
+    Ok(r#"# clnrm OTEL validation template (v0.6.0)
+# This file uses Tera templating syntax
+
+[meta]
+name = "{{ vars.name | default(value="otel_validation") }}"
+version = "0.6.0"
+description = "Telemetry-only validation test"
+
+[otel]
+exporter = "{{ env(name="OTEL_EXPORTER") | default(value="stdout") }}"
+{% if otel.endpoint %}
+endpoint = "{{ otel.endpoint }}"
+{% endif %}
+sample_ratio = 1.0
+resources = { "service.name" = "clnrm", "service.version" = "0.6.0" }
+
+[service.clnrm]
+plugin = "generic_container"
+image = "{{ vars.image | default(value="alpine:latest") }}"
+args = ["sh", "-c", "echo 'Running test'"]
+wait_for_span = "clnrm.run"
+
+[[scenario]]
+name = "otel_validation"
+service = "clnrm"
+run = "echo 'Test execution'"
+
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+
+[expect.counts]
+spans_total = { gte = 1 }
+errors_total = { eq = 0 }
+
+{% if vars.deterministic %}
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+{% endif %}
+
+[report]
+json = "{{ vars.report_dir | default(value="reports") }}/report.json"
+digest = "{{ vars.report_dir | default(value="reports") }}/digest.sha256"
+"#
+    .to_string())
+}
+
+/// Generate a macro library for common patterns
+pub fn generate_macro_library() -> Result<String> {
+    Ok(r#"# Tera Macro Library for clnrm v0.6.0
+# Reusable template macros for common testing patterns
+
+{% macro container_lifecycle_events() %}
+["container.start", "container.exec", "container.stop"]
+{% endmacro %}
+
+{% macro otel_standard_resources(service_name, version) %}
+{
+  "service.name" = "{{ service_name }}",
+  "service.version" = "{{ version }}",
+  "deployment.environment" = "{{ env(name="ENV") | default(value="test") }}"
+}
+{% endmacro %}
+
+{% macro span_assertions(prefix, kind) %}
+[[expect.span]]
+name = "{{ prefix }}.*"
+kind = "{{ kind }}"
+attrs.all = { "test.framework" = "clnrm" }
+{% endmacro %}
+
+{% macro temporal_order(first, second) %}
+[expect.order]
+must_precede = [["{{ first }}", "{{ second }}"]]
+{% endmacro %}
+
+{% macro status_validation(pattern, status) %}
+[expect.status]
+by_name."{{ pattern }}" = "{{ status }}"
+{% endmacro %}
+
+{% macro standard_reports(dir) %}
+[report]
+json = "{{ dir }}/report.json"
+junit = "{{ dir }}/junit.xml"
+digest = "{{ dir }}/digest.sha256"
+{% endmacro %}
+"#.to_string())
+}
+
+/// Generate a matrix testing template
+pub fn generate_matrix_template() -> Result<String> {
+    Ok(r#"# Matrix Testing Template (v0.6.0)
+# Demonstrates cross-product testing with Tera loops
+
+[meta]
+name = "matrix_test_{{ matrix.os }}_{{ matrix.version }}"
+version = "0.6.0"
+
+[vars]
+test_count = 3
+
+[matrix]
+os = ["alpine", "ubuntu", "debian"]
+version = ["3.18", "22.04", "bullseye"]
+
+[otel]
+exporter = "stdout"
+resources = {
+  "service.name" = "matrix-test",
+  "test.os" = "{{ matrix.os }}",
+  "test.version" = "{{ matrix.version }}"
+}
+
+[service.test_runner]
+plugin = "generic_container"
+image = "{{ matrix.os }}:{{ matrix.version }}"
+args = ["sh", "-c", "echo 'Testing on {{ matrix.os }}:{{ matrix.version }}'"]
+
+{% for i in range(end=vars.test_count) %}
+[[scenario]]
+name = "test_{{ i }}_{{ matrix.os }}"
+service = "test_runner"
+run = "echo 'Test {{ i }} on {{ matrix.os }}'"
+{% endfor %}
+
+[[expect.span]]
+name = "test_runner.exec"
+kind = "internal"
+attrs.all = {
+  "container.os" = "{{ matrix.os }}",
+  "container.version" = "{{ matrix.version }}"
+}
+
+[expect.counts]
+spans_total = { gte = {{ vars.test_count }} }
+
+[report]
+json = "reports/{{ matrix.os }}_{{ matrix.version }}.json"
+digest = "reports/{{ matrix.os }}_{{ matrix.version }}.sha256"
+"#.to_string())
+}
+
+/// Generate comprehensive validation template showcasing all validators
+pub fn generate_full_validation_template() -> Result<String> {
+    Ok(r#"# Full Validation Template (v0.6.0)
+# Demonstrates all available validators: order, status, count, window, graph, hermeticity
+
+[meta]
+name = "{{ vars.test_name | default(value="full_validation") }}"
+version = "0.6.0"
+description = "Comprehensive validation example using all validators"
+
+[vars]
+service_name = "validation_demo"
+max_duration_ms = 5000
+
+[otel]
+exporter = "{{ env(name="OTEL_EXPORTER") | default(value="stdout") }}"
+sample_ratio = 1.0
+resources = {
+  "service.name" = "{{ vars.service_name }}",
+  "service.version" = "0.6.0",
+  "test.timestamp" = "{{ now_rfc3339() }}"
+}
+
+{% if env(name="OTEL_ENDPOINT") %}
+[otel.headers]
+"x-api-key" = "{{ env(name="OTEL_API_KEY") | default(value="test-key") }}"
+"x-test-id" = "{{ sha256(s=vars.test_name) }}"
+{% endif %}
+
+[otel.propagators]
+use = ["tracecontext", "baggage"]
+
+[service.main_service]
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "sleep 1 && echo 'Service ready'"]
+wait_for_span = "main_service.start"
+
+[[scenario]]
+name = "startup"
+service = "main_service"
+run = "echo 'Starting service'"
+
+[[scenario]]
+name = "process_request"
+service = "main_service"
+run = "echo 'Processing request'"
+
+[[scenario]]
+name = "shutdown"
+service = "main_service"
+run = "echo 'Shutting down'"
+
+# ========================================
+# SPAN ASSERTIONS
+# ========================================
+[[expect.span]]
+name = "main_service.start"
+kind = "server"
+attrs.all = { "service.state" = "starting" }
+
+[[expect.span]]
+name = "main_service.exec"
+kind = "internal"
+attrs.any = { "exec.command" = "echo" }
+
+[[expect.span]]
+name = "main_service.stop"
+kind = "server"
+attrs.all = { "service.state" = "stopped" }
+
+# ========================================
+# ORDER VALIDATION (temporal ordering)
+# ========================================
+[expect.order]
+must_precede = [
+  ["main_service.start", "main_service.exec"],
+  ["main_service.exec", "main_service.stop"]
+]
+must_follow = [
+  ["main_service.stop", "main_service.start"]
+]
+
+# ========================================
+# STATUS VALIDATION (with glob patterns)
+# ========================================
+[expect.status]
+all = "ok"  # All spans must have OK status
+by_name."main_service.*" = "ok"  # Glob pattern matching
+by_name."error.*" = "error"  # Error spans should have error status
+
+# ========================================
+# COUNT VALIDATION
+# ========================================
+[expect.counts]
+spans_total = { gte = 3, lte = 10 }
+errors_total = { eq = 0 }
+spans_by_kind.internal = { gte = 1 }
+spans_by_kind.server = { gte = 2 }
+
+# ========================================
+# WINDOW VALIDATION (time-based)
+# ========================================
+[[expect.window]]
+name = "startup_window"
+start_span = "main_service.start"
+end_span = "main_service.exec"
+max_duration_ms = {{ vars.max_duration_ms }}
+min_span_count = 1
+
+# ========================================
+# GRAPH VALIDATION (trace topology)
+# ========================================
+[expect.graph]
+parent_child = [
+  ["main_service.start", "startup"],
+  ["main_service.exec", "process_request"],
+  ["main_service.stop", "shutdown"]
+]
+max_depth = 3
+must_be_connected = true
+
+# ========================================
+# HERMETICITY VALIDATION
+# ========================================
+[expect.hermeticity]
+allow_network = false
+allow_filesystem_read = true
+allow_filesystem_write = false
+allowed_env_vars = ["PATH", "HOME"]
+forbidden_syscalls = ["socket", "connect"]
+
+# ========================================
+# DETERMINISM CONFIGURATION
+# ========================================
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+# ========================================
+# RESOURCE LIMITS
+# ========================================
+[limits]
+cpu_millicores = 500
+memory_mb = 512
+
+# ========================================
+# REPORTING CONFIGURATION
+# ========================================
+[report]
+json = "reports/{{ vars.test_name }}_{{ now_rfc3339() | replace(from=":", to="-") }}.json"
+junit = "reports/junit_{{ sha256(s=vars.test_name) | truncate(length=8, end="") }}.xml"
+digest = "reports/digest_{{ vars.test_name }}.sha256"
+"#.to_string())
+}
+
+/// Generate a lifecycle matcher template
+pub fn generate_lifecycle_matcher() -> Result<String> {
+    Ok(r#"{% macro container_lifecycle_events() %}
+["container.start", "container.exec", "container.stop"]
+{% endmacro %}"#
+        .to_string())
+}
+
+/// Generate a deterministic testing template
+pub fn generate_deterministic_template() -> Result<String> {
+    Ok(r#"# Deterministic Testing Template (v0.6.0)
+# Ensures reproducible test results with seeded randomness and frozen clock
+
+[meta]
+name = "{{ vars.test_name | default(value="deterministic_test") }}"
+version = "0.6.0"
+description = "Deterministic test with reproducible results"
+
+[vars]
+seed_value = 12345
+freeze_time = "2025-01-01T12:00:00Z"
+
+[determinism]
+seed = {{ vars.seed_value }}
+freeze_clock = "{{ vars.freeze_time }}"
+
+[otel]
+exporter = "stdout"
+resources = {
+  "service.name" = "deterministic-test",
+  "test.seed" = "{{ vars.seed_value }}",
+  "test.frozen_time" = "{{ vars.freeze_time }}"
+}
+
+[service.deterministic_service]
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "date && echo $RANDOM"]
+
+[[scenario]]
+name = "deterministic_run_1"
+service = "deterministic_service"
+run = "echo 'Run 1 at {{ now_rfc3339() }}'"
+
+[[scenario]]
+name = "deterministic_run_2"
+service = "deterministic_service"
+run = "echo 'Run 2 at {{ now_rfc3339() }}'"
+
+[[expect.span]]
+name = "deterministic_service.*"
+kind = "internal"
+attrs.all = {
+  "test.deterministic" = "true",
+  "test.timestamp" = "{{ vars.freeze_time }}"
+}
+
+[report]
+digest = "reports/deterministic_{{ sha256(s=vars.test_name) }}.sha256"
+json = "reports/deterministic_{{ vars.test_name }}.json"
+
+# The digest should be IDENTICAL across multiple runs with same seed and freeze_clock
+"#.to_string())
+}
+
 /// Generate project from template
 pub fn generate_from_template(template: &str, name: Option<&str>) -> Result<()> {
     let project_name = name.unwrap_or("cleanroom-project");

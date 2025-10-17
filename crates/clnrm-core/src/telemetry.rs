@@ -1,7 +1,8 @@
 //! Minimal, happy-path OpenTelemetry bootstrap for clnrm.
 //! Enable with `--features otel-traces` (logs/metrics are optional).
 
-use crate::error::CleanroomError;
+#[cfg(feature = "otel-traces")]
+use crate::CleanroomError;
 
 #[cfg(feature = "otel-traces")]
 use {
@@ -523,7 +524,7 @@ mod tests {
     }
 
     #[test]
-    fn test_otel_guard_drop() -> Result<(), CleanroomError> {
+    fn test_otel_guard_drop() -> Result<(), crate::error::CleanroomError> {
         // Test that OtelGuard can be created and dropped without panicking
         let config = OtelConfig {
             service_name: "test-service",

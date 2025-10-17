@@ -40,7 +40,8 @@ const HEALTH_CHECK_PORT: u16 = 13133;
 /// Prometheus metrics port
 const PROMETHEUS_PORT: u16 = 8889;
 
-/// zPages debugging port
+/// zPages debugging port (for future use)
+#[allow(dead_code)]
 const ZPAGES_PORT: u16 = 55679;
 
 /// OTEL Collector configuration
@@ -178,6 +179,7 @@ impl OtelCollectorPlugin {
     }
 
     /// Build collector configuration
+    #[allow(dead_code)]
     fn build_config(&self) -> String {
         // Minimal collector config that enables requested features
         let mut config = String::from("receivers:\n");
@@ -253,14 +255,18 @@ impl ServicePlugin for OtelCollectorPlugin {
     }
 
     fn start(&self) -> Result<ServiceHandle> {
-        use testcontainers::{GenericImage, ImageExt, runners::AsyncRunner};
+        use testcontainers::{runners::AsyncRunner, GenericImage, ImageExt};
 
         // Use tokio::task::block_in_place for async operations within sync trait
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 // Build collector image with configuration
                 let image = GenericImage::new(
-                    self.config.image.split(':').next().unwrap_or("otel/opentelemetry-collector"),
+                    self.config
+                        .image
+                        .split(':')
+                        .next()
+                        .unwrap_or("otel/opentelemetry-collector"),
                     self.config.image.split(':').nth(1).unwrap_or("latest"),
                 );
 
@@ -310,10 +316,13 @@ impl ServicePlugin for OtelCollectorPlugin {
                 }
 
                 if self.config.enable_health_check {
-                    let health_port = node.get_host_port_ipv4(HEALTH_CHECK_PORT).await.map_err(|e| {
-                        CleanroomError::container_error("Failed to get health check port")
-                            .with_source(e.to_string())
-                    })?;
+                    let health_port =
+                        node.get_host_port_ipv4(HEALTH_CHECK_PORT)
+                            .await
+                            .map_err(|e| {
+                                CleanroomError::container_error("Failed to get health check port")
+                                    .with_source(e.to_string())
+                            })?;
                     metadata.insert("health_check_port".to_string(), health_port.to_string());
                     metadata.insert(
                         "health_check_endpoint".to_string(),
@@ -325,10 +334,13 @@ impl ServicePlugin for OtelCollectorPlugin {
                 }
 
                 if self.config.enable_prometheus {
-                    let prom_port = node.get_host_port_ipv4(PROMETHEUS_PORT).await.map_err(|e| {
-                        CleanroomError::container_error("Failed to get Prometheus port")
-                            .with_source(e.to_string())
-                    })?;
+                    let prom_port =
+                        node.get_host_port_ipv4(PROMETHEUS_PORT)
+                            .await
+                            .map_err(|e| {
+                                CleanroomError::container_error("Failed to get Prometheus port")
+                                    .with_source(e.to_string())
+                            })?;
                     metadata.insert("prometheus_port".to_string(), prom_port.to_string());
                     metadata.insert(
                         "prometheus_endpoint".to_string(),
@@ -407,10 +419,7 @@ mod tests {
 
         // Assert
         assert_eq!(plugin.name(), "test-collector");
-        assert_eq!(
-            plugin.config.image,
-            "otel/opentelemetry-collector:latest"
-        );
+        assert_eq!(plugin.config.image, "otel/opentelemetry-collector:latest");
         assert!(plugin.config.enable_otlp_grpc);
         assert!(plugin.config.enable_otlp_http);
         assert!(plugin.config.enable_health_check);

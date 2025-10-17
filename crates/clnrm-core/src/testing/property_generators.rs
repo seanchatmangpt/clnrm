@@ -436,7 +436,7 @@ mod tests {
                 ))
             })?
             .current();
-        assert!(policy.security.allowed_ports.len() > 0);
+        assert!(!policy.security.allowed_ports.is_empty());
 
         // Test scenario generator
         let scenario_strategy = arb_scenario();

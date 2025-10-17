@@ -1,0 +1,18 @@
+# Cleanroom Framework Configuration (optional)
+# The framework works without this file - only add when customizing
+
+[project]
+name = "my-project"
+version = "0.1.0"
+
+# Uncomment to enable parallel execution
+# [cli]
+# parallel = true
+# jobs = 4
+
+# Uncomment to enable container reuse (10-50x faster)
+# [containers]
+# reuse_enabled = true
+# default_image = "alpine:latest"
+
+# See docs for all options: https://docs.cleanroom.dev/config

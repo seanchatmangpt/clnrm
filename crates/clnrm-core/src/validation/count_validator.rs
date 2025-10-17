@@ -184,10 +184,7 @@ impl CountExpectation {
         if let Some(by_name) = &self.by_name {
             for (name, bound) in by_name {
                 let count = Self::count_spans_by_name(spans, name);
-                bound.validate(
-                    count,
-                    &format!("Count for span name '{}'", name),
-                )?;
+                bound.validate(count, &format!("Count for span name '{}'", name))?;
             }
         }
 
@@ -241,10 +238,7 @@ mod tests {
     fn create_test_span(name: &str, is_error: bool) -> SpanData {
         let mut attributes = HashMap::new();
         if is_error {
-            attributes.insert(
-                "otel.status_code".to_string(),
-                json!("ERROR"),
-            );
+            attributes.insert("otel.status_code".to_string(), json!("ERROR"));
         }
 
         SpanData {
@@ -411,8 +405,7 @@ mod tests {
             create_test_span("span2", false),
             create_test_span("span3", false),
         ];
-        let expectation = CountExpectation::new()
-            .with_spans_total(CountBound::eq(3));
+        let expectation = CountExpectation::new().with_spans_total(CountBound::eq(3));
 
         // Act
         let result = expectation.validate(&spans);
@@ -428,8 +421,7 @@ mod tests {
             create_test_span("span1", false),
             create_test_span("span2", false),
         ];
-        let expectation = CountExpectation::new()
-            .with_spans_total(CountBound::eq(3));
+        let expectation = CountExpectation::new().with_spans_total(CountBound::eq(3));
 
         // Act
         let result = expectation.validate(&spans);
@@ -448,8 +440,7 @@ mod tests {
             create_test_span("span2", true),
             create_test_span("span3", true),
         ];
-        let expectation = CountExpectation::new()
-            .with_errors_total(CountBound::eq(2));
+        let expectation = CountExpectation::new().with_errors_total(CountBound::eq(2));
 
         // Act
         let result = expectation.validate(&spans);
@@ -465,8 +456,7 @@ mod tests {
             create_test_span("span1", false),
             create_test_span("span2", false),
         ];
-        let expectation = CountExpectation::new()
-            .with_errors_total(CountBound::eq(0));
+        let expectation = CountExpectation::new().with_errors_total(CountBound::eq(0));
 
         // Act
         let result = expectation.validate(&spans);
@@ -482,8 +472,7 @@ mod tests {
             create_test_span("span1", false),
             create_test_span("span2", true),
         ];
-        let expectation = CountExpectation::new()
-            .with_errors_total(CountBound::eq(0));
+        let expectation = CountExpectation::new().with_errors_total(CountBound::eq(0));
 
         // Act
         let result = expectation.validate(&spans);
@@ -523,8 +512,8 @@ mod tests {
             create_test_span("clnrm.run", false),
             create_test_span("clnrm.test", false),
         ];
-        let expectation = CountExpectation::new()
-            .with_name_count("clnrm.test".to_string(), CountBound::eq(3));
+        let expectation =
+            CountExpectation::new().with_name_count("clnrm.test".to_string(), CountBound::eq(3));
 
         // Act
         let result = expectation.validate(&spans);
@@ -540,9 +529,7 @@ mod tests {
     #[test]
     fn test_count_expectation_by_name_missing() {
         // Arrange
-        let spans = vec![
-            create_test_span("clnrm.run", false),
-        ];
+        let spans = vec![create_test_span("clnrm.run", false)];
         let expectation = CountExpectation::new()
             .with_name_count("clnrm.missing".to_string(), CountBound::gte(1));
 
@@ -582,18 +569,11 @@ mod tests {
     fn test_count_expectation_events_total() {
         // Arrange
         let mut span1 = create_test_span("span1", false);
-        span1.attributes.insert(
-            "event.count".to_string(),
-            json!(2),
-        );
+        span1.attributes.insert("event.count".to_string(), json!(2));
         let mut span2 = create_test_span("span2", false);
-        span2.attributes.insert(
-            "event.count".to_string(),
-            json!(3),
-        );
+        span2.attributes.insert("event.count".to_string(), json!(3));
         let spans = vec![span1, span2];
-        let expectation = CountExpectation::new()
-            .with_events_total(CountBound::eq(5));
+        let expectation = CountExpectation::new().with_events_total(CountBound::eq(5));
 
         // Act
         let result = expectation.validate(&spans);
@@ -663,13 +643,9 @@ mod tests {
     fn test_error_detection_via_error_attribute() {
         // Arrange
         let mut span = create_test_span("span1", false);
-        span.attributes.insert(
-            "error".to_string(),
-            json!(true),
-        );
+        span.attributes.insert("error".to_string(), json!(true));
         let spans = vec![span];
-        let expectation = CountExpectation::new()
-            .with_errors_total(CountBound::eq(1));
+        let expectation = CountExpectation::new().with_errors_total(CountBound::eq(1));
 
         // Act
         let result = expectation.validate(&spans);

@@ -63,9 +63,38 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::Template { template, name } => {
-            generate_from_template(&template, name.as_deref())?;
-            Ok(())
+        Commands::Template { template, name, output } => {
+            // Handle template types that generate TOML files (v0.6.0 Tera templates)
+            let template_result = match template.as_str() {
+                "otel" => Some((generate_otel_template()?, "OTEL validation template")),
+                "matrix" => Some((generate_matrix_template()?, "Matrix testing template")),
+                "macros" | "macro-library" => Some((generate_macro_library()?, "Tera macro library")),
+                "full-validation" | "validation" => Some((generate_full_validation_template()?, "Full validation template")),
+                "deterministic" => Some((generate_deterministic_template()?, "Deterministic testing template")),
+                "lifecycle-matcher" => Some((generate_lifecycle_matcher()?, "Lifecycle matcher template")),
+                _ => None,
+            };
+
+            if let Some((content, description)) = template_result {
+                // Template file generation
+                if let Some(output_path) = output {
+                    std::fs::write(&output_path, &content).map_err(|e| {
+                        crate::error::CleanroomError::io_error(format!(
+                            "Failed to write template to {}: {}",
+                            output_path.display(),
+                            e
+                        ))
+                    })?;
+                    println!("✓ {} generated: {}", description, output_path.display());
+                } else {
+                    println!("{}", content);
+                }
+                Ok(())
+            } else {
+                // Regular project template (default, advanced, minimal, database, api)
+                generate_from_template(&template, name.as_deref())?;
+                Ok(())
+            }
         }
 
         Commands::Plugins => {

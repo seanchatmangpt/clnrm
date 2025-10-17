@@ -1,0 +1,83 @@
+# Service Mesh Testing Example
+# This demonstrates complex multi-service orchestration with templates
+
+[template.vars]
+test_name = "service_mesh"
+enable_frontend = true
+enable_backend = true
+enable_database = true
+
+[template.matrix]
+services = [
+    { name = "frontend", image = "nginx:alpine", port = 80, enabled = true },
+    { name = "backend", image = "python:3.11-alpine", port = 8080, enabled = true },
+    { name = "database", image = "postgres:15-alpine", port = 5432, enabled = true },
+    { name = "cache", image = "redis:7-alpine", port = 6379, enabled = false }
+]
+
+[meta]
+name = "{{ vars.test_name }}"
+description = "Service mesh integration test with multiple microservices"
+
+[otel]
+exporter = "stdout"
+resources = {
+    "service.name" = "{{ vars.test_name }}",
+    "test.type" = "integration"
+}
+
+# Generate service configurations
+{% for service in matrix.services %}
+{% if service.enabled %}
+[services.{{ service.name }}]
+type = "generic_container"
+image = "{{ service.image }}"
+ports = [{{ service.port }}]
+{% if service.name == "database" %}
+env = { POSTGRES_PASSWORD = "secret", POSTGRES_DB = "testdb" }
+{% elif service.name == "cache" %}
+env = { REDIS_PASSWORD = "secret" }
+{% endif %}
+{% endif %}
+{% endfor %}
+
+# Test scenarios for service interactions
+[[scenario]]
+name = "test_frontend_health"
+service = "frontend"
+run = "curl -f http://localhost/ || echo 'Frontend not ready'"
+
+[[scenario]]
+name = "test_backend_health"
+service = "backend"
+run = "python -c 'print(\"Backend OK\")'"
+
+[[scenario]]
+name = "test_database_connection"
+service = "database"
+run = "psql -U postgres -d testdb -c 'SELECT 1'"
+
+# Generate span expectations for each enabled service
+{% for service in matrix.services %}
+{% if service.enabled %}
+[[expect.span]]
+name = "clnrm.step:test_{{ service.name }}*"
+attributes.any = {
+    "container.service" = "{{ service.name }}",
+    "container.port" = "{{ service.port }}"
+}
+{% endif %}
+{% endfor %}
+
+# Ordering constraints
+[expect.order]
+must_precede = [
+    ["container.start", "container.exec"],
+    ["container.exec", "container.stop"]
+]
+
+[expect.status]
+all = "OK"
+
+[expect.counts]
+spans.min = 9  # 3 services × 3 lifecycle events each

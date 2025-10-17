@@ -1,0 +1,588 @@
+# Tera Template Guide for Cleanroom v0.6.0
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Basic Syntax](#basic-syntax)
+- [Template Variables](#template-variables)
+- [Custom Functions](#custom-functions)
+- [Template Namespaces](#template-namespaces)
+- [Common Patterns](#common-patterns)
+- [Best Practices](#best-practices)
+- [Examples](#examples)
+
+## Introduction
+
+Cleanroom v0.6.0 introduces **Tera templating** for dynamic test configuration. Tera uses Jinja2-like syntax to enable:
+
+- Dynamic test names and descriptions
+- Environment-based configuration
+- Matrix testing (cross-product of variables)
+- Reproducible timestamps and identifiers
+- Conditional configuration blocks
+
+## Basic Syntax
+
+### Variable Substitution
+
+```toml
+[vars]
+test_name = "my_test"
+service_name = "api-service"
+
+[meta]
+name = "{{ vars.test_name }}"
+description = "Test for {{ vars.service_name }}"
+```
+
+### Filters
+
+Tera supports filters for transforming values:
+
+```toml
+[meta]
+name = "{{ vars.test_name | upper }}"  # MY_TEST
+description = "{{ vars.test_name | title }}"  # My Test
+```
+
+Common filters:
+- `upper` / `lower` - Case conversion
+- `title` - Title case
+- `trim` - Remove whitespace
+- `replace(from=":", to="-")` - String replacement
+- `truncate(length=8, end="")` - Truncate strings
+- `default(value="fallback")` - Provide default value
+
+### Conditionals
+
+```toml
+{% if env(name="CI") %}
+[otel]
+exporter = "otlp-grpc"
+endpoint = "https://collector.example.com"
+{% else %}
+[otel]
+exporter = "stdout"
+{% endif %}
+```
+
+### Loops
+
+```toml
+[vars]
+test_count = 3
+
+{% for i in range(end=vars.test_count) %}
+[[scenario]]
+name = "test_{{ i }}"
+service = "api"
+run = "echo 'Test {{ i }}'"
+{% endfor %}
+```
+
+## Template Variables
+
+Variables are defined in the `[vars]` section:
+
+```toml
+[vars]
+test_name = "integration_test"
+api_version = "v1"
+timeout_ms = 5000
+enable_tracing = true
+endpoints = ["health", "status", "metrics"]
+```
+
+Access with `{{ vars.variable_name }}`:
+
+```toml
+[service.api]
+image = "myapi:{{ vars.api_version }}"
+
+[[scenario]]
+name = "test_{{ vars.test_name }}"
+timeout_ms = {{ vars.timeout_ms }}
+```
+
+## Custom Functions
+
+Cleanroom provides 4 custom Tera functions:
+
+### 1. `env(name="VAR_NAME")`
+
+Read environment variables:
+
+```toml
+[otel]
+exporter = "{{ env(name="OTEL_EXPORTER") | default(value="stdout") }}"
+endpoint = "{{ env(name="OTEL_ENDPOINT") }}"
+```
+
+**Use with default filter** to provide fallback:
+
+```toml
+api_key = "{{ env(name="API_KEY") | default(value="dev-key") }}"
+```
+
+### 2. `now_rfc3339()`
+
+Get current timestamp in RFC3339 format:
+
+```toml
+[vars]
+test_timestamp = "{{ now_rfc3339() }}"
+
+[otel.resources]
+"test.started_at" = "{{ vars.test_timestamp }}"
+```
+
+Output: `2025-10-17T12:34:56.789Z`
+
+**Determinism**: When `[determinism.freeze_clock]` is set, `now_rfc3339()` returns the frozen time.
+
+### 3. `sha256(s="text")`
+
+Compute SHA-256 hash:
+
+```toml
+[vars]
+test_id = "{{ sha256(s=vars.test_name) }}"
+
+[report]
+digest = "reports/{{ vars.test_id }}.sha256"
+```
+
+Output: 64-character hexadecimal hash
+
+### 4. `toml_encode(value)`
+
+Encode values as TOML (useful for nested structures):
+
+```toml
+# Example usage for dynamic TOML generation
+{% set config = {"key": "value", "number": 42} %}
+{{ toml_encode(value=config) }}
+```
+
+## Template Namespaces
+
+Cleanroom provides three template namespaces:
+
+### 1. `vars.*` - User-Defined Variables
+
+```toml
+[vars]
+service_name = "api"
+version = "1.0"
+
+[service.{{ vars.service_name }}]
+image = "myapi:{{ vars.version }}"
+```
+
+### 2. `matrix.*` - Matrix Testing
+
+Cross-product testing across multiple dimensions:
+
+```toml
+[matrix]
+os = ["alpine", "ubuntu"]
+version = ["3.18", "22.04"]
+
+[service.test_runner]
+image = "{{ matrix.os }}:{{ matrix.version }}"
+
+[[scenario]]
+name = "test_{{ matrix.os }}_{{ matrix.version }}"
+run = "echo 'Testing on {{ matrix.os }}'"
+```
+
+**Matrix expansion** generates one test per combination:
+- `alpine:3.18`
+- `alpine:22.04`
+- `ubuntu:3.18`
+- `ubuntu:22.04`
+
+### 3. `otel.*` - OpenTelemetry Context
+
+Access OTEL configuration in templates:
+
+```toml
+[otel]
+exporter = "stdout"
+
+{% if otel.exporter == "otlp-grpc" %}
+[otel.headers]
+"x-api-key" = "{{ env(name="OTEL_API_KEY") }}"
+{% endif %}
+```
+
+## Common Patterns
+
+### Pattern 1: Environment-Based Configuration
+
+```toml
+[vars]
+environment = "{{ env(name="ENV") | default(value="dev") }}"
+
+[meta]
+name = "test_{{ vars.environment }}"
+
+[service.database]
+image = "postgres:15"
+env = {
+  POSTGRES_DB = "testdb_{{ vars.environment }}",
+  POSTGRES_PASSWORD = "{{ env(name="DB_PASSWORD") }}"
+}
+```
+
+### Pattern 2: Unique Test Identifiers
+
+```toml
+[vars]
+test_name = "api_integration"
+test_id = "{{ sha256(s=vars.test_name) | truncate(length=8, end="") }}"
+
+[report]
+json = "reports/{{ vars.test_id }}.json"
+```
+
+### Pattern 3: Timestamped Reports
+
+```toml
+[vars]
+timestamp = "{{ now_rfc3339() | replace(from=":", to="-") }}"
+
+[report]
+json = "reports/test_{{ vars.timestamp }}.json"
+junit = "reports/junit_{{ vars.timestamp }}.xml"
+```
+
+### Pattern 4: Conditional Features
+
+```toml
+{% if env(name="ENABLE_TRACING") %}
+[otel]
+exporter = "otlp-grpc"
+sample_ratio = 1.0
+{% else %}
+[otel]
+exporter = "stdout"
+{% endif %}
+```
+
+### Pattern 5: Matrix Testing
+
+```toml
+[matrix]
+database = ["postgres", "mysql"]
+cache = ["redis", "memcached"]
+
+[service.db]
+image = "{{ matrix.database }}:latest"
+
+[service.cache]
+image = "{{ matrix.cache }}:latest"
+
+[[scenario]]
+name = "test_{{ matrix.database }}_{{ matrix.cache }}"
+run = "echo 'Testing with {{ matrix.database }} and {{ matrix.cache }}'"
+```
+
+## Best Practices
+
+### 1. Use Variables for Reusability
+
+**Good**:
+```toml
+[vars]
+image_tag = "v1.2.3"
+
+[service.api]
+image = "myapi:{{ vars.image_tag }}"
+
+[service.worker]
+image = "myworker:{{ vars.image_tag }}"
+```
+
+**Avoid**:
+```toml
+[service.api]
+image = "myapi:v1.2.3"
+
+[service.worker]
+image = "myworker:v1.2.3"  # Duplicated version
+```
+
+### 2. Provide Defaults for Environment Variables
+
+**Good**:
+```toml
+exporter = "{{ env(name="OTEL_EXPORTER") | default(value="stdout") }}"
+```
+
+**Avoid**:
+```toml
+exporter = "{{ env(name="OTEL_EXPORTER") }}"  # Fails if not set
+```
+
+### 3. Use Determinism for Reproducibility
+
+```toml
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[vars]
+# This will always return the frozen time
+timestamp = "{{ now_rfc3339() }}"
+```
+
+### 4. Separate Configuration from Logic
+
+**Good**:
+```toml
+[vars]
+max_retries = 3
+timeout_ms = 5000
+
+[[scenario]]
+max_retries = {{ vars.max_retries }}
+timeout_ms = {{ vars.timeout_ms }}
+```
+
+**Avoid**:
+```toml
+[[scenario]]
+max_retries = 3  # Hardcoded
+timeout_ms = 5000  # Hardcoded
+```
+
+### 5. Document Template Variables
+
+```toml
+[vars]
+# API version to test against
+api_version = "v1"
+
+# Maximum allowed response time in milliseconds
+max_response_time_ms = 1000
+
+# Enable detailed tracing (set to false in production)
+enable_tracing = true
+```
+
+## Examples
+
+### Example 1: Simple Dynamic Test
+
+```toml
+[meta]
+name = "api_test_{{ env(name="ENV") | default(value="dev") }}"
+version = "0.6.0"
+
+[vars]
+api_endpoint = "https://api.{{ env(name="ENV") }}.example.com"
+
+[service.api]
+plugin = "generic_container"
+image = "nginx:alpine"
+
+[[scenario]]
+name = "health_check"
+run = "curl {{ vars.api_endpoint }}/health"
+```
+
+### Example 2: Matrix Testing
+
+```toml
+[meta]
+name = "cross_platform_test"
+version = "0.6.0"
+
+[matrix]
+os = ["alpine", "ubuntu", "debian"]
+arch = ["amd64", "arm64"]
+
+[service.test_runner]
+plugin = "generic_container"
+image = "{{ matrix.os }}:latest"
+platform = "linux/{{ matrix.arch }}"
+
+[[scenario]]
+name = "test_{{ matrix.os }}_{{ matrix.arch }}"
+run = "uname -a"
+```
+
+### Example 3: Comprehensive OTEL Validation
+
+```toml
+[meta]
+name = "otel_validation_{{ sha256(s=vars.test_name) | truncate(length=8, end="") }}"
+version = "0.6.0"
+
+[vars]
+test_name = "comprehensive_otel_test"
+service_name = "api-service"
+
+[otel]
+exporter = "{{ env(name="OTEL_EXPORTER") | default(value="stdout") }}"
+sample_ratio = 1.0
+resources = {
+  "service.name" = "{{ vars.service_name }}",
+  "test.timestamp" = "{{ now_rfc3339() }}",
+  "test.id" = "{{ sha256(s=vars.test_name) }}"
+}
+
+[service.api]
+plugin = "generic_container"
+image = "nginx:alpine"
+
+[[expect.span]]
+name = "api.request"
+kind = "server"
+attrs.all = { "service.name" = "{{ vars.service_name }}" }
+
+[expect.order]
+must_precede = [
+  ["api.start", "api.request"],
+  ["api.request", "api.stop"]
+]
+
+[expect.status]
+all = "ok"
+by_name."api.*" = "ok"
+
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[report]
+json = "reports/{{ vars.test_name }}.json"
+junit = "reports/junit.xml"
+digest = "reports/{{ sha256(s=vars.test_name) }}.sha256"
+```
+
+### Example 4: Conditional Configuration
+
+```toml
+[meta]
+name = "adaptive_test"
+version = "0.6.0"
+
+[vars]
+is_ci = {{ env(name="CI") is defined }}
+max_workers = {% if vars.is_ci %}10{% else %}4{% endif %}
+
+{% if vars.is_ci %}
+[otel]
+exporter = "otlp-grpc"
+endpoint = "{{ env(name="OTEL_COLLECTOR_ENDPOINT") }}"
+{% else %}
+[otel]
+exporter = "stdout"
+{% endif %}
+
+[limits]
+cpu_millicores = {% if vars.is_ci %}1000{% else %}500{% endif %}
+memory_mb = {% if vars.is_ci %}1024{% else %}512{% endif %}
+```
+
+## Template Debugging
+
+### Enable Template Rendering Output
+
+Set environment variable to see rendered output:
+
+```bash
+CLNRM_DEBUG_TEMPLATES=1 clnrm run test.clnrm.toml
+```
+
+### Validate Template Syntax
+
+```bash
+clnrm validate test.clnrm.toml
+```
+
+### Test Template Rendering
+
+Generate a template and inspect the output:
+
+```bash
+clnrm template otel | head -50
+```
+
+## Advanced Topics
+
+### Custom Filters
+
+Tera supports chaining filters:
+
+```toml
+name = "{{ vars.test_name | upper | replace(from="_", to="-") }}"
+# "my_test" -> "MY-TEST"
+```
+
+### Macros
+
+Reusable template blocks:
+
+```toml
+{% macro service_config(name, image) %}
+[service.{{ name }}]
+plugin = "generic_container"
+image = "{{ image }}"
+{% endmacro %}
+
+{{ service_config(name="api", image="nginx:alpine") }}
+{{ service_config(name="db", image="postgres:15") }}
+```
+
+### Include Files
+
+Split configuration across files:
+
+```toml
+{% include "common_vars.tera" %}
+
+[meta]
+name = "{{ vars.test_name }}"
+```
+
+## Troubleshooting
+
+### Template Not Rendering
+
+**Problem**: Variables not substituted
+
+**Solution**: Ensure Tera syntax is detected (contains `{{`, `{%`, or `{#`)
+
+### Environment Variable Not Found
+
+**Problem**: `env(name="VAR")` fails
+
+**Solution**: Use default filter
+```toml
+{{ env(name="VAR") | default(value="fallback") }}
+```
+
+### Invalid Template Syntax
+
+**Problem**: Parse errors
+
+**Solution**: Check for:
+- Unmatched `{{` / `}}`
+- Unclosed `{% if %}` / `{% endif %}`
+- Invalid filter syntax
+
+## Resources
+
+- **Tera Documentation**: https://keats.github.io/tera/docs/
+- **Cleanroom Examples**: `examples/` directory
+- **Template Generators**: `clnrm template --help`
+
+---
+
+**Next Steps**:
+- Try the template generators: `clnrm template otel`
+- Explore examples: `examples/optimus-prime-platform/`
+- Read the migration guide: `docs/MIGRATION_v0.6.0.md`

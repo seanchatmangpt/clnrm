@@ -53,10 +53,19 @@ chrono = { workspace = true }
 reqwest = { version = "0.12", features = ["json"] }
 rand = "0.8"
 semver = "1.0"
+glob = "0.3"
+
+# Template rendering
+tera = "1.19"
+sha2 = "0.10"
 
 [dev-dependencies]
 # Property-based testing
 proptest = "1.4"
+
+[[example]]
+name = "status-validator-demo"
+path = "examples/validation/status_validator_demo.rs"
 
 [[example]]
 name = "validate-toml-format"

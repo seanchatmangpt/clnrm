@@ -20,7 +20,11 @@ pub use run::{
 };
 
 pub use init::init_project;
-pub use template::generate_from_template;
+pub use template::{
+    generate_deterministic_template, generate_from_template, generate_full_validation_template,
+    generate_lifecycle_matcher, generate_macro_library, generate_matrix_template,
+    generate_otel_template,
+};
 
 pub use validate::{validate_config, validate_single_config};
 

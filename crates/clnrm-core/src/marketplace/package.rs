@@ -7,7 +7,7 @@ use crate::error::{CleanroomError, Result};
 use crate::marketplace::{metadata::*, MarketplaceConfig};
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Plugin installer and package manager
 pub struct PluginInstaller {
@@ -194,11 +194,7 @@ impl PluginInstaller {
     }
 
     /// Validate plugin installation
-    fn validate_installation(
-        &self,
-        install_path: &PathBuf,
-        _metadata: &PluginMetadata,
-    ) -> Result<()> {
+    fn validate_installation(&self, install_path: &Path, _metadata: &PluginMetadata) -> Result<()> {
         if !install_path.exists() {
             return Err(CleanroomError::validation_error(
                 "Installation directory not found",

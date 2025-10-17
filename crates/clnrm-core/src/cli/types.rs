@@ -75,13 +75,17 @@ pub enum Commands {
 
     /// Generate project from template
     Template {
-        /// Template name
+        /// Template name (default, advanced, minimal, database, api, otel)
         #[arg(value_name = "TEMPLATE")]
         template: String,
 
         /// Project name
         #[arg(value_name = "NAME")]
         name: Option<String>,
+
+        /// Output file path (for template templates like 'otel')
+        #[arg(short, long)]
+        output: Option<PathBuf>,
     },
 
     /// Validate test configuration

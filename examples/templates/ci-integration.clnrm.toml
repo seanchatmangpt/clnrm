@@ -1,0 +1,69 @@
+# CI/CD Integration Example
+# This demonstrates template configuration for continuous integration pipelines
+
+[template.vars]
+ci = "{{ env(name='CI', default='false') }}"
+ci_job_id = "{{ env(name='CI_JOB_ID', default='local') }}"
+git_commit = "{{ env(name='GIT_COMMIT', default='unknown') }}"
+service_name = "clnrm"
+
+[meta]
+name = "ci_integration_test"
+description = "Test configured for CI/CD pipeline execution"
+created_at = "{{ now_rfc3339() }}"
+
+[otel]
+exporter = "{% if vars.ci == 'true' %}otlp{% else %}stdout{% endif %}"
+{% if vars.ci == "true" %}
+endpoint = "{{ env(name='OTEL_ENDPOINT', default='http://localhost:4318') }}"
+{% endif %}
+resources = {
+    "service.name" = "{{ vars.service_name }}",
+    "ci.job.id" = "{{ vars.ci_job_id }}",
+    "git.commit.sha" = "{{ vars.git_commit }}",
+    "test.run.id" = "{{ sha256(input=vars.ci_job_id) }}"
+}
+
+# CI-specific determinism for reproducible tests
+{% if vars.ci == "true" %}
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+{% endif %}
+
+[[scenario]]
+name = "test_basic_functionality"
+service = "alpine"
+run = """
+echo 'CI Job: {{ vars.ci_job_id }}'
+echo 'Git Commit: {{ vars.git_commit }}'
+echo 'Timestamp: {{ now_rfc3339() }}'
+"""
+
+[services.alpine]
+type = "generic_container"
+image = "alpine:latest"
+
+[[expect.span]]
+name = "clnrm.step:test_basic_functionality"
+attributes.any = {
+    "ci.job.id" = "{{ vars.ci_job_id }}"
+}
+
+[expect.status]
+all = "OK"
+
+# CI-specific reporting
+{% if vars.ci == "true" %}
+[report]
+json = "results/ci-report-{{ vars.ci_job_id }}.json"
+junit = "results/junit-{{ vars.ci_job_id }}.xml"
+digest = "results/test-{{ vars.ci_job_id }}.digest"
+{% endif %}
+
+# CI-specific resource limits
+{% if vars.ci == "true" %}
+[limits]
+cpu_millicores = 2000  # 2 CPUs in CI
+memory_mb = 4096       # 4 GB in CI
+{% endif %}

@@ -260,10 +260,7 @@ impl HermeticityExpectation {
                         span_id: Some(span.span_id.clone()),
                         attribute_key: Some(forbidden_key.clone()),
                         expected_value: None,
-                        actual_value: span
-                            .attributes
-                            .get(forbidden_key)
-                            .map(|v| format!("{}", v)),
+                        actual_value: span.attributes.get(forbidden_key).map(|v| format!("{}", v)),
                         description: format!(
                             "Span '{}' contains forbidden attribute key '{}'",
                             span.name, forbidden_key
@@ -543,10 +540,13 @@ mod tests {
         let spans = vec![create_test_span(
             "test.span",
             "span1",
-            [("db.connection_string".to_string(), json!("postgres://localhost"))]
-                .iter()
-                .cloned()
-                .collect(),
+            [(
+                "db.connection_string".to_string(),
+                json!("postgres://localhost"),
+            )]
+            .iter()
+            .cloned()
+            .collect(),
             HashMap::new(),
         )];
 

@@ -81,12 +81,6 @@ impl GenericContainerPlugin {
     pub fn with_volume_ro(self, host_path: &str, container_path: &str) -> Result<Self> {
         self.with_volume(host_path, container_path, true)
     }
-
-    async fn verify_connection(&self, _host_port: u16) -> Result<()> {
-        // For generic containers, we assume they're healthy if they start successfully
-        // Specific health checks would need to be implemented per container type
-        Ok(())
-    }
 }
 
 impl ServicePlugin for GenericContainerPlugin {

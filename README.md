@@ -1,15 +1,16 @@
 # Cleanroom Testing Framework
 
-[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![Build Status](https://img.shields.io/badge/build-passing-green.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > **🚀 Production Ready:** Hermetic integration testing that actually works end-to-end.
 >
-> **✨ Version 0.5.0 Highlights:**
-> - **Tera Templating**: Property-based testing with 50+ fake data generators
-> - **OTEL Validation**: Telemetry-only validation with zero flakiness
-> - **Advanced Validation**: Multi-dimensional validation framework for deterministic testing
+> **✨ Version 0.6.0 Highlights:**
+> - **Tera Templating**: Dynamic test configuration with Jinja2-like templates
+> - **Temporal Validation**: Nanosecond-precision span ordering validation
+> - **Multi-Format Reporting**: JSON, JUnit XML, and SHA-256 digests
+> - **Deterministic Testing**: Reproducible results with seeded randomness
 
 A testing framework for hermetic integration testing with container-based isolation and plugin architecture.
 
@@ -38,20 +39,26 @@ A testing framework for hermetic integration testing with container-based isolat
 - **Database Template** - Database integration testing
 - **API Template** - API service testing
 
-### ✅ **Tera Templating** *(NEW in 0.5.0)*
-- **Property-based testing** with 50+ fake data generators
-- **Template files** (`.toml.tera` or `.tera`) for dynamic test generation
-- **Deterministic seeding** for reproducible property tests
-- **Matrix testing** for combinatorial scenario generation
-- **Load testing** with parametric test generation
+### ✅ **Tera Templating** *(v0.6.0)*
+- **Dynamic configuration** - Jinja2-like templates for test files
+- **Custom functions** - `env()`, `now_rfc3339()`, `sha256()`, `toml_encode()`
+- **Template namespaces** - `vars.*`, `matrix.*`, `otel.*`
+- **Matrix testing** - Cross-product test generation
+- **Conditional logic** - Environment-based configuration
 
-### ✅ **OTEL Validation System** *(NEW in 0.5.0)*
-- **Telemetry-only validation** - Correctness proven through OpenTelemetry spans exclusively
-- **Zero flakiness** - Deterministic validation across environments
-- **5-Dimensional validation** - Structural, temporal, cardinality, hermeticity, attribute validation
-- **Span validators** - Existence, count, attributes, hierarchy, events, duration
-- **Graph validators** - Parent-child relationships and cycle detection
-- **Hermeticity validators** - External service detection and resource attribute validation
+### ✅ **Advanced Validators** *(v0.6.0)*
+- **Temporal ordering** - `must_precede` and `must_follow` validation
+- **Status validation** - Glob patterns for span status codes
+- **Count validation** - Span counts by kind and total
+- **Window validation** - Time-based span containment
+- **Graph validation** - Parent-child relationships and topology
+- **Hermeticity validation** - Isolation and resource constraints
+
+### ✅ **Multi-Format Reporting** *(v0.6.0)*
+- **JSON reports** - Programmatic access and parsing
+- **JUnit XML** - CI/CD integration (Jenkins, GitHub Actions)
+- **SHA-256 digests** - Reproducibility verification
+- **Deterministic output** - Identical digests across runs
 
 ## 🚀 Quick Start
 
@@ -91,11 +98,109 @@ clnrm plugins
 # ✅ Generic containers, databases, network tools
 ```
 
-## 🚀 **Version 0.5.0 New Features**
+## 🚀 **Version 0.6.0 New Features**
 
-### **Tera Templating for Property-Based Testing**
+### **Tera Templating for Dynamic Configuration**
 
-Generate thousands of test scenarios with fake data using Tera templates:
+Create dynamic test configurations using Jinja2-like templates:
+
+```toml
+[meta]
+name = "api_test_{{ env(name="ENV") | default(value="dev") }}"
+version = "0.6.0"
+
+[vars]
+api_version = "v1"
+service_name = "api-service"
+
+[otel]
+exporter = "{{ env(name="OTEL_EXPORTER") | default(value="stdout") }}"
+resources = {
+  "service.name" = "{{ vars.service_name }}",
+  "test.timestamp" = "{{ now_rfc3339() }}"
+}
+
+[[expect.span]]
+name = "api.request"
+kind = "server"
+attrs.all = { "service.name" = "{{ vars.service_name }}" }
+```
+
+**Custom Tera Functions**:
+- `env(name="VAR")` - Read environment variables
+- `now_rfc3339()` - Current timestamp (respects determinism)
+- `sha256(s="text")` - SHA-256 hashing
+- `toml_encode(value)` - TOML encoding
+
+### **Temporal Order Validation**
+
+Validate span ordering with nanosecond precision:
+
+```toml
+[expect.order]
+must_precede = [
+  ["service.start", "service.exec"],
+  ["service.exec", "service.stop"]
+]
+must_follow = [
+  ["service.stop", "service.start"]
+]
+```
+
+### **Status Code Validation with Glob Patterns**
+
+```toml
+[expect.status]
+all = "ok"  # All spans must be OK
+by_name."api.endpoint.*" = "ok"  # Glob pattern
+by_name."error.*" = "error"
+```
+
+### **Multi-Format Reporting**
+
+```toml
+[report]
+json = "reports/test.json"
+junit = "reports/junit.xml"
+digest = "reports/digest.sha256"
+```
+
+### **Deterministic Testing**
+
+```toml
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+```
+
+### **Template Generators**
+
+```bash
+# Generate OTEL validation template
+clnrm template otel > my-test.clnrm.toml
+
+# Generate matrix testing template
+clnrm template matrix > matrix-test.clnrm.toml
+
+# Generate macro library
+clnrm template macros > macros.tera
+
+# Full validation showcase
+clnrm template full-validation > validation.clnrm.toml
+```
+
+## 📚 Documentation
+
+- **[v0.6.0 Release Notes](CHANGELOG-v0.6.0.md)** - Complete changelog and migration guide
+- **[Tera Template Guide](docs/TERA_TEMPLATES.md)** - Template syntax and best practices
+- **[CLI Guide](docs/CLI_GUIDE.md)** - Command reference
+- **[TOML Reference](docs/TOML_REFERENCE.md)** - Configuration format
+
+## 🎯 Legacy v0.5.0 Features
+
+### **Property-Based Testing with Fake Data**
+
+Generate test scenarios with fake data generators:
 
 ```toml
 # tests/load-test.clnrm.toml.tera

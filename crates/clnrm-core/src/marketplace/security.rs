@@ -65,6 +65,7 @@ pub struct SecurityValidator {
     /// Known malicious patterns
     malicious_patterns: HashSet<String>,
     /// Allowed system calls
+    #[allow(dead_code)]
     allowed_syscalls: HashSet<String>,
 }
 
@@ -232,7 +233,7 @@ impl SecurityValidator {
             SecurityLevel::Untrusted => -40.0,
         };
 
-        score.max(0.0).min(100.0)
+        score.clamp(0.0, 100.0)
     }
 
     /// Check if plugin can be trusted
@@ -279,6 +280,7 @@ impl Default for SandboxConfig {
 
 /// Plugin sandbox manager
 pub struct PluginSandbox {
+    #[allow(dead_code)]
     config: SandboxConfig,
 }
 

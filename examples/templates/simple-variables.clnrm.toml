@@ -1,0 +1,43 @@
+# Simple Variable Substitution Example
+# This demonstrates basic Tera variable usage in clnrm templates
+
+[template.vars]
+service_name = "clnrm"
+version = "0.6.0"
+exporter = "stdout"
+timeout_ms = 5000
+
+[meta]
+name = "{{ vars.service_name }}_simple_test"
+description = "Simple test with variable substitution (v{{ vars.version }})"
+version = "{{ vars.version }}"
+
+[otel]
+exporter = "{{ vars.exporter }}"
+resources = {
+    "service.name" = "{{ vars.service_name }}",
+    "service.version" = "{{ vars.version }}"
+}
+
+[[scenario]]
+name = "simple_echo"
+service = "alpine"
+run = "echo 'Testing {{ vars.service_name }}'"
+
+[services.alpine]
+type = "generic_container"
+image = "alpine:latest"
+
+[[expect.span]]
+name = "clnrm.step:simple_echo"
+attributes.any = {
+    "container.service" = "alpine",
+    "test.version" = "{{ vars.version }}"
+}
+
+[expect.window]
+min_duration_ms = 0
+max_duration_ms = {{ vars.timeout_ms }}
+
+[expect.status]
+all = "OK"

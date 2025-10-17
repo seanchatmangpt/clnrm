@@ -1,0 +1,51 @@
+# Matrix Expansion Example
+# This demonstrates using Tera loops to generate multiple scenarios from a matrix
+
+[template.vars]
+service_name = "clnrm"
+
+[template.matrix]
+exporters = [
+    { name = "stdout", endpoint = "", requires_endpoint = false },
+    { name = "otlp", endpoint = "http://localhost:4318", requires_endpoint = true },
+    { name = "jaeger", endpoint = "http://localhost:14250", requires_endpoint = true }
+]
+
+[meta]
+name = "matrix_expansion_test"
+description = "Test with multiple OTEL exporters via matrix expansion"
+
+# Generate a scenario for each exporter
+{% for exporter in matrix.exporters %}
+[[scenario]]
+name = "test_{{ exporter.name }}"
+service = "alpine"
+run = "echo 'Testing with {{ exporter.name }} exporter'"
+
+[otel]
+exporter = "{{ exporter.name }}"
+{% if exporter.requires_endpoint %}
+endpoint = "{{ exporter.endpoint }}"
+{% endif %}
+resources = {
+    "service.name" = "{{ vars.service_name }}",
+    "exporter.type" = "{{ exporter.name }}"
+}
+{% endfor %}
+
+[services.alpine]
+type = "generic_container"
+image = "alpine:latest"
+
+# Generate expectations for each exporter
+{% for exporter in matrix.exporters %}
+[[expect.span]]
+name = "clnrm.step:test_{{ exporter.name }}"
+attributes.any = {
+    "exporter.type" = "{{ exporter.name }}"
+}
+{% endfor %}
+
+[expect.counts]
+spans.min = {{ matrix.exporters | length }}
+spans.max = {{ matrix.exporters | length }}

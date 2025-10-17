@@ -65,6 +65,8 @@ pub enum ErrorKind {
     ServiceError,
     /// Internal error
     InternalError,
+    /// Template rendering error
+    TemplateError,
 }
 
 impl CleanroomError {
@@ -189,6 +191,11 @@ impl CleanroomError {
     /// Create an execution error (alias for internal_error)
     pub fn execution_error(message: impl Into<String>) -> Self {
         Self::internal_error(message)
+    }
+
+    /// Create a template error
+    pub fn template_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::TemplateError, message)
     }
 }
 

@@ -5,9 +5,7 @@
 //! - Resource attribute mismatches
 //! - Forbidden span attributes
 
-use clnrm_core::validation::{
-    HermeticityExpectation, HermeticityValidator, SpanData,
-};
+use clnrm_core::validation::{HermeticityExpectation, HermeticityValidator, SpanData};
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -157,10 +155,7 @@ fn test_hermeticity_resource_attributes_mismatch() {
 #[test]
 fn test_hermeticity_forbidden_attributes_detected() {
     // Arrange
-    let forbidden_keys = vec![
-        "db.connection_string".to_string(),
-        "http.url".to_string(),
-    ];
+    let forbidden_keys = vec!["db.connection_string".to_string(), "http.url".to_string()];
 
     let expectation = HermeticityExpectation::with_forbidden_keys(forbidden_keys);
     let validator = HermeticityValidator::new(expectation);

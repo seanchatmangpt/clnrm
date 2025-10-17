@@ -1,0 +1,79 @@
+# Multi-Environment Testing Example
+# This demonstrates environment-specific configurations with conditionals
+
+[template.vars]
+env = "{{ env(name='TEST_ENV', default='dev') }}"
+service_name = "clnrm"
+
+[template.otel]
+dev_endpoint = "http://localhost:4318"
+staging_endpoint = "http://staging-otel:4318"
+prod_endpoint = "http://prod-otel:4318"
+
+[meta]
+name = "multi_env_test_{{ vars.env }}"
+description = "Environment-specific test configuration"
+
+# Environment-specific OTEL configuration
+{% if vars.env == "dev" %}
+[otel]
+exporter = "stdout"
+resources = {
+    "service.name" = "{{ vars.service_name }}-dev",
+    "deployment.environment" = "development"
+}
+
+# Development: No determinism (use real time)
+{% elif vars.env == "staging" %}
+[otel]
+exporter = "otlp"
+endpoint = "{{ otel.staging_endpoint }}"
+resources = {
+    "service.name" = "{{ vars.service_name }}-staging",
+    "deployment.environment" = "staging"
+}
+
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+{% elif vars.env == "prod" %}
+[otel]
+exporter = "otlp"
+endpoint = "{{ otel.prod_endpoint }}"
+resources = {
+    "service.name" = "{{ vars.service_name }}-prod",
+    "deployment.environment" = "production"
+}
+
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+# Production: Strict resource limits
+[limits]
+cpu_millicores = 4000
+memory_mb = 8192
+{% endif %}
+
+[[scenario]]
+name = "test_{{ vars.env }}_scenario"
+service = "alpine"
+run = "echo 'Running in {{ vars.env }} environment'"
+
+[services.alpine]
+type = "generic_container"
+image = "alpine:latest"
+
+[[expect.span]]
+name = "clnrm.step:test_{{ vars.env }}_scenario"
+attributes.any = {
+    "deployment.environment" = "{% if vars.env == 'dev' %}development{% elif vars.env == 'staging' %}staging{% else %}production{% endif %}"
+}
+
+# Environment-specific reporting
+{% if vars.env != "dev" %}
+[report]
+json = "results/{{ vars.env }}-report.json"
+junit = "results/{{ vars.env }}-junit.xml"
+digest = "results/{{ vars.env }}.digest"
+{% endif %}

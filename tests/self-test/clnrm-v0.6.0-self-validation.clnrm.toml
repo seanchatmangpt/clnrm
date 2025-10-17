@@ -1,0 +1,216 @@
+# Cleanroom v0.6.0 Self-Validation Test
+# This test validates all v0.6.0 features: Tera templating, validators, reporting, determinism
+# Expected: 100/100 pass rate with identical digest across runs
+
+[meta]
+name = "clnrm_v0_6_0_self_validation"
+version = "0.6.0"
+description = "Comprehensive self-validation test for v0.6.0 features"
+
+# ========================================
+# TEMPLATE VARIABLES
+# ========================================
+[vars]
+test_name = "v0.6.0-self-validation"
+service_name = "clnrm-validation"
+container_image = "alpine:latest"
+max_duration_ms = 10000
+report_dir = "reports/self-validation"
+test_timestamp = "{{ now_rfc3339() }}"
+
+# ========================================
+# OTEL CONFIGURATION
+# ========================================
+[otel]
+exporter = "{{ env(name="OTEL_EXPORTER") | default(value="stdout") }}"
+sample_ratio = 1.0
+resources = {
+  "service.name" = "{{ vars.service_name }}",
+  "service.version" = "0.6.0",
+  "test.name" = "{{ vars.test_name }}",
+  "test.timestamp" = "{{ vars.test_timestamp }}",
+  "test.framework" = "clnrm",
+  "test.type" = "self-validation"
+}
+
+# OTEL headers can be configured when using remote collectors
+# [otel.headers]
+# "x-api-key" = "test-api-key"
+# "x-test-id" = "{{ sha256(s=vars.test_name) }}"
+# "x-test-timestamp" = "{{ vars.test_timestamp }}"
+
+[otel.propagators]
+use = ["tracecontext", "baggage"]
+
+# ========================================
+# SERVICE DEFINITIONS
+# ========================================
+[service.validation_service]
+plugin = "generic_container"
+image = "{{ vars.container_image }}"
+args = ["sh", "-c", "echo 'Self-validation service starting' && sleep 1 && echo 'Service ready'"]
+wait_for_span = "validation_service.start"
+
+# ========================================
+# TEST SCENARIOS
+# ========================================
+[[scenario]]
+name = "startup_phase"
+service = "validation_service"
+run = "echo 'Phase 1: Service startup complete'"
+
+[[scenario]]
+name = "validation_phase"
+service = "validation_service"
+run = "echo 'Phase 2: Running validation checks'"
+
+[[scenario]]
+name = "reporting_phase"
+service = "validation_service"
+run = "echo 'Phase 3: Generating reports'"
+
+[[scenario]]
+name = "shutdown_phase"
+service = "validation_service"
+run = "echo 'Phase 4: Clean shutdown complete'"
+
+# ========================================
+# SPAN ASSERTIONS
+# ========================================
+[[expect.span]]
+name = "validation_service.start"
+kind = "server"
+attrs.all = {
+  "service.name" = "{{ vars.service_name }}",
+  "test.phase" = "startup"
+}
+
+[[expect.span]]
+name = "validation_service.exec"
+kind = "internal"
+attrs.any = {
+  "exec.command" = "echo",
+  "exec.shell" = "sh"
+}
+
+[[expect.span]]
+name = "validation_service.stop"
+kind = "server"
+attrs.all = {
+  "service.name" = "{{ vars.service_name }}",
+  "test.phase" = "shutdown"
+}
+
+# ========================================
+# TEMPORAL ORDER VALIDATION
+# ========================================
+[expect.order]
+must_precede = [
+  ["validation_service.start", "validation_service.exec"],
+  ["validation_service.exec", "validation_service.stop"],
+  ["startup_phase", "validation_phase"],
+  ["validation_phase", "reporting_phase"],
+  ["reporting_phase", "shutdown_phase"]
+]
+must_follow = [
+  ["validation_service.stop", "validation_service.start"],
+  ["shutdown_phase", "startup_phase"]
+]
+
+# ========================================
+# STATUS CODE VALIDATION
+# ========================================
+[expect.status]
+all = "ok"
+by_name."validation_service.*" = "ok"
+by_name."*_phase" = "ok"
+
+# ========================================
+# COUNT VALIDATION
+# ========================================
+[expect.counts]
+spans_total = { gte = 7, lte = 20 }
+errors_total = { eq = 0 }
+spans_by_kind.server = { gte = 2 }
+spans_by_kind.internal = { gte = 4 }
+
+# ========================================
+# WINDOW VALIDATION
+# ========================================
+[[expect.window]]
+name = "full_test_window"
+start_span = "validation_service.start"
+end_span = "validation_service.stop"
+max_duration_ms = {{ vars.max_duration_ms }}
+min_span_count = 5
+
+[[expect.window]]
+name = "execution_window"
+start_span = "startup_phase"
+end_span = "shutdown_phase"
+max_duration_ms = {{ vars.max_duration_ms }}
+min_span_count = 4
+
+# ========================================
+# GRAPH VALIDATION
+# ========================================
+[expect.graph]
+parent_child = [
+  ["validation_service.start", "startup_phase"],
+  ["validation_service.exec", "validation_phase"],
+  ["validation_service.exec", "reporting_phase"],
+  ["validation_service.stop", "shutdown_phase"]
+]
+max_depth = 3
+must_be_connected = true
+
+# ========================================
+# HERMETICITY VALIDATION
+# ========================================
+[expect.hermeticity]
+allow_network = false
+allow_filesystem_read = true
+allow_filesystem_write = false
+allowed_env_vars = ["PATH", "HOME", "USER"]
+forbidden_syscalls = ["socket", "connect", "bind"]
+
+# ========================================
+# DETERMINISM CONFIGURATION
+# ========================================
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+# ========================================
+# RESOURCE LIMITS
+# ========================================
+[limits]
+cpu_millicores = 500
+memory_mb = 256
+
+# ========================================
+# REPORTING CONFIGURATION
+# ========================================
+[report]
+json = "{{ vars.report_dir }}/{{ vars.test_name }}_{{ sha256(s=vars.test_timestamp) | truncate(length=8, end="") }}.json"
+junit = "{{ vars.report_dir }}/junit_{{ vars.test_name }}.xml"
+digest = "{{ vars.report_dir }}/digest_{{ vars.test_name }}.sha256"
+
+# ========================================
+# VALIDATION ASSERTIONS
+# ========================================
+# This test validates:
+# 1. Tera template rendering (all {{ }} expressions)
+# 2. Custom Tera functions (env, now_rfc3339, sha256, toml_encode)
+# 3. Template context (vars, otel namespaces)
+# 4. Order validator (must_precede, must_follow)
+# 5. Status validator (all, by_name with glob patterns)
+# 6. Count validator (spans_total, errors_total, spans_by_kind)
+# 7. Window validator (time-based span windows)
+# 8. Graph validator (parent-child relationships, topology)
+# 9. Hermeticity validator (network, filesystem, syscalls)
+# 10. Determinism (seed, freeze_clock for reproducibility)
+# 11. Resource limits (CPU, memory constraints)
+# 12. Multi-format reporting (JSON, JUnit, SHA-256 digest)
+#
+# Expected Result: 100/100 pass with identical digest on re-run

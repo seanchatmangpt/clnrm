@@ -147,7 +147,9 @@ impl<'a> GraphValidator<'a> {
         // Check if any child has any parent as its parent_span_id
         let edge_exists = child_spans.iter().any(|child| {
             if let Some(ref parent_id) = child.parent_span_id {
-                parent_spans.iter().any(|parent| &parent.span_id == parent_id)
+                parent_spans
+                    .iter()
+                    .any(|parent| &parent.span_id == parent_id)
             } else {
                 false
             }
@@ -187,7 +189,9 @@ impl<'a> GraphValidator<'a> {
         // Check if any child has any parent as its parent_span_id
         let edge_exists = child_spans.iter().any(|child| {
             if let Some(ref parent_id) = child.parent_span_id {
-                parent_spans.iter().any(|parent| &parent.span_id == parent_id)
+                parent_spans
+                    .iter()
+                    .any(|parent| &parent.span_id == parent_id)
             } else {
                 false
             }
@@ -220,12 +224,9 @@ impl<'a> GraphValidator<'a> {
         // DFS from each span to detect cycles
         for span in self.spans {
             if !visited.contains(&span.span_id) {
-                if let Some(cycle_path) = self.detect_cycle_dfs(
-                    span,
-                    &mut visited,
-                    &mut in_path,
-                    &mut Vec::new(),
-                ) {
+                if let Some(cycle_path) =
+                    self.detect_cycle_dfs(span, &mut visited, &mut in_path, &mut Vec::new())
+                {
                     return Err(CleanroomError::validation_error(format!(
                         "Graph validation failed: cycle detected in span graph: {}",
                         cycle_path.join(" -> ")

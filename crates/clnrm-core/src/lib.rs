@@ -16,9 +16,11 @@ pub mod error;
 pub mod macros;
 pub mod marketplace;
 pub mod policy;
+pub mod reporting;
 pub mod scenario;
 pub mod services;
 pub mod telemetry;
+pub mod template;
 pub mod utils;
 pub mod validation;
 
@@ -42,9 +44,12 @@ pub use config::{
     parse_toml_config, CleanroomConfig, ScenarioConfig, StepConfig, TestConfig,
 };
 pub use macros::{with_cache, with_database, with_message_queue, with_web_server};
+pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporter, ReportConfig};
 pub use services::generic::GenericContainerPlugin;
 pub use services::surrealdb::SurrealDbPlugin;
+pub use template::{DeterminismConfig, TemplateContext, TemplateRenderer};
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
+pub use validation::{PrdExpectations, ValidationReport};
 
 // The cleanroom_test macro is already exported via #[macro_export] in macros.rs
 

@@ -1,0 +1,63 @@
+# clnrm OTEL validation template example (v0.6.0)
+# This file demonstrates template rendering workflow
+
+[test.metadata]
+name = "{{ vars.name | default(value='otel_validation_example') }}"
+description = "OTEL validation with template rendering"
+version = "0.6.0"
+
+# Environment-based OTEL configuration
+[otel]
+exporter = "{{ env(name='OTEL_EXPORTER') | default(value='stdout') }}"
+{% if env(name='OTEL_ENDPOINT') %}
+endpoint = "{{ env(name='OTEL_ENDPOINT') }}"
+{% else %}
+endpoint = "http://localhost:4318"
+{% endif %}
+sample_ratio = 1.0
+resources = { "service.name" = "clnrm", "service.version" = "0.6.0" }
+
+# Service configuration with templating
+[services.clnrm]
+type = "generic_container"
+plugin = "generic_container"
+image = "{{ vars.image | default(value='alpine:latest') }}"
+
+# Test steps
+[[steps]]
+name = "setup"
+command = ["echo", "Setting up OTEL validation"]
+expected_output_regex = "Setting up OTEL validation"
+
+[[steps]]
+name = "run_test"
+command = ["echo", "Running test"]
+expected_output_regex = "Running test"
+service = "clnrm"
+
+# OTEL validation expectations
+[otel_validation]
+enabled = true
+validate_spans = true
+validate_traces = true
+
+[[otel_validation.expected_spans]]
+name = "clnrm.run"
+required = true
+attributes = { "result" = "pass" }
+
+[otel_validation.expect_counts]
+spans_total = { gte = 1 }
+errors_total = { eq = 0 }
+
+# Conditional determinism for CI
+{% if env(name='CI') == 'true' %}
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+{% endif %}
+
+# Report configuration
+[report]
+json = "{{ vars.report_dir | default(value='reports') }}/otel-validation.json"
+digest = "{{ vars.report_dir | default(value='reports') }}/otel-validation.sha256"

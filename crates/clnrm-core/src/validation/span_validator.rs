@@ -26,8 +26,8 @@ pub enum SpanKind {
 }
 
 impl SpanKind {
-    /// Parse span kind from string
-    pub fn from_str(s: &str) -> Result<Self> {
+    /// Parse span kind from string (custom parser, not std::str::FromStr trait)
+    pub fn parse_kind(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "internal" => Ok(SpanKind::Internal),
             "server" => Ok(SpanKind::Server),
@@ -127,7 +127,6 @@ pub enum SpanAssertion {
     SpanHierarchy { parent: String, child: String },
 
     // NEW PRD-aligned assertions
-
     /// Assert span kind (internal, server, client, producer, consumer)
     SpanKind { name: String, kind: SpanKind },
 
@@ -288,10 +287,9 @@ impl SpanValidator {
         let mut attributes = HashMap::new();
         if let Some(attrs) = span_obj.get("attributes").and_then(|v| v.as_array()) {
             for attr in attrs {
-                if let (Some(key), Some(value)) = (
-                    attr.get("key").and_then(|k| k.as_str()),
-                    attr.get("value"),
-                ) {
+                if let (Some(key), Some(value)) =
+                    (attr.get("key").and_then(|k| k.as_str()), attr.get("value"))
+                {
                     attributes.insert(key.to_string(), value.clone());
                 }
             }
@@ -304,7 +302,9 @@ impl SpanValidator {
             .map(|events_array| {
                 events_array
                     .iter()
-                    .filter_map(|event| event.get("name").and_then(|n| n.as_str()).map(String::from))
+                    .filter_map(|event| {
+                        event.get("name").and_then(|n| n.as_str()).map(String::from)
+                    })
                     .collect()
             });
 
@@ -438,7 +438,6 @@ impl SpanValidator {
             }
 
             // NEW PRD-aligned assertion implementations
-
             SpanAssertion::SpanKind { name, kind } => {
                 let spans = self.find_spans_by_name(name);
                 if spans.is_empty() {
@@ -449,9 +448,9 @@ impl SpanValidator {
                 }
 
                 // Check if any span has the expected kind
-                let has_kind = spans.iter().any(|span| {
-                    span.kind.map(|k| k == *kind).unwrap_or(false)
-                });
+                let has_kind = spans
+                    .iter()
+                    .any(|span| span.kind.map(|k| k == *kind).unwrap_or(false));
 
                 if !has_kind {
                     return Err(CleanroomError::validation_error(format!(
@@ -506,7 +505,10 @@ impl SpanValidator {
                 Ok(())
             }
 
-            SpanAssertion::SpanAnyAttributes { name, attribute_patterns } => {
+            SpanAssertion::SpanAnyAttributes {
+                name,
+                attribute_patterns,
+            } => {
                 let spans = self.find_spans_by_name(name);
                 if spans.is_empty() {
                     return Err(CleanroomError::validation_error(format!(
@@ -568,7 +570,11 @@ impl SpanValidator {
                 Ok(())
             }
 
-            SpanAssertion::SpanDuration { name, min_ms, max_ms } => {
+            SpanAssertion::SpanDuration {
+                name,
+                min_ms,
+                max_ms,
+            } => {
                 let spans = self.find_spans_by_name(name);
                 if spans.is_empty() {
                     return Err(CleanroomError::validation_error(format!(

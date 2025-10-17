@@ -20,7 +20,8 @@ pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
     // Create root span for entire test run (OTEL self-testing)
     #[cfg(feature = "otel-traces")]
     let run_span = {
-        let config_path = paths.first()
+        let config_path = paths
+            .first()
             .and_then(|p| p.to_str())
             .unwrap_or("multiple_paths");
         spans::run_span(config_path, paths.len())
@@ -549,12 +550,13 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
 
     // Record test name in span
+    let test_name = test_config.get_name()?;
     #[cfg(feature = "otel-traces")]
-    tracing::Span::current().record("test.name", &test_config.test.metadata.name);
+    tracing::Span::current().record("test.name", &test_name);
 
-    println!("🚀 Executing test: {}", test_config.test.metadata.name);
-    info!("🚀 Executing test: {}", test_config.test.metadata.name);
-    if let Some(description) = &test_config.test.metadata.description {
+    println!("🚀 Executing test: {}", test_name);
+    info!("🚀 Executing test: {}", test_name);
+    if let Some(description) = test_config.get_description() {
         println!("📝 Description: {}", description);
         debug!("Test description: {}", description);
     }
@@ -680,11 +682,11 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
     // Test completion
     println!(
         "🎉 Test '{}' completed successfully!",
-        test_config.test.metadata.name
+        test_name
     );
     info!(
         "🎉 Test '{}' completed successfully!",
-        test_config.test.metadata.name
+        test_name
     );
     Ok(())
 }

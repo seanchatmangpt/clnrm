@@ -1,0 +1,63 @@
+# Macros and Includes Example
+# This demonstrates reusable template blocks via macros
+
+[template.vars]
+service_name = "clnrm"
+
+# Define reusable macros
+{% macro container_lifecycle_events() %}
+["container.start", "container.exec", "container.stop"]
+{% endmacro %}
+
+{% macro span_matcher(name, max_duration) %}
+{
+  "name": "{{ name }}",
+  "duration_ms": { "lte": {{ max_duration }} }
+}
+{% endmacro %}
+
+{% macro otel_config(exporter, endpoint) %}
+[otel]
+exporter = "{{ exporter }}"
+{% if endpoint %}
+endpoint = "{{ endpoint }}"
+{% endif %}
+resources = {
+    "service.name" = "{{ vars.service_name }}"
+}
+{% endmacro %}
+
+[meta]
+name = "macros_example"
+description = "Demonstrates Tera macros for reusable template blocks"
+
+# Use macro to configure OTEL
+{{ otel_config(exporter="stdout", endpoint="") }}
+
+[[scenario]]
+name = "fast_operation"
+service = "alpine"
+run = "echo 'Fast operation'"
+
+[[scenario]]
+name = "slow_operation"
+service = "alpine"
+run = "sleep 0.5 && echo 'Slow operation'"
+
+[services.alpine]
+type = "generic_container"
+image = "alpine:latest"
+
+# Use macros in expectations
+[[expect.span]]
+name = "clnrm.step:fast_operation"
+{{ span_matcher(name="clnrm.step:fast_operation", max_duration=1000) }}
+events.any = {{ container_lifecycle_events() }}
+
+[[expect.span]]
+name = "clnrm.step:slow_operation"
+{{ span_matcher(name="clnrm.step:slow_operation", max_duration=5000) }}
+events.any = {{ container_lifecycle_events() }}
+
+[expect.status]
+all = "OK"

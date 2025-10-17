@@ -15,8 +15,6 @@ use opentelemetry::KeyValue;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
-use testcontainers::runners::AsyncRunner;
-use testcontainers_modules::surrealdb::{SurrealDb, SURREALDB_PORT};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -582,9 +580,7 @@ impl CleanroomEnvironment {
             let registry = self.container_registry.read().await;
             if let Some(existing_container) = registry.get(name) {
                 // Try to downcast to the requested type
-                existing_container
-                    .downcast_ref::<T>()
-                    .map(|typed_container| typed_container.clone())
+                existing_container.downcast_ref::<T>().cloned()
             } else {
                 None
             }
@@ -757,6 +753,7 @@ impl CleanroomEnvironment {
 #[derive(Debug)]
 pub struct MockDatabasePlugin {
     name: String,
+    #[allow(dead_code)]
     container_id: Arc<RwLock<Option<String>>>,
 }
 
@@ -833,8 +830,7 @@ mod tests {
         assert_eq!(plugin.name(), "mock_database");
 
         // Test that we can store multiple plugins in a collection
-        let mut plugins: Vec<Arc<dyn ServicePlugin>> = Vec::new();
-        plugins.push(plugin);
+        let plugins: Vec<Arc<dyn ServicePlugin>> = vec![plugin];
 
         // Test that we can iterate over them
         for plugin in &plugins {
