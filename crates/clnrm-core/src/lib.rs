@@ -13,6 +13,7 @@ pub mod cache;
 pub mod cleanroom;
 pub mod cli;
 pub mod config;
+pub mod determinism;
 pub mod error;
 pub mod formatting;
 pub mod macros;
@@ -46,8 +47,9 @@ pub use cleanroom::{
 };
 pub use config::{
     load_cleanroom_config, load_cleanroom_config_from_file, load_config_from_file,
-    parse_toml_config, CleanroomConfig, ScenarioConfig, StepConfig, TestConfig,
+    parse_toml_config, CleanroomConfig, DeterminismConfig, ScenarioConfig, StepConfig, TestConfig,
 };
+pub use determinism::DeterminismEngine;
 pub use formatting::{
     format_test_results, format_toml_content, format_toml_file, needs_formatting, Formatter,
     FormatterType, HumanFormatter, JsonFormatter, JunitFormatter, TapFormatter, TestResult,
@@ -57,7 +59,7 @@ pub use macros::{with_cache, with_database, with_message_queue, with_web_server}
 pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporter, ReportConfig};
 pub use services::generic::GenericContainerPlugin;
 pub use services::surrealdb::SurrealDbPlugin;
-pub use template::{DeterminismConfig, TemplateContext, TemplateRenderer};
+pub use template::{TemplateContext, TemplateRenderer};
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
 pub use validation::{PrdExpectations, ShapeValidator, ValidationReport};
 pub use watch::{debouncer::FileDebouncer, WatchConfig};

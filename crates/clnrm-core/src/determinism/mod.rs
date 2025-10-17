@@ -45,6 +45,16 @@ pub struct DeterminismEngine {
     frozen_time: Option<DateTime<Utc>>,
 }
 
+impl std::fmt::Debug for DeterminismEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeterminismEngine")
+            .field("config", &self.config)
+            .field("has_rng", &self.rng.is_some())
+            .field("frozen_time", &self.frozen_time)
+            .finish()
+    }
+}
+
 impl DeterminismEngine {
     /// Create new determinism engine from configuration
     ///
@@ -65,11 +75,7 @@ impl DeterminismEngine {
         };
 
         // Initialize RNG if seed is present
-        let rng = if let Some(seed) = config.seed {
-            Some(Arc::new(Mutex::new(rng::create_seeded_rng(seed))))
-        } else {
-            None
-        };
+        let rng = config.seed.map(|seed| Arc::new(Mutex::new(rng::create_seeded_rng(seed))));
 
         Ok(Self {
             config,
@@ -358,7 +364,9 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid freeze_clock"));
+        if let Err(e) = result {
+            assert!(e.to_string().contains("Invalid freeze_clock"));
+        }
     }
 
     #[test]

@@ -3,6 +3,7 @@
 //! Provides validation capabilities for test assertions, including
 //! OpenTelemetry validation for observability testing.
 
+pub mod common;
 pub mod count_validator;
 pub mod graph_validator;
 pub mod hermeticity_validator;
@@ -12,6 +13,8 @@ pub mod otel;
 pub mod shape;
 pub mod span_validator;
 pub mod status_validator;
+#[cfg(test)]
+pub mod test_helpers;
 pub mod window_validator;
 
 pub use count_validator::CountExpectation;
