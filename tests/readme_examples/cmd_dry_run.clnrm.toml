@@ -1,0 +1,39 @@
+# README Example Test: clnrm dry-run command
+# Verifies: "dry-run - Fast validation without containers (<1s for 10 files)"
+# Location in README: Lines 11, 414
+
+[test.metadata]
+name = "verify_clnrm_dry_run"
+description = "Verify 'clnrm dry-run' validates without containers in <1s for 10 files"
+version = "1.0.0"
+
+[service.dry_runner]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "dry_run_validates_fast"
+service = "dry_runner"
+run = """
+START=$(date +%s%N) && \
+clnrm dry-run /workspace/tests/*.clnrm.toml && \
+END=$(date +%s%N) && \
+ELAPSED=$(( (END - START) / 1000000 )) && \
+echo "Elapsed: ${ELAPSED}ms" && \
+test ${ELAPSED} -lt 1000
+"""
+
+[[expect.output]]
+pattern = "Elapsed.*ms"
+description = "Should report elapsed time"
+
+[[expect.output]]
+pattern = "valid|success|passed"
+description = "Should validate successfully"
+
+[[expect.status]]
+exit_code = 0
+
+[report]
+comment = "Performance claim: <1s for 10 files"

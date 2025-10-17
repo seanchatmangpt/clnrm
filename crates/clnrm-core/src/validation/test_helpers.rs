@@ -72,27 +72,37 @@ impl SpanBuilder {
     }
 
     /// Add a span attribute
-    pub fn with_attribute(mut self, key: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
+    pub fn with_attribute(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<serde_json::Value>,
+    ) -> Self {
         self.attributes.insert(key.into(), value.into());
         self
     }
 
     /// Add a resource attribute
-    pub fn with_resource_attribute(mut self, key: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
+    pub fn with_resource_attribute(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<serde_json::Value>,
+    ) -> Self {
         self.resource_attributes.insert(key.into(), value.into());
         self
     }
 
     /// Set OTEL status code attribute
     pub fn with_status(mut self, status: impl Into<String>) -> Self {
-        self.attributes.insert("otel.status_code".to_string(), json!(status.into()));
+        self.attributes
+            .insert("otel.status_code".to_string(), json!(status.into()));
         self
     }
 
     /// Set error flag attribute
     pub fn with_error(mut self, is_error: bool) -> Self {
         if is_error {
-            self.attributes.insert("otel.status_code".to_string(), json!("ERROR"));
+            self.attributes
+                .insert("otel.status_code".to_string(), json!("ERROR"));
         }
         self
     }
@@ -145,7 +155,8 @@ impl SpanBuilder {
 
     /// Set event count attribute
     pub fn with_event_count(mut self, count: usize) -> Self {
-        self.attributes.insert("event.count".to_string(), json!(count));
+        self.attributes
+            .insert("event.count".to_string(), json!(count));
         self
     }
 
@@ -191,9 +202,7 @@ pub fn create_span(name: &str, span_id: &str, parent_id: Option<&str>) -> SpanDa
 /// # Returns
 /// * `SpanData` - Span with status attribute
 pub fn create_span_with_status(name: &str, status: &str) -> SpanData {
-    SpanBuilder::new(name)
-        .with_status(status)
-        .build()
+    SpanBuilder::new(name).with_status(status).build()
 }
 
 /// Create a span with error flag
@@ -205,9 +214,7 @@ pub fn create_span_with_status(name: &str, status: &str) -> SpanData {
 /// # Returns
 /// * `SpanData` - Span with or without error status
 pub fn create_span_with_error(name: &str, is_error: bool) -> SpanData {
-    SpanBuilder::new(name)
-        .with_error(is_error)
-        .build()
+    SpanBuilder::new(name).with_error(is_error).build()
 }
 
 /// Create a span with specific timing
@@ -254,9 +261,7 @@ pub fn create_span_with_attributes(
 /// # Returns
 /// * `SpanData` - Span with specified events
 pub fn create_span_with_events(name: &str, events: Vec<String>) -> SpanData {
-    SpanBuilder::new(name)
-        .with_events(events)
-        .build()
+    SpanBuilder::new(name).with_events(events).build()
 }
 
 #[cfg(test)]
@@ -296,8 +301,14 @@ mod tests {
 
         // Assert
         assert_eq!(span.attributes.len(), 2);
-        assert_eq!(span.attributes.get("key1").and_then(|v| v.as_str()), Some("value1"));
-        assert_eq!(span.attributes.get("key2").and_then(|v| v.as_i64()), Some(42));
+        assert_eq!(
+            span.attributes.get("key1").and_then(|v| v.as_str()),
+            Some("value1")
+        );
+        assert_eq!(
+            span.attributes.get("key2").and_then(|v| v.as_i64()),
+            Some(42)
+        );
     }
 
     #[test]
@@ -307,7 +318,9 @@ mod tests {
 
         // Assert
         assert_eq!(
-            span.attributes.get("otel.status_code").and_then(|v| v.as_str()),
+            span.attributes
+                .get("otel.status_code")
+                .and_then(|v| v.as_str()),
             Some("OK")
         );
     }
@@ -319,7 +332,9 @@ mod tests {
 
         // Assert
         assert_eq!(
-            span.attributes.get("otel.status_code").and_then(|v| v.as_str()),
+            span.attributes
+                .get("otel.status_code")
+                .and_then(|v| v.as_str()),
             Some("ERROR")
         );
     }
@@ -327,9 +342,7 @@ mod tests {
     #[test]
     fn test_span_builder_with_kind() {
         // Arrange & Act
-        let span = SpanBuilder::new("test")
-            .with_kind(SpanKind::Server)
-            .build();
+        let span = SpanBuilder::new("test").with_kind(SpanKind::Server).build();
 
         // Assert
         assert_eq!(span.kind, Some(SpanKind::Server));
@@ -371,7 +384,10 @@ mod tests {
             .build();
 
         // Assert
-        assert_eq!(span.events, Some(vec!["event1".to_string(), "event2".to_string()]));
+        assert_eq!(
+            span.events,
+            Some(vec!["event1".to_string(), "event2".to_string()])
+        );
     }
 
     #[test]
@@ -420,7 +436,9 @@ mod tests {
 
         // Assert
         assert_eq!(
-            span.attributes.get("otel.status_code").and_then(|v| v.as_str()),
+            span.attributes
+                .get("otel.status_code")
+                .and_then(|v| v.as_str()),
             Some("ERROR")
         );
     }
@@ -432,7 +450,9 @@ mod tests {
 
         // Assert
         assert_eq!(
-            span.attributes.get("otel.status_code").and_then(|v| v.as_str()),
+            span.attributes
+                .get("otel.status_code")
+                .and_then(|v| v.as_str()),
             Some("ERROR")
         );
     }
@@ -468,7 +488,9 @@ mod tests {
         // Assert
         assert_eq!(span.resource_attributes.len(), 2);
         assert_eq!(
-            span.resource_attributes.get("service.name").and_then(|v| v.as_str()),
+            span.resource_attributes
+                .get("service.name")
+                .and_then(|v| v.as_str()),
             Some("my-service")
         );
     }
@@ -476,9 +498,7 @@ mod tests {
     #[test]
     fn test_span_builder_event_count_attribute() {
         // Arrange & Act
-        let span = SpanBuilder::new("test")
-            .with_event_count(5)
-            .build();
+        let span = SpanBuilder::new("test").with_event_count(5).build();
 
         // Assert
         assert_eq!(

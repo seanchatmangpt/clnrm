@@ -75,7 +75,9 @@ impl DeterminismEngine {
         };
 
         // Initialize RNG if seed is present
-        let rng = config.seed.map(|seed| Arc::new(Mutex::new(rng::create_seeded_rng(seed))));
+        let rng = config
+            .seed
+            .map(|seed| Arc::new(Mutex::new(rng::create_seeded_rng(seed))));
 
         Ok(Self {
             config,
@@ -116,10 +118,20 @@ impl DeterminismEngine {
     ///
     /// # Returns
     /// * Random u64 value
+    ///
+    /// # Panics
+    /// * Panics if RNG mutex is poisoned (indicates panic in another thread)
     pub fn next_u64(&self) -> u64 {
         if let Some(ref rng_mutex) = self.rng {
-            let mut rng = rng_mutex.lock()
-                .expect("RNG mutex poisoned - this indicates a panic in another thread");
+            // SAFETY: Mutex poisoning only occurs if another thread panicked while holding the lock.
+            // This is an unrecoverable state that indicates a critical bug in the test framework.
+            // We document this as a panic condition rather than propagating an error since:
+            // 1. This should never happen in normal operation
+            // 2. Recovery is not possible once the mutex is poisoned
+            // 3. The panic will provide a clear stack trace for debugging
+            let mut rng = rng_mutex
+                .lock()
+                .unwrap_or_else(|e| panic!("RNG mutex poisoned - this indicates a panic in another thread that held the lock: {}", e));
             rng.next_u64()
         } else {
             rand::random()
@@ -127,10 +139,15 @@ impl DeterminismEngine {
     }
 
     /// Generate next random u32 value
+    ///
+    /// # Panics
+    /// * Panics if RNG mutex is poisoned (indicates panic in another thread)
     pub fn next_u32(&self) -> u32 {
         if let Some(ref rng_mutex) = self.rng {
-            let mut rng = rng_mutex.lock()
-                .expect("RNG mutex poisoned - this indicates a panic in another thread");
+            // SAFETY: See next_u64() for rationale on mutex poisoning handling
+            let mut rng = rng_mutex
+                .lock()
+                .unwrap_or_else(|e| panic!("RNG mutex poisoned - this indicates a panic in another thread that held the lock: {}", e));
             rng.next_u32()
         } else {
             rand::random()
@@ -138,10 +155,15 @@ impl DeterminismEngine {
     }
 
     /// Fill buffer with random bytes
+    ///
+    /// # Panics
+    /// * Panics if RNG mutex is poisoned (indicates panic in another thread)
     pub fn fill_bytes(&self, dest: &mut [u8]) {
         if let Some(ref rng_mutex) = self.rng {
-            let mut rng = rng_mutex.lock()
-                .expect("RNG mutex poisoned - this indicates a panic in another thread");
+            // SAFETY: See next_u64() for rationale on mutex poisoning handling
+            let mut rng = rng_mutex
+                .lock()
+                .unwrap_or_else(|e| panic!("RNG mutex poisoned - this indicates a panic in another thread that held the lock: {}", e));
             rng.fill_bytes(dest);
         } else {
             rand::thread_rng().fill_bytes(dest);
@@ -183,8 +205,18 @@ impl DeterminismEngine {
 // Note: RNG state is not cloned; instead, each clone gets a fresh RNG with the same seed
 impl Clone for DeterminismEngine {
     fn clone(&self) -> Self {
-        Self::new(self.config.clone())
-            .expect("Cloning DeterminismEngine with valid config should not fail")
+        // SAFETY: This cannot fail because:
+        // 1. If config.freeze_clock exists, it was already validated in the original new() call
+        // 2. We're cloning the exact same config that was previously validated
+        // 3. The only error condition is invalid RFC3339 format, which we've already verified
+        Self {
+            config: self.config.clone(),
+            rng: self
+                .config
+                .seed
+                .map(|seed| Arc::new(Mutex::new(rng::create_seeded_rng(seed)))),
+            frozen_time: self.frozen_time,
+        }
     }
 }
 
@@ -327,7 +359,10 @@ mod tests {
         let val2 = engine2.next_u64();
 
         // Assert
-        assert_eq!(val1, val2, "Same seed should produce identical random values");
+        assert_eq!(
+            val1, val2,
+            "Same seed should produce identical random values"
+        );
 
         Ok(())
     }
@@ -345,8 +380,14 @@ mod tests {
         let values: Vec<u64> = (0..10).map(|_| engine.next_u64()).collect();
 
         // Assert - values should be different from each other
-        let unique_count = values.iter().collect::<std::collections::HashSet<_>>().len();
-        assert_eq!(unique_count, 10, "RNG should produce different values in sequence");
+        let unique_count = values
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        assert_eq!(
+            unique_count, 10,
+            "RNG should produce different values in sequence"
+        );
 
         Ok(())
     }
@@ -430,7 +471,10 @@ mod tests {
         engine2.fill_bytes(&mut buf2);
 
         // Assert
-        assert_eq!(buf1, buf2, "Same seed should produce identical byte sequences");
+        assert_eq!(
+            buf1, buf2,
+            "Same seed should produce identical byte sequences"
+        );
 
         Ok(())
     }

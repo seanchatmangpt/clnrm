@@ -175,9 +175,8 @@ impl OtelValidator for GraphValidator {
         // Check if we expect child spans:
         // 1. If there are multiple spans, some should be children
         // 2. If there are multiple lifecycle events in a single span, child spans are expected
-        let has_multiple_lifecycle_events = trace_data.spans.iter().any(|span| {
-            span.events.len() > 1
-        });
+        let has_multiple_lifecycle_events =
+            trace_data.spans.iter().any(|span| span.events.len() > 1);
 
         let should_have_children = trace_data.spans.len() > 1 || has_multiple_lifecycle_events;
 
@@ -298,10 +297,7 @@ pub fn validate_trace(trace_data: &MockTraceData) -> Vec<ValidationResult> {
         Box::new(StatusValidator::new()),
     ];
 
-    validators
-        .iter()
-        .map(|v| v.validate(trace_data))
-        .collect()
+    validators.iter().map(|v| v.validate(trace_data)).collect()
 }
 
 // =============================================================================
@@ -320,13 +316,11 @@ fn create_legitimate_trace() -> MockTraceData {
         span_id: "span-root".to_string(),
         parent_span_id: None,
         status: SpanStatus::Ok,
-        events: vec![
-            SpanEvent {
-                name: "container.start".to_string(),
-                timestamp: 1000,
-                attributes: HashMap::new(),
-            },
-        ],
+        events: vec![SpanEvent {
+            name: "container.start".to_string(),
+            timestamp: 1000,
+            attributes: HashMap::new(),
+        }],
         start_time: 1000,
         end_time: 5000,
         attributes: HashMap::new(),
@@ -339,13 +333,11 @@ fn create_legitimate_trace() -> MockTraceData {
         span_id: "span-1".to_string(),
         parent_span_id: Some("span-root".to_string()),
         status: SpanStatus::Ok,
-        events: vec![
-            SpanEvent {
-                name: "container.exec".to_string(),
-                timestamp: 1500,
-                attributes: HashMap::new(),
-            },
-        ],
+        events: vec![SpanEvent {
+            name: "container.exec".to_string(),
+            timestamp: 1500,
+            attributes: HashMap::new(),
+        }],
         start_time: 1500,
         end_time: 2500,
         attributes: HashMap::new(),
@@ -358,13 +350,11 @@ fn create_legitimate_trace() -> MockTraceData {
         span_id: "span-2".to_string(),
         parent_span_id: Some("span-root".to_string()),
         status: SpanStatus::Ok,
-        events: vec![
-            SpanEvent {
-                name: "container.exec".to_string(),
-                timestamp: 2600,
-                attributes: HashMap::new(),
-            },
-        ],
+        events: vec![SpanEvent {
+            name: "container.exec".to_string(),
+            timestamp: 2600,
+            attributes: HashMap::new(),
+        }],
         start_time: 2600,
         end_time: 3500,
         attributes: HashMap::new(),
@@ -377,13 +367,11 @@ fn create_legitimate_trace() -> MockTraceData {
         span_id: "span-3".to_string(),
         parent_span_id: Some("span-root".to_string()),
         status: SpanStatus::Ok,
-        events: vec![
-            SpanEvent {
-                name: "container.stop".to_string(),
-                timestamp: 4500,
-                attributes: HashMap::new(),
-            },
-        ],
+        events: vec![SpanEvent {
+            name: "container.stop".to_string(),
+            timestamp: 4500,
+            attributes: HashMap::new(),
+        }],
         start_time: 3600,
         end_time: 4500,
         attributes: HashMap::new(),
@@ -481,13 +469,11 @@ fn create_status_mismatch_trace() -> MockTraceData {
         span_id: "span-root".to_string(),
         parent_span_id: None,
         status: SpanStatus::Ok,
-        events: vec![
-            SpanEvent {
-                name: "container.start".to_string(),
-                timestamp: 1000,
-                attributes: HashMap::new(),
-            },
-        ],
+        events: vec![SpanEvent {
+            name: "container.start".to_string(),
+            timestamp: 1000,
+            attributes: HashMap::new(),
+        }],
         start_time: 1000,
         end_time: 5000,
         attributes: HashMap::new(),
@@ -500,13 +486,11 @@ fn create_status_mismatch_trace() -> MockTraceData {
         span_id: "span-1".to_string(),
         parent_span_id: Some("span-root".to_string()),
         status: SpanStatus::Error, // ERROR status
-        events: vec![
-            SpanEvent {
-                name: "container.exec".to_string(),
-                timestamp: 1500,
-                attributes: HashMap::new(),
-            },
-        ],
+        events: vec![SpanEvent {
+            name: "container.exec".to_string(),
+            timestamp: 1500,
+            attributes: HashMap::new(),
+        }],
         start_time: 1500,
         end_time: 2500,
         attributes: HashMap::new(),
@@ -519,13 +503,11 @@ fn create_status_mismatch_trace() -> MockTraceData {
         span_id: "span-2".to_string(),
         parent_span_id: Some("span-root".to_string()),
         status: SpanStatus::Ok,
-        events: vec![
-            SpanEvent {
-                name: "container.stop".to_string(),
-                timestamp: 4500,
-                attributes: HashMap::new(),
-            },
-        ],
+        events: vec![SpanEvent {
+            name: "container.stop".to_string(),
+            timestamp: 4500,
+            attributes: HashMap::new(),
+        }],
         start_time: 2600,
         end_time: 4500,
         attributes: HashMap::new(),
@@ -558,8 +540,7 @@ fn test_legitimate_test_passes_all_validators() {
         assert!(
             result.passed,
             "Validator {} should pass for legitimate test. Failures: {:?}",
-            result.validator_name,
-            result.failures
+            result.validator_name, result.failures
         );
     }
 }
@@ -796,25 +777,37 @@ fn test_each_validator_independently_catches_specific_fake() {
         "container.stop".to_string(),
     ]);
     let result = span_val.validate(&no_exec_trace);
-    assert!(!result.passed, "Span validator should catch no_execution fake");
+    assert!(
+        !result.passed,
+        "Span validator should catch no_execution fake"
+    );
 
     // Test 2: Graph validator catches missing_edges
     let missing_edges_trace = create_missing_edges_trace();
     let graph_val = GraphValidator::new(true);
     let result = graph_val.validate(&missing_edges_trace);
-    assert!(!result.passed, "Graph validator should catch missing_edges fake");
+    assert!(
+        !result.passed,
+        "Graph validator should catch missing_edges fake"
+    );
 
     // Test 3: Counts validator catches wrong_counts
     let wrong_counts_trace = create_wrong_counts_trace();
     let counts_val = CountsValidator::new(4);
     let result = counts_val.validate(&wrong_counts_trace);
-    assert!(!result.passed, "Counts validator should catch wrong_counts fake");
+    assert!(
+        !result.passed,
+        "Counts validator should catch wrong_counts fake"
+    );
 
     // Test 4: Status validator catches status_mismatch
     let status_mismatch_trace = create_status_mismatch_trace();
     let status_val = StatusValidator::new();
     let result = status_val.validate(&status_mismatch_trace);
-    assert!(!result.passed, "Status validator should catch status_mismatch fake");
+    assert!(
+        !result.passed,
+        "Status validator should catch status_mismatch fake"
+    );
 }
 
 #[test]

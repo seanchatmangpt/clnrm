@@ -33,7 +33,7 @@ async fn main() -> Result<(), clnrm_core::error::CleanroomError> {
         deployment_env: "demo",
         sample_ratio: 1.0,
         export: Export::StdoutNdjson, // Use NDJSON format for machine-readable output
-        enable_fmt_layer: false, // Disable to avoid mixing with NDJSON output
+        enable_fmt_layer: false,      // Disable to avoid mixing with NDJSON output
         headers: None,
     };
 
@@ -85,7 +85,10 @@ async fn main() -> Result<(), clnrm_core::error::CleanroomError> {
         eprintln!("[DEMO] Adding events to span");
         custom_span.add_event(
             "operation.start",
-            vec![opentelemetry::KeyValue::new("timestamp", "2025-01-16T12:00:00Z")],
+            vec![opentelemetry::KeyValue::new(
+                "timestamp",
+                "2025-01-16T12:00:00Z",
+            )],
         );
 
         custom_span.add_event(

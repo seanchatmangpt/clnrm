@@ -43,10 +43,7 @@ Hello World
     );
 
     // Validate setup step span
-    let setup_span = spans
-        .iter()
-        .find(|s| s.name == "clnrm.step:setup")
-        .unwrap();
+    let setup_span = spans.iter().find(|s| s.name == "clnrm.step:setup").unwrap();
     assert_eq!(setup_span.parent_span_id, Some("root001".to_string()));
     assert_eq!(
         setup_span
@@ -140,17 +137,11 @@ INFO: Operation completed
     assert_eq!(spans[0].name, "retry.attempt");
     assert_eq!(spans[1].name, "retry.attempt");
     assert_eq!(
-        spans[0]
-            .attributes
-            .get("attempt")
-            .and_then(|v| v.as_str()),
+        spans[0].attributes.get("attempt").and_then(|v| v.as_str()),
         Some("1")
     );
     assert_eq!(
-        spans[1]
-            .attributes
-            .get("status")
-            .and_then(|v| v.as_str()),
+        spans[1].attributes.get("status").and_then(|v| v.as_str()),
         Some("success")
     );
 }
@@ -198,10 +189,7 @@ fn test_parse_with_unicode_and_special_characters() {
     // Assert
     assert_eq!(spans.len(), 1);
     assert_eq!(
-        spans[0]
-            .attributes
-            .get("message")
-            .and_then(|v| v.as_str()),
+        spans[0].attributes.get("message").and_then(|v| v.as_str()),
         Some("Hello 世界! 🚀")
     );
 }

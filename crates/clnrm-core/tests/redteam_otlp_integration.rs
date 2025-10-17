@@ -175,10 +175,7 @@ fn test_missing_sdk_language_resource_must_fail() -> Result<()> {
     // Create expectation requiring SDK language attribute
     let expectation = SpanExpectation::new("container.*").with_attrs_all({
         let mut attrs = HashMap::new();
-        attrs.insert(
-            "telemetry.sdk.language".to_string(),
-            "rust".to_string(),
-        );
+        attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
         attrs
     });
 
@@ -274,7 +271,8 @@ fn test_missing_container_start_event_must_fail() -> Result<()> {
         spans.iter().map(|s| (s.span_id.clone(), s)).collect();
 
     // Create expectation requiring container.start event
-    let expectation = SpanExpectation::new("*").with_events_any(vec!["container.start".to_string()]);
+    let expectation =
+        SpanExpectation::new("*").with_events_any(vec!["container.start".to_string()]);
 
     // Act: Validate expectation
     let result = expectation.validate(&spans, &span_by_id)?;
@@ -405,8 +403,8 @@ fn test_complete_lifecycle_events_must_pass() -> Result<()> {
         spans.iter().map(|s| (s.span_id.clone(), s)).collect();
 
     // Check for container.start
-    let start_expectation =
-        SpanExpectation::new("container.start").with_events_any(vec!["container.start".to_string()]);
+    let start_expectation = SpanExpectation::new("container.start")
+        .with_events_any(vec!["container.start".to_string()]);
     let start_result = start_expectation.validate(&spans, &span_by_id)?;
 
     // Check for container.exec
@@ -467,10 +465,7 @@ fn test_missing_parent_child_edges_must_fail() -> Result<()> {
         !result.passed,
         "Missing parent-child edges should fail graph validation"
     );
-    assert!(
-        !result.errors.is_empty(),
-        "Should report missing edges"
-    );
+    assert!(!result.errors.is_empty(), "Should report missing edges");
     assert!(
         result.errors.iter().any(|e| e.contains("not found")),
         "Should mention missing parent-child relationship"
@@ -503,10 +498,7 @@ fn test_flat_graph_structure_must_fail() -> Result<()> {
         !result.passed,
         "Flat graph structure should fail validation"
     );
-    assert!(
-        result.errors.len() >= 2,
-        "Should report both missing edges"
-    );
+    assert!(result.errors.len() >= 2, "Should report both missing edges");
 
     Ok(())
 }
@@ -629,12 +621,11 @@ fn test_real_execution_with_complete_telemetry_must_pass() -> Result<()> {
     let graph_result = graph_expectation.validate(&spans)?;
 
     // 3. Lifecycle events validation
-    let lifecycle_expectation = SpanExpectation::new("container.*")
-        .with_events_any(vec![
-            "container.start".to_string(),
-            "container.exec".to_string(),
-            "container.stop".to_string(),
-        ]);
+    let lifecycle_expectation = SpanExpectation::new("container.*").with_events_any(vec![
+        "container.start".to_string(),
+        "container.exec".to_string(),
+        "container.stop".to_string(),
+    ]);
     let lifecycle_result = lifecycle_expectation.validate(&spans, &span_by_id)?;
 
     // Assert: ALL validations MUST PASS for real execution
@@ -729,7 +720,8 @@ fn test_service_name_from_environment_not_hardcoded() -> Result<()> {
         "Span should have service.name resource attribute"
     );
     assert!(
-        span.resource_attributes.contains_key("telemetry.sdk.language"),
+        span.resource_attributes
+            .contains_key("telemetry.sdk.language"),
         "Span should have SDK language resource attribute"
     );
 
@@ -837,9 +829,10 @@ fn test_comprehensive_real_vs_fake_differentiation() -> Result<()> {
     let fake_count_result = count_validator.validate(&fake_spans)?;
 
     // Graph validator
-    let graph_validator = GraphExpectation::new(vec![
-        ("clnrm.run".to_string(), "container.start".to_string()),
-    ]);
+    let graph_validator = GraphExpectation::new(vec![(
+        "clnrm.run".to_string(),
+        "container.start".to_string(),
+    )]);
 
     let real_graph_result = graph_validator.validate(&real_spans)?;
     let fake_graph_result = graph_validator.validate(&fake_spans)?;
@@ -892,17 +885,13 @@ fn test_zero_duration_spans_must_fail() -> Result<()> {
         spans.iter().map(|s| (s.span_id.clone(), s)).collect();
 
     // Create expectation requiring minimum duration
-    let expectation = SpanExpectation::new("fake.instant")
-        .with_duration(Some(1), None); // Require at least 1ms
+    let expectation = SpanExpectation::new("fake.instant").with_duration(Some(1), None); // Require at least 1ms
 
     // Act: Validate duration
     let result = expectation.validate(&spans, &span_by_id)?;
 
     // Assert: MUST FAIL - zero duration indicates fake execution
-    assert!(
-        !result.passed,
-        "Zero duration spans should fail validation"
-    );
+    assert!(!result.passed, "Zero duration spans should fail validation");
     assert!(
         result.errors.iter().any(|e| e.contains("duration")),
         "Should report duration issue"
@@ -932,8 +921,7 @@ fn test_realistic_duration_must_pass() -> Result<()> {
         spans.iter().map(|s| (s.span_id.clone(), s)).collect();
 
     // Create expectation requiring minimum realistic duration
-    let expectation = SpanExpectation::new("container.exec")
-        .with_duration(Some(10), Some(10000)); // 10ms to 10s
+    let expectation = SpanExpectation::new("container.exec").with_duration(Some(10), Some(10000)); // 10ms to 10s
 
     // Act: Validate duration
     let result = expectation.validate(&spans, &span_by_id)?;

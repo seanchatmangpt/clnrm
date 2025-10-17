@@ -134,11 +134,11 @@ async fn check_span_in_source(span_name: &str, source: &SpanSource) -> Result<bo
 fn check_span_in_stdout(span_name: &str, output: &str) -> Result<bool> {
     // Check for span name in various formats that stdout exporter might use
     let patterns = [
-        format!("\"name\":\"{}", span_name),       // JSON format
-        format!("name: {}", span_name),             // YAML-like format
-        format!("span.name={}", span_name),         // Key-value format
-        format!("SpanName({})", span_name),         // Debug format
-        span_name.to_string(),                      // Direct match
+        format!("\"name\":\"{}", span_name), // JSON format
+        format!("name: {}", span_name),      // YAML-like format
+        format!("span.name={}", span_name),  // Key-value format
+        format!("SpanName({})", span_name),  // Debug format
+        span_name.to_string(),               // Direct match
     ];
 
     for pattern in &patterns {

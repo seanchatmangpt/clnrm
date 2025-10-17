@@ -70,10 +70,7 @@ impl WindowExpectation {
         let mut result = ValidationResult::pass(0);
 
         // Find outer spans
-        let outer_spans: Vec<_> = spans
-            .iter()
-            .filter(|s| s.name == self.outer)
-            .collect();
+        let outer_spans: Vec<_> = spans.iter().filter(|s| s.name == self.outer).collect();
 
         if outer_spans.is_empty() {
             result.add_error(format!(
@@ -87,10 +84,7 @@ impl WindowExpectation {
         for inner_name in &self.contains {
             result.windows_checked += 1;
 
-            let inner_spans: Vec<_> = spans
-                .iter()
-                .filter(|s| s.name == *inner_name)
-                .collect();
+            let inner_spans: Vec<_> = spans.iter().filter(|s| s.name == *inner_name).collect();
 
             if inner_spans.is_empty() {
                 result.add_error(format!(
@@ -102,9 +96,9 @@ impl WindowExpectation {
 
             // Check if all inner spans are contained in at least one outer span
             for inner in &inner_spans {
-                let is_contained = outer_spans.iter().any(|outer| {
-                    validator.is_temporally_contained(inner, outer)
-                });
+                let is_contained = outer_spans
+                    .iter()
+                    .any(|outer| validator.is_temporally_contained(inner, outer));
 
                 if !is_contained {
                     result.add_error(format!(
@@ -137,11 +131,15 @@ impl<'a> WindowValidator<'a> {
     /// - inner.start >= outer.start
     /// - inner.end <= outer.end
     pub fn is_temporally_contained(&self, inner: &SpanData, outer: &SpanData) -> bool {
-        let (Some(inner_start), Some(inner_end)) = (inner.start_time_unix_nano, inner.end_time_unix_nano) else {
+        let (Some(inner_start), Some(inner_end)) =
+            (inner.start_time_unix_nano, inner.end_time_unix_nano)
+        else {
             return false;
         };
 
-        let (Some(outer_start), Some(outer_end)) = (outer.start_time_unix_nano, outer.end_time_unix_nano) else {
+        let (Some(outer_start), Some(outer_end)) =
+            (outer.start_time_unix_nano, outer.end_time_unix_nano)
+        else {
             return false;
         };
 
@@ -217,10 +215,8 @@ mod tests {
     fn test_window_expectation_outer_not_found() -> Result<()> {
         // Arrange
         let spans = vec![create_span_with_times("container.start", 1100, 2000)];
-        let expectation = WindowExpectation::new(
-            "container.lifecycle",
-            vec!["container.start".to_string()],
-        );
+        let expectation =
+            WindowExpectation::new("container.lifecycle", vec!["container.start".to_string()]);
 
         // Act
         let result = expectation.validate(&spans)?;

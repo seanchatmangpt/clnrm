@@ -29,7 +29,7 @@ pub fn parse_shell_command(cmd: &str) -> Result<Vec<String>> {
 
     if cmd.is_empty() {
         return Err(CleanroomError::validation_error(
-            "Shell command cannot be empty"
+            "Shell command cannot be empty",
         ));
     }
 
@@ -77,18 +77,18 @@ pub fn parse_shell_command(cmd: &str) -> Result<Vec<String>> {
     // Validate balanced quotes
     if in_single_quote {
         return Err(CleanroomError::validation_error(
-            "Unbalanced single quotes in shell command"
+            "Unbalanced single quotes in shell command",
         ));
     }
     if in_double_quote {
         return Err(CleanroomError::validation_error(
-            "Unbalanced double quotes in shell command"
+            "Unbalanced double quotes in shell command",
         ));
     }
 
     if args.is_empty() {
         return Err(CleanroomError::validation_error(
-            "Parsed shell command resulted in no arguments"
+            "Parsed shell command resulted in no arguments",
         ));
     }
 

@@ -95,9 +95,7 @@ impl StdoutSpanParser {
         let name = value
             .get("name")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                CleanroomError::validation_error("Span missing required 'name' field")
-            })?
+            .ok_or_else(|| CleanroomError::validation_error("Span missing required 'name' field"))?
             .to_string();
 
         let trace_id = value
@@ -140,12 +138,9 @@ impl StdoutSpanParser {
             .and_then(|v| v.as_str())
             .and_then(|s| crate::validation::span_validator::SpanKind::parse_kind(s).ok())
             .or_else(|| {
-                value
-                    .get("kind")
-                    .and_then(|v| v.as_i64())
-                    .and_then(|i| {
-                        crate::validation::span_validator::SpanKind::from_otel_int(i as i32).ok()
-                    })
+                value.get("kind").and_then(|v| v.as_i64()).and_then(|i| {
+                    crate::validation::span_validator::SpanKind::from_otel_int(i as i32).ok()
+                })
             });
 
         // Parse attributes
@@ -190,8 +185,7 @@ mod tests {
     #[test]
     fn test_parse_single_span_from_stdout() {
         // Arrange
-        let stdout =
-            r#"{"name":"test.span","trace_id":"123","span_id":"span1","parent_span_id":null,"attributes":{}}"#;
+        let stdout = r#"{"name":"test.span","trace_id":"123","span_id":"span1","parent_span_id":null,"attributes":{}}"#;
 
         // Act
         let spans = StdoutSpanParser::parse(stdout).unwrap();

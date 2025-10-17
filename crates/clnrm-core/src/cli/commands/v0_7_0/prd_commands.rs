@@ -72,14 +72,13 @@ pub async fn reproduce_baseline(
         ))
     })?;
 
-    let baseline_record: BaselineRecord = serde_json::from_str(&baseline_content)
-        .map_err(|e| {
-            CleanroomError::serialization_error(format!(
-                "Failed to parse baseline file '{}': {}",
-                baseline.display(),
-                e
-            ))
-        })?;
+    let baseline_record: BaselineRecord = serde_json::from_str(&baseline_content).map_err(|e| {
+        CleanroomError::serialization_error(format!(
+            "Failed to parse baseline file '{}': {}",
+            baseline.display(),
+            e
+        ))
+    })?;
 
     println!(
         "   Version: {}, Timestamp: {}",
@@ -170,7 +169,11 @@ pub async fn reproduce_baseline(
                 } else {
                     "failed"
                 },
-                if repro_test.passed { "passed" } else { "failed" }
+                if repro_test.passed {
+                    "passed"
+                } else {
+                    "failed"
+                }
             ));
         }
     }
@@ -231,10 +234,7 @@ pub async fn reproduce_baseline(
         });
 
         let comparison_json = serde_json::to_string_pretty(&comparison_data).map_err(|e| {
-            CleanroomError::internal_error(format!(
-                "Failed to serialize comparison results: {}",
-                e
-            ))
+            CleanroomError::internal_error(format!("Failed to serialize comparison results: {}", e))
         })?;
 
         std::fs::write(out, comparison_json).map_err(|e| {

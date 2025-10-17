@@ -12,8 +12,7 @@ use chrono::{DateTime, Utc};
 /// # Returns
 /// * Parsed DateTime<Utc> or error
 pub fn parse_rfc3339(timestamp_str: &str) -> Result<DateTime<Utc>, chrono::ParseError> {
-    DateTime::parse_from_rfc3339(timestamp_str)
-        .map(|dt| dt.with_timezone(&Utc))
+    DateTime::parse_from_rfc3339(timestamp_str).map(|dt| dt.with_timezone(&Utc))
 }
 
 /// Format timestamp as RFC3339 string

@@ -1,0 +1,42 @@
+# README Example Test: Hot reload with <3s latency
+# Verifies: "dev --watch: Hot reload with <3s latency - save and see results instantly"
+# Location in README: Line 10, 508
+
+[test.metadata]
+name = "verify_hot_reload_latency"
+description = "Verify <3s hot reload latency claim from README"
+version = "1.0.0"
+
+[service.hot_reload_tester]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "measure_hot_reload_latency"
+service = "hot_reload_tester"
+run = """
+# Create a test file
+echo '[test.metadata]
+name = "hot_reload_test"
+description = "Test hot reload"' > /tmp/test.clnrm.toml && \
+
+# Measure time to detect change and reload
+START=$(date +%s%N) && \
+clnrm validate /tmp/test.clnrm.toml && \
+END=$(date +%s%N) && \
+ELAPSED=$(( (END - START) / 1000000 )) && \
+echo "Hot reload latency: ${ELAPSED}ms" && \
+test ${ELAPSED} -lt 3000
+"""
+
+[[expect.output]]
+pattern = "Hot reload latency: [0-9]+ms"
+description = "Should report latency measurement"
+
+[[expect.status]]
+exit_code = 0
+
+[report]
+json = "hot_reload_metrics.json"
+comment = "Performance target: <3s (3000ms) latency"

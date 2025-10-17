@@ -102,9 +102,10 @@ async fn test_homebrew_installation_via_otel_spans() -> Result<()> {
 
     // Verify config file exists
     if !file_exists_and_readable(config_path) {
-        return Err(clnrm_core::error::CleanroomError::internal_error(
-            format!("Test config not found: {}", config_path),
-        ));
+        return Err(clnrm_core::error::CleanroomError::internal_error(format!(
+            "Test config not found: {}",
+            config_path
+        )));
     }
 
     let config = load_test_config(config_path)?;
@@ -274,10 +275,7 @@ async fn test_config_schema_validation() -> Result<()> {
     // Act
     // Read config file
     let config_content = std::fs::read_to_string(config_path).map_err(|e| {
-        clnrm_core::error::CleanroomError::internal_error(format!(
-            "Failed to read config: {}",
-            e
-        ))
+        clnrm_core::error::CleanroomError::internal_error(format!("Failed to read config: {}", e))
     })?;
 
     // Assert - Check for required sections
@@ -347,10 +345,7 @@ async fn test_determinism_configuration() -> Result<()> {
 
     // Act
     let config_content = std::fs::read_to_string(config_path).map_err(|e| {
-        clnrm_core::error::CleanroomError::internal_error(format!(
-            "Failed to read config: {}",
-            e
-        ))
+        clnrm_core::error::CleanroomError::internal_error(format!("Failed to read config: {}", e))
     })?;
 
     // Assert - Check determinism settings
@@ -395,10 +390,7 @@ async fn test_span_expectations() -> Result<()> {
 
     // Act
     let config_content = std::fs::read_to_string(config_path).map_err(|e| {
-        clnrm_core::error::CleanroomError::internal_error(format!(
-            "Failed to read config: {}",
-            e
-        ))
+        clnrm_core::error::CleanroomError::internal_error(format!("Failed to read config: {}", e))
     })?;
 
     // Assert - Check span expectations
@@ -448,10 +440,7 @@ async fn test_graph_expectations() -> Result<()> {
 
     // Act
     let config_content = std::fs::read_to_string(config_path).map_err(|e| {
-        clnrm_core::error::CleanroomError::internal_error(format!(
-            "Failed to read config: {}",
-            e
-        ))
+        clnrm_core::error::CleanroomError::internal_error(format!("Failed to read config: {}", e))
     })?;
 
     // Assert - Check graph expectations
@@ -515,9 +504,7 @@ mod validator_tests {
         use clnrm_core::validation::GraphExpectation;
 
         // GraphExpectation can be created with new()
-        let expectation = GraphExpectation::new(vec![
-            ("parent".to_string(), "child".to_string()),
-        ]);
+        let expectation = GraphExpectation::new(vec![("parent".to_string(), "child".to_string())]);
 
         assert_eq!(expectation.must_include.len(), 1);
         assert_eq!(expectation.must_include[0].0, "parent");
@@ -557,10 +544,7 @@ mod validator_tests {
         let expectation = HermeticityExpectation {
             no_external_services: Some(true),
             resource_attrs_must_match: None,
-            span_attrs_forbid_keys: Some(vec![
-                "net.peer.name".to_string(),
-                "http.url".to_string(),
-            ]),
+            span_attrs_forbid_keys: Some(vec!["net.peer.name".to_string(), "http.url".to_string()]),
         };
 
         let validator = HermeticityValidator::new(expectation);

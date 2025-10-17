@@ -279,7 +279,10 @@ pub async fn run_red_green_validation(
         TddState::Red
     } else {
         // Mixed results - not a clear red or green state
-        warn!("Mixed test results: {} passed, {} failed", passed_count, failed_count);
+        warn!(
+            "Mixed test results: {} passed, {} failed",
+            passed_count, failed_count
+        );
         println!("⚠️  Mixed results: some tests passed, some failed");
         println!("   This is not a clear red or green state");
 
@@ -301,8 +304,14 @@ pub async fn run_red_green_validation(
             println!("✅ TDD validation PASSED: {:?} as expected", actual_state);
             info!("TDD validation passed: {:?} as expected", actual_state);
         } else {
-            println!("❌ TDD validation FAILED: expected {:?}, got {:?}", expected, actual_state);
-            error!("TDD validation failed: expected {:?}, got {:?}", expected, actual_state);
+            println!(
+                "❌ TDD validation FAILED: expected {:?}, got {:?}",
+                expected, actual_state
+            );
+            error!(
+                "TDD validation failed: expected {:?}, got {:?}",
+                expected, actual_state
+            );
 
             // Record the failure
             record_test_states(&results, &mut history, Some(expected.clone()))?;
@@ -383,11 +392,7 @@ fn record_test_states(
     let timestamp = chrono::Utc::now().to_rfc3339();
 
     for result in results {
-        let state = if result.passed {
-            "green"
-        } else {
-            "red"
-        };
+        let state = if result.passed { "green" } else { "red" };
 
         let record = TddHistoryRecord {
             timestamp: timestamp.clone(),
@@ -459,9 +464,8 @@ mod tests {
 
     #[test]
     fn test_tdd_history_save_and_load() -> Result<()> {
-        let temp_dir = tempdir().map_err(|e| {
-            CleanroomError::io_error(format!("Failed to create temp dir: {}", e))
-        })?;
+        let temp_dir = tempdir()
+            .map_err(|e| CleanroomError::io_error(format!("Failed to create temp dir: {}", e)))?;
         let history_path = temp_dir.path().join(".clnrm").join("tdd-history.json");
 
         let mut history = TddHistory {
@@ -520,7 +524,11 @@ mod tests {
         });
 
         let violations = history.detect_violations();
-        assert_eq!(violations.len(), 0, "Valid TDD cycle should have no violations");
+        assert_eq!(
+            violations.len(),
+            0,
+            "Valid TDD cycle should have no violations"
+        );
 
         Ok(())
     }

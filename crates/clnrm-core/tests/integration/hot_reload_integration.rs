@@ -33,14 +33,12 @@ use tempfile::TempDir;
 #[tokio::test]
 async fn test_file_change_triggers_hot_reload_within_threshold() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
     let test_file = temp_dir.path().join("test.toml.tera");
 
-    std::fs::write(&test_file, "# initial content").map_err(|e| {
-        CleanroomError::io_error(format!("Failed to write file: {}", e))
-    })?;
+    std::fs::write(&test_file, "# initial content")
+        .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
 
     let mut debouncer = FileDebouncer::new(Duration::from_millis(300));
 
@@ -93,11 +91,7 @@ async fn test_rapid_file_changes_debounced_to_single_rerun() -> Result<()> {
         debouncer.should_trigger(),
         "Should trigger exactly once after rapid changes"
     );
-    assert_eq!(
-        debouncer.event_count(),
-        10,
-        "Should batch all 10 events"
-    );
+    assert_eq!(debouncer.event_count(), 10, "Should batch all 10 events");
 
     Ok(())
 }
@@ -105,22 +99,19 @@ async fn test_rapid_file_changes_debounced_to_single_rerun() -> Result<()> {
 #[tokio::test]
 async fn test_watch_system_handles_file_deletion_gracefully() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
     let test_file = temp_dir.path().join("deletable.toml.tera");
 
-    std::fs::write(&test_file, "# content").map_err(|e| {
-        CleanroomError::io_error(format!("Failed to write file: {}", e))
-    })?;
+    std::fs::write(&test_file, "# content")
+        .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
 
     let mut debouncer = FileDebouncer::new(Duration::from_millis(200));
 
     // Act - Record event, then delete file
     debouncer.record_event();
-    std::fs::remove_file(&test_file).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to remove file: {}", e))
-    })?;
+    std::fs::remove_file(&test_file)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to remove file: {}", e)))?;
 
     // Assert - Deletion doesn't break watch system
     assert!(!test_file.exists(), "File should be deleted");
@@ -138,28 +129,25 @@ async fn test_watch_system_handles_file_deletion_gracefully() -> Result<()> {
 #[tokio::test]
 async fn test_watch_system_ignores_irrelevant_files() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
 
     let irrelevant_files = vec![
         temp_dir.path().join("README.md"),
         temp_dir.path().join("config.json"),
         temp_dir.path().join("script.sh"),
         temp_dir.path().join("test.toml"), // Not .tera extension
-        temp_dir.path().join("test.tera"),  // Not .toml prefix
+        temp_dir.path().join("test.tera"), // Not .toml prefix
     ];
 
     for file in &irrelevant_files {
-        std::fs::write(file, "# content").map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write file: {}", e))
-        })?;
+        std::fs::write(file, "# content")
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
     }
 
     let relevant_file = temp_dir.path().join("test.toml.tera");
-    std::fs::write(&relevant_file, "# template").map_err(|e| {
-        CleanroomError::io_error(format!("Failed to write file: {}", e))
-    })?;
+    std::fs::write(&relevant_file, "# template")
+        .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
 
     // Act - Use is_relevant_file logic (simulated)
     let is_toml_tera = |path: &std::path::Path| {

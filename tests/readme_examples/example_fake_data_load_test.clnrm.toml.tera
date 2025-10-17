@@ -1,0 +1,29 @@
+# README Example Test: Fake Data Load Test
+# Verifies: Property-based testing with fake data (lines 216-233)
+# This is the EXACT example from README
+
+# Generate 100 test scenarios with fake data (scaled down from 1000 for faster testing)
+{% for i in range(end=100) %}
+[[scenario]]
+name = "load_test_{{ i }}"
+service = "api"
+run = """curl http://api:8080/users -d '{"name":"{{ fake_name() }}","email":"{{ fake_email() }}"}'"""
+
+[[expect.output]]
+pattern = "success|created|200"
+description = "API should accept user creation"
+
+{% endfor %}
+
+[test.metadata]
+name = "verify_fake_data_load_test"
+description = "100 unique API tests generated from template - demonstrates fake data generators"
+version = "1.0.0"
+
+[service.api]
+plugin = "generic_container"
+image = "alpine:latest"
+env = { "API_PORT" = "8080" }
+
+[report]
+comment = "Property-based testing: 100 scenarios from 10 lines of template code"

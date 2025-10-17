@@ -2,7 +2,7 @@
 //!
 //! Provides SHA-256 digest generation for trace verification.
 
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 /// Generate SHA-256 digest from byte data
 ///

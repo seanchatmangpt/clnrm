@@ -29,17 +29,22 @@ fn test_case_study_file_exists() {
     );
 
     // Verify it's valid TOML
-    let content = std::fs::read_to_string(&path)
-        .expect("Should be able to read case study file");
+    let content = std::fs::read_to_string(&path).expect("Should be able to read case study file");
 
-    let parsed: toml::Value = toml::from_str(&content)
-        .expect("Case study file should be valid TOML");
+    let parsed: toml::Value =
+        toml::from_str(&content).expect("Case study file should be valid TOML");
 
     // Verify it has the expected structure
     assert!(parsed.get("test").is_some(), "Should have [test] section");
-    assert!(parsed.get("service").is_some(), "Should have [service] sections");
+    assert!(
+        parsed.get("service").is_some(),
+        "Should have [service] sections"
+    );
     assert!(parsed.get("steps").is_some(), "Should have [[steps]] array");
-    assert!(parsed.get("expect").is_some(), "Should have [expect] sections for detection layers");
+    assert!(
+        parsed.get("expect").is_some(),
+        "Should have [expect] sections for detection layers"
+    );
 }
 
 /// Test that honest and fake service definitions exist
@@ -184,11 +189,26 @@ fn test_documentation_exists() {
     let content = std::fs::read_to_string(&readme_path).unwrap();
 
     // Verify key sections exist
-    assert!(content.contains("Fake-Green Detection"), "Should have title");
-    assert!(content.contains("What is a Fake-Green Test"), "Should explain concept");
-    assert!(content.contains("Why Traditional Testing Fails"), "Should explain problem");
-    assert!(content.contains("How OTEL-First Validation Catches"), "Should explain solution");
-    assert!(content.contains("7 Detection Layers"), "Should document all layers");
+    assert!(
+        content.contains("Fake-Green Detection"),
+        "Should have title"
+    );
+    assert!(
+        content.contains("What is a Fake-Green Test"),
+        "Should explain concept"
+    );
+    assert!(
+        content.contains("Why Traditional Testing Fails"),
+        "Should explain problem"
+    );
+    assert!(
+        content.contains("How OTEL-First Validation Catches"),
+        "Should explain solution"
+    );
+    assert!(
+        content.contains("7 Detection Layers"),
+        "Should document all layers"
+    );
 }
 
 /// Test case study execution script exists
@@ -333,14 +353,23 @@ fn test_case_study_completeness() {
         "/../../examples/case-studies/scripts"
     ));
     assert!(scripts_dir.join("honest-test.sh").exists(), "Honest script");
-    assert!(scripts_dir.join("fake-green.sh").exists(), "Fake-green script");
+    assert!(
+        scripts_dir.join("fake-green.sh").exists(),
+        "Fake-green script"
+    );
 
     let base_dir = PathBuf::from(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../examples/case-studies"
     ));
-    assert!(base_dir.join("run-case-study.sh").exists(), "Execution script");
-    assert!(base_dir.join("verify-detection-layers.sh").exists(), "Verification script");
+    assert!(
+        base_dir.join("run-case-study.sh").exists(),
+        "Execution script"
+    );
+    assert!(
+        base_dir.join("verify-detection-layers.sh").exists(),
+        "Verification script"
+    );
     assert!(base_dir.join("README.md").exists(), "Documentation");
 
     // All files present - case study is complete!

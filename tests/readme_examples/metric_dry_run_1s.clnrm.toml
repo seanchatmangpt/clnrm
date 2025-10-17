@@ -1,0 +1,56 @@
+# README Metric Test: Dry-run under 1s for 10 files
+# Verifies: "Dry-run validation: Typically under 1s for 10 files"
+# Location in README: Line 545
+
+[test.metadata]
+name = "verify_dry_run_1s_for_10_files"
+description = "Verify dry-run validation completes in under 1s for 10 files"
+version = "1.0.0"
+
+[service.dry_run_metric]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "measure_dry_run_10_files"
+service = "dry_run_metric"
+run = """
+# Create 10 test files
+for i in $(seq 1 10); do
+  cat > /tmp/test_$i.clnrm.toml << EOF
+[test.metadata]
+name = "test_$i"
+description = "Test file $i"
+
+[service.test]
+plugin = "generic_container"
+image = "alpine:latest"
+
+[[scenario]]
+name = "scenario_$i"
+service = "test"
+run = "echo Test $i"
+EOF
+done
+
+# Measure dry-run time for 10 files
+START=$(date +%s%N)
+clnrm dry-run /tmp/test_*.clnrm.toml
+END=$(date +%s%N)
+ELAPSED=$(( (END - START) / 1000000 ))
+
+echo "Dry-run time for 10 files: ${ELAPSED}ms"
+test ${ELAPSED} -lt 1000
+"""
+
+[[expect.output]]
+pattern = "Dry-run time for 10 files: [0-9]+ms"
+description = "Should report elapsed time"
+
+[[expect.status]]
+exit_code = 0
+
+[report]
+json = "dry_run_metrics.json"
+comment = "Performance target: Typically under 1s (1000ms) for 10 files"

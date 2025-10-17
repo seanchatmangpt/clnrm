@@ -38,9 +38,8 @@ use tempfile::TempDir;
 #[tokio::test]
 async fn test_json_report_generation_produces_valid_json() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
     let report_path = temp_dir.path().join("report.json");
 
     let mut validation_report = ValidationReport::new();
@@ -53,9 +52,8 @@ async fn test_json_report_generation_produces_valid_json() -> Result<()> {
     // Assert - File exists and contains valid JSON
     assert!(report_path.exists(), "JSON report file should be created");
 
-    let json_content = std::fs::read_to_string(&report_path).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read JSON report: {}", e))
-    })?;
+    let json_content = std::fs::read_to_string(&report_path)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read JSON report: {}", e)))?;
 
     let parsed: serde_json::Value = serde_json::from_str(&json_content).map_err(|e| {
         CleanroomError::serialization_error(format!("Failed to parse JSON report: {}", e))
@@ -82,9 +80,8 @@ async fn test_json_report_generation_produces_valid_json() -> Result<()> {
 #[tokio::test]
 async fn test_junit_xml_generation_produces_valid_xml() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
     let junit_path = temp_dir.path().join("junit.xml");
 
     let mut validation_report = ValidationReport::new();
@@ -100,15 +97,11 @@ async fn test_junit_xml_generation_produces_valid_xml() -> Result<()> {
     // Assert - File exists and contains XML
     assert!(junit_path.exists(), "JUnit XML file should be created");
 
-    let xml_content = std::fs::read_to_string(&junit_path).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read JUnit XML: {}", e))
-    })?;
+    let xml_content = std::fs::read_to_string(&junit_path)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read JUnit XML: {}", e)))?;
 
     // Verify XML structure
-    assert!(
-        xml_content.contains("<?xml"),
-        "Should have XML declaration"
-    );
+    assert!(xml_content.contains("<?xml"), "Should have XML declaration");
     assert!(
         xml_content.contains("<testsuite"),
         "Should have testsuite element"
@@ -140,9 +133,8 @@ async fn test_junit_xml_generation_produces_valid_xml() -> Result<()> {
 #[tokio::test]
 async fn test_sha256_digest_generation_for_spans() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
     let digest_path = temp_dir.path().join("digest.txt");
 
     let spans_json = r#"{"spans": [{"name": "test.span", "trace_id": "abc123"}]}"#;
@@ -151,14 +143,10 @@ async fn test_sha256_digest_generation_for_spans() -> Result<()> {
     DigestReporter::write(Path::new(&digest_path), spans_json)?;
 
     // Assert - File exists and contains SHA-256 digest
-    assert!(
-        digest_path.exists(),
-        "Digest file should be created"
-    );
+    assert!(digest_path.exists(), "Digest file should be created");
 
-    let digest_content = std::fs::read_to_string(&digest_path).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read digest: {}", e))
-    })?;
+    let digest_content = std::fs::read_to_string(&digest_path)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read digest: {}", e)))?;
 
     let digest = digest_content.trim();
 
@@ -179,24 +167,21 @@ async fn test_sha256_digest_generation_for_spans() -> Result<()> {
 #[tokio::test]
 async fn test_digest_reproducibility_across_runs() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
 
     let spans_json = r#"{"spans": [{"name": "reproducible.span"}]}"#;
 
     // Act - Generate digest twice
     let digest_path1 = temp_dir.path().join("digest1.txt");
     DigestReporter::write(Path::new(&digest_path1), spans_json)?;
-    let digest1 = std::fs::read_to_string(&digest_path1).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read digest1: {}", e))
-    })?;
+    let digest1 = std::fs::read_to_string(&digest_path1)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read digest1: {}", e)))?;
 
     let digest_path2 = temp_dir.path().join("digest2.txt");
     DigestReporter::write(Path::new(&digest_path2), spans_json)?;
-    let digest2 = std::fs::read_to_string(&digest_path2).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read digest2: {}", e))
-    })?;
+    let digest2 = std::fs::read_to_string(&digest_path2)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read digest2: {}", e)))?;
 
     // Assert - Digests are identical
     assert_eq!(
@@ -249,9 +234,8 @@ async fn test_report_integrity_validation_detects_corruption() -> Result<()> {
 #[tokio::test]
 async fn test_multi_format_parallel_generation_creates_all_reports() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
 
     let json_path = temp_dir.path().join("report.json");
     let junit_path = temp_dir.path().join("junit.xml");
@@ -301,9 +285,8 @@ async fn test_multi_format_parallel_generation_creates_all_reports() -> Result<(
 #[tokio::test]
 async fn test_report_file_persistence_maintains_data() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
     let report_path = temp_dir.path().join("persistent_report.json");
 
     let mut validation_report = ValidationReport::new();
@@ -313,9 +296,8 @@ async fn test_report_file_persistence_maintains_data() -> Result<()> {
     JsonReporter::write(Path::new(&report_path), &validation_report)?;
 
     // Simulate application restart by re-reading file
-    let persisted_content = std::fs::read_to_string(&report_path).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read persisted report: {}", e))
-    })?;
+    let persisted_content = std::fs::read_to_string(&report_path)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read persisted report: {}", e)))?;
 
     let parsed: serde_json::Value = serde_json::from_str(&persisted_content).map_err(|e| {
         CleanroomError::serialization_error(format!("Failed to parse persisted report: {}", e))
@@ -341,9 +323,8 @@ async fn test_report_file_persistence_maintains_data() -> Result<()> {
 #[tokio::test]
 async fn test_report_generation_performance_with_large_dataset() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
     let report_path = temp_dir.path().join("large_report.json");
 
     let mut validation_report = ValidationReport::new();
@@ -384,9 +365,8 @@ async fn test_report_generation_performance_with_large_dataset() -> Result<()> {
 #[tokio::test]
 async fn test_empty_validation_report_generates_valid_output() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
     let report_path = temp_dir.path().join("empty_report.json");
 
     let validation_report = ValidationReport::new(); // Empty report
@@ -397,9 +377,8 @@ async fn test_empty_validation_report_generates_valid_output() -> Result<()> {
     // Assert - Empty report is valid
     assert!(report_path.exists(), "Empty report should be created");
 
-    let json_content = std::fs::read_to_string(&report_path).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read report: {}", e))
-    })?;
+    let json_content = std::fs::read_to_string(&report_path)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read report: {}", e)))?;
 
     let parsed: serde_json::Value = serde_json::from_str(&json_content).map_err(|e| {
         CleanroomError::serialization_error(format!("Failed to parse report: {}", e))

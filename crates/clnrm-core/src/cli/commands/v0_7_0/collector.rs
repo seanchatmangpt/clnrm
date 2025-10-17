@@ -64,7 +64,10 @@ impl CollectorState {
     fn save(&self) -> Result<()> {
         let path = Self::state_file_path()?;
         let content = serde_json::to_string_pretty(self).map_err(|e| {
-            CleanroomError::serialization_error(format!("Failed to serialize collector state: {}", e))
+            CleanroomError::serialization_error(format!(
+                "Failed to serialize collector state: {}",
+                e
+            ))
         })?;
 
         fs::write(&path, content).map_err(|e| {
@@ -114,9 +117,7 @@ fn stop_and_remove_container(container_id: &str) -> Result<()> {
     let stop_output = Command::new("docker")
         .args(["stop", container_id])
         .output()
-        .map_err(|e| {
-            CleanroomError::container_error(format!("Failed to stop container: {}", e))
-        })?;
+        .map_err(|e| CleanroomError::container_error(format!("Failed to stop container: {}", e)))?;
 
     if !stop_output.status.success() {
         let stderr = String::from_utf8_lossy(&stop_output.stderr);
@@ -286,10 +287,17 @@ service:
         .args([
             "run",
             "-d",
-            "--name", container_name,
-            "-p", &format!("{}:4318", http_port),
-            "-p", &format!("{}:4317", grpc_port),
-            "-v", &format!("{}:/etc/otel-collector-config.yaml:ro", config_path.display()),
+            "--name",
+            container_name,
+            "-p",
+            &format!("{}:4318", http_port),
+            "-p",
+            &format!("{}:4317", grpc_port),
+            "-v",
+            &format!(
+                "{}:/etc/otel-collector-config.yaml:ro",
+                config_path.display()
+            ),
             image,
             "--config=/etc/otel-collector-config.yaml",
         ])
@@ -394,7 +402,10 @@ pub async fn show_collector_status() -> Result<()> {
                 println!("   HTTP Endpoint: http://localhost:{}", state.http_port);
                 println!("   gRPC Endpoint: http://localhost:{}", state.grpc_port);
                 println!("   Image: {}", state.image);
-                println!("   Started: {}", state.started_at.format("%Y-%m-%d %H:%M:%S UTC"));
+                println!(
+                    "   Started: {}",
+                    state.started_at.format("%Y-%m-%d %H:%M:%S UTC")
+                );
 
                 // Calculate uptime
                 let uptime = chrono::Utc::now() - state.started_at;
@@ -404,7 +415,10 @@ pub async fn show_collector_status() -> Result<()> {
             } else {
                 println!("❌ OTEL collector container exists but is not running");
                 println!("   Container ID: {}", state.container_id);
-                println!("   Last started: {}", state.started_at.format("%Y-%m-%d %H:%M:%S UTC"));
+                println!(
+                    "   Last started: {}",
+                    state.started_at.format("%Y-%m-%d %H:%M:%S UTC")
+                );
                 println!("\n💡 Start the collector: clnrm collector up");
             }
         }

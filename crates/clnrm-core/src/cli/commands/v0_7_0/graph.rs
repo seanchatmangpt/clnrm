@@ -85,7 +85,11 @@ pub fn visualize_graph(
 /// Load trace data from file
 fn load_trace_data(path: &Path) -> Result<TraceData> {
     let content = std::fs::read_to_string(path).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read trace file {}: {}", path.display(), e))
+        CleanroomError::io_error(format!(
+            "Failed to read trace file {}: {}",
+            path.display(),
+            e
+        ))
     })?;
 
     serde_json::from_str(&content).map_err(|e| {
@@ -118,7 +122,14 @@ fn generate_ascii_tree(spans: &[Span], highlight_missing: bool) -> Result<String
 
     // Render tree starting from root spans
     for root in root_spans {
-        render_span_tree(root, &children_map, &mut output, "", true, highlight_missing);
+        render_span_tree(
+            root,
+            &children_map,
+            &mut output,
+            "",
+            true,
+            highlight_missing,
+        );
     }
 
     if output.trim().is_empty() {
@@ -139,7 +150,10 @@ fn render_span_tree(
 ) {
     // Render current span
     let connector = if is_last { "└──" } else { "├──" };
-    output.push_str(&format!("{}{} {} ({})\n", prefix, connector, span.name, span.kind));
+    output.push_str(&format!(
+        "{}{} {} ({})\n",
+        prefix, connector, span.name, span.kind
+    ));
 
     // Render children
     if let Some(children) = children_map.get(&span.span_id) {
@@ -147,7 +161,14 @@ fn render_span_tree(
 
         for (idx, child) in children.iter().enumerate() {
             let is_last_child = idx == children.len() - 1;
-            render_span_tree(child, children_map, output, &child_prefix, is_last_child, highlight_missing);
+            render_span_tree(
+                child,
+                children_map,
+                output,
+                &child_prefix,
+                is_last_child,
+                highlight_missing,
+            );
         }
     } else if highlight_missing && !children_map.is_empty() {
         let child_prefix = format!("{}{}   ", prefix, if is_last { " " } else { "│" });
@@ -407,8 +428,8 @@ mod tests {
     #[test]
     fn test_load_trace_data_with_invalid_json() -> Result<()> {
         // Arrange
-        let temp_file = NamedTempFile::new()
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let temp_file =
+            NamedTempFile::new().map_err(|e| CleanroomError::io_error(e.to_string()))?;
         fs::write(temp_file.path(), "invalid json")
             .map_err(|e| CleanroomError::io_error(e.to_string()))?;
 
@@ -417,7 +438,10 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("Failed to parse trace JSON"));
+        assert!(result
+            .unwrap_err()
+            .message
+            .contains("Failed to parse trace JSON"));
 
         Ok(())
     }
@@ -425,13 +449,12 @@ mod tests {
     #[test]
     fn test_load_trace_data_with_valid_json() -> Result<()> {
         // Arrange
-        let temp_file = NamedTempFile::new()
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let temp_file =
+            NamedTempFile::new().map_err(|e| CleanroomError::io_error(e.to_string()))?;
         let trace_data = create_sample_trace_data();
         let json = serde_json::to_string(&trace_data)
             .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
-        fs::write(temp_file.path(), json)
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        fs::write(temp_file.path(), json).map_err(|e| CleanroomError::io_error(e.to_string()))?;
 
         // Act
         let result = load_trace_data(temp_file.path())?;
@@ -446,13 +469,12 @@ mod tests {
     #[test]
     fn test_visualize_graph_ascii_format() -> Result<()> {
         // Arrange
-        let temp_file = NamedTempFile::new()
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let temp_file =
+            NamedTempFile::new().map_err(|e| CleanroomError::io_error(e.to_string()))?;
         let trace_data = create_sample_trace_data();
         let json = serde_json::to_string(&trace_data)
             .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
-        fs::write(temp_file.path(), json)
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        fs::write(temp_file.path(), json).map_err(|e| CleanroomError::io_error(e.to_string()))?;
 
         // Act
         let result = visualize_graph(temp_file.path(), &GraphFormat::Ascii, false, None);
@@ -466,16 +488,20 @@ mod tests {
     #[test]
     fn test_visualize_graph_with_filter() -> Result<()> {
         // Arrange
-        let temp_file = NamedTempFile::new()
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let temp_file =
+            NamedTempFile::new().map_err(|e| CleanroomError::io_error(e.to_string()))?;
         let trace_data = create_sample_trace_data();
         let json = serde_json::to_string(&trace_data)
             .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
-        fs::write(temp_file.path(), json)
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        fs::write(temp_file.path(), json).map_err(|e| CleanroomError::io_error(e.to_string()))?;
 
         // Act
-        let result = visualize_graph(temp_file.path(), &GraphFormat::Json, false, Some("Database"));
+        let result = visualize_graph(
+            temp_file.path(),
+            &GraphFormat::Json,
+            false,
+            Some("Database"),
+        );
 
         // Assert
         assert!(result.is_ok());
@@ -493,7 +519,10 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("Failed to read trace file"));
+        assert!(result
+            .unwrap_err()
+            .message
+            .contains("Failed to read trace file"));
 
         Ok(())
     }
@@ -501,13 +530,12 @@ mod tests {
     #[test]
     fn test_all_output_formats() -> Result<()> {
         // Arrange
-        let temp_file = NamedTempFile::new()
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let temp_file =
+            NamedTempFile::new().map_err(|e| CleanroomError::io_error(e.to_string()))?;
         let trace_data = create_sample_trace_data();
         let json = serde_json::to_string(&trace_data)
             .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
-        fs::write(temp_file.path(), json)
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        fs::write(temp_file.path(), json).map_err(|e| CleanroomError::io_error(e.to_string()))?;
 
         // Act & Assert - Test all formats
         assert!(visualize_graph(temp_file.path(), &GraphFormat::Ascii, false, None).is_ok());

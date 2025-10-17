@@ -1,0 +1,44 @@
+# README Example Test: Full OTEL Validation
+# Verifies: Complete OTEL validation example (lines 239-273)
+# This is the EXACT example from README lines 239-273
+
+[test.metadata]
+name = "verify_otel_validation_full_example"
+description = "Complete OTEL validation example from README with all validators"
+version = "1.0.0"
+
+[services.otel_collector]
+plugin = "otel_collector"
+image = "otel/opentelemetry-collector:latest"
+
+[services.app_under_test]
+plugin = "generic_container"
+image = "myapp:latest"
+env.OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+
+[[scenario]]
+name = "otel_self_validation"
+service = "app_under_test"
+run = "myapp --otel-endpoint http://otel_collector:4318"
+
+# Validate spans prove correct behavior
+[[expect.span]]
+name = "myapp.request"
+kind = "server"
+duration_ms = { min = 10, max = 5000 }
+
+[[expect.span]]
+name = "myapp.db_query"
+parent = "myapp.request"
+kind = "client"
+
+[expect.graph]
+must_include = [["myapp.request", "myapp.db_query"]]
+acyclic = true
+
+[expect.hermeticity]
+no_external_services = true
+resource_attrs_must_match = { "service.name" = "myapp" }
+
+[report]
+comment = "Zero flakiness - 5-dimensional validation: structural, temporal, cardinality, hermeticity, attribute"

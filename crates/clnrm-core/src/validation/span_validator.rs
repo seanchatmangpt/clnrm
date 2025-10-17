@@ -212,10 +212,8 @@ impl ValidationResult {
     /// Merge multiple validation results
     pub fn merge(results: Vec<ValidationResult>) -> Self {
         let passed = results.iter().all(|r| r.passed);
-        let failures: Vec<FailureDetails> = results
-            .iter()
-            .flat_map(|r| r.failures.clone())
-            .collect();
+        let failures: Vec<FailureDetails> =
+            results.iter().flat_map(|r| r.failures.clone()).collect();
         let validations_count: usize = results.iter().map(|r| r.validations_count).sum();
 
         Self {
@@ -470,8 +468,7 @@ impl SpanValidator {
         // 2. Validate parent relationship
         if let Some(ref parent_name) = expectation.parent {
             validation_count += 1;
-            if let Some(failure) = self.validate_parent_relationship(span, parent_name, span_name)
-            {
+            if let Some(failure) = self.validate_parent_relationship(span, parent_name, span_name) {
                 failures.push(failure);
             }
         }
@@ -1337,7 +1334,9 @@ mod tests {
 
         // Assert - failure
         assert!(!result_fail.passed);
-        assert!(result_fail.failures[0].message.contains("missing required events"));
+        assert!(result_fail.failures[0]
+            .message
+            .contains("missing required events"));
 
         // Has one required event
         let json_with_event = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"events":["event1"]}"#;
@@ -1412,17 +1411,16 @@ mod tests {
             duration_ms: None,
         };
 
-        // Missing parent
+        // Missing parent - the parent span doesn't exist in the trace
         let json_no_parent = r#"{"name":"clnrm.step:hello_world","trace_id":"abc123","span_id":"child1","parent_span_id":null,"attributes":{}}"#;
         let validator_no_parent = SpanValidator::from_json(json_no_parent)?;
         let result_no_parent = validator_no_parent.validate_expectations(&[expectation.clone()])?;
 
-        // Assert - missing parent
+        // Assert - missing parent span in trace
         assert!(!result_no_parent.passed);
         assert!(result_no_parent.failures[0]
             .message
-            .contains("parent mismatch"));
-        assert!(result_no_parent.failures[0].message.contains("found none"));
+            .contains("Parent span 'clnrm.run' not found"));
 
         // Correct parent relationship
         let json_with_parent = r#"{"name":"clnrm.run","trace_id":"abc123","span_id":"parent1","parent_span_id":null,"attributes":{}}
@@ -1451,8 +1449,8 @@ mod tests {
             duration_ms: None,
         };
 
-        // Wrong kind
-        let json_wrong_kind = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"kind":3}"#;
+        // Wrong kind - use string value "client" instead of integer 3
+        let json_wrong_kind = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"kind":"client"}"#;
         let validator_wrong = SpanValidator::from_json(json_wrong_kind)?;
         let result_wrong = validator_wrong.validate_expectations(&[expectation.clone()])?;
 
@@ -1460,8 +1458,8 @@ mod tests {
         assert!(!result_wrong.passed);
         assert!(result_wrong.failures[0].message.contains("kind mismatch"));
 
-        // Correct kind (internal = 1)
-        let json_correct_kind = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"kind":1}"#;
+        // Correct kind - use string value "internal" instead of integer 1
+        let json_correct_kind = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"kind":"internal"}"#;
         let validator_correct = SpanValidator::from_json(json_correct_kind)?;
         let result_correct = validator_correct.validate_expectations(&[expectation])?;
 
@@ -1564,7 +1562,7 @@ mod tests {
             },
         ];
 
-        let json = r#"{"name":"clnrm.run","trace_id":"abc123","span_id":"parent1","parent_span_id":null,"attributes":{"result":"pass"},"kind":1,"start_time_unix_nano":1000000000,"end_time_unix_nano":1100000000}
+        let json = r#"{"name":"clnrm.run","trace_id":"abc123","span_id":"parent1","parent_span_id":null,"attributes":{"result":"pass"},"kind":"internal","start_time_unix_nano":1000000000,"end_time_unix_nano":1100000000}
 {"name":"clnrm.step:hello_world","trace_id":"abc123","span_id":"child1","parent_span_id":"parent1","attributes":{},"events":["container.start","container.exec"]}"#;
 
         let validator = SpanValidator::from_json(json)?;
@@ -1573,7 +1571,11 @@ mod tests {
         let result = validator.validate_expectations(&expectations)?;
 
         // Assert
-        assert!(result.passed, "Validation should pass: {:?}", result.failures);
+        assert!(
+            result.passed,
+            "Validation should pass: {:?}",
+            result.failures
+        );
         assert_eq!(result.failures.len(), 0);
         assert!(result.validations_count >= expectations.len());
 

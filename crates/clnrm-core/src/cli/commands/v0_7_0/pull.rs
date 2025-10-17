@@ -11,11 +11,7 @@ use tokio::sync::Semaphore;
 use tracing::{debug, info};
 
 /// Pre-pull Docker images from test configurations
-pub async fn pull_images(
-    paths: Option<Vec<PathBuf>>,
-    parallel: bool,
-    jobs: usize,
-) -> Result<()> {
+pub async fn pull_images(paths: Option<Vec<PathBuf>>, parallel: bool, jobs: usize) -> Result<()> {
     info!("Scanning test files for Docker images to pull");
 
     // Discover test files
@@ -83,7 +79,8 @@ fn discover_test_files_recursive(dir: &Path) -> Result<Vec<PathBuf>> {
     })?;
 
     for entry in entries {
-        let entry = entry.map_err(|e| CleanroomError::io_error(format!("Failed to read entry: {}", e)))?;
+        let entry =
+            entry.map_err(|e| CleanroomError::io_error(format!("Failed to read entry: {}", e)))?;
         let path = entry.path();
 
         if path.is_file() && is_test_file(&path) {
@@ -179,9 +176,10 @@ async fn pull_images_parallel(images: &[String], jobs: usize) -> Result<()> {
         let total = images.len();
 
         let task = tokio::spawn(async move {
-            let _permit = semaphore.acquire().await.map_err(|e| {
-                CleanroomError::internal_error(format!("Semaphore error: {}", e))
-            })?;
+            let _permit = semaphore
+                .acquire()
+                .await
+                .map_err(|e| CleanroomError::internal_error(format!("Semaphore error: {}", e)))?;
 
             println!("[{}/{}] Pulling {}...", idx + 1, total, image);
             pull_single_image(&image).await
@@ -192,9 +190,8 @@ async fn pull_images_parallel(images: &[String], jobs: usize) -> Result<()> {
 
     // Wait for all tasks to complete
     for task in tasks {
-        task.await.map_err(|e| {
-            CleanroomError::internal_error(format!("Task join error: {}", e))
-        })??;
+        task.await
+            .map_err(|e| CleanroomError::internal_error(format!("Task join error: {}", e)))??;
     }
 
     Ok(())

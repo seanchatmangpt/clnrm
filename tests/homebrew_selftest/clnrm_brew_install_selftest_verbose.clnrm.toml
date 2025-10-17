@@ -44,6 +44,7 @@ resources={ "service.name"="clnrm", "service.version"="1.0.0", "env"="ci" }
 #      We pick the official Homebrew image so `brew` exists. The test installs
 #      clnrm from its tap, then runs `clnrm self-test` inside that same container.
 [service.brew]
+type="generic_container"                      # Service type
 plugin="generic_container"                    # Generic container runner
 image="homebrew/brew:latest"                  # Container with Homebrew preinstalled
 args=["bash","-lc","echo ready"]              # Minimal no-op entry; scenario overrides
@@ -92,7 +93,7 @@ events.any=["container.start","container.exec","container.stop"]
 name="clnrm.plugin.registry"                  # Framework plugin registry work
 parent="clnrm.run"
 kind="internal"
-attrs.any=["component=plugin.registry"]       # Any of these attributes suffices
+attrs.any={ component="plugin.registry" }    # Any of these attributes suffices
 
 # ---- Graph topology: enforce critical parent→child edges and acyclicity. ----------
 [expect.graph]

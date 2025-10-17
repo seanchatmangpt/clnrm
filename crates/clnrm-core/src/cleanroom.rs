@@ -550,6 +550,50 @@ impl CleanroomEnvironment {
         services.stop_service(handle_id).await
     }
 
+    /// Execute a command in a container service and return full output
+    ///
+    /// # Arguments
+    /// * `handle` - Service handle for the container to execute in
+    /// * `command_args` - Command and arguments to execute
+    ///
+    /// # Returns
+    /// * `Result<std::process::Output>` - Command output with stdout, stderr, and exit status
+    pub async fn execute_command_with_output(
+        &self,
+        _handle: &ServiceHandle,
+        command_args: &[String],
+    ) -> Result<std::process::Output> {
+        if command_args.is_empty() {
+            return Err(CleanroomError::validation_error(
+                "Command arguments cannot be empty",
+            ));
+        }
+
+        // Clone args to move into spawn_blocking
+        let args = command_args.to_vec();
+
+        // Execute command using std::process::Command
+        // Note: This executes on the host system. For true container execution,
+        // we would need to use Docker/Podman exec API or testcontainers exec methods.
+        let output = tokio::task::spawn_blocking(move || {
+            std::process::Command::new(&args[0])
+                .args(&args[1..])
+                .output()
+        })
+        .await
+        .map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to spawn command execution: {}", e))
+        })?
+        .map_err(|e| {
+            CleanroomError::internal_error(format!(
+                "Failed to execute command '{}': {}",
+                command_args[0], e
+            ))
+        })?;
+
+        Ok(output)
+    }
+
     /// Get service registry (read-only access)
     pub async fn services(&self) -> tokio::sync::RwLockReadGuard<'_, ServiceRegistry> {
         self.services.read().await

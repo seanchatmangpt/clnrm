@@ -164,7 +164,8 @@ mod tests {
         assert_eq!(parsed["passed"], 2);
         assert_eq!(parsed["failed"], 0);
 
-        let results = parsed["results"].as_array()
+        let results = parsed["results"]
+            .as_array()
             .ok_or_else(|| CleanroomError::internal_error("Expected 'results' to be an array"))?;
         assert_eq!(results.len(), 2);
         assert_eq!(results[0]["name"], "test1");
@@ -192,7 +193,8 @@ mod tests {
         assert_eq!(parsed["success"], false);
         assert_eq!(parsed["failed"], 1);
 
-        let results = parsed["results"].as_array()
+        let results = parsed["results"]
+            .as_array()
             .ok_or_else(|| CleanroomError::internal_error("Expected 'results' to be an array"))?;
         assert_eq!(results[1]["status"], "failed");
         assert_eq!(results[1]["error"], "error message");
@@ -218,7 +220,8 @@ mod tests {
 
         assert_eq!(parsed["duration_ms"], 500.0);
 
-        let results = parsed["results"].as_array()
+        let results = parsed["results"]
+            .as_array()
             .ok_or_else(|| CleanroomError::internal_error("Expected 'results' to be an array"))?;
         assert_eq!(results[0]["duration_ms"], 100.0);
 
@@ -243,7 +246,8 @@ mod tests {
             CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e))
         })?;
 
-        let results = parsed["results"].as_array()
+        let results = parsed["results"]
+            .as_array()
             .ok_or_else(|| CleanroomError::internal_error("Expected 'results' to be an array"))?;
         assert_eq!(results[0]["stdout"], "stdout output");
         assert_eq!(results[0]["stderr"], "stderr output");

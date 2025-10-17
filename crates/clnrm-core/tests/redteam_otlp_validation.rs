@@ -204,7 +204,10 @@ fn validate_order(_spans: &[SpanData]) -> LayerResult {
 
 /// Validates span status codes
 fn validate_status(spans: &[SpanData]) -> LayerResult {
-    let error_count = spans.iter().filter(|s| s.status == SpanStatus::Error).count();
+    let error_count = spans
+        .iter()
+        .filter(|s| s.status == SpanStatus::Error)
+        .count();
     if error_count > 0 {
         return LayerResult::fail(format!(
             "Spans with ERROR status detected: {} errors",
@@ -512,10 +515,7 @@ fn test_error_status_spans_fail_validation() -> Result<()> {
     // Arrange
     let mut attrs = HashMap::new();
     attrs.insert("service.name".to_string(), "clnrm".to_string());
-    attrs.insert(
-        "deployment.environment".to_string(),
-        "ci".to_string(),
-    );
+    attrs.insert("deployment.environment".to_string(), "ci".to_string());
 
     let spans = vec![SpanData {
         name: "clnrm.run".to_string(),
@@ -550,10 +550,7 @@ fn test_external_service_attributes_fail_validation() -> Result<()> {
     // Arrange
     let mut attrs = HashMap::new();
     attrs.insert("service.name".to_string(), "clnrm".to_string());
-    attrs.insert(
-        "deployment.environment".to_string(),
-        "ci".to_string(),
-    );
+    attrs.insert("deployment.environment".to_string(), "ci".to_string());
     attrs.insert("http.url".to_string(), "https://external.api".to_string()); // Forbidden!
 
     let spans = vec![SpanData {
@@ -589,10 +586,7 @@ fn test_orphaned_spans_fail_graph_validation() -> Result<()> {
     // Arrange
     let mut attrs = HashMap::new();
     attrs.insert("service.name".to_string(), "clnrm".to_string());
-    attrs.insert(
-        "deployment.environment".to_string(),
-        "ci".to_string(),
-    );
+    attrs.insert("deployment.environment".to_string(), "ci".to_string());
 
     let spans = vec![
         SpanData {

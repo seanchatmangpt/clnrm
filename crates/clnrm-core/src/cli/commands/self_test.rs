@@ -28,7 +28,10 @@ pub async fn run_self_tests(
     // Initialize OTEL if requested
     #[cfg(feature = "otel-traces")]
     let _guard = if otel_exporter != "none" {
-        Some(init_otel_for_self_test(&otel_exporter, _otel_endpoint.as_deref())?)
+        Some(init_otel_for_self_test(
+            &otel_exporter,
+            _otel_endpoint.as_deref(),
+        )?)
     } else {
         None
     };
@@ -140,17 +143,12 @@ pub async fn run_self_tests(
 
 /// Initialize OTEL for self-test with proper error handling
 #[cfg(feature = "otel-traces")]
-fn init_otel_for_self_test(
-    exporter: &str,
-    endpoint: Option<&str>,
-) -> Result<OtelGuard> {
+fn init_otel_for_self_test(exporter: &str, endpoint: Option<&str>) -> Result<OtelGuard> {
     let export = match exporter {
         "stdout" => Export::Stdout,
         "otlp-http" => {
             let endpoint = endpoint.ok_or_else(|| {
-                CleanroomError::validation_error(
-                    "OTEL endpoint required for otlp-http exporter",
-                )
+                CleanroomError::validation_error("OTEL endpoint required for otlp-http exporter")
             })?;
             // Convert to static string by leaking (acceptable for test setup)
             let static_endpoint: &'static str = Box::leak(endpoint.to_string().into_boxed_str());
@@ -160,9 +158,7 @@ fn init_otel_for_self_test(
         }
         "otlp-grpc" => {
             let endpoint = endpoint.ok_or_else(|| {
-                CleanroomError::validation_error(
-                    "OTEL endpoint required for otlp-grpc exporter",
-                )
+                CleanroomError::validation_error("OTEL endpoint required for otlp-grpc exporter")
             })?;
             // Convert to static string by leaking (acceptable for test setup)
             let static_endpoint: &'static str = Box::leak(endpoint.to_string().into_boxed_str());
@@ -456,7 +452,10 @@ mod tests {
         #[cfg(feature = "otel-traces")]
         {
             assert!(result.is_err(), "Invalid OTEL exporter should fail");
-            assert!(result.unwrap_err().message.contains("Invalid OTEL exporter"));
+            assert!(result
+                .unwrap_err()
+                .message
+                .contains("Invalid OTEL exporter"));
         }
 
         #[cfg(not(feature = "otel-traces"))]

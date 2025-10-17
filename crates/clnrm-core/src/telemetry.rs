@@ -197,7 +197,9 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
                 "Stdout export requires 'otel-stdout' feature",
             ));
         }
-        Export::StdoutNdjson => SpanExporterType::NdjsonStdout(json_exporter::NdjsonStdoutExporter::new()),
+        Export::StdoutNdjson => {
+            SpanExporterType::NdjsonStdout(json_exporter::NdjsonStdoutExporter::new())
+        }
     };
 
     // Tracer provider with batch exporter.

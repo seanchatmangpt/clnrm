@@ -774,7 +774,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_ok(), "Expected validation to pass with SDK language=rust");
+        assert!(
+            result.is_ok(),
+            "Expected validation to pass with SDK language=rust"
+        );
     }
 
     #[test]
@@ -797,7 +800,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_err(), "Expected validation to fail with missing SDK attribute");
+        assert!(
+            result.is_err(),
+            "Expected validation to fail with missing SDK attribute"
+        );
         let err_msg = format!("{}", result.unwrap_err());
         assert!(err_msg.contains("telemetry.sdk.language"));
         assert!(err_msg.contains("missing"));
@@ -826,7 +832,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_err(), "Expected validation to fail with wrong SDK language");
+        assert!(
+            result.is_err(),
+            "Expected validation to fail with wrong SDK language"
+        );
         let err_msg = format!("{}", result.unwrap_err());
         assert!(err_msg.contains("telemetry.sdk.language"));
         assert!(err_msg.contains("mismatch"));
@@ -840,7 +849,10 @@ mod tests {
         // Arrange
         let mut expected_sdk_attrs = HashMap::new();
         expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
-        expected_sdk_attrs.insert("telemetry.sdk.name".to_string(), "opentelemetry".to_string());
+        expected_sdk_attrs.insert(
+            "telemetry.sdk.name".to_string(),
+            "opentelemetry".to_string(),
+        );
         expected_sdk_attrs.insert("telemetry.sdk.version".to_string(), "0.21.0".to_string());
 
         let expectation = HermeticityExpectation::with_sdk_resource_attrs(expected_sdk_attrs);
@@ -861,7 +873,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_ok(), "Expected validation to pass with all SDK attributes correct");
+        assert!(
+            result.is_ok(),
+            "Expected validation to pass with all SDK attributes correct"
+        );
     }
 
     #[test]
@@ -897,7 +912,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_ok(), "Expected validation to pass with both user and SDK attributes correct");
+        assert!(
+            result.is_ok(),
+            "Expected validation to pass with both user and SDK attributes correct"
+        );
     }
 
     #[test]
@@ -931,14 +949,20 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_err(), "Expected validation to fail with wrong SDK attribute");
+        assert!(
+            result.is_err(),
+            "Expected validation to fail with wrong SDK attribute"
+        );
         let err_msg = format!("{}", result.unwrap_err());
 
         // Should specifically report SDK attribute mismatch, not user attribute issue
         assert!(err_msg.contains("SDK resource attribute"));
         assert!(err_msg.contains("telemetry.sdk.language"));
         assert!(err_msg.contains("mismatch"));
-        assert!(!err_msg.contains("service.name"), "Should not report user attribute error");
+        assert!(
+            !err_msg.contains("service.name"),
+            "Should not report user attribute error"
+        );
     }
 
     #[test]
@@ -951,7 +975,10 @@ mod tests {
 
         // OTEL format with stringValue wrapper
         let mut resource_attrs = HashMap::new();
-        resource_attrs.insert("telemetry.sdk.language".to_string(), json!({"stringValue": "rust"}));
+        resource_attrs.insert(
+            "telemetry.sdk.language".to_string(),
+            json!({"stringValue": "rust"}),
+        );
 
         let spans = vec![create_test_span(
             "test.span",
@@ -964,7 +991,10 @@ mod tests {
         let result = expectation.validate(&spans);
 
         // Assert
-        assert!(result.is_ok(), "Expected validation to pass with OTEL-formatted SDK attribute");
+        assert!(
+            result.is_ok(),
+            "Expected validation to pass with OTEL-formatted SDK attribute"
+        );
     }
 
     #[test]

@@ -83,14 +83,11 @@ fn load_spans_from_artifacts(test_config: &TestConfig) -> Result<Vec<SpanData>> 
     if !found_any_artifacts {
         return Err(CleanroomError::validation_error(
             "No artifact files found. Run tests with artifact collection enabled first, \
-             or provide --traces flag explicitly."
+             or provide --traces flag explicitly.",
         ));
     }
 
-    tracing::info!(
-        span_count = all_spans.len(),
-        "Loaded spans from artifacts"
-    );
+    tracing::info!(span_count = all_spans.len(), "Loaded spans from artifacts");
 
     Ok(all_spans)
 }
@@ -118,9 +115,8 @@ pub fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<An
         ))
     })?;
 
-    let config: TestConfig = toml::from_str(&config_str).map_err(|e| {
-        CleanroomError::config_error(format!("Failed to parse test TOML: {}", e))
-    })?;
+    let config: TestConfig = toml::from_str(&config_str)
+        .map_err(|e| CleanroomError::config_error(format!("Failed to parse test TOML: {}", e)))?;
 
     // Load OTEL traces from explicit file or artifacts
     let (validator, traces_source) = if let Some(traces_path) = traces_file {
@@ -144,12 +140,7 @@ pub fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<An
         .meta
         .as_ref()
         .map(|m| m.name.clone())
-        .or_else(|| {
-            config
-                .test
-                .as_ref()
-                .map(|t| t.metadata.name.clone())
-        })
+        .or_else(|| config.test.as_ref().map(|t| t.metadata.name.clone()))
         .unwrap_or_else(|| "unknown".to_string());
 
     // Compute digest of traces for reproducibility
@@ -223,10 +214,7 @@ fn validate_span_expectations(
 
     for config in span_configs {
         // Find matching span(s)
-        let matching_spans: Vec<_> = spans
-            .iter()
-            .filter(|s| s.name == config.name)
-            .collect();
+        let matching_spans: Vec<_> = spans.iter().filter(|s| s.name == config.name).collect();
 
         if matching_spans.is_empty() {
             errors.push(format!("Expected span '{}' not found", config.name));
@@ -512,7 +500,10 @@ fn validate_status(
                 return ValidatorResult {
                     name: "Status".to_string(),
                     passed: false,
-                    details: format!("FAIL: invalid status code '{}' for pattern '{}'", expected, pattern),
+                    details: format!(
+                        "FAIL: invalid status code '{}' for pattern '{}'",
+                        expected, pattern
+                    ),
                 };
             }
         }
@@ -583,9 +574,8 @@ fn count_events(spans: &[SpanData]) -> usize {
 
 /// Compute SHA256 digest of traces for reproducibility
 fn compute_trace_digest(spans: &[SpanData]) -> Result<String> {
-    let json = serde_json::to_string(spans).map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to serialize spans: {}", e))
-    })?;
+    let json = serde_json::to_string(spans)
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to serialize spans: {}", e)))?;
 
     let mut hasher = Sha256::new();
     hasher.update(json.as_bytes());
@@ -665,7 +655,10 @@ impl AnalysisReport {
             ));
         }
 
-        output.push_str(&format!("Digest: {} (recorded for reproduction)\n", self.digest));
+        output.push_str(&format!(
+            "Digest: {} (recorded for reproduction)\n",
+            self.digest
+        ));
 
         output
     }
@@ -723,35 +716,30 @@ mod tests {
             CleanroomError::internal_error(format!("Failed to get current dir: {}", e))
         })?;
 
-        std::env::set_current_dir(&temp_dir).map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to change dir: {}", e))
-        })?;
+        std::env::set_current_dir(&temp_dir)
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to change dir: {}", e)))?;
 
         // Create artifact directories
-        fs::create_dir_all(".clnrm/artifacts/scenario1").map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to create dir: {}", e))
-        })?;
-        fs::create_dir_all(".clnrm/artifacts/scenario2").map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to create dir: {}", e))
-        })?;
+        fs::create_dir_all(".clnrm/artifacts/scenario1")
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to create dir: {}", e)))?;
+        fs::create_dir_all(".clnrm/artifacts/scenario2")
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to create dir: {}", e)))?;
 
         // Write span files
         let span1_json = r#"{"name":"span1","trace_id":"trace1","span_id":"s1","parent_span_id":null,"attributes":{}}"#;
         let span2_json = r#"{"name":"span2","trace_id":"trace1","span_id":"s2","parent_span_id":"s1","attributes":{}}"#;
 
-        let mut file1 = fs::File::create(".clnrm/artifacts/scenario1/spans.json").map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to create file: {}", e))
-        })?;
-        file1.write_all(span1_json.as_bytes()).map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to write file: {}", e))
-        })?;
+        let mut file1 = fs::File::create(".clnrm/artifacts/scenario1/spans.json")
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to create file: {}", e)))?;
+        file1
+            .write_all(span1_json.as_bytes())
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to write file: {}", e)))?;
 
-        let mut file2 = fs::File::create(".clnrm/artifacts/scenario2/spans.json").map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to create file: {}", e))
-        })?;
-        file2.write_all(span2_json.as_bytes()).map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to write file: {}", e))
-        })?;
+        let mut file2 = fs::File::create(".clnrm/artifacts/scenario2/spans.json")
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to create file: {}", e)))?;
+        file2
+            .write_all(span2_json.as_bytes())
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to write file: {}", e)))?;
 
         // Create test config
         let config = TestConfig {
@@ -808,9 +796,8 @@ mod tests {
         assert_eq!(spans[1].name, "span2");
 
         // Cleanup
-        std::env::set_current_dir(&original_dir).map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to restore dir: {}", e))
-        })?;
+        std::env::set_current_dir(&original_dir)
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to restore dir: {}", e)))?;
 
         Ok(())
     }

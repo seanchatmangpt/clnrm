@@ -1,0 +1,39 @@
+# README Metric Test: First Green under 60s
+# Verifies: "First green: Typically under 60s"
+# Location in README: Line 543
+
+[test.metadata]
+name = "verify_first_green_60s"
+description = "Verify first green test run completes in under 60 seconds"
+version = "1.0.0"
+
+[service.metric_tester]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "measure_first_green_time"
+service = "metric_tester"
+run = """
+# Initialize fresh project and measure time to first green
+cd /tmp/first_green_test && \
+START=$(date +%s) && \
+clnrm init && \
+clnrm run && \
+END=$(date +%s) && \
+ELAPSED=$(( END - START )) && \
+echo "First green time: ${ELAPSED}s" && \
+test ${ELAPSED} -lt 60
+"""
+
+[[expect.output]]
+pattern = "First green time: [0-9]+s"
+description = "Should report elapsed time"
+
+[[expect.status]]
+exit_code = 0
+
+[report]
+json = "first_green_metrics.json"
+comment = "Performance target: First green typically under 60s"

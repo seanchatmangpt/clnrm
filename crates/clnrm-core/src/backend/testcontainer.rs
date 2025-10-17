@@ -214,9 +214,9 @@ impl TestcontainerBackend {
 
         #[cfg(feature = "otel-traces")]
         {
+            use crate::telemetry::events;
             use opentelemetry::global;
             use opentelemetry::trace::{Span, Tracer, TracerProvider};
-            use crate::telemetry::events;
 
             // Get current span and record container.start event
             let tracer_provider = global::tracer_provider();
@@ -346,16 +346,23 @@ impl TestcontainerBackend {
 
         // Extract exit code with proper error handling
         // testcontainers may return None if exit code is unavailable
+        #[allow(clippy::unnecessary_lazy_evaluations)] // Need closure for warn! macro
         let exit_code = exec_result
             .exit_code()
             .map_err(|e| BackendError::Runtime(format!("Failed to get exit code: {}", e)))?
-            .unwrap_or(-1) as i32;
+            .unwrap_or_else(|| {
+                // Exit code unavailable - this can happen with certain container states
+                // Return -1 to indicate unknown/error state (POSIX convention for signal termination)
+                #[cfg(feature = "otel-traces")]
+                warn!("Exit code unavailable from container, defaulting to -1");
+                -1
+            }) as i32;
 
         #[cfg(feature = "otel-traces")]
         {
+            use crate::telemetry::events;
             use opentelemetry::global;
             use opentelemetry::trace::{Span, Tracer, TracerProvider};
-            use crate::telemetry::events;
 
             // Record container.exec event
             let tracer_provider = global::tracer_provider();

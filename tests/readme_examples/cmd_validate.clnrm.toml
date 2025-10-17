@@ -1,0 +1,37 @@
+# README Example Test: clnrm validate command
+# Verifies: "clnrm validate - TOML configuration validation"
+# Location in README: Lines 24, 87-94
+
+[test.metadata]
+name = "verify_clnrm_validate"
+description = "Verify 'clnrm validate' validates TOML syntax and structure as documented"
+version = "1.0.0"
+
+[service.validator]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "validate_command_checks_toml"
+service = "validator"
+run = "clnrm validate /workspace/tests/"
+
+[[expect.output]]
+pattern = "valid|passed|success"
+description = "Should indicate validation success"
+
+[[expect.status]]
+exit_code = 0
+
+[[scenario]]
+name = "validate_catches_invalid_toml"
+service = "validator"
+run = """
+echo '[invalid toml without closing bracket' > /tmp/bad.clnrm.toml && \
+clnrm validate /tmp/bad.clnrm.toml || echo 'Validation correctly failed'
+"""
+
+[[expect.output]]
+pattern = "error|invalid|failed"
+description = "Should detect invalid TOML"

@@ -26,11 +26,10 @@ pub use services::{HealthCheckConfig, ServiceConfig, VolumeConfig};
 
 pub use otel::{
     CountBoundConfig, CountExpectationConfig, DurationBoundConfig, ExpectationsConfig,
-    ExpectedSpanConfig, ExpectedTraceConfig, GraphExpectationConfig,
-    HermeticityExpectationConfig, OrderExpectationConfig, OtelConfig, OtelHeadersConfig,
-    OtelPropagatorsConfig, OtelValidationSection, ResourceAttrsConfig, SpanAttrsConfig,
-    SpanAttributesConfig, SpanEventsConfig, SpanExpectationConfig, StatusExpectationConfig,
-    WindowExpectationConfig,
+    ExpectedSpanConfig, ExpectedTraceConfig, GraphExpectationConfig, HermeticityExpectationConfig,
+    OrderExpectationConfig, OtelConfig, OtelHeadersConfig, OtelPropagatorsConfig,
+    OtelValidationSection, ResourceAttrsConfig, SpanAttributesConfig, SpanAttrsConfig,
+    SpanEventsConfig, SpanExpectationConfig, StatusExpectationConfig, WindowExpectationConfig,
 };
 
 pub use project::{
@@ -258,9 +257,10 @@ max_execution_time = 300
                 counts: None,
                 window: vec![],
                 graph: Some(GraphExpectationConfig {
-                    must_include: Some(vec![
-                        vec!["parent_span".to_string(), "child_span".to_string()],
-                    ]),
+                    must_include: Some(vec![vec![
+                        "parent_span".to_string(),
+                        "child_span".to_string(),
+                    ]]),
                     must_not_cross: None,
                     acyclic: Some(true),
                 }),

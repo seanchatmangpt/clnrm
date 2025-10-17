@@ -58,11 +58,7 @@ async fn test_span_readiness_config_validation() {
 
     // Assert
     assert_eq!(config.span_name, "test.span");
-    assert_eq!(
-        config.timeout.as_secs(),
-        45,
-        "Should use specified timeout"
-    );
+    assert_eq!(config.timeout.as_secs(), 45, "Should use specified timeout");
 }
 
 #[tokio::test]
@@ -102,10 +98,7 @@ async fn test_span_detection_various_formats() {
 
     let test_cases = vec![
         // JSON format
-        (
-            r#"{"name":"clnrm.test","trace_id":"123"}"#,
-            "JSON format",
-        ),
+        (r#"{"name":"clnrm.test","trace_id":"123"}"#, "JSON format"),
         // YAML-like format
         ("name: clnrm.test\ntrace_id: 123", "YAML format"),
         // Key-value format

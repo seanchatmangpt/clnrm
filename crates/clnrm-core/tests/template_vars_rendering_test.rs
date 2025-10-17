@@ -70,7 +70,8 @@ endpoint = "{{ endpoint }}"
     );
 
     // Verify the rendered output is valid TOML
-    let parsed: toml::Value = toml::from_str(&rendered).expect("Rendered output should be valid TOML");
+    let parsed: toml::Value =
+        toml::from_str(&rendered).expect("Rendered output should be valid TOML");
     assert!(parsed.get("vars").is_some(), "[vars] section should exist");
     assert!(parsed.get("meta").is_some(), "[meta] section should exist");
     assert!(parsed.get("otel").is_some(), "[otel] section should exist");
@@ -240,10 +241,7 @@ exporter = "otlp"
 "#;
 
     let mut user_vars = HashMap::new();
-    user_vars.insert(
-        "token".to_string(),
-        serde_json::json!("secret-token-123"),
-    );
+    user_vars.insert("token".to_string(), serde_json::json!("secret-token-123"));
 
     // Act
     let rendered = render_template(template, user_vars).expect("Rendering failed");
@@ -263,7 +261,9 @@ fn test_template_context_top_level_injection() {
     context.add_var("env".to_string(), serde_json::json!("dev"));
 
     // Act
-    let tera_ctx = context.to_tera_context().expect("Context conversion failed");
+    let tera_ctx = context
+        .to_tera_context()
+        .expect("Context conversion failed");
 
     // Assert
     assert!(
@@ -391,8 +391,14 @@ version = "1.0.0"
     let rendered = render_template(template, user_vars).expect("Rendering failed");
 
     // Assert
-    assert!(rendered.contains("macro-test"), "Service name should be rendered");
-    assert!(rendered.contains("alpine:3.18"), "Image should be rendered in macro");
+    assert!(
+        rendered.contains("macro-test"),
+        "Service name should be rendered"
+    );
+    assert!(
+        rendered.contains("alpine:3.18"),
+        "Image should be rendered in macro"
+    );
     assert!(
         rendered.contains("[service.test_app]"),
         "Macro should generate service block"
@@ -460,7 +466,9 @@ sample_ratio = 1.0
 
     // Verify [otel.resources] section
     let otel = parsed.get("otel").expect("[otel] section should exist");
-    let resources = otel.get("resources").expect("[otel.resources] should exist");
+    let resources = otel
+        .get("resources")
+        .expect("[otel.resources] should exist");
     assert_eq!(
         resources.get("service.name").and_then(|v| v.as_str()),
         Some("validation-svc"),

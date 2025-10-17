@@ -1,0 +1,61 @@
+# README Example Test: Verification Commands
+# Verifies: Verification commands example (lines 492-500)
+# This is the EXACT example from README
+
+[test.metadata]
+name = "verify_verification_commands"
+description = "Run all verification commands from README to prove functionality"
+version = "1.0.0"
+
+[service.verifier]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "core_functionality_verification"
+service = "verifier"
+run = """
+# Verify core functionality (line 493)
+clnrm init && \
+clnrm run && \
+clnrm validate tests/ && \
+echo 'Core functionality verified'
+"""
+
+[[expect.output]]
+pattern = "Core functionality verified"
+description = "All core commands should succeed"
+
+[[expect.status]]
+exit_code = 0
+
+[[scenario]]
+name = "framework_self_testing_verification"
+service = "verifier"
+run = """
+# Verify framework self-testing (line 496)
+clnrm self-test && \
+echo 'Framework self-testing verified'
+"""
+
+[[expect.output]]
+pattern = "Framework self-testing verified"
+description = "Self-test should succeed"
+
+[[scenario]]
+name = "plugin_ecosystem_verification"
+service = "verifier"
+run = """
+# Verify plugin ecosystem (line 499)
+clnrm plugins && \
+echo 'Plugin ecosystem verified'
+"""
+
+[[expect.output]]
+pattern = "Plugin ecosystem verified"
+description = "Plugins command should succeed"
+
+[report]
+json = "verification_report.json"
+comment = "Complete verification workflow from README lines 492-500"

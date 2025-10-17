@@ -52,10 +52,7 @@ expect_success = true
     let digest2 = format!("{:x}", hasher2.finalize());
 
     // Assert - Digests are identical (deterministic)
-    assert_eq!(
-        digest1, digest2,
-        "SHA-256 digest should be deterministic"
-    );
+    assert_eq!(digest1, digest2, "SHA-256 digest should be deterministic");
     assert_eq!(
         digest1.len(),
         64,
@@ -116,8 +113,14 @@ fn test_skip_unchanged_scenarios_preserves_cache() -> Result<()> {
     let changed_second = cache.has_changed(scenario_path, scenario_content)?;
 
     // Assert - First shows changed, second shows unchanged
-    assert!(changed_first, "First check should show as changed (not in cache)");
-    assert!(!changed_second, "Second check should show as unchanged (same content)");
+    assert!(
+        changed_first,
+        "First check should show as changed (not in cache)"
+    );
+    assert!(
+        !changed_second,
+        "Second check should show as unchanged (same content)"
+    );
 
     Ok(())
 }
@@ -150,9 +153,21 @@ fn test_multi_scenario_change_detection_tracks_independently() -> Result<()> {
     let cache = MemoryCache::new();
 
     let scenarios = vec![
-        (Path::new("tests/scenario1.toml.tera"), "content_1", "modified_1"),
-        (Path::new("tests/scenario2.toml.tera"), "content_2", "content_2"), // unchanged
-        (Path::new("tests/scenario3.toml.tera"), "content_3", "modified_3"),
+        (
+            Path::new("tests/scenario1.toml.tera"),
+            "content_1",
+            "modified_1",
+        ),
+        (
+            Path::new("tests/scenario2.toml.tera"),
+            "content_2",
+            "content_2",
+        ), // unchanged
+        (
+            Path::new("tests/scenario3.toml.tera"),
+            "content_3",
+            "modified_3",
+        ),
     ];
 
     // Store initial content in cache
@@ -188,9 +203,8 @@ fn test_multi_scenario_change_detection_tracks_independently() -> Result<()> {
 async fn test_cache_persistence_across_runs_maintains_state() -> Result<()> {
     // Arrange
     use tempfile::TempDir;
-    let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
-    })?;
+    let temp_dir = TempDir::new()
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
 
     let cache_file = temp_dir.path().join("test_cache.json");
     let scenario_path = "tests/persistent.toml.tera";
@@ -210,15 +224,13 @@ async fn test_cache_persistence_across_runs_maintains_state() -> Result<()> {
         let cache_data = serde_json::json!({
             scenario_path: expected_hash.clone()
         });
-        std::fs::write(&cache_file, cache_data.to_string()).map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write cache: {}", e))
-        })?;
+        std::fs::write(&cache_file, cache_data.to_string())
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write cache: {}", e)))?;
     }
 
     // Second run: load cache
-    let cache_content = std::fs::read_to_string(&cache_file).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read cache: {}", e))
-    })?;
+    let cache_content = std::fs::read_to_string(&cache_file)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read cache: {}", e)))?;
 
     let loaded_data: serde_json::Value = serde_json::from_str(&cache_content).map_err(|e| {
         CleanroomError::serialization_error(format!("Failed to parse cache: {}", e))
@@ -312,8 +324,7 @@ fn test_empty_content_produces_valid_digest() -> Result<()> {
     // Assert - Empty content has valid digest
     assert_eq!(digest.len(), 64, "Empty content should have valid digest");
     assert_eq!(
-        digest,
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        digest, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "Empty content SHA-256 should match expected value"
     );
 

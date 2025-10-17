@@ -253,13 +253,19 @@ mod tests {
 
     fn create_span_with_attr(name: &str, key: &str, value: &str) -> SpanData {
         let mut span = create_span(name);
-        span.attributes.insert(key.to_string(), serde_json::Value::String(value.to_string()));
+        span.attributes.insert(
+            key.to_string(),
+            serde_json::Value::String(value.to_string()),
+        );
         span
     }
 
     fn create_span_with_resource(name: &str, res_key: &str, res_value: &str) -> SpanData {
         let mut span = create_span(name);
-        span.resource_attributes.insert(res_key.to_string(), serde_json::Value::String(res_value.to_string()));
+        span.resource_attributes.insert(
+            res_key.to_string(),
+            serde_json::Value::String(res_value.to_string()),
+        );
         span
     }
 
@@ -302,9 +308,11 @@ mod tests {
     #[test]
     fn test_hermeticity_resource_attrs_match() -> Result<()> {
         // Arrange
-        let spans = vec![
-            create_span_with_resource("span1", "service.name", "test-service"),
-        ];
+        let spans = vec![create_span_with_resource(
+            "span1",
+            "service.name",
+            "test-service",
+        )];
         let mut required_attrs = HashMap::new();
         required_attrs.insert("service.name".to_string(), "test-service".to_string());
         let expectation = HermeticityExpectation::new().with_resource_attrs(required_attrs);
@@ -320,9 +328,11 @@ mod tests {
     #[test]
     fn test_hermeticity_resource_attrs_mismatch() -> Result<()> {
         // Arrange
-        let spans = vec![
-            create_span_with_resource("span1", "service.name", "wrong-service"),
-        ];
+        let spans = vec![create_span_with_resource(
+            "span1",
+            "service.name",
+            "wrong-service",
+        )];
         let mut required_attrs = HashMap::new();
         required_attrs.insert("service.name".to_string(), "test-service".to_string());
         let expectation = HermeticityExpectation::new().with_resource_attrs(required_attrs);
@@ -340,11 +350,13 @@ mod tests {
     #[test]
     fn test_hermeticity_forbidden_attrs() -> Result<()> {
         // Arrange
-        let spans = vec![
-            create_span_with_attr("span1", "net.peer.name", "example.com"),
-        ];
-        let expectation = HermeticityExpectation::new()
-            .with_forbidden_attrs(vec!["net.peer.name".to_string()]);
+        let spans = vec![create_span_with_attr(
+            "span1",
+            "net.peer.name",
+            "example.com",
+        )];
+        let expectation =
+            HermeticityExpectation::new().with_forbidden_attrs(vec!["net.peer.name".to_string()]);
 
         // Act
         let result = expectation.validate(&spans)?;
@@ -352,7 +364,10 @@ mod tests {
         // Assert
         assert!(!result.passed);
         assert_eq!(result.violations.len(), 1);
-        matches!(result.violations[0], ViolationType::ForbiddenAttribute { .. });
+        matches!(
+            result.violations[0],
+            ViolationType::ForbiddenAttribute { .. }
+        );
         Ok(())
     }
 

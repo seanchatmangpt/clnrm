@@ -327,7 +327,8 @@ fn test_cleanroom_error_deserializes_from_json() {
     }"#;
 
     // Act
-    let result: Result<CleanroomError> = serde_json::from_str(json).map_err(|e| CleanroomError::internal_error(format!("Deserialization failed: {}", e)));
+    let result: Result<CleanroomError> = serde_json::from_str(json)
+        .map_err(|e| CleanroomError::internal_error(format!("Deserialization failed: {}", e)));
 
     // Assert
     assert!(result.is_ok(), "Should deserialize from JSON");

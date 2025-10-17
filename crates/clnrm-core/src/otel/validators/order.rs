@@ -129,7 +129,10 @@ impl<'a> OrderValidator<'a> {
         let mut spans_by_name: HashMap<String, Vec<&SpanData>> = HashMap::new();
 
         for span in spans {
-            spans_by_name.entry(span.name.clone()).or_default().push(span);
+            spans_by_name
+                .entry(span.name.clone())
+                .or_default()
+                .push(span);
         }
 
         Self {
@@ -248,11 +251,10 @@ mod tests {
             create_span_with_times("container.exec", 2000),
             create_span_with_times("container.stop", 3000),
         ];
-        let expectation = OrderExpectation::new()
-            .with_must_precede(vec![
-                ("container.start".to_string(), "container.exec".to_string()),
-                ("container.exec".to_string(), "container.stop".to_string()),
-            ]);
+        let expectation = OrderExpectation::new().with_must_precede(vec![
+            ("container.start".to_string(), "container.exec".to_string()),
+            ("container.exec".to_string(), "container.stop".to_string()),
+        ]);
 
         // Act
         let result = expectation.validate(&spans)?;
@@ -270,10 +272,10 @@ mod tests {
             create_span_with_times("container.start", 2000), // Wrong order!
             create_span_with_times("container.exec", 1000),
         ];
-        let expectation = OrderExpectation::new()
-            .with_must_precede(vec![
-                ("container.start".to_string(), "container.exec".to_string()),
-            ]);
+        let expectation = OrderExpectation::new().with_must_precede(vec![(
+            "container.start".to_string(),
+            "container.exec".to_string(),
+        )]);
 
         // Act
         let result = expectation.validate(&spans)?;
@@ -291,10 +293,10 @@ mod tests {
             create_span_with_times("container.start", 1000),
             create_span_with_times("container.stop", 2000),
         ];
-        let expectation = OrderExpectation::new()
-            .with_must_follow(vec![
-                ("container.stop".to_string(), "container.start".to_string()),
-            ]);
+        let expectation = OrderExpectation::new().with_must_follow(vec![(
+            "container.stop".to_string(),
+            "container.start".to_string(),
+        )]);
 
         // Act
         let result = expectation.validate(&spans)?;

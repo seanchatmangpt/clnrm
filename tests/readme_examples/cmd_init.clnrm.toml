@@ -1,0 +1,36 @@
+# README Example Test: clnrm init command
+# Verifies: "clnrm init - Zero-config project initialization with working TOML files"
+# Location in README: Lines 22-23, 69-74
+
+[test.metadata]
+name = "verify_clnrm_init"
+description = "Verify 'clnrm init' works as documented in README - creates tests/, README.md, scenarios/"
+version = "1.0.0"
+
+[service.test_runner]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "init_command_creates_structure"
+service = "test_runner"
+run = """
+cd /tmp/test_init && \
+clnrm init && \
+ls -la tests/ && \
+test -f tests/basic.clnrm.toml && \
+test -f README.md && \
+cat tests/basic.clnrm.toml
+"""
+
+[[expect.output]]
+pattern = "tests/basic.clnrm.toml"
+description = "Init should create basic test file"
+
+[[expect.output]]
+pattern = "README.md"
+description = "Init should create README"
+
+[[expect.status]]
+exit_code = 0

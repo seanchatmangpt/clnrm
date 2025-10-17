@@ -1,0 +1,44 @@
+# README Example Test: Basic Workflow
+# Verifies: Quick Start example (lines 69-85, 449-461)
+# Location in README: Lines 69-85, 449-461
+
+[test.metadata]
+name = "verify_basic_workflow"
+description = "Verify complete basic workflow: init -> run -> validate -> self-test -> plugins"
+version = "1.0.0"
+
+[service.workflow_tester]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "complete_basic_workflow"
+service = "workflow_tester"
+run = """
+# Step 1: Initialize project (line 450-451)
+cd /tmp/workflow_test && \
+clnrm init && \
+
+# Step 2: Run tests (line 453-454)
+clnrm run && \
+
+# Step 3: Validate (line 456-457)
+clnrm self-test && \
+
+# Step 4: Explore plugins (line 459-460)
+clnrm plugins && \
+
+echo 'Complete workflow executed successfully'
+"""
+
+[[expect.output]]
+pattern = "Complete workflow executed successfully"
+description = "All workflow steps should complete"
+
+[[expect.status]]
+exit_code = 0
+
+[report]
+json = "basic_workflow_report.json"
+comment = "Verifies the complete Quick Start workflow from README"

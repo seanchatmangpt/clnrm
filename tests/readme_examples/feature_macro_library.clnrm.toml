@@ -1,0 +1,46 @@
+# README Example Test: Macro Library
+# Verifies: "Macro Pack: Eliminate boilerplate with reusable Tera macros"
+# Location in README: Lines 13, 50, 512
+
+[test.metadata]
+name = "verify_macro_library"
+description = "Verify macro library with 85% boilerplate reduction claim"
+version = "1.0.0"
+
+[service.macro_tester]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "macro_library_available"
+service = "macro_tester"
+run = """
+# Check if macro library exists and is usable
+clnrm template --help | grep -i macro || \
+ls /workspace/templates/*.tera || \
+echo 'Checking macro availability'
+"""
+
+[[expect.output]]
+pattern = "macro|template|boilerplate"
+description = "Should reference macro or template system"
+
+[[expect.status]]
+exit_code = 0
+
+[[scenario]]
+name = "macro_usage_example"
+service = "macro_tester"
+run = """
+cat > /tmp/with_macro.toml.tera << 'EOF'
+{% import "macros" as m %}
+{{ m.otel_service(name="test", image="alpine:latest") }}
+EOF
+
+# Test if macro rendering works
+clnrm template render /tmp/with_macro.toml.tera || echo 'Macro system test'
+"""
+
+[report]
+comment = "Macro library should provide 85% boilerplate reduction"

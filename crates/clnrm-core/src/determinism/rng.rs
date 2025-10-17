@@ -2,8 +2,8 @@
 //!
 //! Provides deterministic RNG using StdRng with fixed seeds.
 
-use rand::{RngCore, SeedableRng};
 use rand::rngs::StdRng;
+use rand::{RngCore, SeedableRng};
 
 /// Create a seeded RNG for deterministic random number generation
 ///
@@ -47,6 +47,9 @@ mod tests {
         let mut rng2 = create_seeded_rng(43);
         let val1 = rng1.next_u64();
         let val2 = rng2.next_u64();
-        assert_ne!(val1, val2, "Different seeds should produce different values");
+        assert_ne!(
+            val1, val2,
+            "Different seeds should produce different values"
+        );
     }
 }

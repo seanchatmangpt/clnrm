@@ -1,0 +1,47 @@
+# README Example Test: Template Types
+# Verifies: "clnrm template <type> - Generate projects from templates"
+# Location in README: Lines 39-43
+
+[test.metadata]
+name = "verify_template_types"
+description = "Verify all template types documented in README are available"
+version = "1.0.0"
+
+[service.template_tester]
+plugin = "generic_container"
+image = "rust:1.70"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "template_otel_available"
+service = "template_tester"
+run = "clnrm template otel > /tmp/otel.clnrm.toml.tera && test -s /tmp/otel.clnrm.toml.tera"
+
+[[expect.status]]
+exit_code = 0
+
+[[scenario]]
+name = "template_help_shows_types"
+service = "template_tester"
+run = "clnrm template --help"
+
+[[expect.output]]
+pattern = "template|otel|database|api|default|advanced|minimal"
+description = "Should list available template types"
+
+[[scenario]]
+name = "template_generates_tera_files"
+service = "template_tester"
+run = """
+clnrm template otel > /tmp/test.clnrm.toml.tera && \
+cat /tmp/test.clnrm.toml.tera && \
+grep -q '{{' /tmp/test.clnrm.toml.tera
+"""
+
+[[expect.output]]
+pattern = "{{.*}}"
+description = "Generated templates should contain Tera variables"
+
+[report]
+json = "template_types_report.json"
+comment = "Verifies template generation for: default, advanced, minimal, database, api, otel"

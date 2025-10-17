@@ -52,8 +52,15 @@ impl MemoryCache {
     }
 
     /// Get the number of entries in cache (for testing)
+    ///
+    /// Returns 0 if lock acquisition fails (defensive fallback for testing utility)
     pub fn len(&self) -> usize {
-        self.hashes.lock().map(|h| h.len()).unwrap_or(0)
+        self.hashes.lock().map(|h| h.len()).unwrap_or_else(|e| {
+            // This should never happen in practice, but we provide a safe fallback
+            // rather than panicking. Log at debug level for visibility in tests.
+            debug!("Failed to acquire cache lock in len(): {}", e);
+            0
+        })
     }
 
     /// Check if cache is empty (for testing)

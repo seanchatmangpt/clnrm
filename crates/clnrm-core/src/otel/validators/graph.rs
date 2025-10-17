@@ -148,7 +148,10 @@ impl<'a> GraphValidator<'a> {
 
         for span in spans {
             span_by_id.insert(span.span_id.clone(), span);
-            spans_by_name.entry(span.name.clone()).or_default().push(span);
+            spans_by_name
+                .entry(span.name.clone())
+                .or_default()
+                .push(span);
         }
 
         Self {
@@ -295,7 +298,10 @@ mod tests {
             create_span("container.start", "span1", None),
             create_span("container.exec", "span2", Some("span1")),
         ];
-        let expectation = GraphExpectation::new(vec![("container.start".to_string(), "container.exec".to_string())]);
+        let expectation = GraphExpectation::new(vec![(
+            "container.start".to_string(),
+            "container.exec".to_string(),
+        )]);
 
         // Act
         let result = expectation.validate(&spans)?;
@@ -313,7 +319,10 @@ mod tests {
             create_span("container.start", "span1", None),
             create_span("container.exec", "span2", None), // No parent!
         ];
-        let expectation = GraphExpectation::new(vec![("container.start".to_string(), "container.exec".to_string())]);
+        let expectation = GraphExpectation::new(vec![(
+            "container.start".to_string(),
+            "container.exec".to_string(),
+        )]);
 
         // Act
         let result = expectation.validate(&spans)?;
@@ -375,6 +384,9 @@ mod tests {
         // Assert
         assert_eq!(validator.spans.len(), 2);
         assert_eq!(validator.span_by_id.len(), 2);
-        assert_eq!(validator.spans_by_name.get("test.span").map(|v| v.len()), Some(2));
+        assert_eq!(
+            validator.spans_by_name.get("test.span").map(|v| v.len()),
+            Some(2)
+        );
     }
 }

@@ -195,16 +195,22 @@ exporter="stdout"
         let meta_section = formatted
             .split("[meta]")
             .nth(1)
-            .ok_or_else(|| CleanroomError::internal_error("Expected [meta] section in formatted output"))?
+            .ok_or_else(|| {
+                CleanroomError::internal_error("Expected [meta] section in formatted output")
+            })?
             .split("[otel]")
             .next()
-            .ok_or_else(|| CleanroomError::internal_error("Expected content before [otel] section"))?;
+            .ok_or_else(|| {
+                CleanroomError::internal_error("Expected content before [otel] section")
+            })?;
 
         // name should come before version alphabetically
-        let name_pos = meta_section.find("name")
-            .ok_or_else(|| CleanroomError::internal_error("Expected 'name' key in [meta] section"))?;
-        let version_pos = meta_section.find("version")
-            .ok_or_else(|| CleanroomError::internal_error("Expected 'version' key in [meta] section"))?;
+        let name_pos = meta_section.find("name").ok_or_else(|| {
+            CleanroomError::internal_error("Expected 'name' key in [meta] section")
+        })?;
+        let version_pos = meta_section.find("version").ok_or_else(|| {
+            CleanroomError::internal_error("Expected 'version' key in [meta] section")
+        })?;
         assert!(name_pos < version_pos);
 
         // Should have proper spacing around =
@@ -273,12 +279,15 @@ a_nested = "first"
         let formatted = format_toml_content(input)?;
 
         // Parent keys should be sorted
-        let parent_section = formatted.split("[parent]").nth(1)
-            .ok_or_else(|| CleanroomError::internal_error("Expected [parent] section in formatted output"))?;
-        let a_pos = parent_section.find("a_key")
-            .ok_or_else(|| CleanroomError::internal_error("Expected 'a_key' in [parent] section"))?;
-        let z_pos = parent_section.find("z_key")
-            .ok_or_else(|| CleanroomError::internal_error("Expected 'z_key' in [parent] section"))?;
+        let parent_section = formatted.split("[parent]").nth(1).ok_or_else(|| {
+            CleanroomError::internal_error("Expected [parent] section in formatted output")
+        })?;
+        let a_pos = parent_section.find("a_key").ok_or_else(|| {
+            CleanroomError::internal_error("Expected 'a_key' in [parent] section")
+        })?;
+        let z_pos = parent_section.find("z_key").ok_or_else(|| {
+            CleanroomError::internal_error("Expected 'z_key' in [parent] section")
+        })?;
         assert!(a_pos < z_pos);
 
         Ok(())

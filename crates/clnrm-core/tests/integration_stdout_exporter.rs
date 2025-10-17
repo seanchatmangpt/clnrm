@@ -222,7 +222,8 @@ fn test_stdout_exporter_with_clnrm_span_helpers() -> Result<(), clnrm_core::erro
         let _step_span = spans::step_span("hello_world", 0).entered();
 
         // Container spans simulate container lifecycle
-        let _start_span = spans::container_start_span("alpine:latest", "test-container-123").entered();
+        let _start_span =
+            spans::container_start_span("alpine:latest", "test-container-123").entered();
         let _exec_span = spans::container_exec_span("test-container-123", "echo hello").entered();
         let _stop_span = spans::container_stop_span("test-container-123").entered();
     }
@@ -270,10 +271,7 @@ async fn test_stdout_exporter_concurrent_traces() -> Result<(), clnrm_core::erro
     // Wait for all traces to complete
     for handle in handles {
         handle.await.map_err(|e| {
-            clnrm_core::error::CleanroomError::internal_error(format!(
-                "Task join error: {}",
-                e
-            ))
+            clnrm_core::error::CleanroomError::internal_error(format!("Task join error: {}", e))
         })?;
     }
 

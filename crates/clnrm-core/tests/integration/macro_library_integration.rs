@@ -172,14 +172,8 @@ fn test_service_macro_with_args_generates_args_array() -> Result<()> {
         rendered.contains(r#"image = "nginx:alpine""#),
         "Should set image"
     );
-    assert!(
-        rendered.contains("args ="),
-        "Should include args array"
-    );
-    assert!(
-        rendered.contains(r#""nginx""#),
-        "Should include nginx arg"
-    );
+    assert!(rendered.contains("args ="), "Should include args array");
+    assert!(rendered.contains(r#""nginx""#), "Should include nginx arg");
     assert!(
         rendered.contains(r#""daemon off;""#),
         "Should include daemon off arg"
@@ -277,10 +271,7 @@ fn test_scenario_macro_with_expect_failure_sets_false() -> Result<()> {
         rendered.contains(r#"name = "fail_test""#),
         "Should set scenario name"
     );
-    assert!(
-        rendered.contains(r#"run = "exit 1""#),
-        "Should set command"
-    );
+    assert!(rendered.contains(r#"run = "exit 1""#), "Should set command");
     assert!(
         rendered.contains("expect_success = false"),
         "Should set expect_success = false when specified"

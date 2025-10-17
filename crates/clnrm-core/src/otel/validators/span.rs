@@ -243,11 +243,17 @@ impl SpanExpectation {
         })?;
 
         let parent_span = span_by_id.get(parent_id.as_str()).ok_or_else(|| {
-            CleanroomError::validation_error(format!("parent span with id '{}' not found", parent_id))
+            CleanroomError::validation_error(format!(
+                "parent span with id '{}' not found",
+                parent_id
+            ))
         })?;
 
         let pattern = Pattern::new(parent_pattern).map_err(|e| {
-            CleanroomError::validation_error(format!("Invalid parent pattern '{}': {}", parent_pattern, e))
+            CleanroomError::validation_error(format!(
+                "Invalid parent pattern '{}': {}",
+                parent_pattern, e
+            ))
         })?;
 
         if !pattern.matches(&parent_span.name) {
@@ -277,7 +283,11 @@ impl SpanExpectation {
     }
 
     /// Validate all attributes must match
-    fn validate_attrs_all(&self, span: &SpanData, expected: &HashMap<String, String>) -> Result<()> {
+    fn validate_attrs_all(
+        &self,
+        span: &SpanData,
+        expected: &HashMap<String, String>,
+    ) -> Result<()> {
         for (key, expected_value) in expected {
             let actual_value = span
                 .attributes
@@ -336,9 +346,9 @@ impl SpanExpectation {
 
     /// Validate duration bounds
     fn validate_duration(&self, span: &SpanData) -> Result<()> {
-        let duration_ms = span.duration_ms().ok_or_else(|| {
-            CleanroomError::validation_error("span has no duration data")
-        })?;
+        let duration_ms = span
+            .duration_ms()
+            .ok_or_else(|| CleanroomError::validation_error("span has no duration data"))?;
 
         let duration_u64 = duration_ms as u64;
 
@@ -438,7 +448,11 @@ mod tests {
     #[test]
     fn test_span_expectation_kind_validation() -> Result<()> {
         // Arrange
-        let spans = vec![create_test_span("test.span", None, Some(SpanKind::Internal))];
+        let spans = vec![create_test_span(
+            "test.span",
+            None,
+            Some(SpanKind::Internal),
+        )];
         let span_by_id = HashMap::new();
         let expectation = SpanExpectation::new("test.span").with_kind(SpanKind::Internal);
 
@@ -453,7 +467,11 @@ mod tests {
     #[test]
     fn test_span_expectation_kind_mismatch() -> Result<()> {
         // Arrange
-        let spans = vec![create_test_span("test.span", None, Some(SpanKind::Internal))];
+        let spans = vec![create_test_span(
+            "test.span",
+            None,
+            Some(SpanKind::Internal),
+        )];
         let span_by_id = HashMap::new();
         let expectation = SpanExpectation::new("test.span").with_kind(SpanKind::Client);
 

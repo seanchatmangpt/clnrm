@@ -31,14 +31,12 @@ use crate::telemetry::spans;
 
 // Re-export executor functions
 pub use executor::{
-    run_tests_parallel, run_tests_parallel_with_results,
-    run_tests_sequential, run_tests_sequential_with_results,
+    run_tests_parallel, run_tests_parallel_with_results, run_tests_sequential,
+    run_tests_sequential_with_results,
 };
 
 // Re-export cache functions
-pub use cache::{
-    filter_changed_tests, update_cache_for_results,
-};
+pub use cache::{filter_changed_tests, update_cache_for_results};
 
 /// Run tests from TOML files with cache support (legacy, no sharding)
 ///
@@ -106,7 +104,10 @@ async fn run_tests_impl(
 
     info!("Running cleanroom tests (framework self-testing)");
     debug!("Test paths: {:?}", paths);
-    debug!("Config: parallel={}, jobs={}, force={}", config.parallel, config.jobs, config.force);
+    debug!(
+        "Config: parallel={}, jobs={}, force={}",
+        config.parallel, config.jobs, config.force
+    );
 
     // Handle watch mode
     if config.watch {
@@ -142,7 +143,12 @@ async fn run_tests_impl(
 
     // Apply sharding if requested
     let tests_to_run = if let Some((i, m)) = shard {
-        info!("🔀 Applying shard {}/{} to {} tests", i, m, tests_to_run.len());
+        info!(
+            "🔀 Applying shard {}/{} to {} tests",
+            i,
+            m,
+            tests_to_run.len()
+        );
 
         // Distribute tests across shards using modulo arithmetic
         // Shard i (1-based) gets tests where (index % m) == (i - 1)
@@ -153,7 +159,12 @@ async fn run_tests_impl(
             .map(|(_, path)| path)
             .collect();
 
-        info!("🔀 Shard {}/{} will run {} test(s)", i, m, sharded_tests.len());
+        info!(
+            "🔀 Shard {}/{} will run {} test(s)",
+            i,
+            m,
+            sharded_tests.len()
+        );
         sharded_tests
     } else {
         tests_to_run
@@ -162,7 +173,11 @@ async fn run_tests_impl(
     let skipped_count = all_test_files.len() - tests_to_run.len();
 
     if !config.force && skipped_count > 0 {
-        println!("⚡ {} scenario(s) changed, {} unchanged", tests_to_run.len(), skipped_count);
+        println!(
+            "⚡ {} scenario(s) changed, {} unchanged",
+            tests_to_run.len(),
+            skipped_count
+        );
         info!("Cache hit: {} scenarios skipped", skipped_count);
     }
 
@@ -263,71 +278,71 @@ mod services {
             );
 
             // Create plugin based on service type
-            let plugin: Box<dyn crate::cleanroom::ServicePlugin> = match service_config.plugin.as_str()
-            {
-                "surrealdb" => {
-                    use crate::services::surrealdb::SurrealDbPlugin;
+            let plugin: Box<dyn crate::cleanroom::ServicePlugin> =
+                match service_config.plugin.as_str() {
+                    "surrealdb" => {
+                        use crate::services::surrealdb::SurrealDbPlugin;
 
-                    let username = service_config.username.as_deref().unwrap_or("root");
-                    let password = service_config.password.as_deref().unwrap_or("root");
-                    let strict = service_config.strict.unwrap_or(false);
+                        let username = service_config.username.as_deref().unwrap_or("root");
+                        let password = service_config.password.as_deref().unwrap_or("root");
+                        let strict = service_config.strict.unwrap_or(false);
 
-                    let plugin = SurrealDbPlugin::with_credentials(username, password)
-                        .with_name(service_name)
-                        .with_strict(strict);
+                        let plugin = SurrealDbPlugin::with_credentials(username, password)
+                            .with_name(service_name)
+                            .with_strict(strict);
 
-                    Box::new(plugin)
-                }
-                "generic_container" => {
-                    use crate::services::generic::GenericContainerPlugin;
-
-                    let image = service_config.image.as_deref().ok_or_else(|| {
-                        CleanroomError::validation_error(format!(
-                            "Service '{}': generic_container requires 'image' field",
-                            service_name
-                        ))
-                    })?;
-
-                    let mut plugin = GenericContainerPlugin::new(service_name, image);
-
-                    if let Some(env_vars) = &service_config.env {
-                        for (key, value) in env_vars {
-                            plugin = plugin.with_env(key, value);
-                        }
+                        Box::new(plugin)
                     }
+                    "generic_container" => {
+                        use crate::services::generic::GenericContainerPlugin;
 
-                    if let Some(ports) = &service_config.ports {
-                        for port in ports {
-                            plugin = plugin.with_port(*port);
+                        let image = service_config.image.as_deref().ok_or_else(|| {
+                            CleanroomError::validation_error(format!(
+                                "Service '{}': generic_container requires 'image' field",
+                                service_name
+                            ))
+                        })?;
+
+                        let mut plugin = GenericContainerPlugin::new(service_name, image);
+
+                        if let Some(env_vars) = &service_config.env {
+                            for (key, value) in env_vars {
+                                plugin = plugin.with_env(key, value);
+                            }
                         }
-                    }
 
-                    if let Some(volumes) = &service_config.volumes {
-                        for volume in volumes {
-                            plugin = plugin
-                                .with_volume(
-                                    &volume.host_path,
-                                    &volume.container_path,
-                                    volume.read_only.unwrap_or(false),
-                                )
-                                .map_err(|e| {
-                                    CleanroomError::validation_error(format!(
-                                        "Service '{}': invalid volume configuration: {}",
-                                        service_name, e
-                                    ))
-                                })?;
+                        if let Some(ports) = &service_config.ports {
+                            for port in ports {
+                                plugin = plugin.with_port(*port);
+                            }
                         }
-                    }
 
-                    Box::new(plugin)
-                }
-                _ => {
-                    return Err(CleanroomError::validation_error(format!(
-                        "Unknown service plugin: {}",
-                        service_config.plugin
-                    )));
-                }
-            };
+                        if let Some(volumes) = &service_config.volumes {
+                            for volume in volumes {
+                                plugin = plugin
+                                    .with_volume(
+                                        &volume.host_path,
+                                        &volume.container_path,
+                                        volume.read_only.unwrap_or(false),
+                                    )
+                                    .map_err(|e| {
+                                        CleanroomError::validation_error(format!(
+                                            "Service '{}': invalid volume configuration: {}",
+                                            service_name, e
+                                        ))
+                                    })?;
+                            }
+                        }
+
+                        Box::new(plugin)
+                    }
+                    _ => {
+                        return Err(CleanroomError::validation_error(format!(
+                            "Unknown service plugin: {}",
+                            service_config.plugin
+                        )));
+                    }
+                };
 
             env.register_service(plugin).await?;
             info!("📦 Registered service plugin: {}", service_name);
@@ -363,8 +378,9 @@ mod single {
     /// Run a single test file
     #[cfg_attr(feature = "otel-traces", tracing::instrument(name = "clnrm.test", skip(_config), fields(test.hermetic = true)))]
     pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| CleanroomError::config_error(format!("Failed to read config file: {}", e)))?;
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            CleanroomError::config_error(format!("Failed to read config file: {}", e))
+        })?;
 
         let test_config: crate::config::TestConfig = toml::from_str(&content)
             .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
@@ -388,7 +404,11 @@ mod single {
                 .with_source(e.to_string())
         })?;
 
+        // Load services from config (support both v0.4.x [services] and v1.0 [service] formats)
         let service_handles = if let Some(services) = &test_config.services {
+            services::load_services_from_config(&environment, services).await?
+        } else if let Some(services) = &test_config.service {
+            // v1.0 format: [service.name]
             services::load_services_from_config(&environment, services).await?
         } else {
             HashMap::new()
@@ -471,6 +491,16 @@ mod single {
             info!("✅ Step '{}' completed successfully", step.name);
         }
 
+        // Execute scenario blocks (v1.0 format)
+        if !test_config.scenario.is_empty() {
+            info!("📋 Executing {} scenario(s)", test_config.scenario.len());
+
+            for scenario in &test_config.scenario {
+                scenario::execute_scenario(scenario, &environment, &service_handles, &test_config)
+                    .await?;
+            }
+        }
+
         // Cleanup services
         let service_handles_vec: Vec<_> = service_handles.iter().collect();
         for (service_name, handle) in service_handles_vec.iter().rev() {
@@ -487,6 +517,295 @@ mod single {
         println!("🎉 Test '{}' completed successfully!", test_name);
         info!("🎉 Test '{}' completed successfully!", test_name);
         Ok(())
+    }
+}
+
+mod scenario {
+    use super::*;
+    use crate::config::types::parse_shell_command;
+    use crate::determinism::DeterminismEngine;
+    use crate::otel::stdout_parser::StdoutSpanParser;
+    use crate::reporting::{generate_reports, ReportConfig};
+    use crate::validation::orchestrator::PrdExpectations;
+    use crate::validation::{
+        CountExpectation, GraphExpectation, HermeticityExpectation, WindowExpectation,
+    };
+    use std::collections::HashMap;
+    use tracing::{debug, error, info};
+
+    /// Execute a single scenario with OTEL validation
+    pub async fn execute_scenario(
+        scenario: &crate::config::ScenarioConfig,
+        env: &CleanroomEnvironment,
+        service_handles: &HashMap<String, crate::cleanroom::ServiceHandle>,
+        test_config: &crate::config::TestConfig,
+    ) -> Result<()> {
+        info!("🚀 Executing scenario: {}", scenario.name);
+
+        // Validate scenario has required fields
+        if scenario.service.is_none() && scenario.run.is_none() {
+            return Err(CleanroomError::validation_error(format!(
+                "Scenario '{}' must have 'service' and/or 'run' fields",
+                scenario.name
+            )));
+        }
+
+        // Get service handle
+        let service_name = scenario.service.as_ref().ok_or_else(|| {
+            CleanroomError::validation_error(format!(
+                "Scenario '{}' missing 'service' field",
+                scenario.name
+            ))
+        })?;
+
+        let handle = service_handles.get(service_name).ok_or_else(|| {
+            CleanroomError::validation_error(format!(
+                "Scenario '{}' references unknown service '{}'",
+                scenario.name, service_name
+            ))
+        })?;
+
+        // Parse shell command
+        let run_command = scenario.run.as_ref().ok_or_else(|| {
+            CleanroomError::validation_error(format!(
+                "Scenario '{}' missing 'run' field",
+                scenario.name
+            ))
+        })?;
+
+        let command_args = parse_shell_command(run_command)?;
+        info!("🔧 Executing command in container: {}", run_command);
+
+        // Execute command in container and capture stdout/stderr
+        let output = env
+            .execute_command_with_output(handle, &command_args)
+            .await?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+        if !stderr.is_empty() {
+            info!("⚠️  Stderr: {}", stderr.trim());
+        }
+
+        if !output.status.success() {
+            return Err(CleanroomError::validation_error(format!(
+                "Scenario '{}' command failed with exit code: {}",
+                scenario.name,
+                output.status.code().unwrap_or(-1)
+            )));
+        }
+
+        debug!("📤 Command stdout length: {} bytes", stdout.len());
+
+        // Parse OTEL spans from stdout if artifacts.collect includes "spans:default"
+        if let Some(ref artifacts) = scenario.artifacts {
+            if artifacts.collect.iter().any(|a| a.starts_with("spans:")) {
+                info!("🔍 Parsing OTEL spans from stdout...");
+                let mut spans = StdoutSpanParser::parse(&stdout)?;
+                info!("✅ Collected {} span(s) from stdout", spans.len());
+
+                // Apply determinism if configured
+                if let Some(ref det_config) = test_config.determinism {
+                    if det_config.is_deterministic() {
+                        info!(
+                            "🔒 Applying determinism: seed={:?}, freeze_clock={:?}",
+                            det_config.seed, det_config.freeze_clock
+                        );
+
+                        let engine = DeterminismEngine::new(det_config.clone())?;
+
+                        // Apply frozen timestamp to spans if configured
+                        if engine.has_frozen_clock() {
+                            let frozen_timestamp = engine.get_timestamp();
+                            let frozen_nanos =
+                                frozen_timestamp.timestamp_nanos_opt().unwrap_or(0) as u64;
+
+                            for span in &mut spans {
+                                if span.start_time_unix_nano.is_none() {
+                                    span.start_time_unix_nano = Some(frozen_nanos);
+                                }
+                                if span.end_time_unix_nano.is_none() {
+                                    span.end_time_unix_nano = Some(frozen_nanos + 1_000_000);
+                                    // +1ms
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Build expectations from test_config.expect
+                let expectations = build_prd_expectations(test_config)?;
+
+                // Run all validations
+                info!("🔬 Running validation layers...");
+                let validation_report = expectations.validate_all(&spans)?;
+
+                // Log validation results
+                if validation_report.is_success() {
+                    info!(
+                        "✅ All {} validation(s) passed",
+                        validation_report.pass_count()
+                    );
+                    println!("✅ Validation: {}", validation_report.summary());
+                } else {
+                    error!(
+                        "❌ {} validation(s) failed",
+                        validation_report.failure_count()
+                    );
+                    println!("❌ Validation: {}", validation_report.summary());
+                }
+
+                // Generate reports if configured
+                if let Some(ref report_config) = test_config.report {
+                    info!("📊 Generating reports...");
+                    let report_cfg = ReportConfig::new()
+                        .with_json(
+                            report_config
+                                .json
+                                .as_ref()
+                                .unwrap_or(&"report.json".to_string())
+                                .clone(),
+                        )
+                        .with_junit(
+                            report_config
+                                .junit
+                                .as_ref()
+                                .unwrap_or(&"junit.xml".to_string())
+                                .clone(),
+                        )
+                        .with_digest(
+                            report_config
+                                .digest
+                                .as_ref()
+                                .unwrap_or(&"digest.txt".to_string())
+                                .clone(),
+                        );
+
+                    let spans_json = serde_json::to_string_pretty(&spans).map_err(|e| {
+                        CleanroomError::internal_error(format!(
+                            "Failed to serialize spans to JSON: {}",
+                            e
+                        ))
+                    })?;
+
+                    generate_reports(&report_cfg, &validation_report, &spans_json)?;
+                    info!("✅ Reports generated successfully");
+                }
+
+                // Fail if validation failed
+                if !validation_report.is_success() {
+                    return Err(CleanroomError::validation_error(format!(
+                        "Scenario '{}' validation failed: {}",
+                        scenario.name,
+                        validation_report.first_error().unwrap_or("unknown error")
+                    )));
+                }
+            }
+        }
+
+        info!("✅ Scenario '{}' completed successfully", scenario.name);
+        Ok(())
+    }
+
+    /// Build PrdExpectations from TestConfig.expect
+    fn build_prd_expectations(test_config: &crate::config::TestConfig) -> Result<PrdExpectations> {
+        let mut expectations = PrdExpectations::new();
+
+        if let Some(ref expect) = test_config.expect {
+            // Build graph expectations
+            if let Some(ref graph_config) = expect.graph {
+                let mut edges = Vec::new();
+
+                if let Some(ref must_include) = graph_config.must_include {
+                    for edge in must_include {
+                        if edge.len() == 2 {
+                            edges.push((edge[0].clone(), edge[1].clone()));
+                        }
+                    }
+                }
+
+                if !edges.is_empty() {
+                    expectations = expectations.with_graph(GraphExpectation::new(edges));
+                }
+            }
+
+            // Build count expectations
+            if let Some(ref counts_config) = expect.counts {
+                let mut count_exp = CountExpectation::new();
+
+                // Total span count
+                if let Some(ref total) = counts_config.spans_total {
+                    if let Some(eq) = total.eq {
+                        count_exp = count_exp.with_spans_total(
+                            crate::validation::count_validator::CountBound::eq(eq),
+                        );
+                    } else if let Some(gte) = total.gte {
+                        if let Some(lte) = total.lte {
+                            count_exp = count_exp.with_spans_total(
+                                crate::validation::count_validator::CountBound::range(gte, lte)?,
+                            );
+                        } else {
+                            count_exp = count_exp.with_spans_total(
+                                crate::validation::count_validator::CountBound::gte(gte),
+                            );
+                        }
+                    } else if let Some(lte) = total.lte {
+                        count_exp = count_exp.with_spans_total(
+                            crate::validation::count_validator::CountBound::lte(lte),
+                        );
+                    }
+                }
+
+                // Per-name counts
+                if let Some(ref by_name) = counts_config.by_name {
+                    for (name, bound_config) in by_name {
+                        if let Some(eq) = bound_config.eq {
+                            count_exp = count_exp.with_name_count(
+                                name.clone(),
+                                crate::validation::count_validator::CountBound::eq(eq),
+                            );
+                        } else if let Some(gte) = bound_config.gte {
+                            if let Some(lte) = bound_config.lte {
+                                count_exp = count_exp.with_name_count(
+                                    name.clone(),
+                                    crate::validation::count_validator::CountBound::range(
+                                        gte, lte,
+                                    )?,
+                                );
+                            } else {
+                                count_exp = count_exp.with_name_count(
+                                    name.clone(),
+                                    crate::validation::count_validator::CountBound::gte(gte),
+                                );
+                            }
+                        }
+                    }
+                }
+
+                expectations = expectations.with_counts(count_exp);
+            }
+
+            // Build window expectations
+            for window_config in &expect.window {
+                let window =
+                    WindowExpectation::new(&window_config.outer, window_config.contains.clone());
+                expectations = expectations.add_window(window);
+            }
+
+            // Build hermeticity expectations
+            if let Some(ref hermetic_config) = expect.hermeticity {
+                let hermetic = HermeticityExpectation {
+                    no_external_services: hermetic_config.no_external_services,
+                    resource_attrs_must_match: None, // TODO: Extract from hermetic_config.resource_attrs
+                    sdk_resource_attrs_must_match: None,
+                    span_attrs_forbid_keys: None, // TODO: Extract from hermetic_config.span_attrs
+                };
+                expectations = expectations.with_hermeticity(hermetic);
+            }
+        }
+
+        Ok(expectations)
     }
 }
 

@@ -36,6 +36,24 @@ cargo test -p clnrm-ai
 
 ## Build & Test Commands
 
+### Critical: Dogfooding Policy
+
+**ALWAYS use the Homebrew-installed binary for validation and testing, NOT `cargo run` or `target/release/clnrm`.**
+
+We eat our own dogfood - the framework validates itself using the production installation path.
+
+```bash
+# ❌ WRONG - Don't use for validation
+cargo run -- self-test
+./target/release/clnrm run tests/
+
+# ✅ CORRECT - Use Homebrew-installed binary
+clnrm self-test
+clnrm run tests/
+```
+
+**Exception**: Development iteration on unreleased features may use `cargo run`, but final validation MUST use `brew install clnrm`.
+
 ### Development
 
 ```bash
@@ -45,10 +63,15 @@ cargo build --release
 # Build with all features (including OTEL)
 cargo build --release --features otel
 
-# Run CLI
-cargo run -- --help
-cargo run -- init
-cargo run -- run tests/
+# Install locally for testing (updates Homebrew installation)
+cargo build --release --features otel
+brew uninstall clnrm  # if already installed
+brew install --build-from-source .
+
+# Run CLI (after Homebrew installation)
+clnrm --help
+clnrm init
+clnrm run tests/
 
 # Run specific test
 cargo test test_name
@@ -61,14 +84,15 @@ cargo test --test integration_otel
 ### Testing Levels
 
 ```bash
-# Unit tests only
+# Unit tests only (cargo test is fine)
 cargo test --lib
 
-# Integration tests
+# Integration tests (cargo test is fine)
 cargo test --test '*'
 
-# Framework self-tests
-cargo run -- self-test
+# Framework self-tests (MUST use Homebrew installation)
+clnrm self-test
+clnrm self-test --suite otel --otel-exporter stdout
 
 # Property-based tests (160K+ generated cases)
 cargo test --features proptest
@@ -318,7 +342,7 @@ let output = env.execute_command(&handle, &["echo", "hello"]).await?;
 
 Before ANY code is production-ready, ALL must be true:
 
-- [ ] `cargo build --release` succeeds with zero warnings
+- [ ] `cargo build --release --features otel` succeeds with zero warnings
 - [ ] `cargo test` passes completely
 - [ ] `cargo clippy -- -D warnings` shows zero issues
 - [ ] No `.unwrap()` or `.expect()` in production code paths
@@ -327,7 +351,8 @@ Before ANY code is production-ready, ALL must be true:
 - [ ] Tests follow AAA pattern with descriptive names
 - [ ] No `println!` in production code (use `tracing` macros)
 - [ ] No fake `Ok(())` returns from incomplete implementations
-- [ ] Framework self-test validates the feature (`cargo run -- self-test`)
+- [ ] **Homebrew installation validates the feature** (`brew install clnrm && clnrm self-test`)
+- [ ] Feature tested via production installation path, not `cargo run`
 
 ## Integration with Observability
 

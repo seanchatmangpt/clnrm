@@ -189,7 +189,9 @@ impl CountExpectation {
 
     /// Add a per-name count bound
     pub fn with_name_count(mut self, name: String, bound: CountBound) -> Self {
-        self.by_name.get_or_insert_with(HashMap::new).insert(name, bound);
+        self.by_name
+            .get_or_insert_with(HashMap::new)
+            .insert(name, bound);
         self
     }
 
@@ -211,10 +213,7 @@ impl CountExpectation {
             .map(|s| s.events.as_ref().map(|e| e.len()).unwrap_or(0))
             .sum();
 
-        let errors_total = spans
-            .iter()
-            .filter(|s| self.is_error_span(s))
-            .count();
+        let errors_total = spans.iter().filter(|s| self.is_error_span(s)).count();
 
         let mut by_name: HashMap<String, usize> = HashMap::new();
         for span in spans {
@@ -295,9 +294,7 @@ mod tests {
     }
 
     fn create_span_with_events(name: &str, event_count: usize) -> SpanData {
-        let events = (0..event_count)
-            .map(|i| format!("event_{}", i))
-            .collect();
+        let events = (0..event_count).map(|i| format!("event_{}", i)).collect();
 
         SpanData {
             name: name.to_string(),
@@ -371,8 +368,7 @@ mod tests {
             create_span("span2"),
             create_span("span3"),
         ];
-        let expectation = CountExpectation::new()
-            .with_spans_total(CountBound::eq(3));
+        let expectation = CountExpectation::new().with_spans_total(CountBound::eq(3));
 
         // Act
         let result = expectation.validate(&spans)?;
@@ -390,8 +386,7 @@ mod tests {
             create_span_with_events("span1", 2),
             create_span_with_events("span2", 3),
         ];
-        let expectation = CountExpectation::new()
-            .with_events_total(CountBound::eq(5));
+        let expectation = CountExpectation::new().with_events_total(CountBound::eq(5));
 
         // Act
         let result = expectation.validate(&spans)?;
@@ -426,8 +421,7 @@ mod tests {
     fn test_count_expectation_failure() -> Result<()> {
         // Arrange
         let spans = vec![create_span("span1")];
-        let expectation = CountExpectation::new()
-            .with_spans_total(CountBound::eq(5)); // Expect 5 but only 1
+        let expectation = CountExpectation::new().with_spans_total(CountBound::eq(5)); // Expect 5 but only 1
 
         // Act
         let result = expectation.validate(&spans)?;

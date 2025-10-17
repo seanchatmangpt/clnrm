@@ -8,11 +8,11 @@
 //! - Output format validation
 //! - Integration with existing framework
 
-use clnrm_core::cli::commands::{
-    filter_spans, pull_images, render_template_with_vars, reproduce_baseline,
-    show_collector_logs, show_collector_status, visualize_graph,
-};
 use clnrm_core::cli::commands::v0_7_0::redgreen_impl::run_red_green_validation;
+use clnrm_core::cli::commands::{
+    filter_spans, pull_images, render_template_with_vars, reproduce_baseline, show_collector_logs,
+    show_collector_status, visualize_graph,
+};
 use clnrm_core::cli::types::{GraphFormat, OutputFormat};
 use clnrm_core::error::Result;
 use std::fs;
@@ -90,10 +90,7 @@ name = "{{ test_name }}"
 description = "{{ description }}"
 "#;
     fs::write(&template_file, content).map_err(|e| {
-        clnrm_core::error::CleanroomError::io_error(format!(
-            "Failed to write template file: {}",
-            e
-        ))
+        clnrm_core::error::CleanroomError::io_error(format!("Failed to write template file: {}", e))
     })?;
 
     Ok(template_file)
@@ -266,7 +263,13 @@ async fn test_spans_command_filters_successfully() -> Result<()> {
     })?;
 
     // Act
-    let result = filter_spans(&trace_file, Some("test"), &OutputFormat::Human, false, false);
+    let result = filter_spans(
+        &trace_file,
+        Some("test"),
+        &OutputFormat::Human,
+        false,
+        false,
+    );
 
     // Assert
     assert!(result.is_ok());
@@ -309,12 +312,7 @@ async fn test_render_command_with_valid_json_map() -> Result<()> {
     ];
 
     // Act
-    let result = render_template_with_vars(
-        &template_file,
-        &var_map,
-        Some(&output_file),
-        false,
-    );
+    let result = render_template_with_vars(&template_file, &var_map, Some(&output_file), false);
 
     // Assert
     assert!(result.is_ok());
@@ -501,11 +499,7 @@ async fn test_graph_output_formats_all_work() -> Result<()> {
 
     for format in formats {
         let result = visualize_graph(&trace_file, &format, false, None);
-        assert!(
-            result.is_ok(),
-            "Format {:?} should work",
-            format
-        );
+        assert!(result.is_ok(), "Format {:?} should work", format);
     }
 
     Ok(())
@@ -551,12 +545,8 @@ async fn test_render_then_pull_workflow() -> Result<()> {
         "description=Generated test".to_string(),
     ];
 
-    let render_result = render_template_with_vars(
-        &template_file,
-        &var_map,
-        Some(&output_file),
-        false,
-    );
+    let render_result =
+        render_template_with_vars(&template_file, &var_map, Some(&output_file), false);
 
     // Assert 1
     assert!(render_result.is_ok());

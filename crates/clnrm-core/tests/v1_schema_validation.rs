@@ -89,10 +89,7 @@ memory_mb = 512
     // Validate OTEL config
     let otel = config.otel.as_ref().expect("OTEL config missing");
     assert_eq!(otel.exporter, "otlp");
-    assert_eq!(
-        otel.endpoint.as_ref().unwrap(),
-        "http://localhost:4318"
-    );
+    assert_eq!(otel.endpoint.as_ref().unwrap(), "http://localhost:4318");
     assert_eq!(otel.protocol.as_ref().unwrap(), "http/protobuf");
     assert_eq!(otel.sample_ratio.unwrap(), 1.0);
 
@@ -304,14 +301,8 @@ events.all = ["init", "process", "cleanup"]
         span1.events.as_ref().unwrap().any.as_ref().unwrap().len(),
         2
     );
-    assert_eq!(
-        span1.duration_ms.as_ref().unwrap().min.unwrap(),
-        100.0
-    );
-    assert_eq!(
-        span1.duration_ms.as_ref().unwrap().max.unwrap(),
-        5000.0
-    );
+    assert_eq!(span1.duration_ms.as_ref().unwrap().min.unwrap(), 100.0);
+    assert_eq!(span1.duration_ms.as_ref().unwrap().max.unwrap(), 5000.0);
 
     let span2 = &expect.span[1];
     assert_eq!(

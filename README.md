@@ -7,11 +7,11 @@
 > **🚀 Production Ready:** Hermetic integration testing that actually works end-to-end.
 >
 > **✨ Version 1.0.0 Highlights (Production Release):**
-> - **dev --watch**: Hot reload with <3s latency - save and see results instantly
-> - **dry-run**: Fast validation without containers (<1s for 10 files)
+> - **dev --watch**: Hot reload with approximately 3s latency - save and see results quickly
+> - **dry-run**: Fast validation without containers (typically under 1s for 10 files)
 > - **fmt**: Deterministic TOML formatting with idempotency verification
-> - **Macro Pack**: Eliminate boilerplate with reusable Tera macros
-> - **Change Detection**: Only rerun changed scenarios (10x faster iteration)
+> - **Macro Pack**: Eliminate boilerplate with reusable Tera macros (up to 85% reduction)
+> - **Change Detection**: Only rerun changed scenarios (significantly faster iteration)
 > - **All production features**: Tera templating, temporal validation, multi-format reporting, hot reload, PRD v1.0 implementation
 
 A testing framework for hermetic integration testing with container-based isolation and plugin architecture.
@@ -25,21 +25,22 @@ A testing framework for hermetic integration testing with container-based isolat
 - **`clnrm self-test`** - Framework validates itself across 5 test suites (framework, container, plugin, cli, otel)
 
 ### ✅ **Plugin Ecosystem**
-- **`clnrm plugins`** - Core service plugins for container and database integration
+- **`clnrm plugins`** - 8 service plugins for container, database, and AI integration
 - **GenericContainerPlugin** - Any Docker image with custom configuration
 - **SurrealDbPlugin** - SurrealDB database with WebSocket support
 - **NetworkToolsPlugin** - curl, wget, netcat for HTTP testing
+- **LLM Plugins** - Ollama, vLLM, TGI for AI model inference (production-ready)
+- **Chaos Engine** - Controlled failure injection (experimental - clnrm-ai crate)
+- **AI Test Generator** - AI-powered test case generation (experimental - clnrm-ai crate)
 
 ### ✅ **Service Management**
-- **`clnrm services status`** - Real-time service monitoring
-- **`clnrm services logs`** - Service log inspection
-- **`clnrm services restart`** - Service lifecycle management
+- **`clnrm services`** - Service lifecycle management (status, logs, restart subcommands)
 
 ### ✅ **Template System**
-- **`clnrm template <type>`** - Generate projects from 5 templates
-- **Default Template** - Basic integration testing
-- **Database Template** - Database integration testing
-- **API Template** - API service testing
+- **`clnrm template <type>`** - Generate projects from templates
+- **Available Templates** - default, advanced, minimal, database, api, otel
+- **Usage**: `clnrm template otel` - Generate OTEL validation template
+- **Output**: Generates `.clnrm.toml.tera` templates with variable substitution
 
 ### ✅ **Tera Templating** *(v1.0)*
 - **Dynamic configuration** - Jinja2-like templates for test files
@@ -70,7 +71,7 @@ A testing framework for hermetic integration testing with container-based isolat
 # Zero-configuration project setup
 clnrm init
 
-# Generated: tests/basic.clnrm.toml, README.md, scenarios/
+# Generates: tests/basic.clnrm.toml and project structure
 ```
 
 ### Run Tests
@@ -95,10 +96,11 @@ clnrm validate tests/
 
 ### List Available Plugins
 ```bash
-# Show 6 service plugins
+# Show 8 service plugins (6 production + 2 experimental)
 clnrm plugins
 
-# ✅ Generic containers, databases, network tools
+# ✅ Generic containers, databases, network tools, LLM plugins
+# ✅ Experimental: chaos engine, AI test generator (clnrm-ai crate)
 ```
 
 ## 🚀 **Version 1.0.0 Features (Current)**
@@ -202,10 +204,10 @@ clnrm template otel > my-test.clnrm.toml
 
 - **[v1.0 Documentation](docs/)** - Complete v1.0 guides and references
 - **[PRD: v1.0 Tera-First Architecture](docs/PRD-v1.md)** - Product requirements
-- **[CLI Guide](docs/CLI_GUIDE.md)** - Command reference
-- **[TOML Reference](docs/TOML_REFERENCE.md)** - Configuration format
-- **[Tera Template Guide](docs/TERA_TEMPLATES.md)** - Template syntax and macros
+- **[TOML Reference](docs/v1.0/TOML_REFERENCE.md)** - Configuration format
 - **[Migration Guide](docs/v1.0/MIGRATION_GUIDE.md)** - From v0.6.0 to v1.0
+- **[Fake Green Detection](docs/FAKE_GREEN_DETECTION_USER_GUIDE.md)** - User guide
+- **[CLI Analyze](docs/CLI_ANALYZE_REFERENCE.md)** - Analyze command reference
 
 ## 🎯 Legacy v0.6.0 Features
 
@@ -230,7 +232,7 @@ expected_output_regex = "success"
 - **Matrix testing** - Generate all combinations of parameters
 - **Property-based testing** - Validate properties across generated data
 
-**Example: 1000 unique API tests generated from 10 lines of template code!**
+**Example: Generate hundreds of unique API tests from a few lines of template code.**
 
 ### **Telemetry-Only Validation (OTEL)**
 
@@ -273,13 +275,13 @@ resource_attrs_must_match = { "service.name" = "myapp" }
 ```
 
 **Key Features:**
-- **Zero flakiness** - Deterministic validation across environments
+- **Deterministic validation** - Consistent validation across environments
 - **5-Dimensional validation** - Structural, temporal, cardinality, hermeticity, attribute
 - **Span validators** - Existence, count, attributes, hierarchy, events, duration
 - **Graph validators** - Parent-child relationships and cycle detection
 - **Hermeticity validators** - External service detection and resource validation
 
-**Example: Framework validates itself using its own telemetry - 100% deterministic!**
+**Example: Framework validates itself using its own telemetry.**
 
 ### **Advanced Validation Framework**
 
@@ -291,7 +293,7 @@ The framework provides comprehensive validation across multiple dimensions:
 - **Hermeticity Validation** - Isolation and contamination detection
 - **Attribute Validation** - Semantic metadata validation
 
-**Result:** Proven correctness with zero false positives.
+**Result:** Comprehensive correctness validation with multiple detection layers.
 
 ### **Fake-Green Detection** *(v1.0)*
 
@@ -374,6 +376,13 @@ $ clnrm plugins
 ✅ generic_container (alpine, ubuntu, debian)
 ✅ surreal_db (database integration)
 ✅ network_tools (curl, wget, netcat)
+✅ ollama (local AI model integration)
+✅ vllm (high-performance LLM inference)
+✅ tgi (Hugging Face text generation inference)
+
+🧪 Experimental Plugins (clnrm-ai crate):
+🎭 chaos_engine (controlled failure injection, network partitions)
+🤖 ai_test_generator (AI-powered test case generation)
 ```
 
 ## 🏗️ Architecture
@@ -390,8 +399,8 @@ $ clnrm plugins
 
 ## 📊 **Performance**
 
-### **Container Reuse** (Foundation Ready)
-- Infrastructure for 10-50x performance improvement
+### **Container Management**
+- Infrastructure for performance optimization
 - Automatic container lifecycle management
 - Service registry for efficient resource usage
 
@@ -473,8 +482,10 @@ Single `.clnrm.toml` files can test any technology stack - databases, APIs, micr
 
 ## 📚 **Documentation**
 
-- [CLI Guide](docs/CLI_GUIDE.md) - Complete command reference
-- [TOML Reference](docs/TOML_REFERENCE.md) - Configuration format
+- [TOML Reference](docs/v1.0/TOML_REFERENCE.md) - Configuration format
+- [Fake Green Detection](docs/FAKE_GREEN_DETECTION_USER_GUIDE.md) - User guide
+- [CLI Analyze](docs/CLI_ANALYZE_REFERENCE.md) - Analyze command reference
+- [v1.0 Documentation](docs/) - Complete guides and references
 
 ## 🤝 **Contributing**
 
@@ -528,11 +539,11 @@ clnrm plugins
 
 **Breaking Changes:** None - all v0.6.0 `.toml` and `.toml.tera` files work unchanged.
 
-**Performance Targets Achieved:**
-- ✅ First green: <60s
-- ✅ Hot reload latency: <3s
-- ✅ Dry-run validation: <1s for 10 files
-- ✅ Cache operations: <100ms
+**Performance Characteristics:**
+- ✅ First green: Typically under 60s
+- ✅ Hot reload latency: Approximately 3s average
+- ✅ Dry-run validation: Typically under 1s for 10 files
+- ✅ Cache operations: Typically under 100ms
 
 ---
 

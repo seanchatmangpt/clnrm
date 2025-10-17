@@ -170,15 +170,13 @@ impl ArtifactCollector {
 
     /// Ensure artifact directory exists
     pub async fn ensure_artifact_dir(&self) -> Result<()> {
-        fs::create_dir_all(&self.artifact_dir)
-            .await
-            .map_err(|e| {
-                CleanroomError::io_error(format!(
-                    "Failed to create artifact directory: {}",
-                    self.artifact_dir.display()
-                ))
-                .with_source(e.to_string())
-            })?;
+        fs::create_dir_all(&self.artifact_dir).await.map_err(|e| {
+            CleanroomError::io_error(format!(
+                "Failed to create artifact directory: {}",
+                self.artifact_dir.display()
+            ))
+            .with_source(e.to_string())
+        })?;
 
         info!(
             "Created artifact directory: {}",
@@ -339,11 +337,7 @@ impl ArtifactCollector {
             })?;
         }
 
-        info!(
-            "Collected {} span(s) to: {}",
-            spans.len(),
-            path.display()
-        );
+        info!("Collected {} span(s) to: {}", spans.len(), path.display());
         Ok(path)
     }
 

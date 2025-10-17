@@ -81,7 +81,10 @@ fn test_feature_macro_library_available() -> Result<()> {
         macro_content.contains("macro scenario"),
         "scenario() macro exists"
     );
-    assert!(macro_content.len() > 1000, "Macro library has substantial content");
+    assert!(
+        macro_content.len() > 1000,
+        "Macro library has substantial content"
+    );
 
     Ok(())
 }
@@ -93,9 +96,12 @@ fn test_feature_hot_reload_command_exists() -> Result<()> {
     use clnrm_core::cli::commands::run_dev_mode;
 
     // Act - Check function signature exists (compilation test)
-    let _dev_fn: fn(Option<Vec<PathBuf>>, u64, bool) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = run_dev_mode;
+    let _dev_fn: fn(
+        Option<Vec<PathBuf>>,
+        u64,
+        bool,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> = run_dev_mode;
 
     // Assert - Function exists and has correct signature
     assert!(true, "Hot reload command (run_dev_mode) exists");
@@ -158,11 +164,8 @@ fn test_feature_linting_command_exists() -> Result<()> {
     use clnrm_core::cli::commands::lint_files;
 
     // Act - Check function exists
-    let _lint_fn: fn(
-        &[PathBuf],
-        &clnrm_core::cli::types::LintFormat,
-        bool,
-    ) -> Result<()> = lint_files;
+    let _lint_fn: fn(&[PathBuf], &clnrm_core::cli::types::LintFormat, bool) -> Result<()> =
+        lint_files;
 
     // Assert
     assert!(true, "Linting command exists");
@@ -230,9 +233,11 @@ fn test_command_help_exists() {
 #[test]
 fn test_command_init_exists() -> Result<()> {
     use clnrm_core::cli::commands::init_project;
-    let _init_fn: fn(bool, bool) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = init_project;
+    let _init_fn: fn(
+        bool,
+        bool,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> = init_project;
     assert!(true, "Init command exists");
     Ok(())
 }
@@ -243,9 +248,8 @@ fn test_command_run_exists() -> Result<()> {
     let _run_fn: fn(
         &[PathBuf],
         &clnrm_core::cli::types::CliConfig,
-    ) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = run_tests;
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> = run_tests;
     assert!(true, "Run command exists");
     Ok(())
 }
@@ -271,9 +275,12 @@ fn test_command_plugins_exists() -> Result<()> {
 #[test]
 fn test_command_dev_watch_exists() -> Result<()> {
     use clnrm_core::cli::commands::run_dev_mode;
-    let _dev_fn: fn(Option<Vec<PathBuf>>, u64, bool) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = run_dev_mode;
+    let _dev_fn: fn(
+        Option<Vec<PathBuf>>,
+        u64,
+        bool,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> = run_dev_mode;
     assert!(true, "Dev --watch command exists");
     Ok(())
 }
@@ -297,11 +304,8 @@ fn test_command_fmt_exists() -> Result<()> {
 #[test]
 fn test_command_lint_exists() -> Result<()> {
     use clnrm_core::cli::commands::lint_files;
-    let _lint_fn: fn(
-        &[PathBuf],
-        &clnrm_core::cli::types::LintFormat,
-        bool,
-    ) -> Result<()> = lint_files;
+    let _lint_fn: fn(&[PathBuf], &clnrm_core::cli::types::LintFormat, bool) -> Result<()> =
+        lint_files;
     assert!(true, "Lint command exists");
     Ok(())
 }
@@ -320,7 +324,10 @@ fn test_command_template_exists() -> Result<()> {
 #[test]
 fn test_command_self_test_exists() -> Result<()> {
     use clnrm_core::cli::commands::run_self_tests;
-    let _self_test_fn: fn(Option<&str>, bool) -> std::pin::Pin<
+    let _self_test_fn: fn(
+        Option<&str>,
+        bool,
+    ) -> std::pin::Pin<
         Box<dyn std::future::Future<Output = Result<()>> + Send>,
     > = run_self_tests;
     assert!(true, "Self-test command exists");
@@ -330,9 +337,9 @@ fn test_command_self_test_exists() -> Result<()> {
 #[test]
 fn test_command_services_status_exists() -> Result<()> {
     use clnrm_core::cli::commands::show_service_status;
-    let _status_fn: fn() -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = show_service_status;
+    let _status_fn: fn()
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> =
+        show_service_status;
     assert!(true, "Services status command exists");
     Ok(())
 }
@@ -340,9 +347,12 @@ fn test_command_services_status_exists() -> Result<()> {
 #[test]
 fn test_command_services_logs_exists() -> Result<()> {
     use clnrm_core::cli::commands::show_service_logs;
-    let _logs_fn: fn(&str, usize) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = show_service_logs;
+    let _logs_fn: fn(
+        &str,
+        usize,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> =
+        show_service_logs;
     assert!(true, "Services logs command exists");
     Ok(())
 }
@@ -350,9 +360,11 @@ fn test_command_services_logs_exists() -> Result<()> {
 #[test]
 fn test_command_services_restart_exists() -> Result<()> {
     use clnrm_core::cli::commands::restart_service;
-    let _restart_fn: fn(&str) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = restart_service;
+    let _restart_fn: fn(
+        &str,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> =
+        restart_service;
     assert!(true, "Services restart command exists");
     Ok(())
 }
@@ -360,9 +372,13 @@ fn test_command_services_restart_exists() -> Result<()> {
 #[test]
 fn test_command_services_ai_manage_exists() -> Result<()> {
     use clnrm_core::cli::commands::ai_manage;
-    let _ai_fn: fn(bool, bool, bool, u32, Option<&str>) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = ai_manage;
+    let _ai_fn: fn(
+        bool,
+        bool,
+        bool,
+        u32,
+        Option<&str>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> = ai_manage;
     assert!(true, "Services ai-manage command exists");
     Ok(())
 }
@@ -382,12 +398,8 @@ fn test_command_report_exists() -> Result<()> {
 #[test]
 fn test_command_diff_exists() -> Result<()> {
     use clnrm_core::cli::commands::diff_traces;
-    let _diff_fn: fn(
-        &PathBuf,
-        &PathBuf,
-        &clnrm_core::cli::types::DiffFormat,
-        bool,
-    ) -> Result<()> = diff_traces;
+    let _diff_fn: fn(&PathBuf, &PathBuf, &clnrm_core::cli::types::DiffFormat, bool) -> Result<()> =
+        diff_traces;
     assert!(true, "Diff command exists");
     Ok(())
 }
@@ -395,9 +407,11 @@ fn test_command_diff_exists() -> Result<()> {
 #[test]
 fn test_command_record_exists() -> Result<()> {
     use clnrm_core::cli::commands::run_record;
-    let _record_fn: fn(Option<Vec<PathBuf>>, Option<&PathBuf>) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = run_record;
+    let _record_fn: fn(
+        Option<Vec<PathBuf>>,
+        Option<&PathBuf>,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> = run_record;
     assert!(true, "Record command exists");
     Ok(())
 }
@@ -405,9 +419,11 @@ fn test_command_record_exists() -> Result<()> {
 #[test]
 fn test_command_health_exists() -> Result<()> {
     use clnrm_core::cli::commands::system_health_check;
-    let _health_fn: fn(bool) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = system_health_check;
+    let _health_fn: fn(
+        bool,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> =
+        system_health_check;
     assert!(true, "Health command exists");
     Ok(())
 }
@@ -457,8 +473,7 @@ fn test_template_full_validation_generator_exists() -> Result<()> {
 #[test]
 fn test_template_custom_generator_exists() -> Result<()> {
     use clnrm_core::cli::commands::generate_from_template;
-    let _custom_fn: fn(&str, Option<&str>, Option<&PathBuf>) -> Result<()> =
-        generate_from_template;
+    let _custom_fn: fn(&str, Option<&str>, Option<&PathBuf>) -> Result<()> = generate_from_template;
     assert!(true, "Template custom generator exists");
     Ok(())
 }
@@ -468,9 +483,12 @@ fn test_template_custom_generator_exists() -> Result<()> {
 #[test]
 fn test_prd_command_pull_exists() -> Result<()> {
     use clnrm_core::cli::commands::pull_images;
-    let _pull_fn: fn(Option<Vec<PathBuf>>, bool, usize) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = pull_images;
+    let _pull_fn: fn(
+        Option<Vec<PathBuf>>,
+        bool,
+        usize,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> = pull_images;
     assert!(true, "Pull command exists");
     Ok(())
 }
@@ -518,9 +536,9 @@ fn test_prd_command_repro_exists() -> Result<()> {
         &std::path::Path,
         bool,
         Option<&PathBuf>,
-    ) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = reproduce_baseline;
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> =
+        reproduce_baseline;
     assert!(true, "Repro command exists");
     Ok(())
 }
@@ -543,12 +561,15 @@ fn test_prd_command_redgreen_exists() -> Result<()> {
 #[test]
 fn test_prd_command_collector_exists() -> Result<()> {
     use clnrm_core::cli::commands::{show_collector_logs, show_collector_status};
-    let _status_fn: fn() -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = show_collector_status;
-    let _logs_fn: fn(usize, bool) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = show_collector_logs;
+    let _status_fn: fn()
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> =
+        show_collector_status;
+    let _logs_fn: fn(
+        usize,
+        bool,
+    )
+        -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> =
+        show_collector_logs;
     assert!(true, "Collector commands exist");
     Ok(())
 }
@@ -561,10 +582,10 @@ fn test_prd_command_collector_exists() -> Result<()> {
 #[test]
 fn test_acceptance_core_pipeline_components_exist() -> Result<()> {
     // Verify each component of the pipeline exists
-    use clnrm_core::template; // Tera
-    use clnrm_core::config; // TOML parsing
     use clnrm_core::backend; // Execution
-    use clnrm_core::telemetry; // OTEL collection
+    use clnrm_core::config; // TOML parsing
+    use clnrm_core::telemetry;
+    use clnrm_core::template; // Tera // OTEL collection
 
     // If modules import successfully, pipeline components exist
     let _t = template::TemplateRenderer::default();
@@ -602,9 +623,10 @@ fn test_acceptance_framework_self_tests_available() -> Result<()> {
     use clnrm_core::cli::commands::run_self_tests;
 
     // Self-test function exists
-    let _fn: fn(Option<&str>, bool) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = Result<()>> + Send>,
-    > = run_self_tests;
+    let _fn: fn(
+        Option<&str>,
+        bool,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send>> = run_self_tests;
 
     assert!(true, "Framework self-tests available");
     Ok(())
@@ -645,10 +667,7 @@ fn test_acceptance_template_system_complete() -> Result<()> {
 
     let _renderer = TemplateRenderer::default();
     assert!(MACRO_LIBRARY.len() > 0, "Macro library exists");
-    assert!(
-        MACRO_LIBRARY.contains("macro span"),
-        "Span macro exists"
-    );
+    assert!(MACRO_LIBRARY.contains("macro span"), "Span macro exists");
 
     Ok(())
 }
@@ -796,7 +815,10 @@ fn test_performance_format_operation_fast() -> Result<()> {
     let _fmt_fn: fn(&[PathBuf], bool, bool) -> Result<()> = format_files;
 
     // Target: <50ms per file (tested in integration tests)
-    assert!(true, "Format operation exists and is designed for <50ms performance");
+    assert!(
+        true,
+        "Format operation exists and is designed for <50ms performance"
+    );
 
     Ok(())
 }

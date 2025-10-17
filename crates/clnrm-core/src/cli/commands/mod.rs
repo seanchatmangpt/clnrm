@@ -15,8 +15,8 @@ pub mod validate;
 
 // Re-export all public functions for easy access
 pub use run::{
-    run_tests, run_tests_parallel, run_tests_parallel_with_results,
-    run_tests_sequential, run_tests_sequential_with_results, run_tests_with_shard,
+    run_tests, run_tests_parallel, run_tests_parallel_with_results, run_tests_sequential,
+    run_tests_sequential_with_results, run_tests_with_shard,
 };
 
 pub use init::init_project;

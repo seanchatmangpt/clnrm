@@ -93,7 +93,10 @@ async fn test_attack_a_echo_pass_fails_on_missing_span() -> Result<()> {
 
         // Verify first failing validator is span expectations
         let first_failure = report.validators.iter().find(|v| !v.passed);
-        assert!(first_failure.is_some(), "Should have at least one failing validator");
+        assert!(
+            first_failure.is_some(),
+            "Should have at least one failing validator"
+        );
 
         let failed_validator = first_failure.unwrap();
         assert_eq!(
@@ -143,17 +146,19 @@ async fn test_attack_b_log_mimicry_fails_on_missing_spans() -> Result<()> {
         assert_eq!(report.span_count, 0, "Fake logs produce zero spans");
 
         // Verify multiple validators catch the attack
-        let span_failure = report.validators.iter().find(|v| {
-            !v.passed && v.name == "Span Expectations"
-        });
+        let span_failure = report
+            .validators
+            .iter()
+            .find(|v| !v.passed && v.name == "Span Expectations");
         assert!(
             span_failure.is_some(),
             "Span Expectations validator should fail"
         );
 
-        let counts_failure = report.validators.iter().find(|v| {
-            !v.passed && v.name == "Counts"
-        });
+        let counts_failure = report
+            .validators
+            .iter()
+            .find(|v| !v.passed && v.name == "Counts");
         assert!(
             counts_failure.is_some(),
             "Counts validator should also fail"
@@ -162,8 +167,8 @@ async fn test_attack_b_log_mimicry_fails_on_missing_spans() -> Result<()> {
         // First failure is span existence
         let first_failure = report.validators.iter().find(|v| !v.passed).unwrap();
         assert!(
-            first_failure.details.contains("clnrm.run") ||
-            first_failure.details.contains("not found"),
+            first_failure.details.contains("clnrm.run")
+                || first_failure.details.contains("not found"),
             "Should indicate missing span"
         );
     }
@@ -204,20 +209,25 @@ async fn test_attack_c_empty_otel_fails_on_zero_spans() -> Result<()> {
         assert_eq!(report.span_count, 0, "OTEL vars set but no spans emitted");
 
         // Verify span expectations fail
-        let span_failure = report.validators.iter().find(|v| {
-            !v.passed && v.name == "Span Expectations"
-        });
+        let span_failure = report
+            .validators
+            .iter()
+            .find(|v| !v.passed && v.name == "Span Expectations");
         assert!(span_failure.is_some(), "Span validator must fail");
 
         // Verify graph expectations also fail
-        let graph_failure = report.validators.iter().find(|v| {
-            !v.passed && v.name == "Graph Structure"
-        });
+        let graph_failure = report
+            .validators
+            .iter()
+            .find(|v| !v.passed && v.name == "Graph Structure");
         assert!(graph_failure.is_some(), "Graph validator must fail");
 
         // First failing rule is span existence
         assert!(
-            report.validators.iter().any(|v| !v.passed && v.details.contains("not found")),
+            report
+                .validators
+                .iter()
+                .any(|v| !v.passed && v.details.contains("not found")),
             "Should indicate missing spans"
         );
     }
@@ -272,7 +282,11 @@ async fn test_legitimate_self_test_passes_all_validators() -> Result<()> {
     assert!(
         report.is_success(),
         "Legitimate test should pass all validators: failures={:?}",
-        report.validators.iter().filter(|v| !v.passed).collect::<Vec<_>>()
+        report
+            .validators
+            .iter()
+            .filter(|v| !v.passed)
+            .collect::<Vec<_>>()
     );
     assert!(report.span_count >= 2, "Should have multiple spans");
     assert_eq!(report.failure_count(), 0, "Should have zero failures");
@@ -282,8 +296,7 @@ async fn test_legitimate_self_test_passes_all_validators() -> Result<()> {
         assert!(
             validator.passed,
             "Validator '{}' should pass: {}",
-            validator.name,
-            validator.details
+            validator.name, validator.details
         );
     }
 

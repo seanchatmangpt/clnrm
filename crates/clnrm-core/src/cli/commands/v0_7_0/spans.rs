@@ -225,11 +225,9 @@ pub fn filter_spans(
 
     // 2. Compile regex pattern if provided
     let pattern = if let Some(grep_str) = grep {
-        Some(
-            regex::Regex::new(grep_str).map_err(|e| {
-                CleanroomError::validation_error(format!("Invalid regex pattern '{}': {}", grep_str, e))
-            })?,
-        )
+        Some(regex::Regex::new(grep_str).map_err(|e| {
+            CleanroomError::validation_error(format!("Invalid regex pattern '{}': {}", grep_str, e))
+        })?)
     } else {
         None
     };
@@ -307,18 +305,15 @@ fn convert_otlp_to_spans(trace_data: &TraceData) -> Result<Vec<OtelSpan>> {
 
     for resource_span in &trace_data.resource_spans {
         // Extract service name from resource attributes
-        let service_name = resource_span
-            .resource
-            .as_ref()
-            .and_then(|r| {
-                r.attributes.iter().find_map(|attr| {
-                    if attr.key == "service.name" {
-                        attr.value.string_value.clone()
-                    } else {
-                        None
-                    }
-                })
-            });
+        let service_name = resource_span.resource.as_ref().and_then(|r| {
+            r.attributes.iter().find_map(|attr| {
+                if attr.key == "service.name" {
+                    attr.value.string_value.clone()
+                } else {
+                    None
+                }
+            })
+        });
 
         for scope_span in &resource_span.scope_spans {
             for otlp_span in &scope_span.spans {
@@ -337,12 +332,12 @@ fn convert_otlp_span(otlp_span: &OtlpSpan, service_name: Option<String>) -> Resu
         &otlp_span.start_time_unix_nano,
         &otlp_span.end_time_unix_nano,
     ) {
-        let start_ns = start.parse::<u64>().map_err(|e| {
-            CleanroomError::validation_error(format!("Invalid start time: {}", e))
-        })?;
-        let end_ns = end.parse::<u64>().map_err(|e| {
-            CleanroomError::validation_error(format!("Invalid end time: {}", e))
-        })?;
+        let start_ns = start
+            .parse::<u64>()
+            .map_err(|e| CleanroomError::validation_error(format!("Invalid start time: {}", e)))?;
+        let end_ns = end
+            .parse::<u64>()
+            .map_err(|e| CleanroomError::validation_error(format!("Invalid end time: {}", e)))?;
         Some(end_ns.saturating_sub(start_ns))
     } else {
         None
@@ -576,9 +571,8 @@ mod tests {
             ]
         }"#;
 
-        let mut temp_file = NamedTempFile::new().map_err(|e| {
-            CleanroomError::io_error(format!("Failed to create temp file: {}", e))
-        })?;
+        let mut temp_file = NamedTempFile::new()
+            .map_err(|e| CleanroomError::io_error(format!("Failed to create temp file: {}", e)))?;
         temp_file
             .write_all(trace_json.as_bytes())
             .map_err(|e| CleanroomError::io_error(format!("Failed to write temp file: {}", e)))?;
@@ -611,9 +605,8 @@ mod tests {
             ]
         }"#;
 
-        let mut temp_file = NamedTempFile::new().map_err(|e| {
-            CleanroomError::io_error(format!("Failed to create temp file: {}", e))
-        })?;
+        let mut temp_file = NamedTempFile::new()
+            .map_err(|e| CleanroomError::io_error(format!("Failed to create temp file: {}", e)))?;
         temp_file
             .write_all(trace_json.as_bytes())
             .map_err(|e| CleanroomError::io_error(format!("Failed to write temp file: {}", e)))?;

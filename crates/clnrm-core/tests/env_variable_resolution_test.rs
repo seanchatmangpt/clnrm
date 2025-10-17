@@ -13,8 +13,8 @@
 //! - `CLNRM_IMAGE` → image (default: registry/clnrm:1.0.0)
 //! - `OTEL_TOKEN` → token (default: "")
 
-use clnrm_core::template::{render_template, TemplateContext};
 use clnrm_core::error::Result;
+use clnrm_core::template::{render_template, TemplateContext};
 use std::collections::HashMap;
 
 /// Helper to clean up environment variables after tests
@@ -539,8 +539,9 @@ seed = 42
     assert!(rendered.contains("prod-token"));
 
     // Verify it's valid TOML
-    let parsed: toml::Value = toml::from_str(&rendered)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(format!("Invalid TOML: {}", e)))?;
+    let parsed: toml::Value = toml::from_str(&rendered).map_err(|e| {
+        clnrm_core::error::CleanroomError::config_error(format!("Invalid TOML: {}", e))
+    })?;
     assert!(parsed.get("meta").is_some());
     assert!(parsed.get("otel").is_some());
     assert!(parsed.get("service").is_some());
@@ -727,29 +728,30 @@ sample_ratio = 1.0
     let rendered = render_template(template, HashMap::new())?;
 
     // Assert - Parse as TOML to validate structure
-    let parsed: toml::Value = toml::from_str(&rendered)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(format!("TOML parse failed: {}", e)))?;
+    let parsed: toml::Value = toml::from_str(&rendered).map_err(|e| {
+        clnrm_core::error::CleanroomError::config_error(format!("TOML parse failed: {}", e))
+    })?;
 
     // Verify structure
-    let meta = parsed
-        .get("meta")
-        .ok_or_else(|| clnrm_core::error::CleanroomError::validation_error("Missing [meta] section"))?;
+    let meta = parsed.get("meta").ok_or_else(|| {
+        clnrm_core::error::CleanroomError::validation_error("Missing [meta] section")
+    })?;
     assert_eq!(
         meta.get("name").and_then(|v| v.as_str()),
         Some("parseable-service_test")
     );
 
-    let otel = parsed
-        .get("otel")
-        .ok_or_else(|| clnrm_core::error::CleanroomError::validation_error("Missing [otel] section"))?;
+    let otel = parsed.get("otel").ok_or_else(|| {
+        clnrm_core::error::CleanroomError::validation_error("Missing [otel] section")
+    })?;
     assert_eq!(
         otel.get("endpoint").and_then(|v| v.as_str()),
         Some("http://otel.example.com:4318")
     );
 
-    let resources = otel
-        .get("resources")
-        .ok_or_else(|| clnrm_core::error::CleanroomError::validation_error("Missing [otel.resources] section"))?;
+    let resources = otel.get("resources").ok_or_else(|| {
+        clnrm_core::error::CleanroomError::validation_error("Missing [otel.resources] section")
+    })?;
     assert_eq!(
         resources.get("service.name").and_then(|v| v.as_str()),
         Some("parseable-service")

@@ -1,0 +1,37 @@
+# README Example Test: clnrm run command
+# Verifies: "clnrm run - Real container execution with regex validation and output capture"
+# Location in README: Lines 23, 76-85, 349-358
+
+[test.metadata]
+name = "verify_clnrm_run"
+description = "Verify 'clnrm run' executes real containers with output validation as documented"
+version = "1.0.0"
+
+[service.test_runner]
+plugin = "generic_container"
+image = "alpine:latest"
+working_dir = "/workspace"
+
+[[scenario]]
+name = "run_command_executes_container"
+service = "test_runner"
+run = "clnrm run /workspace/tests/basic.clnrm.toml"
+
+# Expected outputs from README example (lines 351-357)
+[[expect.output]]
+pattern = "Executing test:"
+description = "Should show test execution started"
+
+[[expect.output]]
+pattern = "Step.*completed successfully"
+description = "Should show step completion"
+
+[[expect.output]]
+pattern = "Test.*completed successfully"
+description = "Should show test completion"
+
+[[expect.status]]
+exit_code = 0
+
+[report]
+json = "cmd_run_report.json"

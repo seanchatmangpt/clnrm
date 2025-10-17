@@ -1,0 +1,66 @@
+# README Example Test: No-Prefix Tera Template
+# Verifies: Complete no-prefix template example from README (lines 110-173)
+# This is the EXACT template from README lines 110-173
+
+[meta]
+name = "{{ svc }}_otel_proof"
+version = "1.0.0"
+description = "Telemetry-only validation"
+
+[vars]
+svc = "{{ svc | default(value='clnrm') }}"
+env = "{{ env | default(value='ci') }}"
+endpoint = "{{ endpoint | default(value='http://localhost:4318') }}"
+exporter = "{{ exporter | default(value='otlp') }}"
+freeze_clock = "{{ freeze_clock | default(value='2025-01-01T00:00:00Z') }}"
+image = "{{ image | default(value='registry/clnrm:1.0.0') }}"
+
+[otel]
+exporter = "{{ exporter }}"
+endpoint = "{{ endpoint }}"
+protocol = "http/protobuf"
+sample_ratio = 1.0
+resources = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
+
+[service.clnrm]
+plugin = "generic_container"
+image = "{{ image }}"
+args = ["self-test", "--otel-exporter", "{{ exporter }}", "--otel-endpoint", "{{ endpoint }}"]
+env = { "OTEL_TRACES_EXPORTER" = "{{ exporter }}", "OTEL_EXPORTER_OTLP_ENDPOINT" = "{{ endpoint }}" }
+wait_for_span = "clnrm.run"
+
+[[scenario]]
+name = "otel_only_proof"
+service = "clnrm"
+run = "clnrm run --otel-exporter {{ exporter }} --otel-endpoint {{ endpoint }}"
+artifacts.collect = ["spans:default"]
+
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+
+[[expect.span]]
+name = "clnrm.step:hello_world"
+parent = "clnrm.run"
+kind = "internal"
+events.any = ["container.start", "container.exec", "container.stop"]
+
+[expect.graph]
+must_include = [["clnrm.run", "clnrm.step:hello_world"]]
+acyclic = true
+
+[expect.status]
+all = "OK"
+
+[expect.hermeticity]
+no_external_services = true
+resource_attrs.must_match = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
+
+[determinism]
+seed = 42
+freeze_clock = "{{ freeze_clock }}"
+
+[report]
+json = "report.json"
+digest = "trace.sha256"

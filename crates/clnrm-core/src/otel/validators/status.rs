@@ -102,7 +102,9 @@ impl StatusExpectation {
 
     /// Add expected status for spans matching a name pattern
     pub fn with_name_pattern(mut self, pattern: String, status: StatusCode) -> Self {
-        self.by_name.get_or_insert_with(HashMap::new).insert(pattern, status);
+        self.by_name
+            .get_or_insert_with(HashMap::new)
+            .insert(pattern, status);
         self
     }
 
@@ -204,7 +206,10 @@ mod tests {
     fn create_span(name: &str, status: Option<StatusCode>) -> SpanData {
         let mut attributes = HashMap::new();
         if let Some(s) = status {
-            attributes.insert("otel.status_code".to_string(), serde_json::Value::String(s.as_str().to_string()));
+            attributes.insert(
+                "otel.status_code".to_string(),
+                serde_json::Value::String(s.as_str().to_string()),
+            );
         }
 
         SpanData {
@@ -296,8 +301,8 @@ mod tests {
         let spans = vec![
             create_span("container.start", Some(StatusCode::Error)), // Wrong!
         ];
-        let expectation = StatusExpectation::new()
-            .with_name_pattern("container.*".to_string(), StatusCode::Ok);
+        let expectation =
+            StatusExpectation::new().with_name_pattern("container.*".to_string(), StatusCode::Ok);
 
         // Act
         let result = expectation.validate(&spans)?;

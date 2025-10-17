@@ -133,7 +133,10 @@ async fn test_container_lifecycle_spans() -> clnrm_core::error::Result<()> {
 
     // Execute command in container - should create lifecycle spans
     let result = env
-        .execute_in_container("test-container", &vec!["echo".to_string(), "hello".to_string()])
+        .execute_in_container(
+            "test-container",
+            &vec!["echo".to_string(), "hello".to_string()],
+        )
         .await;
 
     // Verify execution succeeded

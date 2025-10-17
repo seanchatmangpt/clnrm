@@ -25,18 +25,22 @@ collect = ["spans:default", "logs:stderr"]
 "#;
 
     // Act
-    let config: toml::Value = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(format!("Parse error: {}", e)))?;
+    let config: toml::Value = toml::from_str(toml_content).map_err(|e| {
+        clnrm_core::error::CleanroomError::config_error(format!("Parse error: {}", e))
+    })?;
 
     let scenarios = config
         .get("scenario")
         .and_then(|s| s.as_array())
         .ok_or_else(|| clnrm_core::error::CleanroomError::validation_error("No scenarios found"))?;
 
-    let scenario: ScenarioConfig = toml::from_str(&toml::to_string(&scenarios[0]).map_err(|e| {
-        clnrm_core::error::CleanroomError::internal_error(format!("Serialization error: {}", e))
-    })?)
-    .map_err(|e| clnrm_core::error::CleanroomError::config_error(format!("Parse error: {}", e)))?;
+    let scenario: ScenarioConfig =
+        toml::from_str(&toml::to_string(&scenarios[0]).map_err(|e| {
+            clnrm_core::error::CleanroomError::internal_error(format!("Serialization error: {}", e))
+        })?)
+        .map_err(|e| {
+            clnrm_core::error::CleanroomError::config_error(format!("Parse error: {}", e))
+        })?;
 
     // Assert
     assert_eq!(scenario.name, "test_scenario");
@@ -60,18 +64,22 @@ run = "echo test"
 "#;
 
     // Act
-    let config: toml::Value = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(format!("Parse error: {}", e)))?;
+    let config: toml::Value = toml::from_str(toml_content).map_err(|e| {
+        clnrm_core::error::CleanroomError::config_error(format!("Parse error: {}", e))
+    })?;
 
     let scenarios = config
         .get("scenario")
         .and_then(|s| s.as_array())
         .ok_or_else(|| clnrm_core::error::CleanroomError::validation_error("No scenarios found"))?;
 
-    let scenario: ScenarioConfig = toml::from_str(&toml::to_string(&scenarios[0]).map_err(|e| {
-        clnrm_core::error::CleanroomError::internal_error(format!("Serialization error: {}", e))
-    })?)
-    .map_err(|e| clnrm_core::error::CleanroomError::config_error(format!("Parse error: {}", e)))?;
+    let scenario: ScenarioConfig =
+        toml::from_str(&toml::to_string(&scenarios[0]).map_err(|e| {
+            clnrm_core::error::CleanroomError::internal_error(format!("Serialization error: {}", e))
+        })?)
+        .map_err(|e| {
+            clnrm_core::error::CleanroomError::config_error(format!("Parse error: {}", e))
+        })?;
 
     // Assert
     assert_eq!(scenario.name, "test_scenario_no_artifacts");
@@ -114,7 +122,8 @@ Not a JSON line
 
     // Verify content
     let content = fs::read_to_string(&artifacts[0].path).map_err(|e| {
-        clnrm_core::error::CleanroomError::io_error("Failed to read artifact").with_source(e.to_string())
+        clnrm_core::error::CleanroomError::io_error("Failed to read artifact")
+            .with_source(e.to_string())
     })?;
     let lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
     assert_eq!(lines.len(), 3);
@@ -151,7 +160,8 @@ async fn test_artifact_collector_collects_logs() -> Result<()> {
 
     // Verify content
     let content = fs::read_to_string(&artifacts[0].path).map_err(|e| {
-        clnrm_core::error::CleanroomError::io_error("Failed to read artifact").with_source(e.to_string())
+        clnrm_core::error::CleanroomError::io_error("Failed to read artifact")
+            .with_source(e.to_string())
     })?;
     assert_eq!(content, stderr);
 
@@ -192,7 +202,9 @@ async fn test_artifact_collector_multiple_artifact_types() -> Result<()> {
     assert_eq!(artifacts.len(), 3);
 
     // Verify each artifact type
-    let span_artifact = artifacts.iter().find(|a| a.artifact_type == "spans:default");
+    let span_artifact = artifacts
+        .iter()
+        .find(|a| a.artifact_type == "spans:default");
     assert!(span_artifact.is_some());
     assert_eq!(span_artifact.unwrap().item_count, Some(2));
 
