@@ -57,10 +57,6 @@ pub enum Commands {
         #[arg(short, long)]
         watch: bool,
 
-        /// Interactive debugging mode
-        #[arg(short, long)]
-        interactive: bool,
-
         /// Force run all tests (bypass cache)
         #[arg(long)]
         force: bool,
@@ -263,12 +259,6 @@ pub enum Commands {
         /// Show verbose health information
         #[arg(short, long)]
         verbose: bool,
-    },
-
-    /// Plugin marketplace operations
-    Marketplace {
-        #[command(subcommand)]
-        command: crate::marketplace::MarketplaceSubcommands,
     },
 
     /// Development mode with file watching (v0.7.0)
@@ -673,8 +663,6 @@ pub struct CliConfig {
     pub fail_fast: bool,
     /// Watch mode
     pub watch: bool,
-    /// Interactive mode
-    pub interactive: bool,
     /// Verbosity level
     pub verbose: u8,
     /// Force bypass cache
@@ -691,7 +679,6 @@ impl Default for CliConfig {
             format: OutputFormat::Auto,
             fail_fast: false,
             watch: false,
-            interactive: false,
             verbose: 0,
             force: false,
             digest: false,
@@ -853,7 +840,6 @@ mod tests {
         let _html = ReportFormat::Html;
         let _markdown = ReportFormat::Markdown;
         let _json = ReportFormat::Json;
-        let _pdf = ReportFormat::Pdf;
     }
 
     #[test]

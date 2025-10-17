@@ -7,8 +7,8 @@
 //! tests its own tracing, metrics, and logging capabilities by creating
 //! observable events and verifying they are captured correctly.
 
-use clnrm_core::{CleanroomEnvironment, CleanroomError};
-use std::time::{Duration, Instant};
+use clnrm_core::CleanroomError;
+use std::time::Instant;
 
 #[tokio::main]
 async fn main() -> Result<(), CleanroomError> {

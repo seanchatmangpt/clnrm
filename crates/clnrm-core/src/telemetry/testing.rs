@@ -3,11 +3,13 @@
 //! Provides in-memory span exporters and test helpers for validating
 //! OpenTelemetry functionality without external dependencies.
 
-use crate::error::Result;
+#[cfg(feature = "otel-traces")]
 use opentelemetry::{
     trace::{Span, Status, Tracer, TracerProvider},
     KeyValue,
 };
+
+#[cfg(feature = "otel-traces")]
 use opentelemetry_sdk::{
     trace::{SpanData, SdkTracerProvider, InMemorySpanExporter},
 };
@@ -20,6 +22,12 @@ pub type TestSpanExporter = InMemorySpanExporter;
 pub struct TestTracerProvider {
     provider: SdkTracerProvider,
     exporter: TestSpanExporter,
+}
+
+impl Default for TestTracerProvider {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestTracerProvider {
@@ -195,7 +203,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tracer_provider_creation() -> Result<()> {
+    fn test_tracer_provider_creation() -> crate::error::Result<()> {
         let provider = TestTracerProvider::new();
         let tracer = provider.tracer();
         
@@ -205,7 +213,7 @@ mod tests {
         span.end();
         
         // Force span export
-        provider.provider.force_flush();
+        let _ = provider.provider.force_flush();
         
         // Verify span was captured
         let spans = provider.find_spans_by_name("test-span");
@@ -218,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn test_span_helper_functions() -> Result<()> {
+    fn test_span_helper_functions() -> crate::error::Result<()> {
         let provider = TestTracerProvider::new();
         let tracer = provider.tracer();
         
@@ -235,7 +243,7 @@ mod tests {
         span.end();
         
         // Force span export
-        provider.provider.force_flush();
+        let _ = provider.provider.force_flush();
         
         // Verify spans were captured
         assert!(provider.find_spans_by_name("basic-span").len() == 1);
@@ -245,7 +253,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mock_otlp_collector() -> Result<()> {
+    fn test_mock_otlp_collector() -> crate::error::Result<()> {
         let collector = MockOtlpCollector::new("http://localhost:4317".to_string());
         
         assert_eq!(collector.endpoint(), "http://localhost:4317");

@@ -10,6 +10,7 @@ pub mod functions;
 
 use crate::error::{CleanroomError, Result};
 use std::path::Path;
+use std::sync::OnceLock;
 use tera::Tera;
 
 pub use context::TemplateContext;
@@ -1174,4 +1175,13 @@ name = "mixed-macros"
         assert!(output.contains("[[expect.temporal]]"));
         assert!(output.contains("cache.hit"));
     }
+}
+
+/// Get a cached template renderer instance
+/// This avoids recompiling Tera templates on every use for better performance
+pub fn get_cached_template_renderer() -> &'static TemplateRenderer {
+    static INSTANCE: OnceLock<TemplateRenderer> = OnceLock::new();
+    INSTANCE.get_or_init(|| {
+        TemplateRenderer::new().expect("Failed to create cached template renderer")
+    })
 }

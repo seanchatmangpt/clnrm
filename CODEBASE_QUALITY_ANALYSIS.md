@@ -95,7 +95,7 @@ pub fn capture_test_spans(&self) -> Result<Vec<String>> {
 
 **Most Critical TODOs**:
 
-**Location**: `crates/clnrm-core/src/marketplace/package.rs`
+**Location**: `crates/clnrm-core/src/services/generic.rs`
 ```rust
 async fn download_plugin(...) -> Result<()> {
     // TODO: Implement actual download from registry
@@ -113,7 +113,7 @@ fn validate_installation(...) -> Result<()> {
 }
 ```
 
-**Location**: `crates/clnrm-core/src/marketplace/security.rs`
+**Location**: `crates/clnrm-core/src/services/surrealdb.rs`
 ```rust
 pub async fn execute_sandboxed<F, T>(&self, _plugin_name: &str, _f: F) -> Result<T> {
     // TODO: Implement actual sandboxing using containers or process isolation
@@ -149,8 +149,8 @@ pub async fn execute_sandboxed<F, T>(&self, _plugin_name: &str, _f: F) -> Result
 Multiple `#[allow(dead_code)]` annotations found, indicating unused code:
 
 - `crates/clnrm-core/src/cleanroom.rs` - CleanroomEnvironment struct
-- `crates/clnrm-core/src/marketplace/security.rs` - SandboxConfig fields
-- `crates/clnrm-core/src/marketplace/discovery.rs` - PluginDiscovery fields
+- `crates/clnrm-core/src/services/surrealdb.rs` - SandboxConfig fields
+- `crates/clnrm-core/src/services/generic.rs` - PluginDiscovery fields
 - `crates/clnrm-core/src/assertions.rs` - Multiple assertion structs
 
 ---
@@ -209,7 +209,7 @@ fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
    - These are core observability features
 
 3. **Address TODO Comments**
-   - Prioritize marketplace package download functionality
+   - Prioritize service package download functionality
    - Implement proper sandboxing for security
    - Complete plugin validation logic
 

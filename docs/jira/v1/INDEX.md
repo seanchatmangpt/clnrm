@@ -340,10 +340,10 @@ error[E0038]: the trait `opentelemetry_sdk::trace::SpanExporter` is not dyn comp
    - Estimated effort: 2-4 hours
    - Unblocks: 6 OTEL features
 
-2. ⚠️ **Complete Interactive Mode** (CORE-001)
-   - Implement TUI for `clnrm run --interactive`
+2. ⚠️ **Complete OTEL Integration** (OTEL-001)
+   - Implement span validation and trace analysis
    - Estimated effort: 2-3 days
-   - Optional: Can defer to v1.1.0
+   - Required for observability features
 
 3. ✅ **Clean Up Warnings**
    - Address remaining clippy warnings
@@ -363,10 +363,7 @@ error[E0038]: the trait `opentelemetry_sdk::trace::SpanExporter` is not dyn comp
 - [x] Zero unwrap/expect in production ✅
 
 ### v1.1.0 (Post-Release)
-- Complete interactive mode TUI
-- Enhance marketplace publish command
 - Improve OTEL expectation parsing
-- Add PDF report generation
 - Deterministic network mocking
 
 ---

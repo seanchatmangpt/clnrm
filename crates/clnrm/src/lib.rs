@@ -29,7 +29,8 @@ pub mod cli {
         println!("   Jobs: {}", config.jobs);
         println!("   Fail fast: {}", config.fail_fast);
         println!("   Watch: {}", config.watch);
-        println!("   Interactive: {}", config.interactive);
+        println!("   Force: {}", config.force);
+        println!("   Digest: {}", config.digest);
 
         Ok(())
     }

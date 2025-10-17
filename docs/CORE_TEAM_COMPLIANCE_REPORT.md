@@ -243,7 +243,6 @@ pub fn advanced_chaos_scenario(&self) -> Result<()> {
 **Files with `unimplemented!()`**:
 - `services/chaos_engine.rs` (2) - ✅ Experimental feature
 - `services/readiness.rs` (2) - ✅ Advanced health checks
-- `marketplace/package.rs` (2) - ✅ Package management WIP
 - `cli/commands/v0_7_0/*` (8) - ✅ New v0.7.0 features
 
 **No fake implementations detected** - all `Ok(())` returns appear to be legitimate success cases after actual work.
@@ -677,7 +676,6 @@ let result = validator.validate_expectations(std::slice::from_ref(&expectation))
 | `tests/generic_container_plugin_london_tdd.rs` | 4 | 0 | 0 | 4 |
 | `tests/homebrew_validation.rs` | 2 | 0 | 0 | 2 |
 | `examples/surrealdb-ollama-integration.rs` | 2 | 0 | 0 | 2 |
-| `marketplace/commands.rs` | 0 | 80 | 0 | 80 |
 | Other files | 0 | 200+ | 12 | 212+ |
 
 ### Violation Trends

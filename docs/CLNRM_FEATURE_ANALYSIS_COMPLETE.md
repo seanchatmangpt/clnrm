@@ -701,51 +701,6 @@ REQUIRES SETUP: OpenTelemetry Collector must be installed and running.
 
 ---
 
-## 9. MARKETPLACE & REGISTRY
-
-### 9.1 Plugin Registry
-
-**Status**: ✅ FULLY WORKING
-**File**: `crates/clnrm-core/src/marketplace/registry.rs`
-
-**Implemented Features**:
-- ✅ Plugin registration
-- ✅ Plugin installation tracking
-- ✅ Version management
-- ✅ Plugin metadata storage
-- ✅ Registry persistence (JSON)
-- ✅ Remote registry sync
-- ✅ Plugin ratings
-- ✅ Plugin reviews
-- ✅ Plugin statistics
-
-**Tests**: Multiple registry tests ✅
-
-**DoD Checklist**:
-- ✅ Compiles
-- ✅ Full CRUD operations
-- ✅ Async operations
-
----
-
-### 9.2 `clnrm marketplace` - Plugin Marketplace
-
-**Status**: 🔧 PARTIALLY WORKING
-**File**: `crates/clnrm-core/src/marketplace/mod.rs`
-**CLI**: `clnrm marketplace <search|install|list|publish|update|remove>`
-
-**Implemented Subcommands**:
-- ✅ `marketplace search <query>` - Search plugins
-- ✅ `marketplace install <plugin>` - Install plugin
-- ✅ `marketplace list` - List installed plugins
-- 🔧 `marketplace publish <path>` - Publish plugin (basic)
-- ✅ `marketplace update <plugin>` - Update plugin
-- ✅ `marketplace remove <plugin>` - Remove plugin
-
-**DoD Status**: 🔧 Core features work, publish needs enhancement
-
----
-
 ## 10. CONFIGURATION & INITIALIZATION
 
 ### 10.1 `clnrm init` - Project Initialization
@@ -836,7 +791,6 @@ cleanroom.toml
 - ✅ HTML report generation
 - ✅ Markdown report generation
 - ✅ JSON report generation
-- ✅ PDF report generation (stubbed)
 - ✅ Input file loading
 - ✅ Output file writing
 
@@ -1002,14 +956,7 @@ cleanroom.toml
 - **Effort**: 2-3 days
 - **DoD**: Interactive TUI implemented
 
-**TICKET-3: Enhance Marketplace Publish**
-- **Issue**: `marketplace publish` is basic stub
-- **Impact**: Plugin ecosystem limited
-- **Files**: `marketplace/mod.rs`
-- **Effort**: 3-5 days
-- **DoD**: Full plugin publishing workflow
-
-**TICKET-4: Complete OTEL Expectation Parsing**
+**TICKET-3: Complete OTEL Expectation Parsing**
 - **Issue**: `analyze` command has basic expectation parsing
 - **Impact**: Limited validation capabilities
 - **Files**: `commands/v0_7_0/analyze.rs`
@@ -1026,13 +973,6 @@ cleanroom.toml
 - **Files**: `commands/v0_7_0/dry_run.rs`
 - **Effort**: 1-2 days
 - **DoD**: Detailed validation reports
-
-**TICKET-6: Add PDF Report Generation**
-- **Issue**: PDF format stubbed in `report` command
-- **Impact**: Missing report format
-- **Files**: `reporting/mod.rs`
-- **Effort**: 2-3 days
-- **DoD**: PDF reports generated
 
 ---
 

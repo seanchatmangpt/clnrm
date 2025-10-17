@@ -17,7 +17,6 @@ pub mod determinism;
 pub mod error;
 pub mod formatting;
 pub mod macros;
-pub mod marketplace;
 pub mod otel;
 pub mod policy;
 pub mod reporting;

@@ -61,6 +61,7 @@ hostname = { workspace = true }
 rand = "0.8"
 semver = "1.0"
 glob = "0.3"
+url = "2.5"
 
 # Template rendering
 tera = "1.19"
@@ -81,6 +82,9 @@ proptest = "1.4"
 # Benchmarking
 criterion = { workspace = true }
 tempfile = { workspace = true }
+
+# Async testing
+tokio = { workspace = true }
 
 [[bench]]
 name = "hot_reload_critical_path"

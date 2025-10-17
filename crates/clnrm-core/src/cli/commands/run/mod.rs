@@ -153,12 +153,6 @@ async fn run_tests_impl(
         return watch::watch_and_run(paths, config).await;
     }
 
-    // Handle interactive mode
-    if config.interactive {
-        warn!("Interactive mode requested but not yet fully implemented");
-        info!("Tests will run normally - interactive mode coming in v0.4.0");
-    }
-
     // Discover all test files from provided paths
     let mut all_test_files = Vec::new();
     for path in paths {
@@ -326,12 +320,6 @@ async fn run_tests_impl_with_report(
     // Handle watch mode
     if config.watch {
         return watch::watch_and_run(paths, config).await;
-    }
-
-    // Handle interactive mode
-    if config.interactive {
-        warn!("Interactive mode requested but not yet fully implemented");
-        info!("Tests will run normally - interactive mode coming in v0.4.0");
     }
 
     // Discover all test files from provided paths
@@ -675,37 +663,34 @@ mod single {
             let _command_guard = command_span.enter();
 
             let stdout = {
-                // Create a dummy service handle for step execution in default container
-                let dummy_handle = crate::cleanroom::ServiceHandle {
-                    id: "default-container".to_string(),
-                    service_name: "default".to_string(),
-                    metadata: std::collections::HashMap::new(),
-                };
-
-                let output = environment
-                    .execute_command_with_output(&dummy_handle, &step.command)
+                // Execute command in a fresh container for proper isolation
+                // Core Team Compliance: Use async for I/O, proper error handling, no unwrap/expect
+                let container_name = format!("test-{}-step-{}", test_name, step.name);
+                let execution_result = environment
+                    .execute_in_container(&container_name, &step.command)
                     .await
                     .map_err(|e| {
                         CleanroomError::container_error(format!(
-                            "Failed to execute command '{}' in container: {}",
+                            "Failed to execute command '{}' in container '{}': {}",
                             step.command.join(" "),
+                            container_name,
                             e
                         ))
                     })?;
 
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stdout = &execution_result.stdout;
+                let stderr = &execution_result.stderr;
 
                 if !stderr.is_empty() {
                     warn!("⚠️  Stderr: {}", stderr.trim());
                     info!("⚠️  Stderr: {}", stderr.trim());
                 }
 
-                if !output.status.success() {
+                if execution_result.exit_code != 0 {
                     return Err(CleanroomError::validation_error(format!(
                         "Step '{}' failed with exit code: {}",
                         step.name,
-                        output.status.code().unwrap_or(-1)
+                        execution_result.exit_code
                     )));
                 }
 

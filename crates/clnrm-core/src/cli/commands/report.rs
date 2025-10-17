@@ -48,12 +48,6 @@ pub async fn generate_report(
                 .with_context("Failed to serialize test results to JSON")
                 .with_source(e.to_string())
         })?,
-        "pdf" => {
-            return Err(
-                CleanroomError::validation_error("PDF format not yet implemented")
-                    .with_context("PDF report generation requires additional dependencies"),
-            );
-        }
         _ => {
             return Err(CleanroomError::validation_error(format!(
                 "Unsupported format: {}",
@@ -355,14 +349,6 @@ mod tests {
             // Assert
             assert!(result.is_ok(), "Format '{}' should be handled", format);
         }
-
-        // Test PDF format separately - should return error
-        let pdf_result = generate_report(None, None, "pdf").await;
-        assert!(pdf_result.is_err(), "PDF format should return error");
-        assert!(pdf_result
-            .unwrap_err()
-            .message
-            .contains("PDF format not yet implemented"));
 
         Ok(())
     }

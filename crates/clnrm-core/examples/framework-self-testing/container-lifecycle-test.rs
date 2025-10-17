@@ -244,7 +244,9 @@ async fn test_concurrent_container_operations() -> Result<()> {
     }
 
     // Wait for all to complete
-    let results = future::try_join_all(handles).await?;
+    let results = future::try_join_all(handles)
+        .await
+        .map_err(|e| clnrm_core::CleanroomError::internal_error(format!("Concurrent operation failed: {}", e)))?;
 
     println!(
         "✅ Concurrent operations completed in {:?}",

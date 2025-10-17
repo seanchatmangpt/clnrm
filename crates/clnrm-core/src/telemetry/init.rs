@@ -5,14 +5,23 @@
 
 use crate::error::Result;
 use crate::telemetry::config::{ExporterConfig, OtlpProtocol, TelemetryConfig};
+#[cfg(feature = "otel-traces")]
 use opentelemetry::global;
+#[cfg(feature = "otel-traces")]
 use opentelemetry::trace::TracerProvider;
+#[cfg(feature = "otel-traces")]
+use opentelemetry::KeyValue;
+#[cfg(feature = "otel-traces")]
 use opentelemetry_sdk::{
     trace::{self, RandomIdGenerator, Sampler},
     Resource,
 };
+#[cfg(feature = "otel-traces")]
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+#[cfg(feature = "otel-traces")]
+use tracing_opentelemetry;
 
+#[cfg(feature = "otel-traces")]
 /// Handle for managing telemetry lifecycle
 #[derive(Debug)]
 pub struct TelemetryHandle {
@@ -85,18 +94,37 @@ impl TelemetryBuilder {
 
     /// Create OpenTelemetry resource
     fn create_resource(&self) -> Result<Resource> {
-        // TODO: Implement proper resource creation when OpenTelemetry 0.31.0 API is clarified
-        // For now, return a placeholder that will be ignored
-        unimplemented!("Resource creation needs to be implemented for OpenTelemetry 0.31.0")
+        // Build resource with service information
+        let mut resource_builder = Resource::builder_empty()
+            .with_service_name(self.config.service_name.clone())
+            .with_attributes([
+                KeyValue::new("service.version", self.config.service_version.clone()),
+                KeyValue::new("telemetry.sdk.language", "rust"),
+                KeyValue::new("telemetry.sdk.name", "opentelemetry"),
+                KeyValue::new("telemetry.sdk.version", "0.31.0"),
+                KeyValue::new("service.instance.id", format!("clnrm-{}", std::process::id())),
+            ]);
+
+        // Add custom resource attributes from configuration
+        for (key, value) in &self.config.resource_attributes {
+            resource_builder = resource_builder.with_attributes([KeyValue::new(key.clone(), value.clone())]);
+        }
+
+        let resource = resource_builder.build();
+        Ok(resource)
     }
 
     /// Initialize tracing with OpenTelemetry
     fn init_tracing(&self) -> Result<()> {
+        // Create resource with service information
+        let resource = self.create_resource()?;
+        
         let tracer_provider_builder = trace::SdkTracerProvider::builder()
             .with_sampler(Sampler::TraceIdRatioBased(
                 self.config.sampling.trace_sampling_ratio,
             ))
-            .with_id_generator(RandomIdGenerator::default());
+            .with_id_generator(RandomIdGenerator::default())
+            .with_resource(resource);
 
         // For now, use only the built-in InMemorySpanExporter for testing
         // This avoids the dyn compatibility issues with custom exporters
@@ -116,8 +144,12 @@ impl TelemetryBuilder {
 
     /// Initialize metrics with OpenTelemetry
     fn init_metrics(&self) -> Result<()> {
-        // Initialize metrics provider
+        // Create resource with service information
+        let resource = self.create_resource()?;
+        
+        // Initialize metrics provider with resource
         let meter_provider = opentelemetry_sdk::metrics::SdkMeterProvider::builder()
+            .with_resource(resource)
             .build();
 
         global::set_meter_provider(meter_provider);
@@ -134,21 +166,25 @@ pub fn init_default() -> Result<TelemetryHandle> {
 
 /// Initialize telemetry with OTLP configuration
 pub fn init_otlp(endpoint: &str) -> Result<TelemetryHandle> {
-    let mut config = TelemetryConfig::default();
-    config.enabled = true;
-    config.exporters = vec![ExporterConfig::Otlp {
-        endpoint: endpoint.to_string(),
-        protocol: OtlpProtocol::HttpProto,
-        headers: std::collections::HashMap::new(),
-    }];
+    let config = TelemetryConfig {
+        enabled: true,
+        exporters: vec![ExporterConfig::Otlp {
+            endpoint: endpoint.to_string(),
+            protocol: OtlpProtocol::HttpProto,
+            headers: std::collections::HashMap::new(),
+        }],
+        ..Default::default()
+    };
     TelemetryBuilder::new(config).init()
 }
 
 /// Initialize telemetry with stdout configuration for development
 pub fn init_stdout() -> Result<TelemetryHandle> {
-    let mut config = TelemetryConfig::default();
-    config.enabled = true;
-    config.exporters = vec![ExporterConfig::Stdout { pretty_print: true }];
+    let config = TelemetryConfig {
+        enabled: true,
+        exporters: vec![ExporterConfig::Stdout { pretty_print: true }],
+        ..Default::default()
+    };
     TelemetryBuilder::new(config).init()
 }
 

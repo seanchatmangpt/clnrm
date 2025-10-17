@@ -8,12 +8,19 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 // Module structure for backends
+// pub mod mock; // TODO: Implement mock backend for testing
 pub mod testcontainer;
 pub mod volume;
 
+// pub use mock::MockBackend;
 pub use testcontainer::TestcontainerBackend;
 pub use volume::{VolumeMount, VolumeValidator};
 
+/// Create a mock backend for fast testing
+/// This provides instant responses for testing without Docker overhead
+// pub fn create_mock_backend() -> MockBackend {
+//     MockBackend::new()
+// }
 /// Command to execute with all configuration
 #[derive(Debug, Clone)]
 pub struct Cmd {

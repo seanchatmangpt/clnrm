@@ -19,7 +19,7 @@ use tera::{Function, Tera, Value};
 fn get_seed(args: &HashMap<String, Value>) -> u64 {
     args.get("seed")
         .and_then(|v| v.as_u64())
-        .unwrap_or_else(|| rand::random())
+        .unwrap_or_else(rand::random)
 }
 
 /// Register all extended functions with Tera

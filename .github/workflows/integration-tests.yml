@@ -46,8 +46,10 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Run unit tests
-        run: cargo test --lib --bins --all-features
+      - name: Run unit tests (parallel)
+        run: |
+          # Run tests in parallel across 4 workers for maximum speed
+          cargo test --lib --bins --all-features -- --test-threads=4
 
   # Component integration tests (parallel execution)
   component-integration:

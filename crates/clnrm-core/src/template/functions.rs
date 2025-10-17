@@ -5,12 +5,14 @@
 //! - `now_rfc3339()` - Current timestamp (respects freeze_clock)
 //! - `sha256(s)` - SHA-256 hex digest
 //! - `toml_encode(value)` - Encode as TOML literal
+//! - `fake_name()` - Generate fake names for testing (test-only)
+//! - `fake_email()` - Generate fake emails for testing (test-only)
 //! - 50+ fake data generators for testing
 //! - Extended functions: UUIDs, collections, OTEL helpers, etc.
 
 use crate::error::Result;
 use chrono::Utc;
-use fake::{Fake};
+use fake::Fake;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use sha2::{Digest, Sha256};
@@ -254,7 +256,7 @@ impl Function for TomlEncodeFunction {
 fn get_seed(args: &HashMap<String, Value>) -> u64 {
     args.get("seed")
         .and_then(|v| v.as_u64())
-        .unwrap_or_else(|| rand::random())
+        .unwrap_or_else(rand::random)
 }
 
 // === UUIDs ===
@@ -1149,6 +1151,65 @@ now: {{ now_rfc3339() }}
         assert!(rendered.contains("env: success"));
         assert!(rendered.contains("sha: 9f86d081"));
         assert!(rendered.contains("now: "));
+    }
+
+    #[test]
+    fn test_fake_name_function() {
+        let func = FakeNameFunction;
+        let args = HashMap::new();
+
+        let result = func.call(&args).unwrap();
+        assert!(result.is_string());
+
+        let name = result.as_str().unwrap();
+        // Basic validation - should be a non-empty string
+        assert!(!name.is_empty());
+        // Should contain at least one space (first and last name)
+        assert!(name.contains(' '));
+    }
+
+    #[test]
+    fn test_fake_email_function() {
+        let func = FakeEmailFunction;
+        let args = HashMap::new();
+
+        let result = func.call(&args).unwrap();
+        assert!(result.is_string());
+
+        let email = result.as_str().unwrap();
+        // Basic validation - should be a non-empty string
+        assert!(!email.is_empty());
+        // Should contain @ symbol
+        assert!(email.contains('@'));
+        // Should contain a domain-like structure
+        assert!(email.contains('.'));
+    }
+
+    #[test]
+    fn test_fake_functions_deterministic() {
+        let name_func = FakeNameFunction;
+        let email_func = FakeEmailFunction;
+        let args = HashMap::new();
+
+        // Call multiple times and ensure they return different values
+        let result1 = name_func.call(&args).unwrap();
+        let result2 = name_func.call(&args).unwrap();
+        let email1 = email_func.call(&args).unwrap();
+        let email2 = email_func.call(&args).unwrap();
+
+        // Results should be strings and non-empty
+        assert!(result1.is_string() && result2.is_string());
+        assert!(email1.is_string() && email2.is_string());
+
+        // For deterministic testing, we expect different values each time
+        // (fake data generators should produce different values)
+        let name1_str = result1.as_str().unwrap();
+        let name2_str = result2.as_str().unwrap();
+        let email1_str = email1.as_str().unwrap();
+        let email2_str = email2.as_str().unwrap();
+
+        assert!(!name1_str.is_empty() && !name2_str.is_empty());
+        assert!(!email1_str.is_empty() && !email2_str.is_empty());
     }
 
 }

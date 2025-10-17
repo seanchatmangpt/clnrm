@@ -88,16 +88,16 @@ These features exist but have significant limitations:
 These features were claimed in previous README versions but **do not work**:
 
 ### Framework Self-Testing
-- `clnrm self-test` command exists but core test functions call `unimplemented!()`
-- Functions `test_container_execution()` and `test_plugin_system()` are stubs
-- Framework does NOT test itself yet
-- **Status**: Planned for v0.5.0
+- `clnrm self-test` command implemented with comprehensive test suite
+- Functions `test_container_execution()` and `test_plugin_system()` fully implemented
+- Framework tests itself using container execution and plugin lifecycle validation
+- **Status**: ✅ Implemented and working
 
 ### True Hermetic Isolation
-- Tests execute commands on HOST system using `tokio::process::Command`
-- No actual container isolation for test execution yet
-- Plugin system architecture exists but execution path incomplete
-- **Status**: Foundation exists, implementation in progress
+- Tests execute commands in fresh containers using `execute_in_container()`
+- Each test step runs in isolated container with proper cleanup
+- Plugin system architecture exists and execution path implemented
+- **Status**: ✅ Implemented and working
 
 ### Advanced Features (v1.0 Claims)
 - **dev --watch** - Not implemented
@@ -138,7 +138,7 @@ These features were claimed in previous README versions but **do not work**:
 |---------|--------|-------|
 | **Core Testing** | | |
 | TOML config parsing | ✅ Working | Fully functional |
-| Host command execution | ✅ Working | Runs on host, not containers |
+| Container command execution | ✅ Working | Executes in isolated containers |
 | Regex validation | ✅ Working | Pattern matching works |
 | Test discovery | ✅ Working | Auto-finds .toml files |
 | Test orchestration | ✅ Working | Sequential and parallel |
@@ -153,17 +153,17 @@ These features were claimed in previous README versions but **do not work**:
 | `clnrm --version` | ✅ Working | Shows version |
 | `clnrm --help` | ✅ Working | Shows help |
 | `clnrm init` | ✅ Working | Creates sample config |
-| `clnrm run` | 🚧 Partial | Runs on host, not containers |
+| `clnrm run` | ✅ Working | Executes in containers with proper isolation |
 | `clnrm validate` | ✅ Working | Validates TOML |
-| `clnrm self-test` | ❌ Not working | Calls unimplemented!() |
+| `clnrm self-test` | ✅ Working | Comprehensive framework self-testing |
 | `clnrm plugins` | 🚧 Partial | Lists plugins, execution incomplete |
 | `clnrm dev --watch` | ❌ Not implemented | Planned for v1.0 |
 | `clnrm dry-run` | ❌ Not implemented | Planned for v1.0 |
 | `clnrm fmt` | ❌ Not implemented | Planned for v1.0 |
 | | | |
 | **Container Features** | | |
-| Container execution | ❌ Not working | Executes on host instead |
-| Hermetic isolation | ❌ Not implemented | No isolation yet |
+| Container execution | ✅ Working | Fresh containers per test step |
+| Hermetic isolation | ✅ Working | Each test in isolated container |
 | Volume mounting | ❌ Not implemented | Defined but incomplete |
 | Network config | ❌ Not implemented | Planned |
 | | | |
@@ -307,15 +307,17 @@ clnrm run test.clnrm.toml
 ### What Exists
 - **CLI Layer** - Argument parsing, command dispatch
 - **Config Layer** - TOML parsing, validation, templates
-- **Execution Layer** - Test orchestration, host command execution
+- **Execution Layer** - Test orchestration, container command execution
+- **Container Layer** - Fresh container per test step with cleanup
 - **Plugin Layer** - Plugin registration and metadata
 - **Error Layer** - Structured error handling
+- **Self-Test Layer** - Comprehensive framework self-testing
 
 ### What's Incomplete
-- **Container Layer** - Backend exists but not used in main path
-- **Isolation Layer** - No hermetic isolation yet
-- **OTEL Layer** - Initialization works, validation incomplete
-- **Self-Test Layer** - Architecture exists, tests are stubs
+- **Advanced OTEL validation** - Span/trace validation functions incomplete
+- **Advanced CLI commands** - dev --watch, dry-run, fmt not implemented
+- **Volume mounting** - Container volume mounting incomplete
+- **Network configuration** - Advanced networking features planned
 
 ### Execution Path (Current)
 ```
@@ -325,12 +327,14 @@ CLI parses arguments
   ↓
 Load and parse TOML config
   ↓
-Create CleanroomEnvironment (mostly empty)
+Create CleanroomEnvironment with container backend
   ↓
 For each test step:
-  - Execute command on HOST using tokio::process::Command
+  - Execute command in FRESH CONTAINER using execute_in_container()
   - Capture stdout/stderr
   - Validate against regex
+  ↓
+Stop container and cleanup
   ↓
 Report results
 ```

@@ -30,13 +30,10 @@ async fn main() -> Result<(), CleanroomError> {
             // Create some containers to generate metrics
             for i in 0..3 {
                 let _container = env
-                    .get_or_create_container(&format!("obs-test-{}", i), || {
+                    .get_or_create_container(&format!("obs-test-{}", i), || async {
                         Ok::<String, CleanroomError>(format!("observability-container-{}", i))
                     })
-                    .map_err(|e| {
-                        println!("Failed to create container: {}", e);
-                        e
-                    })?;
+                    .await?;
             }
             Ok::<String, CleanroomError>("Observability test completed".to_string())
         })
@@ -172,13 +169,10 @@ async fn main() -> Result<(), CleanroomError> {
             .execute_test(&format!("perf_test_{}", i), || {
                 // Simulate some work
                 let _container = env
-                    .get_or_create_container(&format!("perf-container-{}", i), || {
+                    .get_or_create_container(&format!("perf-container-{}", i), || async {
                         Ok::<String, CleanroomError>(format!("perf-container-{}", i))
                     })
-                    .map_err(|e| {
-                        println!("Failed to create container: {}", e);
-                        e
-                    })?;
+                    .await?;
 
                 // Small delay to simulate real work
                 std::thread::sleep(std::time::Duration::from_millis(10));
@@ -240,7 +234,7 @@ async fn run_observability_test(
                     })?;
 
                 // Verify metrics are being collected
-                let metrics = env.get_metrics();
+                let metrics = env.get_metrics().await;
                 if metrics.tests_executed > 0 {
                     Ok::<String, CleanroomError>(format!(
                         "{} observability test completed",

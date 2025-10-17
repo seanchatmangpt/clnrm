@@ -194,7 +194,7 @@ impl DocumentationValidator {
         println!("\n📚 VALIDATING DOCUMENTATION: {}", framework_name);
         println!("================================");
 
-        let framework = self.frameworks.get_mut(framework_name).ok_or_else(|| {
+        let mut framework = self.frameworks.get_mut(framework_name).ok_or_else(|| {
             CleanroomError::internal_error(format!("Framework '{}' not found", framework_name))
         })?;
 
@@ -220,11 +220,13 @@ impl DocumentationValidator {
             self.validation_results.push(claim_result);
         }
 
-        // Validate code examples
+        // Validate code examples before updating framework
         println!("\n📝 Validating Code Examples");
         let example_score = self.validate_code_examples(framework_name).await?;
 
         total_score += example_score;
+
+        // Now update the framework score after all borrows are released
         framework.score = total_score;
 
         println!("\n📊 Validation Summary for {}:", framework_name);

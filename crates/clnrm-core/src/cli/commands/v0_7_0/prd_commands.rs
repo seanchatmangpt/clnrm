@@ -119,7 +119,6 @@ pub async fn reproduce_baseline(
         format: OutputFormat::Auto,
         fail_fast: false,
         watch: false,
-        interactive: false,
         verbose: 0,
         force: true, // Force run all tests
         digest: false, // No digest needed for reproduction

@@ -8,6 +8,8 @@ pub mod property_generators;
 
 // Re-export framework test types and functions for CLI commands
 use crate::error::{CleanroomError, Result};
+use std::collections::HashMap;
+use std::sync::OnceLock;
 
 /// Framework test results
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -50,6 +52,32 @@ pub struct SuiteResult {
     pub duration_ms: u64,
     /// Individual test results
     pub tests: Vec<TestResult>,
+}
+
+/// Global test configuration cache for performance
+/// Pre-loads and caches all test configurations to avoid repeated file I/O
+static TEST_CONFIG_CACHE: OnceLock<HashMap<String, crate::config::TestConfig>> = OnceLock::new();
+
+/// Get a cached test configuration by name
+/// This avoids parsing TOML files repeatedly during test execution
+pub fn get_cached_test_config(name: &str) -> Option<&'static crate::config::TestConfig> {
+    let cache = TEST_CONFIG_CACHE.get_or_init(|| {
+        let mut configs = HashMap::new();
+
+        // Load common test configurations
+        if let Ok(config) = crate::config::loader::load_config_from_file(&std::path::Path::new("tests/basic.clnrm.toml")) {
+            configs.insert("basic".to_string(), config);
+        }
+
+        if let Ok(config) = crate::config::loader::load_config_from_file(&std::path::Path::new("tests/integration/end_to_end.toml")) {
+            configs.insert("end_to_end".to_string(), config);
+        }
+
+        // Add more test configurations as needed
+        configs
+    });
+
+    cache.get(name)
 }
 
 /// Run framework self-tests organized by suite

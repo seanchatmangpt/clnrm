@@ -32,7 +32,6 @@ pub async fn run_cli() -> Result<()> {
             jobs,
             fail_fast,
             watch,
-            interactive,
             force,
             shard,
             digest,
@@ -44,7 +43,6 @@ pub async fn run_cli() -> Result<()> {
                 format: cli.format.clone(),
                 fail_fast,
                 watch,
-                interactive,
                 verbose: cli.verbose,
                 force,
                 digest,
@@ -295,11 +293,6 @@ pub async fn run_cli() -> Result<()> {
                 "AI monitoring is an experimental feature in the clnrm-ai crate.\n\
                  To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
             ))
-        }
-
-        Commands::Marketplace { command } => {
-            let marketplace = crate::marketplace::Marketplace::default().await?;
-            crate::marketplace::commands::execute_marketplace_command(&marketplace, command).await
         }
 
         // PRD v1.0 additional commands

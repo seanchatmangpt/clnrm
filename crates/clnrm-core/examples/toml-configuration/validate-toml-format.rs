@@ -201,7 +201,7 @@ max_execution_time = 300
 
     println!(
         "✅ TOML configuration parsed: {}",
-        config.test.metadata.name
+        config.test.as_ref().unwrap().metadata.name
     );
     println!("📋 Steps to execute: {}", config.steps.len());
 
