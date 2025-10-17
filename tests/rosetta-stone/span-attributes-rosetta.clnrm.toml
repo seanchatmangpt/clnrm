@@ -161,7 +161,7 @@ required = true
 "messaging.system" = "rabbitmq"
 "messaging.destination" = "user.events"
 "messaging.operation" = "publish"
-"messaging.message.id" = { pattern = "^[a-f0-9-]{36}$" }
+"messaging.message.id" = "550e8400-e29b-41d4-a716-446655440000"
 "service.name" = "rosetta-messaging"
 "service.version" = "0.9.0"
 

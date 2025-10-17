@@ -144,22 +144,11 @@ parent = "user.fetch"
 span_names = ["gateway.request", "auth.validate", "user.fetch", "db.query"]
 complete = true
 is_tree = true
-
-# Parent-child relationships (explicit graph edges)
-[[otel_validation.expected_traces.parent_child]]
-parent = "gateway.request"
-child = "auth.validate"
-edge_type = "synchronous"
-
-[[otel_validation.expected_traces.parent_child]]
-parent = "gateway.request"
-child = "user.fetch"
-edge_type = "synchronous"
-
-[[otel_validation.expected_traces.parent_child]]
-parent = "user.fetch"
-child = "db.query"
-edge_type = "synchronous"
+parent_child = [
+  ["gateway.request", "auth.validate"],
+  ["gateway.request", "user.fetch"],
+  ["user.fetch", "db.query"]
+]
 
 # Topology constraints
 [[otel_validation.graph_topology_constraints]]

@@ -96,7 +96,7 @@ command = ["echo", "B-Op-3"]
 [[steps]]
 name = "service_c_batch_operations"
 service = "service_c"
-command = ["sh", "-c", "for i in 1 2 3 4 5 6 7; do echo C-Op-$i; done"]
+command = ["sh", "-c", "echo 'C-Op-1'; echo 'C-Op-2'; echo 'C-Op-3'; echo 'C-Op-4'; echo 'C-Op-5'; echo 'C-Op-6'; echo 'C-Op-7'"]
 
 # OTEL Validation - Cardinality dimension
 [otel_validation]
@@ -164,6 +164,7 @@ count = 7
 
 # Trace cardinality
 [[otel_validation.expected_traces]]
+span_names = ["service.operation"]
 trace_count = 3  # One per service
 complete = true
 

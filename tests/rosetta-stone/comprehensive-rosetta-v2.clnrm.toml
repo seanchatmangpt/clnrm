@@ -211,7 +211,7 @@ command = ["echo", "Cache: HIT for user:123"]
 [[steps]]
 name = "gateway_returns_response_2"
 service = "api_gateway"
-command = ["echo", "Gateway: 200 OK (from cache)"]
+command = ["echo", "Gateway: 200 OK from cache"]
 
 # OTEL Validation - ALL 5 DIMENSIONS
 [otel_validation]
@@ -293,26 +293,13 @@ count = 2
 span_names = ["gateway.request", "auth.validate", "user.fetch", "cache.lookup", "db.query", "cache.set"]
 complete = true
 is_tree = true
-
-[[otel_validation.expected_traces.parent_child]]
-parent = "gateway.request"
-child = "auth.validate"
-
-[[otel_validation.expected_traces.parent_child]]
-parent = "gateway.request"
-child = "user.fetch"
-
-[[otel_validation.expected_traces.parent_child]]
-parent = "user.fetch"
-child = "cache.lookup"
-
-[[otel_validation.expected_traces.parent_child]]
-parent = "user.fetch"
-child = "db.query"
-
-[[otel_validation.expected_traces.parent_child]]
-parent = "user.fetch"
-child = "cache.set"
+parent_child = [
+  ["gateway.request", "auth.validate"],
+  ["gateway.request", "user.fetch"],
+  ["user.fetch", "cache.lookup"],
+  ["user.fetch", "db.query"],
+  ["user.fetch", "cache.set"]
+]
 
 # ==========================================
 # DIMENSION 2: TEMPORAL - Ordering constraints

@@ -128,10 +128,7 @@ max_gap_ms = 100
 span_names = ["db.initialize", "server.start", "request.handle"]
 complete = true
 ordered = true
-
-[[otel_validation.expected_traces.parent_child]]
-parent = "server.start"
-child = "request.handle"
+parent_child = [["server.start", "request.handle"]]
 
 [assertions]
 execution_should_be_hermetic = true
