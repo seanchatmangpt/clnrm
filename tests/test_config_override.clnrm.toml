@@ -1,0 +1,8 @@
+[test.metadata]
+name = "test_config_override"
+description = "Test configuration override"
+
+[[steps]]
+name = "check_ubuntu"
+command = ["cat", "/etc/os-release"]
+expected_output_regex = "Ubuntu"

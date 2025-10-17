@@ -1,0 +1,3 @@
+number,title,state,labels,assignee,milestone,created_at,updated_at,author
+CSV generation simplified - would need jq for full implementation
+See github-issue-details.sh for full issue processing

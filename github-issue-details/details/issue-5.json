@@ -1,0 +1,103 @@
+{
+  "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/5",
+  "repository_url": "https://api.github.com/repos/seanchatmangpt/clnrm",
+  "labels_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/5/labels{/name}",
+  "comments_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/5/comments",
+  "events_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/5/events",
+  "html_url": "https://github.com/seanchatmangpt/clnrm/issues/5",
+  "id": 3527024496,
+  "node_id": "I_kwDOQCmyxs7SOh9w",
+  "number": 5,
+  "title": "Multiple claimed features are missing or non-functional",
+  "user": {
+    "login": "seanchatmangpt",
+    "id": 136349053,
+    "node_id": "U_kgDOCCCFfQ",
+    "avatar_url": "https://avatars.githubusercontent.com/u/136349053?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/seanchatmangpt",
+    "html_url": "https://github.com/seanchatmangpt",
+    "followers_url": "https://api.github.com/users/seanchatmangpt/followers",
+    "following_url": "https://api.github.com/users/seanchatmangpt/following{/other_user}",
+    "gists_url": "https://api.github.com/users/seanchatmangpt/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/seanchatmangpt/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/seanchatmangpt/subscriptions",
+    "organizations_url": "https://api.github.com/users/seanchatmangpt/orgs",
+    "repos_url": "https://api.github.com/users/seanchatmangpt/repos",
+    "events_url": "https://api.github.com/users/seanchatmangpt/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/seanchatmangpt/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "labels": [
+    {
+      "id": 9463217756,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XA",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/bug",
+      "name": "bug",
+      "color": "d73a4a",
+      "default": true,
+      "description": "Something isn't working"
+    },
+    {
+      "id": 9463217757,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XQ",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/documentation",
+      "name": "documentation",
+      "color": "0075ca",
+      "default": true,
+      "description": "Improvements or additions to documentation"
+    },
+    {
+      "id": 9463217759,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-Xw",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/enhancement",
+      "name": "enhancement",
+      "color": "a2eeef",
+      "default": true,
+      "description": "New feature or request"
+    }
+  ],
+  "state": "open",
+  "locked": false,
+  "assignee": null,
+  "assignees": [
+
+  ],
+  "milestone": null,
+  "comments": 0,
+  "created_at": "2025-10-17T17:57:26Z",
+  "updated_at": "2025-10-17T17:57:26Z",
+  "closed_at": null,
+  "author_association": "OWNER",
+  "active_lock_reason": null,
+  "sub_issues_summary": {
+    "total": 0,
+    "completed": 0,
+    "percent_completed": 0
+  },
+  "issue_dependencies_summary": {
+    "blocked_by": 0,
+    "total_blocked_by": 0,
+    "blocking": 0,
+    "total_blocking": 0
+  },
+  "body": "# Multiple claimed features are missing or non-functional\n\n## Summary\n\nSeveral features prominently featured in the README and documentation are either completely missing, non-functional, or behave very differently from what's described. This creates significant confusion and wasted time for users.\n\n## Missing/Broken Features\n\n### 1. Dev Watch Mode (Missing)\n\n**Claim:**\n```markdown\n## 🚀 Version 1.0.0 Features (Current)\n\n### Hot Reload (`dev --watch`) - <3s latency from save to results\n\n| Command | Status | Description |\n|---------|--------|-------------|\n| `clnrm dev --watch` | ✅ **Working** | Hot reload development mode |\n```\n\n**Reality:**\n```bash\n$ clnrm dev --help\n\nerror: unrecognized subcommand 'dev'\n\nUsage: clnrm [OPTIONS] <COMMAND>\n```\n\n**Status:** ❌ Command doesn't exist\n\n**Impact:** Users expecting hot reload feature waste time trying to configure it\n\n---\n\n### 2. Analyze Command (Non-functional)\n\n**Claim:**\n```markdown\nclnrm analyze test.toml traces.json - Validate telemetry evidence\n```\n\n**Reality:**\n```bash\n$ clnrm analyze --help\n\nUsage: clnrm analyze [OPTIONS]\n\nOptions:\n  -h, --help  Print help\n\n$ clnrm analyze tests/basic.clnrm.toml\nError: ValidationError: No trace file provided\n\n$ clnrm analyze tests/basic.clnrm.toml traces.json\nError: ValidationError: File not found: traces.json\n```\n\n**Status:** ⚠️ Exists but requires OTEL collector setup not documented\n\n**Impact:** Can't validate \"fake-green detection\" without undocumented infrastructure\n\n---\n\n### 3. AI Features (Experimental, Crashes)\n\n**Claim:**\n```markdown\n🧪 Experimental Plugins:\n🎭 chaos_engine (controlled failure injection)\n🤖 ai_test_generator (AI-powered test case generation)\n\nCommands:\n- ai-orchestrate  AI-powered test orchestration\n- ai-predict      AI-powered predictive analytics\n- ai-optimize     AI-powered optimization\n- ai-real         Real AI intelligence using SurrealDB and Ollama\n```\n\n**Reality:**\n```bash\n$ clnrm ai-orchestrate --help\nError: Feature requires clnrm-ai crate (not installed)\n\n$ clnrm ai-real --help\nError: Feature requires clnrm-ai crate (not installed)\n```\n\n**Status:** ⚠️ Listed in help but not available in default installation\n\n**Impact:** Confusing - features appear available but crash on use\n\n---\n\n### 4. Multi-Format Reporting (Partial)\n\n**Claim:**\n```markdown\n### ✅ Multi-Format Reporting (v1.0)\n- JSON reports - Programmatic access and parsing\n- JUnit XML - CI/CD integration\n- SHA-256 digests - Reproducibility verification\n```\n\n**Reality:**\n```bash\n# JSON format flag exists but outputs to stdout, not file\n$ clnrm run tests/test.toml --format json\n# Outputs JSON to terminal\n\n# No --report-json flag\n$ clnrm run tests/test.toml --report-json report.json\nerror: unexpected argument '--report-json' found\n\n# No --report-junit flag\n$ clnrm run tests/test.toml --report-junit junit.xml\nerror: unexpected argument '--report-junit' found\n```\n\n**Status:** ⚠️ Format flag exists, but file output options don't\n\n**Workaround:** Redirect stdout: `clnrm run --format json > report.json`\n\n---\n\n### 5. Change Detection (Not Working as Described)\n\n**Claim:**\n```markdown\n- **Change Detection** - SHA-256 file hashing, only rerun changed scenarios (10x faster)\n```\n\n**Reality:**\n```bash\n# First run\n$ clnrm run tests/basic.clnrm.toml\n✅ basic.clnrm.toml - PASS (288ms)\nCache created: 1 files tracked\n\n# Second run (no changes)\n$ clnrm run tests/basic.clnrm.toml\nRunning 1 scenario(s)...\n🚀 Executing test: basic_test\n[... full test execution ...]\n✅ basic.clnrm.toml - PASS (287ms)\n```\n\n**Status:** ⚠️ Creates cache but still re-runs tests\n\n**Impact:** No actual speed improvement from caching\n\n---\n\n### 6. Macro Library (Missing)\n\n**Claim:**\n```markdown\n### ✅ Macro Library (v1.0)\n- 8 reusable macros with 85% boilerplate reduction\n\nAvailable macros:\n- span_exists(name)\n- graph_relationship(parent, child)\n- temporal_ordering(before, after)\n[... etc]\n```\n\n**Reality:**\n```bash\n# Try to use macro in template\n$ cat > test.clnrm.toml.tera <<'EOF'\n{% import \"macros\" as m %}\n{{ m.span_exists(name=\"test\") }}\nEOF\n\n$ clnrm render test.clnrm.toml.tera\nError: Template error: Failed to load macro library\n```\n\n**Status:** ❌ Macro library not found or not implemented\n\n**Impact:** Can't use documented macro features\n\n---\n\n### 7. Template Variables (Don't Auto-Inject)\n\n**Claim:**\n```markdown\n[test.vars]\nsvc = \"myapp\"\nimage = \"alpine:latest\"\n\n[services.test]\nimage = \"{{ vars.image }}\"\n```\n\n**Reality:**\nVariables in `[test.vars]` are not automatically available. Must use:\n```bash\nclnrm run test.toml.tera --var svc=myapp --var image=alpine\n```\n\n**Status:** ⚠️ Works but requires CLI flags, not auto-injection\n\n---\n\n### 8. Fake Data Generators (Missing)\n\n**Claim:**\n```markdown\n### **Property-Based Testing with Fake Data**\n\n**Key Features:**\n- 50+ fake data generators - UUIDs, names, emails, timestamps, IPs, etc.\n- Deterministic seeding - `fake_uuid_seeded(seed=42)`\n\nExample:\n{{ fake_name() }}\n{{ fake_email() }}\n{{ fake_uuid() }}\n```\n\n**Reality:**\n```bash\n$ cat > test.clnrm.toml.tera <<'EOF'\n[[scenario]]\nname = \"test_{{ fake_uuid() }}\"\nEOF\n\n$ clnrm render test.clnrm.toml.tera\nError: Unknown function: fake_uuid\n```\n\n**Status:** ❌ Fake data functions don't exist\n\n---\n\n## Summary Table\n\n| Feature | Claimed Status | Actual Status | Impact |\n|---------|---------------|---------------|--------|\n| dev --watch | ✅ Working | ❌ Missing | High |\n| Self-test | ✅ Working | ❌ Crashes | Critical |\n| Containers | ✅ Working | ❌ Not used | Critical |\n| Analyze | ✅ Working | ⚠️ Incomplete | Medium |\n| AI features | 🧪 Experimental | ❌ Not installed | Low |\n| JSON reports | ✅ Working | ⚠️ Stdout only | Low |\n| JUnit XML | ✅ Working | ❌ Missing | Medium |\n| SHA-256 digest | ✅ Working | ❌ Missing | Low |\n| Change detection | ✅ Working | ⚠️ Doesn't skip | Medium |\n| Macro library | ✅ Working | ❌ Missing | Medium |\n| Fake data | ✅ Working | ❌ Missing | Medium |\n| Template vars | ✅ Working | ⚠️ CLI only | Low |\n\n## Impact\n\n**High** - Significant disconnect between documentation and reality:\n\n1. ❌ Users waste time trying to use missing features\n2. ❌ Features work differently than documented\n3. ❌ No clear indication of what's implemented vs planned\n4. ❌ README mixes v0.6, v1.0, and future features\n5. ❌ Damages trust in project\n\n## Recommendations\n\n### Immediate: Clear Documentation\n\nCreate separate sections:\n\n```markdown\n## ✅ Fully Implemented (v1.0)\n- clnrm init\n- clnrm validate\n- clnrm fmt\n- clnrm lint\n[Only list verified working features]\n\n## ⚠️ Partially Implemented (v1.0)\n- clnrm analyze (requires OTEL setup)\n- JSON output (stdout only, use redirection)\n- Change detection (creates cache, still reruns)\n\n## ❌ Not Yet Implemented\n- dev --watch (planned for v1.1)\n- JUnit XML reports (planned for v1.1)\n- Macro library (planned for v1.2)\n- Fake data generators (planned for v1.2)\n- Docker container support (planned for v2.0)\n\n## 🧪 Requires Additional Installation\n- AI features (install clnrm-ai crate)\n- Chaos engine (install clnrm-ai crate)\n```\n\n### Add Feature Matrix\n\n```markdown\n| Feature | Status | Notes |\n|---------|--------|-------|\n| TOML validation | ✅ Stable | Fully working |\n| Container execution | ❌ Not implemented | Planned for v2.0 |\n| Self-testing | ❌ Not implemented | See #2 |\n| Hot reload | ❌ Not implemented | Planned for v1.1 |\n```\n\n### Version Indicators\n\n```markdown\n# Each feature should show its version status\n- ✅ clnrm init (v1.0 - stable)\n- 🚧 clnrm analyze (v1.0 - partial, needs OTEL)\n- 📋 dev --watch (v1.1 - planned)\n- ❌ Container support (v2.0 - roadmap)\n```\n\n## Related Issues\n\n- #1 Container isolation not working\n- #2 Self-test crashes\n- #3 Misleading performance claims\n- #4 Documentation accuracy\n\n## Additional Context\n\nDiscovered during systematic audit of all README claims. The mixing of implemented, partially-implemented, and planned features creates confusion and wastes user time.\n\n**Root cause:** README appears to document the **vision** rather than the **reality**, without clearly distinguishing between them.\n",
+  "closed_by": null,
+  "reactions": {
+    "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/5/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "timeline_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/5/timeline",
+  "performed_via_github_app": null,
+  "state_reason": null
+}

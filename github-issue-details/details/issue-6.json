@@ -1,0 +1,94 @@
+{
+  "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/6",
+  "repository_url": "https://api.github.com/repos/seanchatmangpt/clnrm",
+  "labels_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/6/labels{/name}",
+  "comments_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/6/comments",
+  "events_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/6/events",
+  "html_url": "https://github.com/seanchatmangpt/clnrm/issues/6",
+  "id": 3527047469,
+  "node_id": "I_kwDOQCmyxs7SOnkt",
+  "number": 6,
+  "title": "dev --watch command does not exist despite being marked as ✅ Working",
+  "user": {
+    "login": "seanchatmangpt",
+    "id": 136349053,
+    "node_id": "U_kgDOCCCFfQ",
+    "avatar_url": "https://avatars.githubusercontent.com/u/136349053?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/seanchatmangpt",
+    "html_url": "https://github.com/seanchatmangpt",
+    "followers_url": "https://api.github.com/users/seanchatmangpt/followers",
+    "following_url": "https://api.github.com/users/seanchatmangpt/following{/other_user}",
+    "gists_url": "https://api.github.com/users/seanchatmangpt/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/seanchatmangpt/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/seanchatmangpt/subscriptions",
+    "organizations_url": "https://api.github.com/users/seanchatmangpt/orgs",
+    "repos_url": "https://api.github.com/users/seanchatmangpt/repos",
+    "events_url": "https://api.github.com/users/seanchatmangpt/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/seanchatmangpt/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "labels": [
+    {
+      "id": 9463217756,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XA",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/bug",
+      "name": "bug",
+      "color": "d73a4a",
+      "default": true,
+      "description": "Something isn't working"
+    },
+    {
+      "id": 9463217757,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XQ",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/documentation",
+      "name": "documentation",
+      "color": "0075ca",
+      "default": true,
+      "description": "Improvements or additions to documentation"
+    }
+  ],
+  "state": "open",
+  "locked": false,
+  "assignee": null,
+  "assignees": [
+
+  ],
+  "milestone": null,
+  "comments": 0,
+  "created_at": "2025-10-17T18:05:46Z",
+  "updated_at": "2025-10-17T18:05:46Z",
+  "closed_at": null,
+  "author_association": "OWNER",
+  "active_lock_reason": null,
+  "sub_issues_summary": {
+    "total": 0,
+    "completed": 0,
+    "percent_completed": 0
+  },
+  "issue_dependencies_summary": {
+    "blocked_by": 0,
+    "total_blocked_by": 0,
+    "blocking": 0,
+    "total_blocking": 0
+  },
+  "body": "# `dev --watch` command does not exist despite being marked as ✅ Working\n\n## Summary\n\nThe README prominently features `clnrm dev --watch` as a working hot reload feature with \"<3s latency from save to results\", but the command doesn't exist in the CLI.\n\n## Environment\n\n- **CLNRM Version:** 1.0.0\n- **OS:** macOS 14.5 (Darwin 24.5.0)\n- **Installation:** Built from source with `cargo build --release`\n\n## Reproduction Steps\n\n```bash\n# Try to use the dev watch command\nclnrm dev --help\n```\n\n## Expected Behavior\n\nBased on README claims:\n\n```markdown\n## 🚀 Version 1.0.0 Features (Current)\n\n### Hot Reload (`dev --watch`) - <3s latency from save to results\n\n| Command | Status | Description |\n|---------|--------|-------------|\n| `clnrm dev --watch` | ✅ **Working** | Hot reload development mode |\n```\n\nExpected output:\n```bash\n$ clnrm dev --help\n\nUsage: clnrm dev [OPTIONS]\n\nOptions:\n  --watch           Enable hot reload mode\n  --latency <MS>    Maximum reload latency [default: 3000]\n  -h, --help        Print help\n```\n\n## Actual Behavior\n\n```bash\n$ clnrm dev --help\n\nerror: unrecognized subcommand 'dev'\n\nUsage: clnrm [OPTIONS] <COMMAND>\n\nFor more information, try '--help'.\n```\n\n## Impact\n\n**Medium-High** - This is advertised as a v1.0 working feature:\n\n1. ❌ Users expect hot reload functionality\n2. ❌ Feature is marked with ✅ checkmark (implying it works)\n3. ❌ No indication in docs that it's planned vs implemented\n4. ❌ Wastes time trying to configure non-existent feature\n\n## Evidence\n\n```bash\n# Check available commands\n$ clnrm --help | grep -A 20 \"COMMANDS\"\nCOMMANDS:\n  init\n  validate\n  run\n  dry-run\n  fmt\n  lint\n  template\n  plugins\n  analyze\n  ai-orchestrate\n  ai-predict\n  ai-optimize\n  ai-real\n  self-test\n  help\n\n# No 'dev' command listed\n```\n\n## Suggested Fixes\n\n**Option 1: Implement the feature**\n- Add `clnrm dev` subcommand\n- Implement file watching with inotify/fsnotify\n- Auto-rerun tests when files change\n- Target <3s reload latency as claimed\n\n**Option 2: Update documentation**\n```markdown\n## 📋 Planned Features (v1.1)\n\n### Hot Reload (`dev --watch`)\n| Command | Status | Description |\n|---------|--------|-------------|\n| `clnrm dev --watch` | 🚧 **Planned** | Hot reload development mode |\n\nCurrently not implemented. Planned for v1.1 release.\n```\n\n**Option 3: Minimal implementation**\n```bash\n# At minimum, provide basic watch functionality\nclnrm dev --watch tests/\n\n# Could use cargo-watch or similar as interim solution\ncargo watch -x \"clnrm run tests/\"\n```\n\n## Related Issues\n\n- #5 Multiple claimed features are missing or non-functional\n\n## Additional Context\n\nDiscovered during systematic audit of README claims vs actual CLI functionality. The `dev --watch` feature is listed under \"Version 1.0.0 Features (Current)\" with ✅ Working status, creating clear expectation it should work.\n\n**Root cause**: Feature appears in roadmap/vision but was marked as completed in v1.0 documentation without actual implementation.\n",
+  "closed_by": null,
+  "reactions": {
+    "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/6/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "timeline_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/6/timeline",
+  "performed_via_github_app": null,
+  "state_reason": null
+}

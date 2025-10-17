@@ -9,6 +9,74 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use tokio::sync::RwLock;
+use reqwest::Client as HttpClient;
+use serde_json;
+
+/// HTTP client for querying remote plugin registries
+pub struct RegistryClient {
+    registry_url: String,
+    pub http_client: HttpClient,
+}
+
+impl RegistryClient {
+    /// Create new registry client
+    pub fn new(registry_url: &str) -> Result<Self> {
+        Ok(Self {
+            registry_url: registry_url.to_string(),
+            http_client: HttpClient::new(),
+        })
+    }
+
+    /// Get plugin metadata from remote registry
+    pub async fn get_plugin_metadata(&self, plugin_name: &str) -> Result<PluginMetadata> {
+        let url = format!("{}/api/plugins/{}", self.registry_url, plugin_name);
+
+        let response = self.http_client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| CleanroomError::network_error(format!("Failed to query registry: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(CleanroomError::network_error(format!(
+                "Registry returned error status: {}",
+                response.status()
+            )));
+        }
+
+        let metadata: PluginMetadata = response
+            .json()
+            .await
+            .map_err(|e| CleanroomError::network_error(format!("Failed to parse registry response: {}", e)))?;
+
+        Ok(metadata)
+    }
+
+    /// Search for plugins in registry
+    pub async fn search_plugins(&self, query: &str) -> Result<Vec<PluginMetadata>> {
+        let url = format!("{}/api/plugins/search?q={}", self.registry_url, query);
+
+        let response = self.http_client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| CleanroomError::network_error(format!("Failed to search registry: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(CleanroomError::network_error(format!(
+                "Registry search returned error status: {}",
+                response.status()
+            )));
+        }
+
+        let plugins: Vec<PluginMetadata> = response
+            .json()
+            .await
+            .map_err(|e| CleanroomError::network_error(format!("Failed to parse search results: {}", e)))?;
+
+        Ok(plugins)
+    }
+}
 
 /// Plugin registry for managing installed and available plugins
 pub struct PluginRegistry {

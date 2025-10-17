@@ -74,6 +74,7 @@ pub struct ContainerConfig {
     /// Maximum concurrent containers
     pub max_containers: usize,
     /// Container startup timeout
+    #[serde(deserialize_with = "super::deserializers::deserialize_duration")]
     pub startup_timeout: Duration,
 }
 
@@ -81,10 +82,13 @@ pub struct ContainerConfig {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServiceDefaultsConfig {
     /// Default service operation timeout
+    #[serde(deserialize_with = "super::deserializers::deserialize_duration")]
     pub default_timeout: Duration,
     /// Health check interval
+    #[serde(deserialize_with = "super::deserializers::deserialize_duration")]
     pub health_check_interval: Duration,
     /// Health check timeout
+    #[serde(deserialize_with = "super::deserializers::deserialize_duration")]
     pub health_check_timeout: Duration,
     /// Maximum service start retries
     pub max_retries: u32,
@@ -135,8 +139,10 @@ pub struct PerformanceConfig {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TestExecutionConfig {
     /// Overall test timeout
+    #[serde(deserialize_with = "super::deserializers::deserialize_duration")]
     pub default_timeout: Duration,
     /// Individual step timeout
+    #[serde(deserialize_with = "super::deserializers::deserialize_duration")]
     pub step_timeout: Duration,
     /// Retry failed tests
     pub retry_on_failure: bool,
@@ -375,6 +381,9 @@ fn apply_env_overrides(mut config: CleanroomConfig) -> Result<CleanroomConfig> {
             .parse::<bool>()
             .unwrap_or(config.containers.reuse_enabled);
     }
+    if let Ok(default_image) = std::env::var("CLEANROOM_CONTAINERS_DEFAULT_IMAGE") {
+        config.containers.default_image = default_image;
+    }
     if let Ok(max_containers) = std::env::var("CLEANROOM_CONTAINERS_MAX_CONTAINERS") {
         config.containers.max_containers = max_containers
             .parse::<usize>()
@@ -455,18 +464,22 @@ fn merge_configs(mut base: CleanroomConfig, override_config: CleanroomConfig) ->
 pub fn load_cleanroom_config() -> Result<CleanroomConfig> {
     let mut config = CleanroomConfig::default();
 
-    // Priority 1: Environment variables (CLEANROOM_*)
-    config = apply_env_overrides(config)?;
-
-    // Priority 2: Project cleanroom.toml (./cleanroom.toml)
-    if let Ok(project_config) = load_cleanroom_config_from_file("cleanroom.toml") {
-        config = merge_configs(config, project_config);
-    }
-
-    // Priority 3: User cleanroom.toml (~/.config/cleanroom/cleanroom.toml)
+    // Priority 1 (lowest): User cleanroom.toml (~/.config/cleanroom/cleanroom.toml)
     if let Ok(user_config) = load_cleanroom_config_from_user_dir() {
         config = merge_configs(config, user_config);
     }
+
+    // Priority 2: Project cleanroom.toml (./cleanroom.toml)
+    if let Err(e) = load_cleanroom_config_from_file("cleanroom.toml") {
+        eprintln!("DEBUG: Failed to load project cleanroom.toml: {}", e);
+    } else {
+        let project_config = load_cleanroom_config_from_file("cleanroom.toml").unwrap();
+        eprintln!("DEBUG: Loaded project cleanroom.toml with default_image: {}", project_config.containers.default_image);
+        config = merge_configs(config, project_config);
+    }
+
+    // Priority 3 (highest): Environment variables (CLEANROOM_*)
+    config = apply_env_overrides(config)?;
 
     // Validate final configuration
     config.validate()?;

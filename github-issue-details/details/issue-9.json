@@ -1,0 +1,94 @@
+{
+  "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/9",
+  "repository_url": "https://api.github.com/repos/seanchatmangpt/clnrm",
+  "labels_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/9/labels{/name}",
+  "comments_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/9/comments",
+  "events_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/9/events",
+  "html_url": "https://github.com/seanchatmangpt/clnrm/issues/9",
+  "id": 3527048119,
+  "node_id": "I_kwDOQCmyxs7SOnu3",
+  "number": 9,
+  "title": "JUnit XML report generation missing despite ✅ v1.0 claim",
+  "user": {
+    "login": "seanchatmangpt",
+    "id": 136349053,
+    "node_id": "U_kgDOCCCFfQ",
+    "avatar_url": "https://avatars.githubusercontent.com/u/136349053?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/seanchatmangpt",
+    "html_url": "https://github.com/seanchatmangpt",
+    "followers_url": "https://api.github.com/users/seanchatmangpt/followers",
+    "following_url": "https://api.github.com/users/seanchatmangpt/following{/other_user}",
+    "gists_url": "https://api.github.com/users/seanchatmangpt/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/seanchatmangpt/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/seanchatmangpt/subscriptions",
+    "organizations_url": "https://api.github.com/users/seanchatmangpt/orgs",
+    "repos_url": "https://api.github.com/users/seanchatmangpt/repos",
+    "events_url": "https://api.github.com/users/seanchatmangpt/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/seanchatmangpt/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "labels": [
+    {
+      "id": 9463217756,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XA",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/bug",
+      "name": "bug",
+      "color": "d73a4a",
+      "default": true,
+      "description": "Something isn't working"
+    },
+    {
+      "id": 9463217759,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-Xw",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/enhancement",
+      "name": "enhancement",
+      "color": "a2eeef",
+      "default": true,
+      "description": "New feature or request"
+    }
+  ],
+  "state": "open",
+  "locked": false,
+  "assignee": null,
+  "assignees": [
+
+  ],
+  "milestone": null,
+  "comments": 0,
+  "created_at": "2025-10-17T18:06:02Z",
+  "updated_at": "2025-10-17T18:06:02Z",
+  "closed_at": null,
+  "author_association": "OWNER",
+  "active_lock_reason": null,
+  "sub_issues_summary": {
+    "total": 0,
+    "completed": 0,
+    "percent_completed": 0
+  },
+  "issue_dependencies_summary": {
+    "blocked_by": 0,
+    "total_blocked_by": 0,
+    "blocking": 0,
+    "total_blocking": 0
+  },
+  "body": "# JUnit XML report generation missing despite ✅ v1.0 claim\n\n## Summary\n\nREADME claims \"JUnit XML - CI/CD integration\" as a ✅ v1.0 working feature under \"Multi-Format Reporting\", but the `--report-junit` flag doesn't exist.\n\n## Environment\n\n- **CLNRM Version:** 1.0.0\n- **OS:** macOS 14.5 (Darwin 24.5.0)\n- **Installation:** Built from source\n\n## Reproduction Steps\n\n### Test 1: Try --report-junit flag\n\n```bash\nclnrm run tests/basic.clnrm.toml --report-junit junit.xml\n```\n\n### Test 2: Try --format junit\n\n```bash\nclnrm run tests/basic.clnrm.toml --format junit\n```\n\n### Test 3: Check available output formats\n\n```bash\nclnrm run --help | grep -A 5 \"format\\|output\"\n```\n\n### Test 4: Look for JUnit support in code\n\n```bash\ngit clone https://github.com/seanchatmangpt/clnrm /tmp/clnrm-src\ngrep -r \"junit\\|JUnit\" /tmp/clnrm-src/src/\n```\n\n## Expected Behavior\n\nBased on README claims:\n\n```markdown\n### ✅ Multi-Format Reporting (v1.0)\n- JSON reports - Programmatic access and parsing\n- JUnit XML - CI/CD integration\n- SHA-256 digests - Reproducibility verification\n\nExample usage:\n```bash\n# Generate JUnit XML for CI/CD\nclnrm run tests/ --report-junit junit.xml\n\n# Jenkins/GitLab CI integration\nclnrm run tests/ --format junit > test-results.xml\n```\n\nExpected output:\n```xml\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites>\n  <testsuite name=\"clnrm\" tests=\"5\" failures=\"0\" errors=\"0\" time=\"1.234\">\n    <testcase classname=\"basic_test\" name=\"scenario_1\" time=\"0.288\"/>\n    <testcase classname=\"basic_test\" name=\"scenario_2\" time=\"0.301\"/>\n    ...\n  </testsuite>\n</testsuites>\n```\n\n## Actual Behavior\n\n### Test 1 Result:\n```bash\n$ clnrm run tests/basic.clnrm.toml --report-junit junit.xml\n\nerror: unexpected argument '--report-junit' found\n\nUsage: clnrm run [OPTIONS] <PATH>\n\nFor more information, try '--help'.\n```\n\n### Test 2 Result:\n```bash\n$ clnrm run tests/basic.clnrm.toml --format junit\n\nerror: invalid value 'junit' for '--format <FORMAT>'\n  [possible values: text, json]\n\nFor more information, try '--help'.\n```\n\n### Test 3 Result:\n```bash\n$ clnrm run --help | grep -A 5 \"format\"\n\n  -f, --format <FORMAT>\n          Output format [default: text] [possible values: text, json]\n\n# No junit option listed\n```\n\n### Test 4 Result:\n```bash\n$ grep -r \"junit\\|JUnit\" /tmp/clnrm-src/src/\n# No results - JUnit support not implemented\n```\n\n## Impact\n\n**Medium** - CI/CD integration blocker:\n\n1. ❌ Cannot integrate with Jenkins (expects JUnit XML)\n2. ❌ Cannot integrate with GitLab CI (expects JUnit XML)\n3. ❌ Cannot integrate with GitHub Actions test reporting\n4. ❌ Claimed v1.0 stable feature doesn't exist\n5. ⚠️ Workaround exists but requires custom parsing\n\n## Current Workaround\n\n```bash\n# Use JSON output and convert to JUnit XML manually\nclnrm run tests/ --format json > results.json\n\n# Then convert with external tool (not provided)\npython convert_to_junit.py results.json > junit.xml\n```\n\nThis defeats the purpose of \"CI/CD integration\" claim.\n\n## Evidence\n\n**Only 2 output formats available:**\n```bash\n$ clnrm run --help\n  -f, --format <FORMAT>\n          Output format [default: text] [possible values: text, json]\n```\n\n**No JUnit XML code in source:**\n```bash\n$ find /tmp/clnrm-src -name \"*.rs\" -exec grep -l \"junit\" {} \\;\n# No results\n```\n\n## Suggested Fixes\n\n**Option 1: Implement JUnit XML output**\n\nAdd to `src/report/mod.rs`:\n```rust\npub mod junit;\n\nuse quick_xml::Writer;\nuse quick_xml::events::{Event, BytesStart, BytesEnd, BytesText};\n\npub fn write_junit_xml(results: &TestResults, path: &Path) -> Result<()> {\n    let mut writer = Writer::new_with_indent(File::create(path)?, b' ', 2);\n\n    // <testsuites>\n    writer.write_event(Event::Start(BytesStart::new(\"testsuites\")))?;\n\n    // <testsuite name=\"...\" tests=\"...\" failures=\"...\" time=\"...\">\n    let mut testsuite = BytesStart::new(\"testsuite\");\n    testsuite.push_attribute((\"name\", \"clnrm\"));\n    testsuite.push_attribute((\"tests\", &results.total.to_string()));\n    testsuite.push_attribute((\"failures\", &results.failures.to_string()));\n    testsuite.push_attribute((\"errors\", &results.errors.to_string()));\n    testsuite.push_attribute((\"time\", &results.duration.as_secs_f64().to_string()));\n    writer.write_event(Event::Start(testsuite))?;\n\n    // <testcase> for each scenario\n    for scenario in &results.scenarios {\n        let mut testcase = BytesStart::new(\"testcase\");\n        testcase.push_attribute((\"classname\", scenario.file.as_str()));\n        testcase.push_attribute((\"name\", scenario.name.as_str()));\n        testcase.push_attribute((\"time\", &scenario.duration.as_secs_f64().to_string()));\n\n        if let Some(failure) = &scenario.failure {\n            writer.write_event(Event::Start(testcase))?;\n\n            // <failure message=\"...\" type=\"...\">\n            let mut failure_elem = BytesStart::new(\"failure\");\n            failure_elem.push_attribute((\"message\", failure.message.as_str()));\n            failure_elem.push_attribute((\"type\", failure.error_type.as_str()));\n            writer.write_event(Event::Start(failure_elem))?;\n            writer.write_event(Event::Text(BytesText::new(&failure.details)))?;\n            writer.write_event(Event::End(BytesEnd::new(\"failure\")))?;\n\n            writer.write_event(Event::End(BytesEnd::new(\"testcase\")))?;\n        } else {\n            writer.write_event(Event::Empty(testcase))?;\n        }\n    }\n\n    writer.write_event(Event::End(BytesEnd::new(\"testsuite\")))?;\n    writer.write_event(Event::End(BytesEnd::new(\"testsuites\")))?;\n\n    Ok(())\n}\n```\n\nAdd CLI flag:\n```rust\n#[derive(Parser)]\npub struct RunArgs {\n    // ... existing fields\n\n    /// Generate JUnit XML report\n    #[arg(long, value_name = \"FILE\")]\n    report_junit: Option<PathBuf>,\n}\n```\n\nDependencies:\n```toml\n[dependencies]\nquick-xml = \"0.31\"\n```\n\n**Option 2: Update README to reflect reality**\n```markdown\n### ✅ Multi-Format Reporting (v1.0)\n- JSON reports - Programmatic access and parsing ✅\n- ⚠️ Text reports - Human-readable output ✅\n\n### 🚧 Planned Features (v1.1)\n- JUnit XML - CI/CD integration (planned)\n- SHA-256 digests - Reproducibility verification (planned)\n\nCurrent CI/CD integration:\n```bash\n# Use JSON output and parse in your pipeline\nclnrm run tests/ --format json > results.json\n```\n```\n\n**Option 3: Minimal implementation**\n\nProvide basic JUnit XML converter script:\n```bash\n# scripts/json-to-junit.py\nimport json\nimport sys\nfrom xml.etree.ElementTree import Element, SubElement, tostring\n\nwith open(sys.argv[1]) as f:\n    results = json.load(f)\n\ntestsuites = Element('testsuites')\ntestsuite = SubElement(testsuites, 'testsuite', {\n    'name': 'clnrm',\n    'tests': str(results['total']),\n    'failures': str(results['failures']),\n    'time': str(results['duration'])\n})\n\nfor scenario in results['scenarios']:\n    testcase = SubElement(testsuite, 'testcase', {\n        'classname': scenario['file'],\n        'name': scenario['name'],\n        'time': str(scenario['duration'])\n    })\n\n    if 'failure' in scenario:\n        failure = SubElement(testcase, 'failure', {\n            'message': scenario['failure']['message']\n        })\n        failure.text = scenario['failure']['details']\n\nprint(tostring(testsuites, encoding='unicode'))\n```\n\nUsage:\n```bash\nclnrm run tests/ --format json > results.json\npython scripts/json-to-junit.py results.json > junit.xml\n```\n\n## Example JUnit XML Output (If Implemented)\n\n```xml\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites>\n  <testsuite name=\"clnrm\" tests=\"5\" failures=\"1\" errors=\"0\" time=\"1.456\">\n    <testcase classname=\"tests/basic.clnrm.toml\" name=\"scenario_1\" time=\"0.288\"/>\n    <testcase classname=\"tests/basic.clnrm.toml\" name=\"scenario_2\" time=\"0.301\"/>\n    <testcase classname=\"tests/alpine.clnrm.toml\" name=\"container_test\" time=\"0.412\">\n      <failure message=\"Container not created\" type=\"ContainerError\">\n        Expected container to exist but docker ps showed none\n        Stack trace:\n        ...\n      </failure>\n    </testcase>\n    <testcase classname=\"tests/redis.clnrm.toml\" name=\"redis_test\" time=\"0.298\"/>\n    <testcase classname=\"tests/postgres.clnrm.toml\" name=\"db_test\" time=\"0.157\"/>\n  </testsuite>\n</testsuites>\n```\n\n## CI/CD Integration Examples (If Implemented)\n\n### Jenkins\n```groovy\npipeline {\n    stages {\n        stage('Test') {\n            steps {\n                sh 'clnrm run tests/ --report-junit junit.xml'\n            }\n        }\n    }\n    post {\n        always {\n            junit 'junit.xml'\n        }\n    }\n}\n```\n\n### GitLab CI\n```yaml\ntest:\n  script:\n    - clnrm run tests/ --report-junit junit.xml\n  artifacts:\n    reports:\n      junit: junit.xml\n```\n\n### GitHub Actions\n```yaml\n- name: Run tests\n  run: clnrm run tests/ --report-junit junit.xml\n\n- name: Publish test results\n  uses: EnricoMi/publish-unit-test-result-action@v2\n  with:\n    files: junit.xml\n```\n\n## Related Issues\n\n- #5 Multiple claimed features are missing or non-functional\n- #4 README contains extensive false claims\n- #10 SHA-256 digest missing (related reporting feature)\n\n## Additional Context\n\nDiscovered during systematic audit of reporting features. JUnit XML is THE standard format for CI/CD test reporting, making this a critical integration feature.\n\n**Severity**: Medium - Has workaround (JSON + manual parsing) but defeats purpose of \"CI/CD integration\" claim.\n\n**Implementation effort**: Low - JUnit XML format is simple, `quick-xml` crate available.\n",
+  "closed_by": null,
+  "reactions": {
+    "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/9/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "timeline_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/9/timeline",
+  "performed_via_github_app": null,
+  "state_reason": null
+}

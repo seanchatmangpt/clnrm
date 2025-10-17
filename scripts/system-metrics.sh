@@ -41,6 +41,11 @@ declare -A METRICS
 declare -A WARNINGS
 declare -A ERRORS
 
+# Initialize arrays
+METRICS=()
+WARNINGS=()
+ERRORS=()
+
 # Log functions
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -460,10 +465,13 @@ main() {
     echo "Warnings: ${#WARNINGS[@]}"
     echo "Errors: ${#ERRORS[@]}"
     
-    if [[ ${#ERRORS[@]} -gt 0 ]]; then
+    local error_count=${#ERRORS[@]}
+    local warning_count=${#WARNINGS[@]}
+    
+    if [[ $error_count -gt 0 ]]; then
         log_error "System has critical issues"
         exit 2
-    elif [[ ${#WARNINGS[@]} -gt 0 ]]; then
+    elif [[ $warning_count -gt 0 ]]; then
         log_warning "System has warnings"
         exit 1
     else

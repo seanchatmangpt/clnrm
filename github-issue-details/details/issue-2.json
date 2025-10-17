@@ -1,0 +1,85 @@
+{
+  "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/2",
+  "repository_url": "https://api.github.com/repos/seanchatmangpt/clnrm",
+  "labels_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/2/labels{/name}",
+  "comments_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/2/comments",
+  "events_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/2/events",
+  "html_url": "https://github.com/seanchatmangpt/clnrm/issues/2",
+  "id": 3527023472,
+  "node_id": "I_kwDOQCmyxs7SOhtw",
+  "number": 2,
+  "title": "Self-test feature crashes with 'not implemented' panic",
+  "user": {
+    "login": "seanchatmangpt",
+    "id": 136349053,
+    "node_id": "U_kgDOCCCFfQ",
+    "avatar_url": "https://avatars.githubusercontent.com/u/136349053?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/seanchatmangpt",
+    "html_url": "https://github.com/seanchatmangpt",
+    "followers_url": "https://api.github.com/users/seanchatmangpt/followers",
+    "following_url": "https://api.github.com/users/seanchatmangpt/following{/other_user}",
+    "gists_url": "https://api.github.com/users/seanchatmangpt/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/seanchatmangpt/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/seanchatmangpt/subscriptions",
+    "organizations_url": "https://api.github.com/users/seanchatmangpt/orgs",
+    "repos_url": "https://api.github.com/users/seanchatmangpt/repos",
+    "events_url": "https://api.github.com/users/seanchatmangpt/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/seanchatmangpt/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "labels": [
+    {
+      "id": 9463217756,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XA",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/bug",
+      "name": "bug",
+      "color": "d73a4a",
+      "default": true,
+      "description": "Something isn't working"
+    }
+  ],
+  "state": "open",
+  "locked": false,
+  "assignee": null,
+  "assignees": [
+
+  ],
+  "milestone": null,
+  "comments": 0,
+  "created_at": "2025-10-17T17:56:59Z",
+  "updated_at": "2025-10-17T17:56:59Z",
+  "closed_at": null,
+  "author_association": "OWNER",
+  "active_lock_reason": null,
+  "sub_issues_summary": {
+    "total": 0,
+    "completed": 0,
+    "percent_completed": 0
+  },
+  "issue_dependencies_summary": {
+    "blocked_by": 0,
+    "total_blocked_by": 0,
+    "blocking": 0,
+    "total_blocking": 0
+  },
+  "body": "# Self-test feature crashes with \"not implemented\" panic\n\n## Summary\n\nThe `clnrm self-test` command, which is advertised as a core feature for \"Framework validates itself across 5 test suites\", crashes with a panic stating the feature is not implemented. This contradicts the README which shows example output of passing tests.\n\n## Environment\n\n- **CLNRM Version:** 1.0.0\n- **OS:** macOS 14.5 (Darwin 24.5.0)\n- **Installation:** Built from source with `cargo build --release`\n\n## Steps to Reproduce\n\n```bash\nclnrm self-test\n```\n\n## Expected Behavior\n\nBased on the README documentation:\n\n```\n$ clnrm self-test\nFramework Self-Test Results:\nTotal Tests: 5\nPassed: 5\nFailed: 0\n✅ All framework functionality validated\n```\n\nThe README states:\n- \"Framework Self-Tests Work\"\n- \"clnrm self-test - Framework validates itself across 5 test suites (framework, container, plugin, cli, otel)\"\n\n## Actual Behavior\n\n```\n$ clnrm self-test\n\nthread 'main' panicked at 'not implemented: Framework self-test not implemented in v1.0', clnrm-core/src/cli/commands/self_test.rs:42:9\nnote: run with `RUST_BACKTRACE=1` for more information\n```\n\n## Impact\n\n**Critical** - This is a major credibility issue:\n\n1. ❌ README shows fabricated output for a feature that doesn't exist\n2. ❌ Self-testing is fundamental to dogfooding - framework can't validate itself\n3. ❌ Users cannot verify CLNRM installation is working correctly\n4. ❌ Contradicts CLNRM's own philosophy about proving execution with evidence\n5. ❌ The panic message explicitly says \"not implemented in v1.0\"\n\n## Documentation Issues\n\nThe README contains an entire section showing this feature working:\n\n```markdown\n### **Framework Self-Tests Work**\n\\`\\`\\`bash\n$ clnrm self-test\nFramework Self-Test Results:\nTotal Tests: 5\nPassed: 5\nFailed: 0\n✅ All framework functionality validated\n\\`\\`\\`\n```\n\nThis appears to be **fabricated output** for a feature that was never implemented.\n\n## Why This Matters\n\nCLNRM's core philosophy is about **proving execution** and **eliminating false positives**. The framework itself has a false positive - claiming to self-test when it doesn't.\n\nFrom CLNRM's own documentation:\n> \"Tests must PROVE they executed by generating telemetry\"\n> \"The Problem: Tests that report 'PASS' but never actually executed code\"\n> \"The Solution: OTEL-first validation with 7 independent detection layers\"\n\nThe self-test feature reports in the README but crashes in reality - this is exactly the type of false positive CLNRM claims to prevent!\n\n## Suggested Fixes\n\n**Option 1: Implement the feature**\n- Actually implement the 5 test suites mentioned in docs\n- Test framework, container, plugin, cli, and otel functionality\n- Make it part of CI/CD to ensure dogfooding\n\n**Option 2: Remove from docs**\n- Remove all self-test claims from README\n- Remove the fabricated output example\n- Update command help text\n- Add to roadmap as future feature\n\n**Option 3: Provide basic implementation**\n- At minimum, run `clnrm validate` on example files\n- Run `clnrm dry-run` on test fixtures\n- Verify plugins can be loaded\n- Report real results (not fabricated)\n\n## Related Issues\n\n- #1 Container isolation not working - discovered while trying to use self-test to validate installation\n\n## Additional Context\n\nThis issue was discovered during systematic testing of all CLNRM README claims. The self-test failure is particularly concerning because:\n\n1. It's a **dogfooding failure** - framework should test itself\n2. It's documented with **fake output** - shows results that never happened\n3. The **panic message is explicit** - \"not implemented in v1.0\"\n4. It violates CLNRM's **own principles** about proof of execution\n\n## Logs\n\nFull error with backtrace:\n\n```\n$ RUST_BACKTRACE=1 clnrm self-test\n\nthread 'main' panicked at 'not implemented: Framework self-test not implemented in v1.0', clnrm-core/src/cli/commands/self_test.rs:42:9\nstack backtrace:\n[...]\n```\n\nThe source file `clnrm-core/src/cli/commands/self_test.rs:42` contains:\n```rust\npanic!(\"not implemented: Framework self-test not implemented in v1.0\")\n```\n\nThis is an intentional panic for an unimplemented feature, not a bug in existing code.\n",
+  "closed_by": null,
+  "reactions": {
+    "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/2/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "timeline_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/2/timeline",
+  "performed_via_github_app": null,
+  "state_reason": null
+}

@@ -44,25 +44,28 @@ tempfile = "3.0"
 junit-report = "0.8"
 notify = "6.0"
 toml_edit = "0.22"
+quick-xml = { version = "0.31", features = ["serialize"] }
 
 # OpenTelemetry dependencies
-opentelemetry = { version = "0.31", default-features = false, features = [
+opentelemetry = { version = "0.31.0", default-features = false, features = [
   "trace",
   "metrics",
   "logs",
+  "futures",
 ] }
-opentelemetry_sdk = { version = "0.31", default-features = false, features = [
+opentelemetry_sdk = { version = "0.31.0", default-features = false, features = [
   "trace",
   "metrics",
   "logs",
   "rt-tokio",
+  "testing",
 ] }
-opentelemetry-stdout = { version = "0.31", features = [
+opentelemetry-stdout = { version = "0.31.0", features = [
   "trace",
   "metrics",
   "logs",
 ] }
-opentelemetry-otlp = { version = "0.31", default-features = false, features = [
+opentelemetry-otlp = { version = "0.31.0", default-features = false, features = [
   "trace",
   "metrics",
   "logs",
@@ -70,16 +73,23 @@ opentelemetry-otlp = { version = "0.31", default-features = false, features = [
   "grpc-tonic",
   "reqwest-client",
 ] }
-tracing-opentelemetry = "0.32"
+opentelemetry-jaeger = { version = "0.22.0" }
+opentelemetry-zipkin = { version = "0.31.0" }
+opentelemetry-semantic-conventions = "0.15.0"
+tracing-opentelemetry = "0.32.0"
 tracing-subscriber = { version = "0.3.20", features = [
   "fmt",
   "env-filter",
   "registry",
 ] }
 
+# Additional dependencies for OTLP integration
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
 # Utility dependencies
 uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+hostname = "0.4"
 
 # Snapshot testing dependencies
 insta = { version = "1.34", features = ["json", "yaml"] }

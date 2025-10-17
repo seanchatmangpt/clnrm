@@ -402,31 +402,61 @@ impl ServicePlugin for WebServerServicePlugin {
 ///
 /// Set up a database service with the specified image
 pub async fn with_database(image: &str) -> Result<()> {
-    // This would be called from within the cleanroom_test macro
-    // For now, we'll provide a placeholder implementation
-    tracing::info!(image = %image, "Setting up database");
-    tracing::info!("Database service configured");
+    tracing::info!("Setting up database service with image: {}", image);
+
+    // In a real implementation, this would:
+    // 1. Create a database container using the specified image
+    // 2. Wait for the database to be ready
+    // 3. Set up connection configuration
+    // 4. Return connection details
+
+    // For now, just log the setup
+    tracing::info!("Database service '{}' setup completed (placeholder implementation)", image);
+
+    // In a real implementation, this would return connection details
+    // and the service would be managed by the test framework
     Ok(())
 }
 
 /// Set up a cache service with the specified image
 pub async fn with_cache(image: &str) -> Result<()> {
-    tracing::info!(image = %image, "Setting up cache");
-    tracing::info!("Cache service configured");
+    tracing::info!("Setting up cache service with image: {}", image);
+
+    // In a real implementation, this would:
+    // 1. Create a cache container (Redis, Memcached, etc.)
+    // 2. Configure cache settings
+    // 3. Wait for cache to be ready
+    // 4. Return connection details
+
+    tracing::info!("Cache service '{}' setup completed (placeholder implementation)", image);
     Ok(())
 }
 
 /// Set up a message queue service with the specified image
 pub async fn with_message_queue(image: &str) -> Result<()> {
-    tracing::info!(image = %image, "Setting up message queue");
-    tracing::info!("Message queue service configured");
+    tracing::info!("Setting up message queue service with image: {}", image);
+
+    // In a real implementation, this would:
+    // 1. Create a message queue container (RabbitMQ, Kafka, etc.)
+    // 2. Configure queue settings
+    // 3. Wait for queue to be ready
+    // 4. Return connection details
+
+    tracing::info!("Message queue service '{}' setup completed (placeholder implementation)", image);
     Ok(())
 }
 
 /// Set up a web server service with the specified image
 pub async fn with_web_server(image: &str) -> Result<()> {
-    tracing::info!(image = %image, "Setting up web server");
-    tracing::info!("Web server service configured");
+    tracing::info!("Setting up web server service with image: {}", image);
+
+    // In a real implementation, this would:
+    // 1. Create a web server container (nginx, Apache, etc.)
+    // 2. Configure server settings
+    // 3. Wait for server to be ready
+    // 4. Return connection details
+
+    tracing::info!("Web server service '{}' setup completed (placeholder implementation)", image);
     Ok(())
 }
 

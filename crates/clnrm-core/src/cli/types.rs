@@ -68,6 +68,14 @@ pub enum Commands {
         /// Shard tests for parallel execution (format: i/m where i is 1-based index, m is total shards)
         #[arg(long, value_parser = parse_shard)]
         shard: Option<(usize, usize)>,
+
+        /// Generate SHA-256 digest for reproducibility
+        #[arg(long)]
+        digest: bool,
+
+        /// Generate JUnit XML report to file
+        #[arg(long, value_name = "FILE")]
+        report_junit: Option<PathBuf>,
     },
 
     /// Initialize a new test project
@@ -146,7 +154,9 @@ pub enum Commands {
         otel_endpoint: Option<String>,
     },
 
-    /// AI-powered test orchestration
+    /// AI-powered test orchestration [EXPERIMENTAL - requires 'ai' feature]
+    #[cfg(feature = "ai")]
+    #[command(about = "AI-powered test orchestration [EXPERIMENTAL]")]
     AiOrchestrate {
         /// Test files or directories to orchestrate
         paths: Option<Vec<PathBuf>>,
@@ -168,7 +178,9 @@ pub enum Commands {
         max_workers: usize,
     },
 
-    /// AI-powered predictive analytics
+    /// AI-powered predictive analytics [EXPERIMENTAL - requires 'ai' feature]
+    #[cfg(feature = "ai")]
+    #[command(about = "AI-powered predictive analytics [EXPERIMENTAL]")]
     AiPredict {
         /// Analyze test execution history
         #[arg(long)]
@@ -187,7 +199,9 @@ pub enum Commands {
         format: PredictionFormat,
     },
 
-    /// AI-powered optimization
+    /// AI-powered optimization [EXPERIMENTAL - requires 'ai' feature]
+    #[cfg(feature = "ai")]
+    #[command(about = "AI-powered optimization [EXPERIMENTAL]")]
     AiOptimize {
         /// Optimize test execution order
         #[arg(long)]
@@ -206,14 +220,18 @@ pub enum Commands {
         auto_apply: bool,
     },
 
-    /// Real AI intelligence using SurrealDB and Ollama
+    /// Real AI intelligence using SurrealDB and Ollama [EXPERIMENTAL - requires 'ai' feature]
+    #[cfg(feature = "ai")]
+    #[command(about = "Real AI intelligence with SurrealDB and Ollama [EXPERIMENTAL]")]
     AiReal {
         /// Run real AI analysis with actual data and AI processing
         #[arg(long)]
         analyze: bool,
     },
 
-    /// AI-powered autonomous monitoring system
+    /// AI-powered autonomous monitoring system [EXPERIMENTAL - requires 'ai' feature]
+    #[cfg(feature = "ai")]
+    #[command(about = "AI-powered autonomous monitoring [EXPERIMENTAL]")]
     AiMonitor {
         /// Monitoring interval in seconds
         #[arg(long, default_value = "30")]
@@ -453,6 +471,16 @@ pub enum Commands {
     },
 
     /// Analyze OTEL traces against test expectations (v0.7.0)
+    ///
+    /// REQUIRES SETUP: OpenTelemetry Collector must be installed and running.
+    /// See docs/OPENTELEMETRY_INTEGRATION_GUIDE.md for complete setup instructions.
+    ///
+    /// Quick setup:
+    ///   1. Install OTEL Collector: brew install opentelemetry-collector
+    ///   2. Configure collector to export to /tmp/clnrm-spans.json
+    ///   3. Start collector: otelcol --config otel-collector-config.yaml
+    ///   4. Run tests: clnrm run --features otel tests/
+    ///   5. Analyze: clnrm analyze tests/my-test.clnrm.toml
     Analyze {
         /// Test configuration file with expectations
         #[arg(value_name = "TEST_FILE")]
@@ -528,7 +556,9 @@ pub enum ServiceCommands {
         service: String,
     },
 
-    /// AI-driven service lifecycle management
+    /// AI-driven service lifecycle management [EXPERIMENTAL - requires 'ai' feature]
+    #[cfg(feature = "ai")]
+    #[command(about = "AI-driven service lifecycle management [EXPERIMENTAL]")]
     AiManage {
         /// Enable auto-scaling based on load prediction
         #[arg(long)]
@@ -649,6 +679,8 @@ pub struct CliConfig {
     pub verbose: u8,
     /// Force bypass cache
     pub force: bool,
+    /// Generate SHA-256 digest for reproducibility
+    pub digest: bool,
 }
 
 impl Default for CliConfig {
@@ -662,6 +694,7 @@ impl Default for CliConfig {
             interactive: false,
             verbose: 0,
             force: false,
+            digest: false,
         }
     }
 }

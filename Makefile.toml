@@ -105,10 +105,7 @@ args = ["build", "-p", "clnrm-ai"]
 
 [tasks.build-all]
 description = "Build all workspace crates including AI"
-script = [
-    "cargo build",
-    "cargo build -p clnrm-ai"
-]
+script = ["cargo build", "cargo build -p clnrm-ai"]
 
 # =============================================================================
 # 3. TEST TASKS
@@ -146,10 +143,7 @@ args = ["test", "--lib", "--", "--test-threads=1", "--nocapture"]
 
 [tasks.test-all]
 description = "Run all tests (unit + integration)"
-script = [
-    "cargo test --lib",
-    "cargo test --test '*'"
-]
+script = ["cargo test --lib", "cargo test --test '*'"]
 
 [tasks.test-proptest]
 description = "Run property-based tests (160K+ generated cases)"
@@ -283,7 +277,7 @@ args = ["run", "--", "self-test"]
 description = "Initialize clnrm in examples directory"
 script = [
     "mkdir -p examples/demo",
-    "cd examples/demo && cargo run --manifest-path ../../Cargo.toml -- init"
+    "cd examples/demo && cargo run --manifest-path ../../Cargo.toml -- init",
 ]
 
 [tasks.run-examples]
@@ -317,7 +311,7 @@ script = [
     "echo '=== Checking clnrm ==='",
     "cd crates/clnrm && cargo publish --dry-run",
     "echo ''",
-    "echo 'All packages validated successfully!'"
+    "echo 'All packages validated successfully!'",
 ]
 
 [tasks.publish]
@@ -340,7 +334,7 @@ script = [
     "echo '=== Publishing clnrm ==='",
     "cd crates/clnrm && cargo publish",
     "echo ''",
-    "echo 'All packages published successfully!'"
+    "echo 'All packages published successfully!'",
 ]
 
 [tasks.version-bump]
@@ -354,7 +348,7 @@ script = [
     "echo '  - crates/clnrm-core/Cargo.toml'",
     "echo '  - crates/clnrm/Cargo.toml'",
     "echo ''",
-    "echo 'Then update dependency versions in clnrm-core and clnrm Cargo.toml files'"
+    "echo 'Then update dependency versions in clnrm-core and clnrm Cargo.toml files'",
 ]
 
 # =============================================================================
@@ -402,7 +396,7 @@ description = "Update dependencies"
 script = [
     "cargo update",
     "echo ''",
-    "echo 'Dependencies updated. Run `cargo make test` to verify.'"
+    "echo 'Dependencies updated. Run `cargo make test` to verify.'",
 ]
 
 [tasks.licenses]
@@ -437,7 +431,7 @@ script = [
     "cargo install cargo-bloat",
     "cargo install cargo-license",
     "echo ''",
-    "echo 'Development tools installed successfully!'"
+    "echo 'Development tools installed successfully!'",
 ]
 
 # =============================================================================
@@ -457,7 +451,7 @@ script = [
     "echo ''",
     "echo '🔍 Checking cargo-make installation:'",
     "cargo make --version || (echo '⚠️  cargo-make not installed, installing...' && cargo install cargo-make)",
-    "echo '✅ Environment setup complete'"
+    "echo '✅ Environment setup complete'",
 ]
 
 [tasks.setup-dev-tools]
@@ -471,7 +465,7 @@ script = [
     "cargo install cargo-bloat || echo '⚠️  cargo-bloat already installed'",
     "cargo install cargo-license || echo '⚠️  cargo-license already installed'",
     "cargo install cargo-make || echo '⚠️  cargo-make already installed'",
-    "echo '✅ Development tools installation complete'"
+    "echo '✅ Development tools installation complete'",
 ]
 
 # =============================================================================
@@ -502,7 +496,12 @@ command = "./scripts/validate_test_reliability.sh"
 [tasks.validate-integration]
 description = "Run comprehensive integration validation"
 workspace = false
-dependencies = ["validate-best-practices", "validate-autonomic", "validate-hot-reload", "validate-test-reliability"]
+dependencies = [
+    "validate-best-practices",
+    "validate-autonomic",
+    "validate-hot-reload",
+    "validate-test-reliability",
+]
 
 [tasks.validate-production-readiness]
 description = "Comprehensive production readiness validation"
@@ -512,7 +511,7 @@ dependencies = [
     "test-all",
     "clippy",
     "build-release",
-    "audit"
+    "audit",
 ]
 
 # =============================================================================
@@ -554,18 +553,13 @@ dependencies = [
     "validate-production-readiness",
     "build-release",
     "doc",
-    "audit"
+    "audit",
 ]
 
 [tasks.pre-commit-full]
 description = "Comprehensive pre-commit validation"
 workspace = false
-dependencies = [
-    "fmt",
-    "clippy",
-    "test-quick",
-    "validate-best-practices"
-]
+dependencies = ["fmt", "clippy", "test-quick", "validate-best-practices"]
 
 [tasks.release-validation]
 description = "Validate release readiness with comprehensive checks"
@@ -574,7 +568,7 @@ dependencies = [
     "ci-full",
     "validate-production-readiness",
     "benchmark-performance",
-    "publish-check"
+    "publish-check",
 ]
 
 # =============================================================================
@@ -599,7 +593,7 @@ script = [
     "echo '📈 Resource Usage:'",
     "docker system df",
     "echo ''",
-    "echo '✅ Health check complete'"
+    "echo '✅ Health check complete'",
 ]
 
 [tasks.system-metrics]
@@ -618,7 +612,7 @@ script = [
     "docker system df",
     "echo ''",
     "echo '⚡ CPU Info:'",
-    "nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'CPU info not available'"
+    "nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 'CPU info not available'",
 ]
 
 # =============================================================================
@@ -647,7 +641,13 @@ args = ["test", "--lib", "--features", "edge-case-tests", "--", "--nocapture"]
 
 [tasks.test-comprehensive]
 description = "Run comprehensive test suite including stress and edge cases"
-dependencies = ["test-all", "test-stress", "test-memory", "test-concurrent", "test-edge-cases"]
+dependencies = [
+    "test-all",
+    "test-stress",
+    "test-memory",
+    "test-concurrent",
+    "test-edge-cases",
+]
 
 # =============================================================================
 # 17. DOCUMENTATION AND PUBLISHING TASKS
@@ -668,7 +668,7 @@ description = "Validate documentation links and structure"
 script = [
     "echo '📚 Validating documentation...'",
     "cargo doc --all-features --no-deps --document-private-items",
-    "echo '✅ Documentation validation complete'"
+    "echo '✅ Documentation validation complete'",
 ]
 
 [tasks.publish-dry-run]
@@ -684,7 +684,7 @@ script = [
     "echo '=== Checking clnrm ==='",
     "cd crates/clnrm && cargo publish --dry-run",
     "echo ''",
-    "echo '✅ All packages validated successfully!'"
+    "echo '✅ All packages validated successfully!'",
 ]
 
 # =============================================================================
@@ -697,7 +697,7 @@ script = [
     "echo '🧹 Cleaning Docker resources...'",
     "docker system prune -f",
     "docker volume prune -f",
-    "echo '✅ Docker cleanup complete'"
+    "echo '✅ Docker cleanup complete'",
 ]
 
 [tasks.clean-all]
@@ -709,7 +709,7 @@ script = [
     "rm -rf .cargo/",
     "find . -name '*.orig' -delete",
     "find . -name '*.rej' -delete",
-    "echo '✅ Complete cleanup finished'"
+    "echo '✅ Complete cleanup finished'",
 ]
 
 [tasks.update-deps]
@@ -718,7 +718,7 @@ script = [
     "echo '🔄 Updating dependencies...'",
     "cargo update",
     "echo ''",
-    "echo '✅ Dependencies updated. Run `cargo make test` to verify.'"
+    "echo '✅ Dependencies updated. Run `cargo make test` to verify.'",
 ]
 
 [tasks.check-deps]
@@ -743,7 +743,7 @@ dependencies = [
     "release-validation",
     "validate-production-readiness",
     "benchmark-performance",
-    "docs-build"
+    "docs-build",
 ]
 
 # =============================================================================
@@ -769,7 +769,7 @@ script = [
     "    echo 'Enter commit message:'",
     "    read message",
     "    git commit -m \"$message\"",
-    "fi"
+    "fi",
 ]
 
 [tasks.git-push]
@@ -792,7 +792,143 @@ command = "git"
 args = ["diff", "--cached"]
 
 # =============================================================================
-# 21. HELP AND DISCOVERY TASKS
+# 21. OLLAMA AI TASKS
+# =============================================================================
+
+[tasks.ollama-query]
+description = "Query Ollama Qwen3-Coder 30B model with a prompt"
+script = [
+    "echo '🤖 Starting Ollama Qwen3-Coder query...'",
+    "if [ -n \"${OLLAMA_PROMPT}\" ]; then",
+    "    ./scripts/ollama/qwen3-coder.sh \"${OLLAMA_PROMPT}\"",
+    "else",
+    "    echo '❌ OLLAMA_PROMPT environment variable not set'",
+    "    echo 'Usage: OLLAMA_PROMPT=\"your prompt\" cargo make ollama-query'",
+    "    exit 1",
+    "fi",
+]
+
+[tasks.ollama-code-review]
+description = "Use Qwen3-Coder for code review and best practices analysis"
+script = [
+    "echo '🔍 Code review with Qwen3-Coder 30B...'",
+    "if [ -n \"${OLLAMA_CODE}\" ]; then",
+    "    ./scripts/ollama/qwen3-coder.sh \"Review this code for Rust best practices, performance, and maintainability. Focus on: error handling, async patterns, memory safety, and core team standards: ${OLLAMA_CODE}\"",
+    "else",
+    "    echo '❌ OLLAMA_CODE environment variable not set'",
+    "    echo 'Usage: OLLAMA_CODE=\"your code\" cargo make ollama-code-review'",
+    "    exit 1",
+    "fi",
+]
+
+[tasks.ollama-generate]
+description = "Generate code using Qwen3-Coder 30B"
+script = [
+    "echo '⚡ Code generation with Qwen3-Coder 30B...'",
+    "if [ -n \"${OLLAMA_GENERATE_PROMPT}\" ]; then",
+    "    ./scripts/ollama/qwen3-coder.sh \"${OLLAMA_GENERATE_PROMPT}\"",
+    "else",
+    "    echo '❌ OLLAMA_GENERATE_PROMPT environment variable not set'",
+    "    echo 'Usage: OLLAMA_GENERATE_PROMPT=\"your prompt\" cargo make ollama-generate'",
+    "    exit 1",
+    "fi",
+]
+
+[tasks.ollama-explain]
+description = "Explain code or concepts using Qwen3-Coder 30B"
+script = [
+    "echo '📚 Explanation with Qwen3-Coder 30B...'",
+    "if [ -n \"${OLLAMA_EXPLAIN_PROMPT}\" ]; then",
+    "    ./scripts/ollama/qwen3-coder.sh \"${OLLAMA_EXPLAIN_PROMPT}\"",
+    "else",
+    "    echo '❌ OLLAMA_EXPLAIN_PROMPT environment variable not set'",
+    "    echo 'Usage: OLLAMA_EXPLAIN_PROMPT=\"your prompt\" cargo make ollama-explain'",
+    "    exit 1",
+    "fi",
+]
+
+# =============================================================================
+# 22. GITHUB TASKS
+# =============================================================================
+
+[tasks.github-issues]
+description = "Query GitHub issues and save to JSON/CSV"
+workspace = false
+script = [
+    "echo '🔍 Querying GitHub issues for clnrm...'",
+    "chmod +x scripts/github-issues.sh",
+    "./scripts/github-issues.sh",
+]
+
+[tasks.github-issues-open]
+description = "Query only open GitHub issues"
+workspace = false
+script = [
+    "echo '🔍 Querying open GitHub issues...'",
+    "chmod +x scripts/github-issues.sh",
+    "./scripts/github-issues.sh open",
+]
+
+[tasks.github-issues-closed]
+description = "Query only closed GitHub issues"
+workspace = false
+script = [
+    "echo '🔍 Querying closed GitHub issues...'",
+    "chmod +x scripts/github-issues.sh",
+    "./scripts/github-issues.sh closed",
+]
+
+[tasks.github-issue-details]
+description = "Fetch full details for all issues from issues.json"
+workspace = false
+script = [
+    "echo '📥 Fetching full GitHub issue details...'",
+    "chmod +x scripts/github-issue-details.sh",
+    "./scripts/github-issue-details.sh",
+]
+
+[tasks.github-issues-full]
+description = "Query issues and fetch full details (complete workflow)"
+workspace = false
+dependencies = ["github-issues", "github-issue-details"]
+
+[tasks.github-issues-summary]
+description = "Show summary of GitHub issues from local data"
+workspace = false
+script = [
+    "echo '📊 GitHub Issues Summary:'",
+    "echo ''",
+    "if [ -f github-issues/issues.json ]; then",
+    "    total=$(grep -c '\"number\":' github-issues/issues.json || echo '0')",
+    "    open=$(grep -c '\"state\": \"open\"' github-issues/issues.json || echo '0')",
+    "    closed=$(grep -c '\"state\": \"closed\"' github-issues/issues.json || echo '0')",
+    "    echo \"📋 Total Issues: $total\"",
+    "    echo \"✅ Open: $open\"",
+    "    echo \"❌ Closed: $closed\"",
+    "    echo ''",
+    "    echo '📄 Files generated:'",
+    "    echo \"  - github-issues/issues.json (JSON data)\"",
+    "    echo \"  - github-issues/issues.csv (CSV export)\"",
+    "    echo ''",
+    "    echo '📝 To get full details, run:'",
+    "    echo \"  cargo make github-issue-details\"",
+    "else",
+    "    echo '❌ No issues data found. Run \"cargo make github-issues\" first.'",
+    "    exit 1",
+    "fi",
+]
+
+[tasks.github-issues-clean]
+description = "Clean all GitHub issues data"
+workspace = false
+script = [
+    "echo '🧹 Cleaning GitHub issues data...'",
+    "rm -rf github-issues github-issue-details",
+    "echo '✅ GitHub issues data cleaned'",
+]
+
+# =============================================================================
+# 23. HELP AND DISCOVERY TASKS
 # =============================================================================
 
 [tasks.list-tasks]
@@ -835,6 +971,18 @@ script = [
     "echo '  cargo make docs-serve      - Serve docs locally'",
     "echo '  cargo make docs-validate   - Validate doc structure'",
     "echo ''",
+    "echo '🤖 AI & Code Generation:'",
+    "echo '  cargo make ollama-query    - Query Qwen3-Coder 30B model'",
+    "echo '  cargo make ollama-code-review - Code review with AI'",
+    "echo '  cargo make ollama-generate - Generate code with AI'",
+    "echo '  cargo make ollama-explain  - Explain code/concepts with AI'",
+    "echo ''",
+    "echo '🔗 GitHub Integration:'",
+    "echo '  cargo make github-issues   - Query GitHub issues'",
+    "echo '  cargo make github-issue-details - Fetch full issue details'",
+    "echo '  cargo make github-issues-full - Complete workflow'",
+    "echo '  cargo make github-issues-summary - Show issues summary'",
+    "echo ''",
     "echo '🚀 Publishing & Release:'",
     "echo '  cargo make publish-dry-run - Dry run publish'",
     "echo '  cargo make release-validation- Release readiness check'",
@@ -850,7 +998,7 @@ script = [
     "echo '  cargo make list-tasks      - List all available tasks'",
     "echo '  cargo make help-categories - Show this help'",
     "echo ''",
-    "echo 'For detailed task information: cargo make --list-all-steps'"
+    "echo 'For detailed task information: cargo make --list-all-steps'",
 ]
 
 [tasks.default]

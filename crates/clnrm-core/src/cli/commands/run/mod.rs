@@ -82,6 +82,45 @@ pub async fn run_tests_with_shard(
     run_tests_impl(paths, config, shard).await
 }
 
+/// Run tests with optional sharding and JUnit report generation
+///
+/// # Arguments
+///
+/// * `paths` - Test file paths to execute
+/// * `config` - CLI configuration
+/// * `shard` - Optional shard configuration (index, total) where index is 1-based
+/// * `report_junit` - Optional path to write JUnit XML report
+///
+/// # Example
+///
+/// ```no_run
+/// # use clnrm_core::cli::commands::run::run_tests_with_shard_and_report;
+/// # use clnrm_core::cli::types::CliConfig;
+/// # use std::path::{Path, PathBuf};
+/// # async fn example() -> clnrm_core::error::Result<()> {
+/// let paths = vec![PathBuf::from("tests/")];
+/// let config = CliConfig::default();
+///
+/// // Run tests and generate JUnit report
+/// run_tests_with_shard_and_report(&paths, &config, None, Some(Path::new("junit.xml"))).await?;
+/// # Ok(())
+/// # }
+/// ```
+pub async fn run_tests_with_shard_and_report(
+    paths: &[PathBuf],
+    config: &CliConfig,
+    shard: Option<(usize, usize)>,
+    report_junit: Option<&std::path::Path>,
+) -> Result<()> {
+    // If sharding is enabled, log it
+    if let Some((i, m)) = shard {
+        info!("🔀 Running shard {}/{}", i, m);
+    }
+
+    // Run tests with sharding applied
+    run_tests_impl_with_report(paths, config, shard, report_junit).await
+}
+
 /// Implementation of run_tests with sharding support
 async fn run_tests_impl(
     paths: &[PathBuf],
@@ -173,7 +212,7 @@ async fn run_tests_impl(
     let skipped_count = all_test_files.len() - tests_to_run.len();
 
     if !config.force && skipped_count > 0 {
-        println!(
+        info!(
             "⚡ {} scenario(s) changed, {} unchanged",
             tests_to_run.len(),
             skipped_count
@@ -182,8 +221,8 @@ async fn run_tests_impl(
     }
 
     if tests_to_run.is_empty() {
-        println!("✅ All scenarios unchanged (cache hit)");
-        println!("Skipped {} scenarios", skipped_count);
+        info!("✅ All scenarios unchanged (cache hit)");
+        info!("Skipped {} scenarios", skipped_count);
         info!("All tests unchanged - skipping execution");
 
         // Save cache to update timestamps
@@ -191,7 +230,7 @@ async fn run_tests_impl(
         return Ok(());
     }
 
-    println!("Running {} scenario(s)...", tests_to_run.len());
+    info!("Running {} scenario(s)...", tests_to_run.len());
 
     let start_time = std::time::Instant::now();
     let results = if config.parallel {
@@ -207,10 +246,10 @@ async fn run_tests_impl(
     cache_manager.save()?;
 
     if !config.force && skipped_count == 0 {
-        println!("\nCache created: {} files tracked", all_test_files.len());
+        info!("Cache created: {} files tracked", all_test_files.len());
         info!("Cache created with {} files", all_test_files.len());
     } else if !config.force {
-        println!("\nCache updated");
+        info!("Cache updated");
         info!("Cache updated");
     }
 
@@ -233,11 +272,200 @@ async fn run_tests_impl(
             println!();
             for result in &cli_results.tests {
                 if result.passed {
-                    println!("✅ {} - PASS ({}ms)", result.name, result.duration_ms);
+                    info!("✅ {} - PASS ({}ms)", result.name, result.duration_ms);
                 } else {
-                    println!("❌ {} - FAIL ({}ms)", result.name, result.duration_ms);
+                    error!("❌ {} - FAIL ({}ms)", result.name, result.duration_ms);
                     if let Some(error) = &result.error {
-                        println!("   Error: {}", error);
+                        error!("   Error: {}", error);
+                    }
+                }
+            }
+
+            info!("Test Results: {} passed, {} failed", passed, failed);
+
+            if failed > 0 {
+                return Err(CleanroomError::validation_error(format!(
+                    "{} test(s) failed",
+                    failed
+                )));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Implementation of run_tests with sharding and JUnit report support
+async fn run_tests_impl_with_report(
+    paths: &[PathBuf],
+    config: &CliConfig,
+    shard: Option<(usize, usize)>,
+    report_junit: Option<&std::path::Path>,
+) -> Result<()> {
+    // Create root span for entire test run (OTEL self-testing)
+    #[cfg(feature = "otel-traces")]
+    let run_span = {
+        let config_path = paths
+            .first()
+            .and_then(|p| p.to_str())
+            .unwrap_or("multiple_paths");
+        spans::run_span(config_path, paths.len())
+    };
+
+    // Execute within span context
+    #[cfg(feature = "otel-traces")]
+    let _guard = run_span.enter();
+
+    info!("Running cleanroom tests (framework self-testing)");
+    debug!("Test paths: {:?}", paths);
+    debug!(
+        "Config: parallel={}, jobs={}, force={}",
+        config.parallel, config.jobs, config.force
+    );
+
+    // Handle watch mode
+    if config.watch {
+        return watch::watch_and_run(paths, config).await;
+    }
+
+    // Handle interactive mode
+    if config.interactive {
+        warn!("Interactive mode requested but not yet fully implemented");
+        info!("Tests will run normally - interactive mode coming in v0.4.0");
+    }
+
+    // Discover all test files from provided paths
+    let mut all_test_files = Vec::new();
+    for path in paths {
+        let discovered = discover_test_files(path)?;
+        all_test_files.extend(discovered);
+    }
+
+    info!("Found {} test file(s) to execute", all_test_files.len());
+
+    // Initialize cache manager
+    let cache_manager = CacheManager::new()?;
+
+    // Filter tests based on cache (unless --force is specified)
+    let tests_to_run = if config.force {
+        info!("🔨 Force mode enabled - bypassing cache");
+        all_test_files.clone()
+    } else {
+        info!("🔍 Checking cache...");
+        filter_changed_tests(&all_test_files, &cache_manager).await?
+    };
+
+    // Apply sharding if requested
+    let tests_to_run = if let Some((i, m)) = shard {
+        info!(
+            "🔀 Applying shard {}/{} to {} tests",
+            i,
+            m,
+            tests_to_run.len()
+        );
+
+        // Distribute tests across shards using modulo arithmetic
+        // Shard i (1-based) gets tests where (index % m) == (i - 1)
+        let sharded_tests: Vec<PathBuf> = tests_to_run
+            .into_iter()
+            .enumerate()
+            .filter(|(idx, _)| (idx % m) == (i - 1))
+            .map(|(_, path)| path)
+            .collect();
+
+        info!(
+            "🔀 Shard {}/{} will run {} test(s)",
+            i,
+            m,
+            sharded_tests.len()
+        );
+        sharded_tests
+    } else {
+        tests_to_run
+    };
+
+    let skipped_count = all_test_files.len() - tests_to_run.len();
+
+    if !config.force && skipped_count > 0 {
+        info!(
+            "⚡ {} scenario(s) changed, {} unchanged",
+            tests_to_run.len(),
+            skipped_count
+        );
+        info!("Cache hit: {} scenarios skipped", skipped_count);
+    }
+
+    if tests_to_run.is_empty() {
+        info!("✅ All scenarios unchanged (cache hit)");
+        info!("Skipped {} scenarios", skipped_count);
+        info!("All tests unchanged - skipping execution");
+
+        // Save cache to update timestamps
+        cache_manager.save()?;
+        return Ok(());
+    }
+
+    info!("Running {} scenario(s)...", tests_to_run.len());
+
+    let start_time = std::time::Instant::now();
+    let results = if config.parallel {
+        run_tests_parallel_with_results(&tests_to_run, config).await?
+    } else {
+        run_tests_sequential_with_results(&tests_to_run, config).await?
+    };
+
+    let total_duration = start_time.elapsed().as_millis() as u64;
+
+    // Update cache for successfully executed tests
+    update_cache_for_results(&results, &cache_manager).await?;
+    cache_manager.save()?;
+
+    if !config.force && skipped_count == 0 {
+        info!("Cache created: {} files tracked", all_test_files.len());
+        info!("Cache created with {} files", all_test_files.len());
+    } else if !config.force {
+        info!("Cache updated");
+        info!("Cache updated");
+    }
+
+    let cli_results = crate::cli::types::CliTestResults {
+        tests: results,
+        total_duration_ms: total_duration,
+    };
+
+    // Generate JUnit report if requested
+    if let Some(junit_path) = report_junit {
+        info!("📄 Generating JUnit XML report: {}", junit_path.display());
+        let junit_xml = generate_junit_xml(&cli_results)?;
+        std::fs::write(junit_path, &junit_xml).map_err(|e| {
+            CleanroomError::io_error(format!(
+                "Failed to write JUnit report to {}: {}",
+                junit_path.display(),
+                e
+            ))
+        })?;
+        info!("✅ JUnit XML report written to {}", junit_path.display());
+    }
+
+    // Output results based on format
+    match config.format {
+        OutputFormat::Junit => {
+            let junit_xml = generate_junit_xml(&cli_results)?;
+            println!("{}", junit_xml);
+        }
+        _ => {
+            // Default human-readable output
+            let passed = cli_results.tests.iter().filter(|t| t.passed).count();
+            let failed = cli_results.tests.iter().filter(|t| !t.passed).count();
+
+            println!();
+            for result in &cli_results.tests {
+                if result.passed {
+                    info!("✅ {} - PASS ({}ms)", result.name, result.duration_ms);
+                } else {
+                    error!("❌ {} - FAIL ({}ms)", result.name, result.duration_ms);
+                    if let Some(error) = &result.error {
+                        error!("   Error: {}", error);
                     }
                 }
             }
@@ -390,15 +618,27 @@ mod single {
         #[cfg(feature = "otel-traces")]
         tracing::Span::current().record("test.name", &test_name);
 
-        println!("🚀 Executing test: {}", test_name);
+        info!("🚀 Executing test: {}", test_name);
         info!("🚀 Executing test: {}", test_name);
 
         if let Some(description) = test_config.get_description() {
-            println!("📝 Description: {}", description);
+            info!("📝 Description: {}", description);
             debug!("Test description: {}", description);
         }
 
-        let environment = CleanroomEnvironment::new().await.map_err(|e| {
+        // Load cleanroom configuration for default container settings
+        let cleanroom_config = match crate::config::load_cleanroom_config() {
+            Ok(config) => {
+                info!("Successfully loaded cleanroom config with default_image: {}", config.containers.default_image);
+                Some(config)
+            }
+            Err(e) => {
+                info!("Failed to load cleanroom config: {}, using defaults", e);
+                None
+            }
+        };
+
+        let environment = CleanroomEnvironment::with_config(cleanroom_config).await.map_err(|e| {
             CleanroomError::internal_error("Failed to create test environment")
                 .with_context("Test execution requires cleanroom environment")
                 .with_source(e.to_string())
@@ -425,7 +665,7 @@ mod single {
                 )));
             }
 
-            println!("🔧 Executing: {}", step.command.join(" "));
+            info!("🔧 Executing: {}", step.command.join(" "));
             info!("🔧 Executing: {}", step.command.join(" "));
 
             #[cfg(feature = "otel-traces")]
@@ -435,12 +675,19 @@ mod single {
             let _command_guard = command_span.enter();
 
             let stdout = {
-                let output = std::process::Command::new(&step.command[0])
-                    .args(&step.command[1..])
-                    .output()
+                // Create a dummy service handle for step execution in default container
+                let dummy_handle = crate::cleanroom::ServiceHandle {
+                    id: "default-container".to_string(),
+                    service_name: "default".to_string(),
+                    metadata: std::collections::HashMap::new(),
+                };
+
+                let output = environment
+                    .execute_command_with_output(&dummy_handle, &step.command)
+                    .await
                     .map_err(|e| {
-                        CleanroomError::internal_error(format!(
-                            "Failed to execute command '{}': {}",
+                        CleanroomError::container_error(format!(
+                            "Failed to execute command '{}' in container: {}",
                             step.command.join(" "),
                             e
                         ))
@@ -450,7 +697,7 @@ mod single {
                 let stderr = String::from_utf8_lossy(&output.stderr);
 
                 if !stderr.is_empty() {
-                    println!("⚠️  Stderr: {}", stderr.trim());
+                    warn!("⚠️  Stderr: {}", stderr.trim());
                     info!("⚠️  Stderr: {}", stderr.trim());
                 }
 
@@ -465,7 +712,7 @@ mod single {
                 stdout.to_string()
             };
 
-            println!("📤 Output: {}", stdout.trim());
+            info!("📤 Output: {}", stdout.trim());
             info!("📤 Output: {}", stdout.trim());
 
             if let Some(regex) = &step.expected_output_regex {
@@ -514,7 +761,7 @@ mod single {
             }
         }
 
-        println!("🎉 Test '{}' completed successfully!", test_name);
+        info!("🎉 Test '{}' completed successfully!", test_name);
         info!("🎉 Test '{}' completed successfully!", test_name);
         Ok(())
     }
@@ -647,13 +894,13 @@ mod scenario {
                         "✅ All {} validation(s) passed",
                         validation_report.pass_count()
                     );
-                    println!("✅ Validation: {}", validation_report.summary());
+                    info!("✅ Validation: {}", validation_report.summary());
                 } else {
                     error!(
                         "❌ {} validation(s) failed",
                         validation_report.failure_count()
                     );
-                    println!("❌ Validation: {}", validation_report.summary());
+                    error!("❌ Validation: {}", validation_report.summary());
                 }
 
                 // Generate reports if configured

@@ -1,8 +1,14 @@
 //! Red/Green TDD workflow validation command
 //!
 //! Implements PRD v1.0 `clnrm redgreen` command for TDD validation.
+//!
+//! This module provides the public API for red/green TDD validation.
+//! The actual implementation is in the redgreen_impl module.
 
-use crate::error::{CleanroomError, Result};
+use crate::cli::commands::v0_7_0::redgreen_impl::run_red_green_validation as run_red_green_validation_impl;
+use crate::cli::types::TddState;
+use crate::error::Result;
+use std::path::PathBuf;
 
 /// Run red/green TDD workflow validation
 ///
@@ -12,31 +18,39 @@ use crate::error::{CleanroomError, Result};
 /// # Arguments
 ///
 /// * `paths` - Test files to validate
-/// * `verify_red` - Verify all tests initially fail (red state)
-/// * `verify_green` - Verify all tests pass after implementation (green state)
+/// * `verify_red` - Verify all tests initially fail (red state) [Legacy]
+/// * `verify_green` - Verify all tests pass after implementation (green state) [Legacy]
 ///
 /// # Core Team Standards
 ///
 /// - No unwrap() or expect()
 /// - Returns Result<T, CleanroomError>
 /// - Proper error handling
+/// - Delegates to comprehensive implementation in redgreen_impl module
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use std::path::PathBuf;
+///
+/// // Run red/green validation with legacy flags
+/// let paths = vec![PathBuf::from("tests/test.toml")];
+/// run_red_green_validation(&paths, true, false).await?;
+/// ```
 pub async fn run_red_green_validation(
-    paths: &[std::path::PathBuf],
+    paths: &[PathBuf],
     verify_red: bool,
     verify_green: bool,
 ) -> Result<()> {
-    let _test_paths = paths;
-    let _red = verify_red;
-    let _green = verify_green;
+    // Convert legacy flags to new API
+    let expect = if verify_red {
+        Some(TddState::Red)
+    } else if verify_green {
+        Some(TddState::Green)
+    } else {
+        None
+    };
 
-    // TODO: Implement red/green validation
-    // 1. Run tests in "red" state (before implementation)
-    // 2. Verify expected failures if verify_red is true
-    // 3. Run tests in "green" state (after implementation)
-    // 4. Verify expected passes if verify_green is true
-    // 5. Report results
-
-    Err(CleanroomError::validation_error(
-        "Red/Green validation is not yet implemented in v0.7.0. Coming in v1.0.",
-    ))
+    // Delegate to the comprehensive implementation
+    run_red_green_validation_impl(paths, expect, verify_red, verify_green).await
 }

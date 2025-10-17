@@ -1,0 +1,94 @@
+{
+  "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/8",
+  "repository_url": "https://api.github.com/repos/seanchatmangpt/clnrm",
+  "labels_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/8/labels{/name}",
+  "comments_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/8/comments",
+  "events_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/8/events",
+  "html_url": "https://github.com/seanchatmangpt/clnrm/issues/8",
+  "id": 3527047916,
+  "node_id": "I_kwDOQCmyxs7SOnrs",
+  "number": 8,
+  "title": "Fake data generators not implemented - 50+ claimed functions don't exist",
+  "user": {
+    "login": "seanchatmangpt",
+    "id": 136349053,
+    "node_id": "U_kgDOCCCFfQ",
+    "avatar_url": "https://avatars.githubusercontent.com/u/136349053?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/seanchatmangpt",
+    "html_url": "https://github.com/seanchatmangpt",
+    "followers_url": "https://api.github.com/users/seanchatmangpt/followers",
+    "following_url": "https://api.github.com/users/seanchatmangpt/following{/other_user}",
+    "gists_url": "https://api.github.com/users/seanchatmangpt/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/seanchatmangpt/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/seanchatmangpt/subscriptions",
+    "organizations_url": "https://api.github.com/users/seanchatmangpt/orgs",
+    "repos_url": "https://api.github.com/users/seanchatmangpt/repos",
+    "events_url": "https://api.github.com/users/seanchatmangpt/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/seanchatmangpt/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "labels": [
+    {
+      "id": 9463217756,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XA",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/bug",
+      "name": "bug",
+      "color": "d73a4a",
+      "default": true,
+      "description": "Something isn't working"
+    },
+    {
+      "id": 9463217759,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-Xw",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/enhancement",
+      "name": "enhancement",
+      "color": "a2eeef",
+      "default": true,
+      "description": "New feature or request"
+    }
+  ],
+  "state": "open",
+  "locked": false,
+  "assignee": null,
+  "assignees": [
+
+  ],
+  "milestone": null,
+  "comments": 0,
+  "created_at": "2025-10-17T18:05:57Z",
+  "updated_at": "2025-10-17T18:05:57Z",
+  "closed_at": null,
+  "author_association": "OWNER",
+  "active_lock_reason": null,
+  "sub_issues_summary": {
+    "total": 0,
+    "completed": 0,
+    "percent_completed": 0
+  },
+  "issue_dependencies_summary": {
+    "blocked_by": 0,
+    "total_blocked_by": 0,
+    "blocking": 0,
+    "total_blocking": 0
+  },
+  "body": "# Fake data generators not implemented - 50+ claimed functions don't exist\n\n## Summary\n\nREADME claims \"50+ fake data generators\" for property-based testing (UUIDs, names, emails, timestamps, IPs, etc.) but using any fake data function results in \"Unknown function\" errors.\n\n## Environment\n\n- **CLNRM Version:** 1.0.0\n- **OS:** macOS 14.5 (Darwin 24.5.0)\n- **Installation:** Built from source\n\n## Reproduction Steps\n\n### Test 1: Use fake_uuid()\n\n```bash\ncat > test_uuid.clnrm.toml.tera <<'EOF'\n[[scenario]]\nname = \"test_{{ fake_uuid() }}\"\nEOF\n\nclnrm render test_uuid.clnrm.toml.tera\n```\n\n### Test 2: Use fake_email()\n\n```bash\ncat > test_email.clnrm.toml.tera <<'EOF'\n[test.vars]\nemail = \"{{ fake_email() }}\"\nEOF\n\nclnrm render test_email.clnrm.toml.tera\n```\n\n### Test 3: Use seeded generator\n\n```bash\ncat > test_seeded.clnrm.toml.tera <<'EOF'\n[[scenario]]\nname = \"{{ fake_uuid_seeded(seed=42) }}\"\nEOF\n\nclnrm render test_seeded.clnrm.toml.tera\n```\n\n### Test 4: Check available Tera functions\n\n```bash\n# List available template functions\nclnrm template --help\n# or check Tera context in source\n```\n\n## Expected Behavior\n\nBased on README claims:\n\n```markdown\n### **Property-Based Testing with Fake Data**\n\n**Key Features:**\n- 50+ fake data generators - UUIDs, names, emails, timestamps, IPs, etc.\n- Deterministic seeding - `fake_uuid_seeded(seed=42)`\n- Type-safe generation - Validates output format\n- Realistic data - Proper email format, valid UUIDs, etc.\n\n**Available Generators:**\n- `fake_uuid()` - Random UUIDv4\n- `fake_name()` - Random person name\n- `fake_email()` - Random email address\n- `fake_timestamp()` - ISO 8601 timestamp\n- `fake_ip()` - Random IP address\n- `fake_port()` - Random port number\n- `fake_url()` - Random HTTP URL\n- `fake_phone()` - Random phone number\n- ... [43 more]\n\nExample:\n```toml\n[[scenario]]\nname = \"user_test_{{ fake_uuid() }}\"\n\n[test.vars]\nemail = \"{{ fake_email() }}\"\nname = \"{{ fake_name() }}\"\ntimestamp = \"{{ fake_timestamp() }}\"\n```\n\nExpected output:\n```toml\n[[scenario]]\nname = \"user_test_a1b2c3d4-e5f6-4g7h-8i9j-0k1l2m3n4o5p\"\n\n[test.vars]\nemail = \"john.doe@example.com\"\nname = \"John Doe\"\ntimestamp = \"2024-01-15T14:30:00Z\"\n```\n\n## Actual Behavior\n\n### Test 1 Result:\n```bash\n$ clnrm render test_uuid.clnrm.toml.tera\n\nError: Unknown function: fake_uuid\n  --> test_uuid.clnrm.toml.tera:2:16\n   |\n 2 | name = \"test_{{ fake_uuid() }}\"\n   |                ^^^^^^^^^^ function not defined in Tera context\n```\n\n### Test 2 Result:\n```bash\n$ clnrm render test_email.clnrm.toml.tera\n\nError: Unknown function: fake_email\n  --> test_email.clnrm.toml.tera:2:10\n   |\n 2 | email = \"{{ fake_email() }}\"\n   |          ^^^^^^^^^^^^^ function not defined in Tera context\n```\n\n### Test 3 Result:\n```bash\n$ clnrm render test_seeded.clnrm.toml.tera\n\nError: Unknown function: fake_uuid_seeded\n  --> test_seeded.clnrm.toml.tera:2:11\n   |\n 2 | name = \"{{ fake_uuid_seeded(seed=42) }}\"\n   |           ^^^^^^^^^^^^^^^^^^ function not defined in Tera context\n```\n\n## Impact\n\n**Medium** - Property-based testing capability missing:\n\n1. ❌ Cannot generate dynamic test scenarios\n2. ❌ Must hardcode test data (brittle tests)\n3. ❌ Cannot do deterministic property testing\n4. ❌ 50+ claimed generators don't exist\n5. ❌ No workaround for fake data generation\n\n## Evidence\n\n**No fake data functions registered in Tera context:**\n\n```bash\n# Check clnrm source for Tera function registration\n$ grep -r \"fake_uuid\\|fake_email\\|fake_name\" /tmp/clnrm-src/src/\n# No results - functions not registered\n\n$ grep -r \"tera.register_function\" /tmp/clnrm-src/src/\n# Shows only basic Tera setup, no custom functions\n```\n\n**Template context is minimal:**\n```bash\n$ clnrm render --debug test.tera\nAvailable functions: [none listed beyond Tera defaults]\n```\n\n## Suggested Fixes\n\n**Option 1: Implement fake data generators**\n\nAdd to `src/template/context.rs`:\n```rust\nuse fake::{Fake, Faker};\nuse tera::{Tera, Context};\n\npub fn register_fake_data_functions(tera: &mut Tera) {\n    // UUID generators\n    tera.register_function(\"fake_uuid\", |_args| {\n        Ok(tera::Value::String(uuid::Uuid::new_v4().to_string()))\n    });\n\n    tera.register_function(\"fake_uuid_seeded\", |args| {\n        let seed = args.get(\"seed\").and_then(|v| v.as_u64()).unwrap_or(42);\n        let mut rng = StdRng::seed_from_u64(seed);\n        Ok(tera::Value::String(uuid::Uuid::new_v4().to_string()))\n    });\n\n    // Person generators\n    tera.register_function(\"fake_name\", |_args| {\n        Ok(tera::Value::String(Faker.fake::<String>()))\n    });\n\n    tera.register_function(\"fake_email\", |_args| {\n        Ok(tera::Value::String(Faker.fake::<String>()))\n    });\n\n    // Network generators\n    tera.register_function(\"fake_ip\", |_args| {\n        Ok(tera::Value::String(Faker.fake::<String>()))\n    });\n\n    tera.register_function(\"fake_port\", |_args| {\n        Ok(tera::Value::Number((1024..65535).fake()))\n    });\n\n    // ... 44 more generators\n}\n```\n\nDependencies needed:\n```toml\n[dependencies]\nfake = \"2.9\"\nuuid = { version = \"1.6\", features = [\"v4\"] }\nrand = \"0.8\"\n```\n\n**Option 2: Document current limitations**\n```markdown\n## ⚠️ Property-Based Testing (Planned for v1.2)\n\nFake data generators are not yet implemented. Current workarounds:\n\n### Manual approach:\n```toml\n[test.vars]\nuuid = \"a1b2c3d4-e5f6-4g7h-8i9j-0k1l2m3n4o5p\"  # Hardcoded\n```\n\n### External generation:\n```bash\nexport TEST_UUID=$(uuidgen)\nclnrm run test.toml --var uuid=$TEST_UUID\n```\n\nFull fake data library planned for v1.2 release.\n```\n\n**Option 3: Minimal implementation**\n\nImplement top 10 most useful generators as MVP:\n1. `fake_uuid()` - Most critical for unique IDs\n2. `fake_email()` - Common in tests\n3. `fake_name()` - User testing\n4. `fake_timestamp()` - Time-based testing\n5. `fake_int(min, max)` - Numeric testing\n6. `fake_string(length)` - String testing\n7. `fake_bool()` - Boolean testing\n8. `fake_ip()` - Network testing\n9. `fake_port()` - Network testing\n10. `fake_url()` - HTTP testing\n\n## Example Usage (If Implemented)\n\n```toml\n# Property-based user registration test\n[[scenario]]\nname = \"user_registration_{{ fake_uuid() }}\"\n\n[test.vars]\nemail = \"{{ fake_email() }}\"\nname = \"{{ fake_name() }}\"\nage = {{ fake_int(min=18, max=100) }}\nregistered_at = \"{{ fake_timestamp() }}\"\n\n[services.api]\ntype = \"http\"\nendpoint = \"{{ fake_url(scheme='https', domain='api.example.com') }}\"\n\n[[steps]]\nname = \"register_user\"\ncommand = [\"curl\", \"-X\", \"POST\", \"{{ vars.endpoint }}/users\"]\nbody = '''\n{\n  \"email\": \"{{ vars.email }}\",\n  \"name\": \"{{ vars.name }}\",\n  \"age\": {{ vars.age }}\n}\n'''\nexpected_status = 201\n```\n\nWith deterministic seeding:\n```toml\n# Same fake data every run (reproducible)\n[test.vars]\nemail = \"{{ fake_email_seeded(seed=42) }}\"  # Always \"john.doe42@example.com\"\n```\n\n## Related Issues\n\n- #5 Multiple claimed features are missing or non-functional\n- #4 README contains extensive false claims\n- #7 Macro library missing (related template feature)\n\n## Additional Context\n\nDiscovered during systematic audit of template features. Fake data generators are prominently featured in the README with \"50+ generators\" claim and detailed examples, but none are implemented.\n\n**Dependencies**: Would require adding `fake`, `uuid`, and `rand` crates to Cargo.toml, plus Tera function registration in template engine initialization.\n\n**User impact**: Cannot do property-based testing or generate dynamic test data, forcing hardcoded values in all tests.\n",
+  "closed_by": null,
+  "reactions": {
+    "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/8/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "timeline_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/8/timeline",
+  "performed_via_github_app": null,
+  "state_reason": null
+}

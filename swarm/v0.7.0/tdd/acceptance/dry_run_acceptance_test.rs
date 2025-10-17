@@ -11,6 +11,19 @@ mod dry_run_acceptance {
     use mockall::predicate::*;
     use mockall::mock;
 
+    // Import types from clnrm-core
+    use clnrm_core::error::CleanroomError;
+    use clnrm_core::config::types::TestConfig;
+    use clnrm_core::Result;
+
+    // Simple validation error for testing
+    #[derive(Debug, Clone)]
+    struct ShapeValidationError {
+        message: String,
+        line: Option<usize>,
+        is_error: bool,
+    }
+
     mock! {
         pub TemplateRenderer {}
         impl TemplateRenderer {
@@ -28,7 +41,7 @@ mod dry_run_acceptance {
     mock! {
         pub SchemaValidator {}
         impl SchemaValidator {
-            fn validate_structure(&self, config: &TestConfig) -> Result<Vec<ValidationIssue>, CleanroomError>;
+            fn validate_structure(&self, config: &TestConfig) -> Result<Vec<ShapeValidationError>, CleanroomError>;
         }
     }
 
@@ -85,7 +98,7 @@ steps = []
         mock_validator
             .expect_validate_structure()
             .times(1)
-            .returning(|_| Ok(vec![])); // No issues
+            .returning(|_| Ok(vec![])); // No validation errors
 
         // CRITICAL: TestExecutor should NEVER be called
         mock_executor
@@ -444,8 +457,67 @@ version = "0.1.0"
         }
 
         fn execute(&self, path: &Path, verbose: bool) -> Result<DryRunResult, CleanroomError> {
-            // Implementation guided by these acceptance tests
-            unimplemented!("DryRunCommand::execute - to be implemented via TDD")
+            // Step 1: Render template file
+            let rendered_content = self.renderer.render_file(path)?;
+
+            // Step 2: Parse rendered TOML content
+            let test_config = self.parser.parse(&rendered_content)?;
+
+            // Step 3: Validate configuration structure
+            let validation_issues = self.validator.validate_structure(&test_config)?;
+
+            // Step 4: Convert validation issues to our format
+            let issues: Vec<ValidationIssue> = validation_issues
+                .into_iter()
+                .map(|issue| ValidationIssue {
+                    severity: Severity::Error, // Shape validation errors are always errors
+                    message: issue.message,
+                    location: issue.line.map(|line| Location {
+                        line,
+                        column: 0, // Column not available in shape validation
+                    }),
+                    suggestion: None, // Suggestions not available in shape validation
+                })
+                .collect();
+
+            // Step 5: Determine validation status
+            let error_count = issues.iter().filter(|i| matches!(i.severity, Severity::Error)).count();
+            let validation_status = if error_count == 0 {
+                ValidationStatus::Valid
+            } else {
+                ValidationStatus::Invalid { error_count }
+            };
+
+            // Step 6: Print verbose output if requested
+            if verbose {
+                println!("🔍 Dry-run validation for: {}", path.display());
+                println!("📄 Rendered content length: {} bytes", rendered_content.len());
+
+                if !issues.is_empty() {
+                    println!("⚠️  Found {} issues:", issues.len());
+                    for issue in &issues {
+                        let severity_icon = match issue.severity {
+                            Severity::Error => "❌",
+                            Severity::Warning => "⚠️ ",
+                        };
+                        println!("  {} {}", severity_icon, issue.message);
+
+                        if let Some(suggestion) = &issue.suggestion {
+                            println!("    💡 {}", suggestion);
+                        }
+                    }
+                } else {
+                    println!("✅ No validation issues found");
+                }
+            }
+
+            // Step 7: Return result (CRITICAL: TestExecutor.run_test() should NEVER be called)
+            Ok(DryRunResult {
+                file_path: path.to_path_buf(),
+                rendered_content,
+                validation_status,
+                issues,
+            })
         }
     }
 

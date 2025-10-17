@@ -39,19 +39,25 @@ tempfile = { workspace = true }
 junit-report = { workspace = true }
 notify = { workspace = true }
 toml_edit = { workspace = true }
+quick-xml = { workspace = true }
 
 # OpenTelemetry dependencies
 opentelemetry = { workspace = true, optional = true }
 opentelemetry_sdk = { workspace = true, optional = true }
 opentelemetry-stdout = { workspace = true, optional = true }
 opentelemetry-otlp = { workspace = true, optional = true }
+opentelemetry-jaeger = { workspace = true, optional = true }
+opentelemetry-zipkin = { workspace = true, optional = true }
 tracing-opentelemetry = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true, optional = true }
+
+# Additional dependencies for OTLP integration
+reqwest = { workspace = true, optional = true }
 
 # Utility dependencies
 uuid = { workspace = true }
 chrono = { workspace = true }
-reqwest = { version = "0.12", features = ["json"] }
+hostname = { workspace = true }
 rand = "0.8"
 semver = "1.0"
 glob = "0.3"
@@ -60,6 +66,13 @@ glob = "0.3"
 tera = "1.19"
 sha2 = "0.10"
 globset = "0.4.17"
+fake = { version = "2.9", features = [
+  "derive",
+  "chrono",
+  "http",
+  "uuid",
+  "random_color",
+] }
 
 [dev-dependencies]
 # Property-based testing
@@ -197,6 +210,10 @@ path = "tests/integration/fake_green_detection.rs"
 name = "artifacts_collection_test"
 path = "tests/integration/artifacts_collection_test.rs"
 
+[[test]]
+name = "container_isolation_test"
+path = "tests/integration/container_isolation_test.rs"
+
 [[example]]
 name = "framework-stress-test"
 path = "examples/innovations/framework-stress-test.rs"
@@ -222,9 +239,33 @@ name = "simple-framework-stress-demo"
 path = "examples/innovations/simple-framework-stress-demo.rs"
 
 [features]
-default = ["tracing-subscriber"]
+default = ["tracing-subscriber", "reqwest"]
+ai = [
+] # Marker feature for AI functionality (no dependencies to avoid circular deps)
+otel-tracing = [
+  "opentelemetry",
+  "opentelemetry_sdk",
+  "tracing-opentelemetry",
+  "tracing-subscriber",
+]
+otel-metrics = ["opentelemetry/metrics", "opentelemetry_sdk/metrics"]
+otel-logs = ["opentelemetry/logs", "opentelemetry_sdk/logs"]
+otel-otlp = ["opentelemetry-otlp", "reqwest"]
+otel-jaeger = ["opentelemetry-jaeger", "reqwest"]
+otel-zipkin = ["opentelemetry-zipkin", "reqwest"]
 otel-stdout = ["opentelemetry-stdout"]
-otel-logs = ["opentelemetry", "opentelemetry_sdk"]
+otel-testing = ["opentelemetry_sdk/testing"]
+otel-full = [
+  "otel-tracing",
+  "otel-metrics",
+  "otel-logs",
+  "otel-otlp",
+  "otel-jaeger",
+  "otel-zipkin",
+  "otel-stdout",
+  "otel-testing",
+]
+otel = ["otel-traces", "otel-metrics", "otel-stdout", "otel-logs"]
 otel-traces = [
   "opentelemetry",
   "opentelemetry_sdk",
@@ -233,5 +274,3 @@ otel-traces = [
   "tracing-opentelemetry",
   "tracing-subscriber",
 ]
-otel-metrics = ["opentelemetry", "opentelemetry_sdk"]
-otel = ["otel-traces", "otel-metrics", "otel-stdout", "otel-logs"]

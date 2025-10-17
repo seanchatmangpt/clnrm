@@ -1,0 +1,8 @@
+[test.metadata]
+name = "test_default_container"
+description = "Test default container behavior"
+
+[[steps]]
+name = "check_default_image"
+command = ["cat", "/etc/os-release"]
+expected_output_regex = "Ubuntu"

@@ -1,0 +1,94 @@
+{
+  "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/7",
+  "repository_url": "https://api.github.com/repos/seanchatmangpt/clnrm",
+  "labels_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/7/labels{/name}",
+  "comments_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/7/comments",
+  "events_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/7/events",
+  "html_url": "https://github.com/seanchatmangpt/clnrm/issues/7",
+  "id": 3527047662,
+  "node_id": "I_kwDOQCmyxs7SOnnu",
+  "number": 7,
+  "title": "Macro library not found - 8 reusable macros claimed but not implemented",
+  "user": {
+    "login": "seanchatmangpt",
+    "id": 136349053,
+    "node_id": "U_kgDOCCCFfQ",
+    "avatar_url": "https://avatars.githubusercontent.com/u/136349053?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/seanchatmangpt",
+    "html_url": "https://github.com/seanchatmangpt",
+    "followers_url": "https://api.github.com/users/seanchatmangpt/followers",
+    "following_url": "https://api.github.com/users/seanchatmangpt/following{/other_user}",
+    "gists_url": "https://api.github.com/users/seanchatmangpt/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/seanchatmangpt/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/seanchatmangpt/subscriptions",
+    "organizations_url": "https://api.github.com/users/seanchatmangpt/orgs",
+    "repos_url": "https://api.github.com/users/seanchatmangpt/repos",
+    "events_url": "https://api.github.com/users/seanchatmangpt/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/seanchatmangpt/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "labels": [
+    {
+      "id": 9463217756,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XA",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/bug",
+      "name": "bug",
+      "color": "d73a4a",
+      "default": true,
+      "description": "Something isn't working"
+    },
+    {
+      "id": 9463217759,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-Xw",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/enhancement",
+      "name": "enhancement",
+      "color": "a2eeef",
+      "default": true,
+      "description": "New feature or request"
+    }
+  ],
+  "state": "open",
+  "locked": false,
+  "assignee": null,
+  "assignees": [
+
+  ],
+  "milestone": null,
+  "comments": 0,
+  "created_at": "2025-10-17T18:05:51Z",
+  "updated_at": "2025-10-17T18:05:51Z",
+  "closed_at": null,
+  "author_association": "OWNER",
+  "active_lock_reason": null,
+  "sub_issues_summary": {
+    "total": 0,
+    "completed": 0,
+    "percent_completed": 0
+  },
+  "issue_dependencies_summary": {
+    "blocked_by": 0,
+    "total_blocked_by": 0,
+    "blocking": 0,
+    "total_blocking": 0
+  },
+  "body": "# Macro library not found - 8 reusable macros claimed but not implemented\n\n## Summary\n\nREADME claims \"8 reusable macros with 85% boilerplate reduction\" as a ✅ v1.0 feature, but attempting to import or use macros results in \"Failed to load macro library\" errors.\n\n## Environment\n\n- **CLNRM Version:** 1.0.0\n- **OS:** macOS 14.5 (Darwin 24.5.0)\n- **Installation:** Built from source\n\n## Reproduction Steps\n\n### Test 1: Import macro library\n\n```bash\n# Create template that imports macros\ncat > test.clnrm.toml.tera <<'EOF'\n{% import \"macros\" as m %}\n\n[[scenario]]\nname = \"test\"\n{{ m.span_exists(name=\"test_span\") }}\nEOF\n\n# Try to render\nclnrm render test.clnrm.toml.tera\n```\n\n### Test 2: Use macro directly\n\n```bash\ncat > test2.clnrm.toml.tera <<'EOF'\n[[scenario]]\nname = \"test\"\n{{ span_exists(name=\"test_span\") }}\nEOF\n\nclnrm render test2.clnrm.toml.tera\n```\n\n### Test 3: Check for macro files\n\n```bash\n# Look for macro library in installation\nfind ~/.clnrm -name \"*macro*\" 2>/dev/null\nfind /usr/local/share/clnrm -name \"*macro*\" 2>/dev/null\n```\n\n## Expected Behavior\n\nBased on README claims:\n\n```markdown\n### ✅ Macro Library (v1.0)\n- 8 reusable macros with 85% boilerplate reduction\n\nAvailable macros:\n- span_exists(name)\n- graph_relationship(parent, child)\n- temporal_ordering(before, after)\n- error_propagation(source, target)\n- service_interaction(client, server)\n- attribute_validation(span, key, value)\n- resource_check(type, name)\n- batch_validation(spans, conditions)\n\nExample usage:\n{% import \"macros\" as m %}\n{{ m.span_exists(name=\"user.login\") }}\n{{ m.graph_relationship(parent=\"api\", child=\"database\") }}\n```\n\nExpected output after rendering:\n```toml\n[[expect.span]]\nname = \"user.login\"\nexists = true\n\n[[expect.graph]]\nparent = \"api\"\nchild = \"database\"\n```\n\n## Actual Behavior\n\n### Test 1 Result:\n```bash\n$ clnrm render test.clnrm.toml.tera\n\nError: Template error: Failed to load macro library\n  --> test.clnrm.toml.tera:1:1\n   |\n 1 | {% import \"macros\" as m %}\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ macro library not found\n```\n\n### Test 2 Result:\n```bash\n$ clnrm render test2.clnrm.toml.tera\n\nError: Unknown function: span_exists\n  --> test2.clnrm.toml.tera:3:1\n   |\n 3 | {{ span_exists(name=\"test_span\") }}\n   | ^^^^^^^^^^^ function not defined\n```\n\n### Test 3 Result:\n```bash\n$ find ~/.clnrm /usr/local/share/clnrm -name \"*macro*\" 2>/dev/null\n# No results - no macro files found\n```\n\n## Impact\n\n**Medium** - Significant usability and boilerplate issue:\n\n1. ❌ Users cannot use documented macro features\n2. ❌ 85% boilerplate reduction claim is not achievable\n3. ❌ Must write full TOML validation manually\n4. ❌ Claimed v1.0 stable feature doesn't exist\n5. ❌ No workaround available\n\n## Evidence\n\n**Macro library files don't exist:**\n```bash\n# Check clnrm source code\n$ git clone https://github.com/seanchatmangpt/clnrm /tmp/clnrm-src\n$ find /tmp/clnrm-src -name \"*macro*\"\n# Only finds references in docs, no implementation\n```\n\n**Template rendering doesn't support macros:**\n```bash\n$ clnrm template --help\n# No mention of macro support or macro library path\n```\n\n## Suggested Fixes\n\n**Option 1: Implement macro library**\n\nCreate `/usr/local/share/clnrm/macros.tera`:\n```tera\n{% macro span_exists(name) %}\n[[expect.span]]\nname = \"{{ name }}\"\nexists = true\n{% endmacro %}\n\n{% macro graph_relationship(parent, child) %}\n[[expect.graph]]\nparent = \"{{ parent }}\"\nchild = \"{{ child }}\"\nrelationship = \"calls\"\n{% endmacro %}\n\n{# ... 6 more macros ... #}\n```\n\n**Option 2: Document workarounds**\n```markdown\n## Template Helpers (v1.0)\n\nWhile a full macro library is planned for v1.2, you can create custom macros:\n\n1. Create `macros.tera` in your project\n2. Define reusable snippets\n3. Import with `{% import \"macros.tera\" as m %}`\n\nExample: [link to example macros file]\n```\n\n**Option 3: Update README**\n```markdown\n## ❌ Not Yet Implemented\n\n### Macro Library (Planned for v1.2)\n- 8 reusable macros with 85% boilerplate reduction\n- Currently in design phase\n- Target release: Q2 2024\n```\n\n## Example Implementation\n\nHere's what the macro library could look like:\n\n```tera\n{# macros.tera - CLNRM Template Macro Library #}\n\n{% macro span_exists(name) %}\n[[expect.span]]\nname = \"{{ name }}\"\nexists = true\n{% endmacro %}\n\n{% macro graph_relationship(parent, child, relationship=\"calls\") %}\n[[expect.graph]]\nparent = \"{{ parent }}\"\nchild = \"{{ child }}\"\nrelationship = \"{{ relationship }}\"\n{% endmacro %}\n\n{% macro temporal_ordering(before, after) %}\n[[expect.temporal]]\nbefore = \"{{ before }}\"\nafter = \"{{ after }}\"\n{% endmacro %}\n\n{% macro error_propagation(source, target) %}\n[[expect.span]]\nname = \"{{ source }}\"\nattrs.all = { \"error\" = \"true\" }\n\n[[expect.span]]\nname = \"{{ target }}\"\nattrs.all = { \"error.source\" = \"{{ source }}\" }\n{% endmacro %}\n\n{% macro service_interaction(client, server, method=\"POST\") %}\n[[expect.graph]]\nparent = \"{{ client }}\"\nchild = \"{{ server }}\"\nattrs.all = { \"http.method\" = \"{{ method }}\" }\n{% endmacro %}\n\n{% macro attribute_validation(span, key, value) %}\n[[expect.span]]\nname = \"{{ span }}\"\nattrs.all = { \"{{ key }}\" = \"{{ value }}\" }\n{% endmacro %}\n\n{% macro resource_check(type, name) %}\n[[expect.resource]]\ntype = \"{{ type }}\"\nname = \"{{ name }}\"\nexists = true\n{% endmacro %}\n\n{% macro batch_validation(spans, condition) %}\n{% for span in spans %}\n[[expect.span]]\nname = \"{{ span }}\"\n{{ condition }}\n{% endfor %}\n{% endmacro %}\n```\n\n## Related Issues\n\n- #5 Multiple claimed features are missing or non-functional\n- #4 README contains extensive false claims\n\n## Additional Context\n\nDiscovered during systematic audit. The macro library is prominently featured as a v1.0 working feature with specific examples, but no implementation exists. This creates significant boilerplate that the feature claimed to eliminate.\n\n**User impact**: Must write full TOML validation blocks manually, negating the claimed \"85% boilerplate reduction.\"\n",
+  "closed_by": null,
+  "reactions": {
+    "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/7/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "timeline_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/7/timeline",
+  "performed_via_github_app": null,
+  "state_reason": null
+}

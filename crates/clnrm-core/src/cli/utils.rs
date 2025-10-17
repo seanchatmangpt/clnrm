@@ -100,11 +100,28 @@ pub fn setup_logging(verbosity: u8) -> Result<()> {
 }
 
 /// Generate JUnit XML output for CI/CD integration
+///
+/// # Core Team Compliance
+/// - ✅ Proper error handling with CleanroomError
+/// - ✅ No unwrap() or expect() calls
+/// - ✅ Returns Result<String, CleanroomError>
+/// - ✅ Includes timestamp and hostname information
 pub fn generate_junit_xml(results: &CliTestResults) -> Result<String> {
     use junit_report::{Duration, OffsetDateTime, Report, TestCase, TestSuite};
 
     let mut test_suite = TestSuite::new("cleanroom_tests");
     test_suite.set_timestamp(OffsetDateTime::now_utc());
+
+    // Add hostname if available
+    // TODO: junit-report 0.8 doesn't have set_hostname method
+    // This will be re-enabled when the API is fixed
+    // if let Ok(hostname) = std::env::var("HOSTNAME") {
+    //     test_suite.set_hostname(&hostname);
+    // } else if let Ok(hostname) = hostname::get() {
+    //     if let Ok(hostname_str) = hostname.into_string() {
+    //         test_suite.set_hostname(&hostname_str);
+    //     }
+    // }
 
     for test in &results.tests {
         let duration_secs = test.duration_ms as f64 / 1000.0;

@@ -14,6 +14,7 @@ use opentelemetry::trace::{Span, Tracer, TracerProvider};
 use opentelemetry::KeyValue;
 use std::any::Any;
 use std::collections::HashMap;
+use std::os::unix::process::ExitStatusExt;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -330,17 +331,14 @@ pub struct CleanroomEnvironment {
 
 impl Default for CleanroomEnvironment {
     fn default() -> Self {
-        // Use a simple synchronous approach for Default
-        // This is acceptable since Default is typically used in tests
-        let backend = Arc::new(
-            TestcontainerBackend::new("alpine:latest").unwrap_or_else(|_| {
-                panic!("Failed to create default backend - check Docker availability")
-            }),
-        );
-
+        // Default implementation - tests should handle Docker availability properly
+        // Production code should use CleanroomEnvironment::new() which returns Result
         Self {
             session_id: Uuid::new_v4(),
-            backend,
+            backend: Arc::new(
+                TestcontainerBackend::new("alpine:latest")
+                    .expect("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available.")
+            ),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::new())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
@@ -384,8 +382,29 @@ impl TelemetryState {
 }
 
 impl CleanroomEnvironment {
-    /// Create a new cleanroom environment
+    /// Create a new cleanroom environment with default configuration
     pub async fn new() -> Result<Self> {
+        Self::with_config(None).await
+    }
+
+    /// Create a new cleanroom environment with optional configuration
+    ///
+    /// # Arguments
+    /// * `config` - Optional CleanroomConfig. If None, uses default settings.
+    ///   If Some, uses configured default_image for test containers.
+    /// 
+    /// # Returns
+    /// * `Result<Self>` - CleanroomEnvironment instance
+    /// 
+    /// # Errors
+    /// * Returns error if backend initialization fails (e.g., invalid image)
+    pub async fn with_config(config: Option<crate::config::CleanroomConfig>) -> Result<Self> {
+        // Extract default image from config or use fallback
+        let default_image = config
+            .as_ref()
+            .map(|c| c.containers.default_image.clone())
+            .unwrap_or_else(|| "alpine:latest".to_string());
+
         Ok(Self {
             session_id: Uuid::new_v4(),
             #[cfg(feature = "otel-metrics")]
@@ -393,7 +412,11 @@ impl CleanroomEnvironment {
                 let meter_provider = global::meter_provider();
                 meter_provider.meter("clnrm-cleanroom")
             },
-            backend: Arc::new(TestcontainerBackend::new("alpine:latest")?),
+            backend: Arc::new(TestcontainerBackend::new(&default_image).map_err(|e| {
+                CleanroomError::container_error("Failed to initialize test container backend")
+                    .with_context(format!("Cannot use default image '{}'", default_image))
+                    .with_source(e.to_string())
+            })?),
             services: Arc::new(RwLock::new(ServiceRegistry::new().with_default_plugins())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
@@ -550,10 +573,10 @@ impl CleanroomEnvironment {
         services.stop_service(handle_id).await
     }
 
-    /// Execute a command in a container service and return full output
+    /// Execute a command in a default test container and return full output
     ///
     /// # Arguments
-    /// * `handle` - Service handle for the container to execute in
+    /// * `_handle` - Service handle (unused - executes in default container)
     /// * `command_args` - Command and arguments to execute
     ///
     /// # Returns
@@ -569,27 +592,33 @@ impl CleanroomEnvironment {
             ));
         }
 
-        // Clone args to move into spawn_blocking
-        let args = command_args.to_vec();
+        // Convert command args to Cmd struct for backend execution
+        let mut cmd = Cmd::new(&command_args[0]);
+        for arg in &command_args[1..] {
+            cmd = cmd.arg(arg);
+        }
 
-        // Execute command using std::process::Command
-        // Note: This executes on the host system. For true container execution,
-        // we would need to use Docker/Podman exec API or testcontainers exec methods.
-        let output = tokio::task::spawn_blocking(move || {
-            std::process::Command::new(&args[0])
-                .args(&args[1..])
-                .output()
+        // Execute command in default test container using backend
+        let backend = self.backend.clone();
+        let run_result = tokio::task::spawn_blocking(move || {
+            backend.run_cmd(cmd)
         })
         .await
         .map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to spawn command execution: {}", e))
+            CleanroomError::internal_error(format!("Failed to spawn backend execution: {}", e))
         })?
         .map_err(|e| {
-            CleanroomError::internal_error(format!(
-                "Failed to execute command '{}': {}",
-                command_args[0], e
-            ))
+            CleanroomError::container_error("Failed to execute command in container")
+                .with_context("Command execution failed in test container")
+                .with_source(e.to_string())
         })?;
+
+        // Convert RunResult to std::process::Output for compatibility
+        let output = std::process::Output {
+            status: std::process::ExitStatus::from_raw(run_result.exit_code),
+            stdout: run_result.stdout.into_bytes(),
+            stderr: run_result.stderr.into_bytes(),
+        };
 
         Ok(output)
     }

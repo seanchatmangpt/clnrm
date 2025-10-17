@@ -1,550 +1,451 @@
-# Cleanroom Testing Framework
+# Cleanroom Testing Framework (clnrm)
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
-[![Build Status](https://img.shields.io/badge/build-passing-green.svg)](https://github.com/seanchatmangpt/clnrm)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **🚀 Production Ready:** Hermetic integration testing that actually works end-to-end.
+> **⚠️ CURRENT STATUS: v0.4.0 - Foundation Stage**
 >
-> **✨ Version 1.0.0 Highlights (Production Release):**
-> - **dev --watch**: Hot reload with approximately 3s latency - save and see results quickly
-> - **dry-run**: Fast validation without containers (typically under 1s for 10 files)
-> - **fmt**: Deterministic TOML formatting with idempotency verification
-> - **Macro Pack**: Eliminate boilerplate with reusable Tera macros (up to 85% reduction)
-> - **Change Detection**: Only rerun changed scenarios (significantly faster iteration)
-> - **All production features**: Tera templating, temporal validation, multi-format reporting, hot reload, PRD v1.0 implementation
+> This framework is under active development. Many features are partially implemented or planned.
+> See the honest feature matrix below for actual capabilities.
 
-A testing framework for hermetic integration testing with container-based isolation and plugin architecture.
+A testing framework for integration testing with TOML-based test definitions and container plugin architecture.
 
-## 🎯 What Works (Verified)
+---
 
-### ✅ **Core Testing Pipeline**
-- **`clnrm init`** - Zero-config project initialization with working TOML files
-- **`clnrm run`** - Real container execution with regex validation and output capture
-- **`clnrm validate`** - TOML configuration validation
-- **`clnrm self-test`** - Framework validates itself across 5 test suites (framework, container, plugin, cli, otel)
+## 🚨 IMPORTANT DISCLAIMER
 
-### ✅ **Plugin Ecosystem**
-- **`clnrm plugins`** - 8 service plugins for container, database, and AI integration
-- **GenericContainerPlugin** - Any Docker image with custom configuration
-- **SurrealDbPlugin** - SurrealDB database with WebSocket support
-- **NetworkToolsPlugin** - curl, wget, netcat for HTTP testing
-- **LLM Plugins** - Ollama, vLLM, TGI for AI model inference (production-ready)
-- **Chaos Engine** - Controlled failure injection (experimental - clnrm-ai crate)
-- **AI Test Generator** - AI-powered test case generation (experimental - clnrm-ai crate)
+**This README provides an HONEST assessment of what works and what doesn't.**
 
-### ✅ **Service Management**
-- **`clnrm services`** - Service lifecycle management (status, logs, restart subcommands)
+Previous versions of this README (archived at `docs/FALSE_README.md`) contained a 68% false positive rate in feature claims. This version corrects those issues per GitHub Issues #3 and #4.
 
-### ✅ **Template System**
-- **`clnrm template <type>`** - Generate projects from templates
-- **Available Templates** - default, advanced, minimal, database, api, otel
-- **Usage**: `clnrm template otel` - Generate OTEL validation template
-- **Output**: Generates `.clnrm.toml.tera` templates with variable substitution
+---
 
-### ✅ **Tera Templating** *(v1.0)*
-- **Dynamic configuration** - Jinja2-like templates for test files
-- **Custom functions** - `env()`, `now_rfc3339()`, `sha256()`, `toml_encode()`
-- **Template namespaces** - `vars.*`, `matrix.*`, `otel.*`
-- **Matrix testing** - Cross-product test generation
-- **Conditional logic** - Environment-based configuration
-- **Macro library** - 8 reusable macros with 85% boilerplate reduction
+## ✅ Actually Working Features (v0.4.0)
 
-### ✅ **Advanced Validators** *(v1.0)*
-- **Temporal ordering** - `must_precede` and `must_follow` validation
-- **Status validation** - Glob patterns for span status codes
-- **Count validation** - Span counts by kind and total
-- **Window validation** - Time-based span containment
-- **Graph validation** - Parent-child relationships and topology
-- **Hermeticity validation** - Isolation and resource constraints
+These features have been verified to work through code inspection and testing:
 
-### ✅ **Multi-Format Reporting** *(v1.0)*
-- **JSON reports** - Programmatic access and parsing
-- **JUnit XML** - CI/CD integration (Jenkins, GitHub Actions)
-- **SHA-256 digests** - Reproducibility verification
-- **Deterministic output** - Identical digests across runs
+### Core Testing Pipeline
+- **TOML Configuration Parsing** - Parse `.clnrm.toml` test definition files
+- **Host Command Execution** - Execute commands on host system (NOT in containers)
+- **Regex Output Validation** - Validate command output against regex patterns
+- **Test Discovery** - Auto-discover test files in directories
+- **Test Orchestration** - Run multiple tests sequentially or in parallel
 
-## 🚀 Quick Start
+### Configuration & Validation
+- **TOML Validation** - Validate TOML syntax and structure
+- **Configuration Schema** - Structured test configuration with validation
+- **Template Support** - Tera template parsing for TOML files
+- **Template Variables** - Basic variable substitution in templates
 
-### Initialize Project
+### CLI Commands (Basic)
+- `clnrm --version` - Show version information
+- `clnrm --help` - Show help text
+- `clnrm init` - Initialize project with sample TOML file
+- `clnrm run <path>` - Run tests from TOML files (executes on HOST, not containers)
+- `clnrm validate <path>` - Validate TOML configuration files
+- `clnrm plugins` - List registered plugins (registration only, execution incomplete)
+
+### Plugin System (Partial)
+- **Plugin Registration** - Register service plugins in framework
+- **Plugin Discovery** - List registered plugins
+- **GenericContainerPlugin** - Defined but container execution not working
+- **Service Metadata** - Store plugin configuration and metadata
+
+### Error Handling
+- **Structured Errors** - `CleanroomError` type with context and sources
+- **Error Propagation** - Proper `Result<T, E>` error handling throughout
+- **No False Positives** - Uses `unimplemented!()` for incomplete features (honest about limitations)
+
+---
+
+## 🚧 Partially Working Features
+
+These features exist but have significant limitations:
+
+### OpenTelemetry Support (Requires External Setup)
+- **OTEL Initialization** - Basic initialization code exists
+- **Span Creation** - Can create spans with `tracing` crate
+- **OTLP Export** - Requires external collector setup and configuration
+- **Span Validation** - Parser exists but validation functions call `unimplemented!()`
+- **Status**: Requires manual collector setup, validation incomplete
+
+### Container Support (Not Working End-to-End)
+- **Backend Trait** - Abstract container operations defined
+- **TestcontainerBackend** - Testcontainers-rs integration exists
+- **Plugin Architecture** - Plugins can be registered but execution path incomplete
+- **Status**: Commands execute on HOST system, not in actual containers yet
+
+### Service Plugins (Defined But Incomplete)
+- **GenericContainerPlugin** - Defined but doesn't execute in containers
+- **SurrealDB Plugin** - Registered but not fully functional
+- **LLM Plugins** (Ollama, vLLM, TGI) - Defined but untested
+- **Status**: Registration works, lifecycle incomplete
+
+---
+
+## ❌ Not Yet Implemented
+
+These features were claimed in previous README versions but **do not work**:
+
+### Framework Self-Testing
+- `clnrm self-test` command exists but core test functions call `unimplemented!()`
+- Functions `test_container_execution()` and `test_plugin_system()` are stubs
+- Framework does NOT test itself yet
+- **Status**: Planned for v0.5.0
+
+### True Hermetic Isolation
+- Tests execute commands on HOST system using `tokio::process::Command`
+- No actual container isolation for test execution yet
+- Plugin system architecture exists but execution path incomplete
+- **Status**: Foundation exists, implementation in progress
+
+### Advanced Features (v1.0 Claims)
+- **dev --watch** - Not implemented
+- **dry-run** - Basic validation only, no full dry-run execution
+- **fmt** - TOML formatting not implemented
+- **Macro Library** - Not implemented
+- **Change Detection** - Cache system exists but SHA-256 digest generation incomplete
+- **Fake Data Generators** - Not implemented
+- **Property-Based Testing** - Not implemented
+- **Status**: All planned for future versions
+
+### Container Execution Features
+- **Docker Container Execution** - Backend exists but not used in main execution path
+- **Container Lifecycle Management** - Partial implementation
+- **Volume Mounting** - Defined but incomplete
+- **Network Configuration** - Planned but not implemented
+- **Status**: In progress for v0.5.0
+
+### Reporting Features
+- **JUnit XML Export** - Function exists but not fully implemented
+- **JSON Reports** - Basic structure exists
+- **HTML Reports** - Not implemented
+- **SHA-256 Digests** - Function signature exists but incomplete
+- **Status**: Planned for v0.6.0
+
+### OTEL Validation (Incomplete)
+- **Span Validation** - Functions call `unimplemented!()`
+- **Trace Validation** - Functions call `unimplemented!()`
+- **Export Validation** - Functions call `unimplemented!()`
+- **Fake-Green Detection** - Documented but validation incomplete
+- **Status**: Requires collector integration work
+
+---
+
+## 📊 Honest Feature Matrix
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Core Testing** | | |
+| TOML config parsing | ✅ Working | Fully functional |
+| Host command execution | ✅ Working | Runs on host, not containers |
+| Regex validation | ✅ Working | Pattern matching works |
+| Test discovery | ✅ Working | Auto-finds .toml files |
+| Test orchestration | ✅ Working | Sequential and parallel |
+| | | |
+| **Configuration** | | |
+| TOML validation | ✅ Working | Syntax and structure validation |
+| Template parsing | ✅ Working | Tera template support |
+| Variable substitution | 🚧 Partial | Basic vars work, advanced incomplete |
+| Config merging | ❌ Not implemented | Planned |
+| | | |
+| **CLI Commands** | | |
+| `clnrm --version` | ✅ Working | Shows version |
+| `clnrm --help` | ✅ Working | Shows help |
+| `clnrm init` | ✅ Working | Creates sample config |
+| `clnrm run` | 🚧 Partial | Runs on host, not containers |
+| `clnrm validate` | ✅ Working | Validates TOML |
+| `clnrm self-test` | ❌ Not working | Calls unimplemented!() |
+| `clnrm plugins` | 🚧 Partial | Lists plugins, execution incomplete |
+| `clnrm dev --watch` | ❌ Not implemented | Planned for v1.0 |
+| `clnrm dry-run` | ❌ Not implemented | Planned for v1.0 |
+| `clnrm fmt` | ❌ Not implemented | Planned for v1.0 |
+| | | |
+| **Container Features** | | |
+| Container execution | ❌ Not working | Executes on host instead |
+| Hermetic isolation | ❌ Not implemented | No isolation yet |
+| Volume mounting | ❌ Not implemented | Defined but incomplete |
+| Network config | ❌ Not implemented | Planned |
+| | | |
+| **Plugin System** | | |
+| Plugin registration | ✅ Working | Can register plugins |
+| Plugin lifecycle | 🚧 Partial | Start/stop incomplete |
+| GenericContainer | 🚧 Partial | Defined, execution incomplete |
+| SurrealDB | 🚧 Partial | Defined, untested |
+| LLM plugins | 🚧 Partial | Defined, untested |
+| | | |
+| **OpenTelemetry** | | |
+| OTEL initialization | 🚧 Partial | Requires collector setup |
+| Span creation | ✅ Working | Using tracing crate |
+| OTLP export | 🚧 Partial | Requires external collector |
+| Span validation | ❌ Not implemented | Calls unimplemented!() |
+| Trace analysis | ❌ Not implemented | Calls unimplemented!() |
+| Fake-green detection | ❌ Not implemented | Documented but incomplete |
+| | | |
+| **Reporting** | | |
+| Console output | ✅ Working | Basic logging works |
+| JSON reports | 🚧 Partial | Structure exists, incomplete |
+| JUnit XML | 🚧 Partial | Function exists, incomplete |
+| HTML reports | ❌ Not implemented | Planned |
+| SHA-256 digests | ❌ Not implemented | Signature exists, incomplete |
+| | | |
+| **Advanced Features** | | |
+| Hot reload | ❌ Not implemented | Planned for v1.0 |
+| Change detection | 🚧 Partial | Cache exists, hashing incomplete |
+| Macro library | ❌ Not implemented | Planned for v1.0 |
+| Fake data generators | ❌ Not implemented | Planned for v0.6.0 |
+| Property-based testing | ❌ Not implemented | Planned for v0.6.0 |
+| Matrix testing | ❌ Not implemented | Planned for v0.6.0 |
+
+**Legend:**
+- ✅ **Working** - Feature works as expected
+- 🚧 **Partial** - Feature exists but has limitations or requires setup
+- ❌ **Not Implemented** - Feature doesn't work or calls `unimplemented!()`
+
+---
+
+## 🎯 What Actually Works Today
+
+### Minimal Working Example
+
 ```bash
-# Zero-configuration project setup
-clnrm init
+# 1. Install (requires Rust toolchain)
+cargo install --path .
 
-# Generates: tests/basic.clnrm.toml and project structure
+# 2. Create a test file
+cat > test.clnrm.toml <<EOF
+[test.metadata]
+name = "basic_test"
+description = "Test command execution on host"
+
+[[steps]]
+name = "hello"
+command = ["echo", "Hello from clnrm"]
+expected_output_regex = "Hello"
+EOF
+
+# 3. Run the test (executes on HOST system, not container)
+clnrm run test.clnrm.toml
+
+# Expected output:
+# 🚀 Executing test: basic_test
+# 📋 Step 1: hello
+# 🔧 Executing: echo Hello from clnrm
+# 📤 Output: Hello from clnrm
+# ✅ Step 'hello' completed successfully
 ```
 
-### Run Tests
-```bash
-# Auto-discover and run all tests
-clnrm run
+**What this actually does:**
+- Parses the TOML file
+- Executes `echo "Hello from clnrm"` using `tokio::process::Command` **on your host system**
+- Validates output matches the regex pattern
+- Reports success
 
-# Real container execution with output validation
-# ✅ Container commands execute
-# ✅ Regex patterns validate output
-# ✅ Test results are accurate
+**What this does NOT do:**
+- Does NOT run in a container
+- Does NOT provide hermetic isolation
+- Does NOT test the framework itself
+- Does NOT generate telemetry traces
+
+---
+
+## ❌ Performance Claims Removed
+
+**Previous README claimed:** "18,000x faster than traditional approaches"
+
+**Reality:**
+- This claim compared TOML parsing speed to unrelated benchmarks
+- No legitimate performance comparisons exist
+- Current implementation runs commands on host (fast but not isolated)
+- Container execution (when implemented) will be slower but more hermetic
+
+**Honest assessment:**
+- TOML parsing is fast (milliseconds for typical files)
+- Host command execution is fast (no container overhead)
+- Full container execution will have typical Docker overhead
+- No comparative benchmarks available yet
+
+---
+
+## 🗺️ Honest Roadmap
+
+### v0.5.0 - Container Execution (In Progress)
+- Implement actual container execution for tests
+- Complete plugin lifecycle management
+- Finish CleanroomEnvironment integration
+- Container isolation for each test
+- **Target**: Q1 2025
+
+### v0.6.0 - Advanced Testing Features
+- Property-based testing with fake data generators
+- Matrix testing (cross-product of parameters)
+- Improved OTEL integration
+- JUnit XML and JSON reporting
+- **Target**: Q2 2025
+
+### v0.7.0 - Framework Self-Testing
+- Complete `clnrm self-test` implementation
+- Framework tests itself using own capabilities
+- Comprehensive test coverage
+- CI/CD integration examples
+- **Target**: Q3 2025
+
+### v1.0.0 - Production Ready
+- dev --watch hot reload
+- dry-run validation
+- TOML formatting
+- Macro library
+- Change detection with SHA-256
+- Fake-green detection
+- Production documentation
+- **Target**: Q4 2025
+
+---
+
+## 🏗️ Architecture (Current State)
+
+### What Exists
+- **CLI Layer** - Argument parsing, command dispatch
+- **Config Layer** - TOML parsing, validation, templates
+- **Execution Layer** - Test orchestration, host command execution
+- **Plugin Layer** - Plugin registration and metadata
+- **Error Layer** - Structured error handling
+
+### What's Incomplete
+- **Container Layer** - Backend exists but not used in main path
+- **Isolation Layer** - No hermetic isolation yet
+- **OTEL Layer** - Initialization works, validation incomplete
+- **Self-Test Layer** - Architecture exists, tests are stubs
+
+### Execution Path (Current)
+```
+User runs: clnrm run test.toml
+  ↓
+CLI parses arguments
+  ↓
+Load and parse TOML config
+  ↓
+Create CleanroomEnvironment (mostly empty)
+  ↓
+For each test step:
+  - Execute command on HOST using tokio::process::Command
+  - Capture stdout/stderr
+  - Validate against regex
+  ↓
+Report results
 ```
 
-### Validate Configuration
-```bash
-# Validate TOML syntax and structure
-clnrm validate tests/
-
-# ✅ Generated TOML files are valid
-# ✅ Configuration structure is correct
+### Execution Path (Planned)
+```
+User runs: clnrm run test.toml
+  ↓
+CLI parses arguments
+  ↓
+Load and parse TOML config
+  ↓
+Create CleanroomEnvironment with container backend
+  ↓
+Start container(s) for service plugins
+  ↓
+For each test step:
+  - Execute command IN CONTAINER
+  - Capture stdout/stderr
+  - Generate OTEL spans
+  - Validate against regex and span assertions
+  ↓
+Stop containers
+  ↓
+Validate telemetry traces
+  ↓
+Report results
 ```
 
-### List Available Plugins
-```bash
-# Show 8 service plugins (6 production + 2 experimental)
-clnrm plugins
-
-# ✅ Generic containers, databases, network tools, LLM plugins
-# ✅ Experimental: chaos engine, AI test generator (clnrm-ai crate)
-```
-
-## 🚀 **Version 1.0.0 Features (Current)**
-
-### **✅ No-Prefix Tera Templating (Implemented)**
-
-Create clean, readable templates with no complex namespaces:
-
-```toml
-[meta]
-name = "{{ svc }}_otel_proof"
-version = "1.0.0"
-description = "Telemetry-only validation"
-
-[vars]                # authoring-only; runtime ignores this table
-svc = "{{ svc }}"
-env = "{{ env }}"
-endpoint = "{{ endpoint }}"
-exporter = "{{ exporter }}"
-freeze_clock = "{{ freeze_clock }}"
-image = "{{ image }}"
-
-[otel]
-exporter = "{{ exporter }}"
-endpoint = "{{ endpoint }}"
-protocol = "http/protobuf"
-sample_ratio = 1.0
-resources = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
-
-[service.clnrm]
-plugin = "generic_container"
-image = "{{ image }}"
-args = ["self-test", "--otel-exporter", "{{ exporter }}", "--otel-endpoint", "{{ endpoint }}"]
-env = { "OTEL_TRACES_EXPORTER" = "{{ exporter }}", "OTEL_EXPORTER_OTLP_ENDPOINT" = "{{ endpoint }}" }
-wait_for_span = "clnrm.run"
-
-[[scenario]]
-name = "otel_only_proof"
-service = "clnrm"
-run = "clnrm run --otel-exporter {{ exporter }} --otel-endpoint {{ endpoint }}"
-artifacts.collect = ["spans:default"]
-
-[[expect.span]]
-name = "clnrm.run"
-kind = "internal"
-attrs.all = { "result" = "pass" }
-
-[[expect.span]]
-name = "clnrm.step:hello_world"
-parent = "clnrm.run"
-kind = "internal"
-events.any = ["container.start", "container.exec", "container.stop"]
-
-[expect.graph]
-must_include = [["clnrm.run", "clnrm.step:hello_world"]]
-acyclic = true
-
-[expect.status]
-all = "OK"
-
-[expect.hermeticity]
-no_external_services = true
-resource_attrs.must_match = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
-
-[determinism]
-seed = 42
-freeze_clock = "{{ freeze_clock }}"
-
-[report]
-json = "report.json"
-digest = "trace.sha256"
-```
-
-### **Rust-Based Variable Resolution**
-
-Variables are resolved in Rust with clear precedence:
-- **Template variables** (highest priority)
-- **Environment variables** (e.g., `$SERVICE_NAME`, `$OTEL_ENDPOINT`)
-- **Defaults** (lowest priority)
-
-**Available Variables:**
-- `svc` - Service name (default: "clnrm")
-- `env` - Environment (default: "ci")
-- `endpoint` - OTEL endpoint (default: "http://localhost:4318")
-- `exporter` - OTEL exporter (default: "otlp")
-- `image` - Container image (default: "registry/clnrm:1.0.0")
-- `freeze_clock` - Deterministic time (default: "2025-01-01T00:00:00Z")
-- `token` - OTEL auth token (default: "")
-
-### **Template Generation**
-
-```bash
-# Generate OTEL validation template
-clnrm template otel > my-test.clnrm.toml
-
-# The generated template uses no-prefix variables
-# Variables are resolved in Rust: template vars → ENV → defaults
-```
+---
 
 ## 📚 Documentation
 
-- **[v1.0 Documentation](docs/)** - Complete v1.0 guides and references
-- **[PRD: v1.0 Tera-First Architecture](docs/PRD-v1.md)** - Product requirements
-- **[TOML Reference](docs/v1.0/TOML_REFERENCE.md)** - Configuration format
-- **[Migration Guide](docs/v1.0/MIGRATION_GUIDE.md)** - From v0.6.0 to v1.0
-- **[Fake Green Detection](docs/FAKE_GREEN_DETECTION_USER_GUIDE.md)** - User guide
-- **[CLI Analyze](docs/CLI_ANALYZE_REFERENCE.md)** - Analyze command reference
+- **[CLAUDE.md](CLAUDE.md)** - Development guidelines and architecture
+- **[TOML Reference](docs/TOML_REFERENCE.md)** - Configuration format (describes planned features)
+- **[Codebase Quality Analysis](CODEBASE_QUALITY_ANALYSIS.md)** - Current code status
+- **[False README](docs/FALSE_README.md)** - Archived version with false claims
 
-## 🎯 Legacy v0.6.0 Features
+**Note:** Some documentation describes planned features not yet implemented. Check this README's feature matrix for actual status.
 
-### **Property-Based Testing with Fake Data**
+---
 
-Generate test scenarios with fake data generators:
+## 🔧 Installation
 
-```toml
-# tests/load-test.clnrm.toml.tera
-{% for i in range(end=1000) %}
-[[steps]]
-name = "load_test_{{ i }}"
-command = ["curl", "http://api:8080/users",
-           "-d", '{"name":"{{ fake_name() }}","email":"{{ fake_email() }}"}']
-expected_output_regex = "success"
-{% endfor %}
-```
-
-**Key Features:**
-- **50+ fake data generators** - UUIDs, names, emails, timestamps, IPs, etc.
-- **Deterministic seeding** - Reproducible tests with `fake_uuid_seeded(seed=42)`
-- **Matrix testing** - Generate all combinations of parameters
-- **Property-based testing** - Validate properties across generated data
-
-**Example: Generate hundreds of unique API tests from a few lines of template code.**
-
-### **Telemetry-Only Validation (OTEL)**
-
-Prove system correctness using OpenTelemetry spans exclusively:
-
-```toml
-# tests/otel-validation.clnrm.toml
-[services.otel_collector]
-plugin = "otel_collector"
-image = "otel/opentelemetry-collector:latest"
-
-[services.app_under_test]
-plugin = "generic_container"
-image = "myapp:latest"
-env.OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
-
-[[scenario]]
-name = "otel_self_validation"
-service = "app_under_test"
-run = "myapp --otel-endpoint http://otel_collector:4318"
-
-# Validate spans prove correct behavior
-[[expect.span]]
-name = "myapp.request"
-kind = "server"
-duration_ms = { min = 10, max = 5000 }
-
-[[expect.span]]
-name = "myapp.db_query"
-parent = "myapp.request"
-kind = "client"
-
-[expect.graph]
-must_include = [["myapp.request", "myapp.db_query"]]
-acyclic = true
-
-[expect.hermeticity]
-no_external_services = true
-resource_attrs_must_match = { "service.name" = "myapp" }
-```
-
-**Key Features:**
-- **Deterministic validation** - Consistent validation across environments
-- **5-Dimensional validation** - Structural, temporal, cardinality, hermeticity, attribute
-- **Span validators** - Existence, count, attributes, hierarchy, events, duration
-- **Graph validators** - Parent-child relationships and cycle detection
-- **Hermeticity validators** - External service detection and resource validation
-
-**Example: Framework validates itself using its own telemetry.**
-
-### **Advanced Validation Framework**
-
-The framework provides comprehensive validation across multiple dimensions:
-
-- **Structural Validation** - Span hierarchy and relationships
-- **Temporal Validation** - Execution time windows and containment
-- **Cardinality Validation** - Count constraints across execution paths
-- **Hermeticity Validation** - Isolation and contamination detection
-- **Attribute Validation** - Semantic metadata validation
-
-**Result:** Comprehensive correctness validation with multiple detection layers.
-
-### **Fake-Green Detection** *(v1.0)*
-
-**The Problem:** Tests that report "PASS" but never actually executed code.
-
-**The Solution:** OTEL-first validation with 7 independent detection layers:
-
-```toml
-# Tests must PROVE they executed by generating telemetry
-[[expect.span]]
-name = "container.exec"
-events.any = ["container.start", "container.exec", "container.stop"]
-
-[expect.graph]
-must_include = [["test.run", "container.exec"]]
-
-[expect.counts]
-spans_total.gte = 2
-
-[expect.status]
-all = "OK"
-```
-
-**7 Detection Layers:**
-1. **Lifecycle Events** - Container operations generated events
-2. **Span Graph** - Parent-child relationships exist
-3. **Span Counts** - Expected number of operations occurred
-4. **Temporal Ordering** - Operations occurred in correct sequence
-5. **Window Containment** - Child operations within parent timeframes
-6. **Status Validation** - All operations completed successfully
-7. **Hermeticity** - Tests run in isolation without external dependencies
-
-**Analyze Traces:**
-```bash
-# Run test with OTEL
-clnrm run test.toml --otel-endpoint http://localhost:4318
-
-# Validate telemetry evidence
-clnrm analyze test.toml traces.json
-```
-
-**Result:**
-- ✅ **PASS** = Code actually executed with proof
-- ❌ **FAIL** = Fake-green test detected (no evidence)
-
-**Documentation:**
-- [User Guide](docs/FAKE_GREEN_DETECTION_USER_GUIDE.md) - How to use it
-- [Developer Guide](docs/FAKE_GREEN_DETECTION_DEV_GUIDE.md) - How to extend it
-- [TOML Schema](docs/FAKE_GREEN_TOML_SCHEMA.md) - Configuration reference
-- [CLI Reference](docs/CLI_ANALYZE_REFERENCE.md) - Command usage
-
-## 🎯 **Real Evidence - Not Claims**
-
-### **Container Execution Works**
-```bash
-$ clnrm run
-🚀 Executing test: basic_test
-📋 Step 1: hello_world
-🔧 Executing: echo Hello from cleanroom!
-📤 Output: Hello from cleanroom!
-✅ Output matches expected regex
-✅ Step 'hello_world' completed successfully
-🎉 Test 'basic_test' completed successfully!
-```
-
-### **Framework Self-Tests Work**
-```bash
-$ clnrm self-test
-Framework Self-Test Results:
-Total Tests: 5
-Passed: 5
-Failed: 0
-✅ All framework functionality validated
-```
-
-### **Plugin Ecosystem Works**
-```bash
-$ clnrm plugins
-📦 Available Service Plugins:
-✅ generic_container (alpine, ubuntu, debian)
-✅ surreal_db (database integration)
-✅ network_tools (curl, wget, netcat)
-✅ ollama (local AI model integration)
-✅ vllm (high-performance LLM inference)
-✅ tgi (Hugging Face text generation inference)
-
-🧪 Experimental Plugins (clnrm-ai crate):
-🎭 chaos_engine (controlled failure injection, network partitions)
-🤖 ai_test_generator (AI-powered test case generation)
-```
-
-## 🏗️ Architecture
-
-### **Plugin-Based Architecture**
-- **Service Plugins** - Extensible container service management
-- **Container Isolation** - Each test runs in fresh, isolated containers
-- **Configuration-Driven** - TOML-based test definitions
-
-### **Hermetic Testing**
-- **Container Isolation** - Each test runs in completely isolated containers
-- **Deterministic Execution** - Consistent results across environments
-- **Resource Management** - Automatic cleanup and resource limits
-
-## 📊 **Performance**
-
-### **Container Management**
-- Infrastructure for performance optimization
-- Automatic container lifecycle management
-- Service registry for efficient resource usage
-
-### **Parallel Execution**
-- Multi-worker test execution
-- Resource-aware scheduling
-
-## 🎮 **Commands**
-
-| Command | Status | Description |
-|---------|--------|-------------|
-| `clnrm --version` | ✅ **Working** | Show version information |
-| `clnrm --help` | ✅ **Working** | Show comprehensive help |
-| `clnrm init` | ✅ **Working** | Zero-config project initialization |
-| `clnrm run` | ✅ **Working** | Execute tests with real containers (change-aware) |
-| `clnrm validate` | ✅ **Working** | Validate templates and TOML configuration |
-| `clnrm template otel` | ✅ **Working** | Generate OTEL validation template |
-| `clnrm self-test` | ✅ **Working** | Framework self-validation with OTEL |
-| `clnrm dev --watch` | ✅ **Working** | Hot reload development mode |
-| `clnrm dry-run` | ✅ **Working** | Fast validation without containers |
-| `clnrm fmt` | ✅ **Working** | Deterministic TOML formatting |
-
-## 🚀 **Getting Started**
-
-### Prerequisites
+### Requirements
 - Rust 1.70 or later
-- Docker or Podman
-- 4GB+ RAM
+- Docker or Podman (for future container features)
+- 4GB+ RAM recommended
 
-### Installation
-
-#### Via Homebrew (Recommended)
-```bash
-# Add the tap and install
-brew tap seanchatmangpt/clnrm
-brew install clnrm
-
-# Verify installation
-clnrm --version  # Should show: clnrm 1.0.0
-```
-
-#### Via Cargo
-```bash
-cargo install clnrm
-```
-
-#### From Source
+### From Source
 ```bash
 git clone https://github.com/seanchatmangpt/clnrm
 cd clnrm
 cargo build --release
 ```
 
-### First Test
+**Note:** Cargo.toml currently has a duplicate `reqwest` key that needs fixing.
+
+### Via Cargo (when published)
 ```bash
-# 1. Initialize project
-clnrm init
-
-# 2. Run tests (auto-discovery)
-clnrm run
-
-# 3. Validate everything works
-clnrm self-test
-
-# 4. Explore plugins
-clnrm plugins
+cargo install clnrm
 ```
-
-## 🎯 **What Makes This Special**
-
-### **Framework Self-Testing**
-The framework tests itself through the "eat your own dog food" principle. Every feature is validated by using the framework to test its own functionality.
-
-### **Hermetic Container Testing**
-Unlike traditional testing frameworks, clnrm provides **true hermetic testing** where each test runs in completely isolated, real containers with no test interference.
-
-### **Universal Test Definition**
-Single `.clnrm.toml` files can test any technology stack - databases, APIs, microservices - all through containerized execution.
-
-## 📚 **Documentation**
-
-- [TOML Reference](docs/v1.0/TOML_REFERENCE.md) - Configuration format
-- [Fake Green Detection](docs/FAKE_GREEN_DETECTION_USER_GUIDE.md) - User guide
-- [CLI Analyze](docs/CLI_ANALYZE_REFERENCE.md) - Analyze command reference
-- [v1.0 Documentation](docs/) - Complete guides and references
-
-## 🤝 **Contributing**
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and core team standards.
-
-## 📄 **License**
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🎉 **Verification**
-
-Every feature claimed above has been verified through actual execution:
-
-```bash
-# Verify core functionality
-clnrm init && clnrm run && clnrm validate tests/
-
-# Verify framework self-testing
-clnrm self-test
-
-# Verify plugin ecosystem
-clnrm plugins
-```
-
-## 📋 **Changelog**
-
-### **Version 1.0.0** *(2025-10-17)*
-**Major Release: Production Ready - Foundation Complete**
-
-#### **🚀 New Features**
-- **Hot Reload (`dev --watch`)** - <3s latency from save to results
-- **Change Detection** - SHA-256 file hashing, only rerun changed scenarios (10x faster)
-- **Dry Run** - Fast validation without containers (<1s for 10 files)
-- **TOML Formatting** - Deterministic `fmt` command with idempotency verification
-- **Macro Library** - 8 reusable macros with 85% boilerplate reduction
-- **Advanced Validation** - Temporal, structural, cardinality, hermeticity validation
-- **Multi-Format Reports** - JSON, JUnit XML, SHA-256 digests
-
-#### **🔧 Improvements**
-- All v0.6.0 features included and working
-- Production-ready error handling (no `.unwrap()` calls)
-- Comprehensive test coverage (27 cache tests pass)
-- Zero clippy warnings
-- 100% backward compatible with v0.6.0
-
-#### **📚 Documentation**
-- DX Architecture guide (`docs/V1.0_ARCHITECTURE.md`)
-- Updated README with v1.0 features
-- Macro library documentation
-- Template usage examples
-
-**Breaking Changes:** None - all v0.6.0 `.toml` and `.toml.tera` files work unchanged.
-
-**Performance Characteristics:**
-- ✅ First green: Typically under 60s
-- ✅ Hot reload latency: Approximately 3s average
-- ✅ Dry-run validation: Typically under 1s for 10 files
-- ✅ Cache operations: Typically under 100ms
 
 ---
 
-**Built with ❤️ for reliable, hermetic integration testing. The framework tests itself to ensure maximum reliability and performance.**
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**High-Priority Items:**
+1. Fix container execution path
+2. Complete self-test implementation
+3. Finish OTEL validation functions
+4. Implement JUnit XML export
+5. Add integration tests
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🎯 Core Principle
+
+**"Eat Your Own Dog Food"** - This framework is designed to test itself using its own capabilities.
+
+**Current Status:** This principle is aspirational. The self-test functions exist but call `unimplemented!()`. Completing this is a top priority.
+
+---
+
+## 🙏 Acknowledgments
+
+This project is under active development. Thank you for understanding the current limitations and helping improve it.
+
+**Honest documentation is better than impressive documentation.**
+
+---
+
+## 📊 Change Log
+
+### v0.4.0 (Current)
+- TOML configuration parsing
+- Host command execution
+- Regex validation
+- Test discovery and orchestration
+- Plugin registration
+- Basic OTEL support
+
+### Previous Versions
+See [CHANGELOG.md](CHANGELOG.md) for full history.
+
+---
+
+**Last Updated:** 2025-10-17
+**Status:** Foundation Stage - Many Features In Progress
+**False Claims Rate:** 0% (honest documentation)

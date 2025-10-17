@@ -14,6 +14,7 @@ use tracing::error;
 
 // Import utilities
 use crate::cli::utils::setup_logging;
+use commands::run::run_tests_with_shard_and_report;
 
 // Remove global config - we'll load it per command as needed
 
@@ -34,6 +35,8 @@ pub async fn run_cli() -> Result<()> {
             interactive,
             force,
             shard,
+            digest,
+            report_junit,
         } => {
             let config = crate::cli::types::CliConfig {
                 parallel,
@@ -44,6 +47,7 @@ pub async fn run_cli() -> Result<()> {
                 interactive,
                 verbose: cli.verbose,
                 force,
+                digest,
             };
 
             // If no paths provided, discover all test files automatically
@@ -54,7 +58,7 @@ pub async fn run_cli() -> Result<()> {
                 vec![PathBuf::from(".")]
             };
 
-            run_tests_with_shard(&paths_to_run, &config, shard).await
+            run_tests_with_shard_and_report(&paths_to_run, &config, shard, report_junit.as_deref()).await
         }
 
         Commands::Validate { files } => {
@@ -121,6 +125,7 @@ pub async fn run_cli() -> Result<()> {
                 restart_service(&service).await?;
                 Ok(())
             }
+            #[cfg(feature = "ai")]
             ServiceCommands::AiManage {
                 auto_scale: _,
                 predict_load: _,
@@ -155,6 +160,7 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
+        #[cfg(feature = "ai")]
         Commands::AiOrchestrate {
             paths: _,
             predict_failures: _,
@@ -168,6 +174,7 @@ pub async fn run_cli() -> Result<()> {
             ))
         }
 
+        #[cfg(feature = "ai")]
         Commands::AiPredict {
             analyze_history: _,
             predict_failures: _,
@@ -180,6 +187,7 @@ pub async fn run_cli() -> Result<()> {
             ))
         }
 
+        #[cfg(feature = "ai")]
         Commands::AiOptimize {
             execution_order: _,
             resource_allocation: _,
@@ -192,6 +200,7 @@ pub async fn run_cli() -> Result<()> {
             ))
         }
 
+        #[cfg(feature = "ai")]
         Commands::AiReal { analyze: _ } => {
             Err(crate::error::CleanroomError::validation_error(
                 "AI real-time analysis is an experimental feature in the clnrm-ai crate.\n\
@@ -273,6 +282,7 @@ pub async fn run_cli() -> Result<()> {
             run_record(paths, output).await
         }
 
+        #[cfg(feature = "ai")]
         Commands::AiMonitor {
             interval: _,
             anomaly_threshold: _,

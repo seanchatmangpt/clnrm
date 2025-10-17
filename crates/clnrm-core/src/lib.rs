@@ -32,6 +32,9 @@ pub mod watch;
 // Testing utilities (includes property-based test generators)
 pub mod testing;
 
+// Re-export test suite types
+pub use testing::{FrameworkTestResults, SuiteResult, TestResult as TestingTestResult};
+
 pub use error::{CleanroomError, Result};
 pub use policy::{Policy, SecurityLevel, SecurityPolicy};
 pub use scenario::scenario;

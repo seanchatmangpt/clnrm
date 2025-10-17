@@ -14,8 +14,14 @@ categories = ["development-tools"]
 name = "clnrm"
 path = "src/main.rs"
 
+[features]
+default = []
+ai = ["clnrm-ai"]
+otel = ["clnrm-core/otel"]
+
 [dependencies]
 clnrm-core = { path = "../clnrm-core", version = "1.0.0", features = ["otel"] }
+clnrm-ai = { path = "../clnrm-ai", version = "1.0.0", optional = true }
 tokio = { workspace = true }
 clap = { workspace = true }
 env_logger = { workspace = true }

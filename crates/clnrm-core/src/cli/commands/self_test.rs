@@ -3,7 +3,6 @@
 //! Handles framework self-testing with comprehensive validation, reporting, and OpenTelemetry export.
 
 use crate::error::{CleanroomError, Result};
-use crate::testing::run_framework_tests;
 use tracing::{info, span, Level};
 
 #[cfg(feature = "otel-traces")]
@@ -85,20 +84,9 @@ pub async fn run_self_tests(
     // Run basic self-tests
     info!("🧪 Running framework self-tests");
 
-    #[cfg(feature = "otel-traces")]
-    let test_results = if otel_exporter != "none" {
-        run_basic_self_tests().await?
-    } else {
-        // Fall back to existing framework tests
-        run_framework_tests().await.map_err(|e| {
-            CleanroomError::internal_error("Framework self-tests failed")
-                .with_context("Failed to execute framework test suite")
-                .with_source(e.to_string())
-        })?
-    };
-
-    #[cfg(not(feature = "otel-traces"))]
-    let test_results = run_framework_tests().await.map_err(|e| {
+    // Run framework tests with optional suite filter
+    use crate::testing::run_framework_tests_by_suite;
+    let test_results = run_framework_tests_by_suite(suite.as_deref()).await.map_err(|e| {
         CleanroomError::internal_error("Framework self-tests failed")
             .with_context("Failed to execute framework test suite")
             .with_source(e.to_string())

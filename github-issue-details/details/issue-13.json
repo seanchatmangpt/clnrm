@@ -1,0 +1,85 @@
+{
+  "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/13",
+  "repository_url": "https://api.github.com/repos/seanchatmangpt/clnrm",
+  "labels_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/13/labels{/name}",
+  "comments_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/13/comments",
+  "events_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/13/events",
+  "html_url": "https://github.com/seanchatmangpt/clnrm/issues/13",
+  "id": 3527049524,
+  "node_id": "I_kwDOQCmyxs7SOoE0",
+  "number": 13,
+  "title": "AI features listed in help but crash with 'not installed' error",
+  "user": {
+    "login": "seanchatmangpt",
+    "id": 136349053,
+    "node_id": "U_kgDOCCCFfQ",
+    "avatar_url": "https://avatars.githubusercontent.com/u/136349053?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/seanchatmangpt",
+    "html_url": "https://github.com/seanchatmangpt",
+    "followers_url": "https://api.github.com/users/seanchatmangpt/followers",
+    "following_url": "https://api.github.com/users/seanchatmangpt/following{/other_user}",
+    "gists_url": "https://api.github.com/users/seanchatmangpt/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/seanchatmangpt/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/seanchatmangpt/subscriptions",
+    "organizations_url": "https://api.github.com/users/seanchatmangpt/orgs",
+    "repos_url": "https://api.github.com/users/seanchatmangpt/repos",
+    "events_url": "https://api.github.com/users/seanchatmangpt/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/seanchatmangpt/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "labels": [
+    {
+      "id": 9463217756,
+      "node_id": "LA_kwDOQCmyxs8AAAACNA0-XA",
+      "url": "https://api.github.com/repos/seanchatmangpt/clnrm/labels/bug",
+      "name": "bug",
+      "color": "d73a4a",
+      "default": true,
+      "description": "Something isn't working"
+    }
+  ],
+  "state": "open",
+  "locked": false,
+  "assignee": null,
+  "assignees": [
+
+  ],
+  "milestone": null,
+  "comments": 0,
+  "created_at": "2025-10-17T18:06:40Z",
+  "updated_at": "2025-10-17T18:06:40Z",
+  "closed_at": null,
+  "author_association": "OWNER",
+  "active_lock_reason": null,
+  "sub_issues_summary": {
+    "total": 0,
+    "completed": 0,
+    "percent_completed": 0
+  },
+  "issue_dependencies_summary": {
+    "blocked_by": 0,
+    "total_blocked_by": 0,
+    "blocking": 0,
+    "total_blocking": 0
+  },
+  "body": "# AI features listed in help but crash with \"not installed\" error\n\n## Summary\n\nMultiple AI-related commands (`ai-orchestrate`, `ai-predict`, `ai-optimize`, `ai-real`) appear in `clnrm --help` output but all crash with \"Feature requires clnrm-ai crate (not installed)\" error.\n\n## Environment\n\n- **CLNRM Version:** 1.0.0\n- **OS:** macOS 14.5 (Darwin 24.5.0)\n- **Installation:** Built from source with `cargo build --release`\n\n## Reproduction Steps\n\n### Test 1: Try ai-orchestrate command\n\n```bash\nclnrm ai-orchestrate --help\n```\n\n### Test 2: Try ai-predict command\n\n```bash\nclnrm ai-predict --help\n```\n\n### Test 3: Try ai-optimize command\n\n```bash\nclnrm ai-optimize --help\n```\n\n### Test 4: Try ai-real command\n\n```bash\nclnrm ai-real --help\n```\n\n### Test 5: Check available commands\n\n```bash\nclnrm --help | grep ai-\n```\n\n## Expected Behavior\n\n**Option A: If features are available:**\n```bash\n$ clnrm ai-orchestrate --help\n\nUsage: clnrm ai-orchestrate [OPTIONS] <TEST>\n\nAI-powered test orchestration and optimization\n\nOptions:\n  --model <MODEL>    AI model to use [default: gpt-4]\n  -h, --help         Print help\n```\n\n**Option B: If features require installation:**\n\nCommands should NOT appear in `clnrm --help` unless installed, OR should clearly indicate they require additional installation in the help output.\n\n## Actual Behavior\n\n### Test 1 Result:\n```bash\n$ clnrm ai-orchestrate --help\n\nError: Feature requires clnrm-ai crate (not installed)\n\nTo install: cargo install clnrm-ai\n```\n\n### Test 2 Result:\n```bash\n$ clnrm ai-predict --help\n\nError: Feature requires clnrm-ai crate (not installed)\n\nTo install: cargo install clnrm-ai\n```\n\n### Test 3 Result:\n```bash\n$ clnrm ai-optimize --help\n\nError: Feature requires clnrm-ai crate (not installed)\n\nTo install: cargo install clnrm-ai\n```\n\n### Test 4 Result:\n```bash\n$ clnrm ai-real --help\n\nError: Feature requires clnrm-ai crate (not installed)\n\nTo install: cargo install clnrm-ai\n```\n\n### Test 5 Result:\n```bash\n$ clnrm --help | grep ai-\n  ai-orchestrate  AI-powered test orchestration\n  ai-predict      AI-powered predictive analytics\n  ai-optimize     AI-powered optimization\n  ai-real         Real AI intelligence using SurrealDB and Ollama\n\n# All listed as available but none work!\n```\n\n## Impact\n\n**Low-Medium** - Confusing UX:\n\n1. ❌ Commands appear available but crash on use\n2. ❌ No indication in help that they require extra installation\n3. ❌ `cargo install clnrm-ai` doesn't exist (crate not published)\n4. ⚠️ Creates false impression of AI capabilities\n5. ⚠️ README lists as \"🧪 Experimental\" but help suggests they work\n\n## Evidence\n\n**All AI commands crash:**\n```bash\n$ for cmd in ai-orchestrate ai-predict ai-optimize ai-real; do\n    echo \"=== $cmd ===\"\n    clnrm $cmd --help 2>&1 | head -1\ndone\n\n=== ai-orchestrate ===\nError: Feature requires clnrm-ai crate (not installed)\n\n=== ai-predict ===\nError: Feature requires clnrm-ai crate (not installed)\n\n=== ai-optimize ===\nError: Feature requires clnrm-ai crate (not installed)\n\n=== ai-real ===\nError: Feature requires clnrm-ai crate (not installed)\n```\n\n**clnrm-ai crate doesn't exist:**\n```bash\n$ cargo search clnrm-ai\n# No results\n\n$ cargo install clnrm-ai\nerror: could not find `clnrm-ai` in registry `crates.io`\n```\n\n## README Claims\n\n```markdown\n🧪 Experimental Plugins:\n🎭 chaos_engine (controlled failure injection)\n🤖 ai_test_generator (AI-powered test case generation)\n\nCommands:\n- ai-orchestrate  AI-powered test orchestration\n- ai-predict      AI-powered predictive analytics\n- ai-optimize     AI-powered optimization\n- ai-real         Real AI intelligence using SurrealDB and Ollama\n```\n\nREADME says \"Experimental\" but commands appear in help as if they're production-ready.\n\n## Suggested Fixes\n\n**Option 1: Don't register commands until installed**\n\nConditional command registration:\n```rust\n#[derive(Parser)]\npub enum Command {\n    Init(InitArgs),\n    Run(RunArgs),\n    // ... other commands\n\n    #[cfg(feature = \"ai\")]\n    AiOrchestrate(AiOrchestrateArgs),\n\n    #[cfg(feature = \"ai\")]\n    AiPredict(AiPredictArgs),\n\n    #[cfg(feature = \"ai\")]\n    AiOptimize(AiOptimizeArgs),\n\n    #[cfg(feature = \"ai\")]\n    AiReal(AiRealArgs),\n}\n```\n\nBuild with AI features:\n```bash\ncargo build --features ai\n```\n\n**Option 2: Show clear installation instructions in help**\n\n```rust\n// For commands requiring extra installation\npub fn check_ai_feature() -> Result<()> {\n    #[cfg(not(feature = \"ai\"))]\n    {\n        eprintln!(\"❌ AI features not installed\\n\");\n        eprintln!(\"To enable AI features:\");\n        eprintln!(\"  1. Rebuild with: cargo install clnrm --features ai\");\n        eprintln!(\"  2. Or install separate: cargo install clnrm-ai-plugin\");\n        eprintln!(\"\\nNote: AI features are experimental and require:\");\n        eprintln!(\"  - SurrealDB installed and running\");\n        eprintln!(\"  - Ollama installed with models\");\n        std::process::exit(1);\n    }\n    Ok(())\n}\n```\n\n**Option 3: Mark as disabled in help output**\n\n```bash\n$ clnrm --help\n\nCommands:\n  init         Initialize new project\n  run          Run tests\n  ...\n  ai-orchestrate [DISABLED - requires --features ai]\n  ai-predict     [DISABLED - requires --features ai]\n  ai-optimize    [DISABLED - requires --features ai]\n  ai-real        [DISABLED - requires --features ai]\n```\n\n**Option 4: Update README to clarify status**\n\n```markdown\n## 🧪 Experimental Features (Disabled by Default)\n\nAI-powered features are available but require additional installation:\n\n### Prerequisites:\n```bash\n# Install SurrealDB\nbrew install surrealdb/tap/surreal\n\n# Install Ollama\nbrew install ollama\n\n# Rebuild clnrm with AI features\ncargo install clnrm --features ai\n```\n\n### Available AI Commands (after installation):\n- `ai-orchestrate` - AI-powered test orchestration\n- `ai-predict` - Predictive analytics\n- `ai-optimize` - Test optimization\n- `ai-real` - Real AI with SurrealDB + Ollama\n\n### Current Status:\n❌ Not included in default installation\n❌ Requires manual feature flag\n🧪 Experimental - API may change\n```\n\n**Option 5: Publish clnrm-ai as separate crate**\n\nMake the error message actually work:\n```bash\n# Publish plugin to crates.io\ncargo publish -p clnrm-ai\n\n# Users can then install\ncargo install clnrm-ai\n\n# Commands automatically available\nclnrm ai-orchestrate --help  # Now works\n```\n\n## Example Better UX\n\n**Current (confusing):**\n```bash\n$ clnrm --help\n  ai-orchestrate  AI-powered test orchestration  # Looks available\n\n$ clnrm ai-orchestrate\nError: Feature requires clnrm-ai crate (not installed)  # Surprise!\n\n$ cargo install clnrm-ai\nerror: could not find `clnrm-ai` in registry  # Dead end!\n```\n\n**Better (honest):**\n```bash\n$ clnrm --help\n  ai-orchestrate  AI-powered test orchestration [experimental - see docs]\n\n$ clnrm ai-orchestrate\n❌ AI features not installed\n\nTo enable experimental AI features:\n  cargo install clnrm --features ai\n\nSee: https://github.com/user/clnrm#ai-features\n```\n\n## Related Issues\n\n- #5 Multiple claimed features are missing or non-functional\n- #4 README contains extensive false claims\n\n## Additional Context\n\nDiscovered during systematic feature testing. AI commands appear in help but all crash with \"not installed\" error. The suggested installation command doesn't work because the crate doesn't exist.\n\n**Root cause**: Commands are compiled into binary but feature-gated at runtime, creating confusing UX where commands appear available but crash.\n\n**Best practice**: Don't show commands in help unless they actually work. Use Cargo features to exclude commands at compile time, not runtime.\n\n**Severity**: Low - Features are clearly marked \"🧪 Experimental\" in README, but help output is misleading.\n",
+  "closed_by": null,
+  "reactions": {
+    "url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/13/reactions",
+    "total_count": 0,
+    "+1": 0,
+    "-1": 0,
+    "laugh": 0,
+    "hooray": 0,
+    "confused": 0,
+    "heart": 0,
+    "rocket": 0,
+    "eyes": 0
+  },
+  "timeline_url": "https://api.github.com/repos/seanchatmangpt/clnrm/issues/13/timeline",
+  "performed_via_github_app": null,
+  "state_reason": null
+}

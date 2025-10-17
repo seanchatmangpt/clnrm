@@ -1,0 +1,63 @@
+{# Advanced Macro Library Demo - Issue #7
+
+   This file demonstrates all 8 new advanced macros added in Issue #7.
+   Import macros with: {% import "_macros.toml.tera" as m %}
+#}
+
+{% import "_macros.toml.tera" as m %}
+
+[test.metadata]
+name = "advanced-macros-demo"
+description = "Comprehensive demonstration of all 8 advanced macros from Issue #7"
+
+# Define services
+{{ m::service("api", "nginx:alpine") }}
+{{ m::service("database", "postgres:15", env={"POSTGRES_PASSWORD": "test"}) }}
+{{ m::service("cache", "redis:7") }}
+
+# Define scenarios
+{{ m::scenario("start_api", "api", "nginx -v") }}
+{{ m::scenario("check_db", "database", "pg_isready") }}
+
+# ==================================================================
+# ADVANCED MACRO DEMONSTRATIONS (Issue #7)
+# ==================================================================
+
+# 1. span_exists - Simple span existence validation
+{{ m::span_exists("http.server") }}
+{{ m::span_exists("database.connection") }}
+{{ m::span_exists("cache.check") }}
+
+# 2. graph_relationship - Parent-child span relationships
+{{ m::graph_relationship("http.server", "api.handler") }}
+{{ m::graph_relationship("api.handler", "database.query") }}
+{{ m::graph_relationship("api.handler", "cache.lookup") }}
+{{ m::graph_relationship("frontend.app", "api.service", relationship="depends_on") }}
+
+# 3. temporal_ordering - Validate execution sequence
+{{ m::temporal_ordering("auth.login", "api.request") }}
+{{ m::temporal_ordering("database.connect", "database.query") }}
+{{ m::temporal_ordering("cache.check", "database.fallback") }}
+
+# 4. error_propagation - Error handling validation
+{{ m::error_propagation("database.query", "api.handler") }}
+{{ m::error_propagation("external.api", "retry.handler") }}
+
+# 5. service_interaction - Microservice communication
+{{ m::service_interaction("frontend", "api") }}
+{{ m::service_interaction("api", "database", method="GET") }}
+{{ m::service_interaction("api", "auth_service", method="POST") }}
+
+# 6. attribute_validation - Span metadata validation
+{{ m::attribute_validation("http.request", "http.status_code", "200") }}
+{{ m::attribute_validation("database.query", "db.system", "postgresql") }}
+{{ m::attribute_validation("cache.hit", "cache.key", "user:123") }}
+
+# 7. resource_check - Resource existence validation
+{{ m::resource_check("container", "api_container") }}
+{{ m::resource_check("network", "test_network") }}
+{{ m::resource_check("volume", "data_volume") }}
+
+# 8. batch_validation - Bulk validation
+{{ m::batch_validation(["span.one", "span.two", "span.three"], "exists = true") }}
+{{ m::batch_validation(["api.success", "db.success"], 'attrs.all = { "error" = "false" }') }}

@@ -9,7 +9,9 @@
 //! - `otel` - OpenTelemetry-related structures
 //! - `project` - Project-level cleanroom configuration
 //! - `loader` - File loading and parsing functions
+//! - `deserializers` - Custom serde deserializers
 
+pub mod deserializers;
 pub mod loader;
 pub mod otel;
 pub mod project;
