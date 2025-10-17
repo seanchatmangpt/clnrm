@@ -399,6 +399,7 @@ fn test_valid_service_config_with_image_validates_successfully() -> Result<()> {
         r#type: "generic_container".to_string(),
         plugin: "generic".to_string(),
         image: Some("alpine:latest".to_string()),
+        args: None,
         env: None,
         ports: None,
         volumes: None,
@@ -406,6 +407,8 @@ fn test_valid_service_config_with_image_validates_successfully() -> Result<()> {
         username: None,
         password: None,
         strict: None,
+        wait_for_span: None,
+        wait_for_span_timeout_secs: None,
     };
 
     // Act
@@ -423,6 +426,7 @@ fn test_service_config_with_empty_type_fails_validation() {
         r#type: "".to_string(),
         plugin: "generic".to_string(),
         image: Some("alpine:latest".to_string()),
+        args: None,
         env: None,
         ports: None,
         volumes: None,
@@ -430,6 +434,8 @@ fn test_service_config_with_empty_type_fails_validation() {
         username: None,
         password: None,
         strict: None,
+        wait_for_span: None,
+        wait_for_span_timeout_secs: None,
     };
 
     // Act
@@ -448,6 +454,7 @@ fn test_service_config_with_empty_plugin_fails_validation() {
         r#type: "generic_container".to_string(),
         plugin: "".to_string(),
         image: Some("alpine:latest".to_string()),
+        args: None,
         env: None,
         ports: None,
         volumes: None,
@@ -455,6 +462,8 @@ fn test_service_config_with_empty_plugin_fails_validation() {
         username: None,
         password: None,
         strict: None,
+        wait_for_span: None,
+        wait_for_span_timeout_secs: None,
     };
 
     // Act
@@ -473,6 +482,7 @@ fn test_service_config_with_empty_image_string_fails_validation() {
         r#type: "generic_container".to_string(),
         plugin: "generic".to_string(),
         image: Some("".to_string()),
+        args: None,
         env: None,
         ports: None,
         volumes: None,
@@ -480,6 +490,8 @@ fn test_service_config_with_empty_image_string_fails_validation() {
         username: None,
         password: None,
         strict: None,
+        wait_for_span: None,
+        wait_for_span_timeout_secs: None,
     };
 
     // Act
@@ -498,6 +510,7 @@ fn test_service_config_without_image_for_container_service_fails_validation() {
         r#type: "generic_container".to_string(),
         plugin: "generic".to_string(),
         image: None,
+        args: None,
         env: None,
         ports: None,
         volumes: None,
@@ -505,6 +518,8 @@ fn test_service_config_without_image_for_container_service_fails_validation() {
         username: None,
         password: None,
         strict: None,
+        wait_for_span: None,
+        wait_for_span_timeout_secs: None,
     };
 
     // Act
@@ -523,6 +538,7 @@ fn test_network_service_without_image_validates_successfully() -> Result<()> {
         r#type: "network_service".to_string(),
         plugin: "network".to_string(),
         image: None,
+        args: None,
         env: None,
         ports: None,
         volumes: None,
@@ -530,6 +546,8 @@ fn test_network_service_without_image_validates_successfully() -> Result<()> {
         username: None,
         password: None,
         strict: None,
+        wait_for_span: None,
+        wait_for_span_timeout_secs: None,
     };
 
     // Act
@@ -547,6 +565,7 @@ fn test_ollama_service_without_image_validates_successfully() -> Result<()> {
         r#type: "ollama".to_string(),
         plugin: "ollama".to_string(),
         image: None,
+        args: None,
         env: None,
         ports: None,
         volumes: None,
@@ -554,6 +573,8 @@ fn test_ollama_service_without_image_validates_successfully() -> Result<()> {
         username: None,
         password: None,
         strict: None,
+        wait_for_span: None,
+        wait_for_span_timeout_secs: None,
     };
 
     // Act
@@ -847,9 +868,12 @@ fn test_valid_scenario_config_validates_successfully() -> Result<()> {
             continue_on_failure: None,
             service: None,
         }],
+        service: None,
+        run: None,
         concurrent: Some(false),
         timeout_ms: Some(5000),
         policy: None,
+        artifacts: None,
     };
 
     // Act
@@ -875,9 +899,12 @@ fn test_scenario_config_with_empty_name_fails_validation() {
             continue_on_failure: None,
             service: None,
         }],
+        service: None,
+        run: None,
         concurrent: None,
         timeout_ms: None,
         policy: None,
+        artifacts: None,
     };
 
     // Act
@@ -895,9 +922,12 @@ fn test_scenario_config_with_no_steps_fails_validation() {
     let scenario = ScenarioConfig {
         name: "test_scenario".to_string(),
         steps: vec![],
+        service: None,
+        run: None,
         concurrent: None,
         timeout_ms: None,
         policy: None,
+        artifacts: None,
     };
 
     // Act

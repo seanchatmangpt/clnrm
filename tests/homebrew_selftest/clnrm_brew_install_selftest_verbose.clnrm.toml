@@ -29,9 +29,8 @@ freeze_clock="2025-01-01T00:00:00Z"           # Deterministic wall-clock for tra
 [otel]
 exporter="stdout"                             # "stdout" | "otlp"; choose stdout here
 sample_ratio=1.0                              # Export all spans (no sampling)
-resources={ "service.name"="clnrm",           # Required: service identity in traces
-            "service.version"="1.0.0",        # Optional: version string for evidence
-            "env"="ci" }                      # Useful dimension to segment runs
+# Resources: service identity and metadata for traces
+resources={ "service.name"="clnrm", "service.version"="1.0.0", "env"="ci" }
 
 # ---- Optional OTEL headers. Not used by stdout; included as exemplar. -------------
 # [otel.headers]
@@ -48,7 +47,8 @@ resources={ "service.name"="clnrm",           # Required: service identity in tr
 plugin="generic_container"                    # Generic container runner
 image="homebrew/brew:latest"                  # Container with Homebrew preinstalled
 args=["bash","-lc","echo ready"]              # Minimal no-op entry; scenario overrides
-env={ "HOMEBREW_NO_ANALYTICS"="1" }           # Keep Homebrew quiet/deterministic
+# Keep Homebrew quiet and deterministic
+env={ "HOMEBREW_NO_ANALYTICS"="1" }
 wait_for_span="clnrm.run"                     # Earliest root span we expect to see
                                               # from the upcoming `clnrm` execution
 
@@ -72,8 +72,10 @@ artifacts.collect=["spans:default"]           # Tell clnrm to collect spans from
 [[expect.span]]
 name="clnrm.run"                              # Root span the framework emits for a run
 kind="internal"                               # OTEL SpanKind; internal by default
-attrs.all={ "result"="pass" }                 # Hard proof: the run result was "pass"
-duration_ms={ min=10, max=600000 }            # Sanity window: 10ms..10min end-to-end
+# Hard proof: the run result was "pass"
+attrs.all={ "result"="pass" }
+# Sanity window: 10ms..10min end-to-end
+duration_ms={ min=10, max=600000 }
 
 # A concrete step span that proves real execution happened (not fake green).
 [[expect.span]]
@@ -100,10 +102,12 @@ acyclic=true                                           # No cycles allowed in sp
 
 # ---- Counts: global/cardinality constraints that detect spoofing or duplication. --
 [expect.counts]
-spans_total={ gte=2, lte=200 }               # At least root+step; cap to bound noise
-errors_total={ eq=0 }                        # No error spans in a passing self-test
-by_name={ "clnrm.run"={ eq=1 },              # Exactly one root run
-         "clnrm.step:hello_world"={ gte=1 } }# At least the canonical step appears
+# At least root+step; cap to bound noise
+spans_total={ gte=2, lte=200 }
+# No error spans in a passing self-test
+errors_total={ eq=0 }
+# Exactly one root run; at least the canonical step appears
+by_name={ "clnrm.run"={ eq=1 }, "clnrm.step:hello_world"={ gte=1 } }
 
 # ---- Windows: temporal containment. Child spans must occur within the root span. --
 [[expect.window]]
