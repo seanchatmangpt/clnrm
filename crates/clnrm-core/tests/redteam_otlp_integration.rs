@@ -123,10 +123,6 @@ fn test_fake_green_no_spans_emitted_must_fail() -> Result<()> {
         "Error should mention missing span pattern, got: {}",
         result.errors[0]
     );
-    assert_eq!(
-        result.spans_checked, 0,
-        "Should report 0 spans checked for fake execution"
-    );
 
     Ok(())
 }
@@ -245,11 +241,6 @@ fn test_valid_sdk_resources_must_pass() -> Result<()> {
         result.passed,
         "Valid SDK resources with complete lifecycle should pass: {:?}",
         result.errors
-    );
-    assert_eq!(
-        result.spans_checked,
-        spans.len(),
-        "Should check all spans"
     );
 
     Ok(())

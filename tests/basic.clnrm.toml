@@ -8,7 +8,7 @@ timeout = "120s"
 
 [services.test_container]
 type = "generic_container"
-plugin = "alpine"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [[steps]]

@@ -1,17 +1,23 @@
 {
-  "total_tests": 2,
-  "passed_tests": 2,
+  "total_tests": 3,
+  "passed_tests": 3,
   "failed_tests": 0,
   "total_duration_ms": 0,
   "test_results": [
     {
-      "name": "Container Execution",
+      "name": "basic_container_execution",
       "passed": true,
       "duration_ms": 0,
       "error": null
     },
     {
-      "name": "Plugin System",
+      "name": "template_rendering",
+      "passed": true,
+      "duration_ms": 0,
+      "error": null
+    },
+    {
+      "name": "otel_instrumentation",
       "passed": true,
       "duration_ms": 0,
       "error": null
