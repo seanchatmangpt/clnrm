@@ -204,8 +204,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 100% backward compatible with v0.6.0
 
 #### **📚 Documentation**
-- DX Architecture guide (`docs/V0.7.0_ARCHITECTURE.md`)
-- Updated README with v0.7.0 features
+- DX Architecture guide (`docs/V1.0_ARCHITECTURE.md`)
+- Updated README with v1.0 features
 - Macro library documentation
 - Template usage examples
 

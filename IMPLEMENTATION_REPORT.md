@@ -1,7 +1,7 @@
 # clnrm v1.0 Implementation Report - Executive Summary
 
 **Date**: 2025-10-16
-**Version**: v0.7.0+
+**Version**: v1.0
 **Status**: ✅ **PRODUCTION READY**
 **Verdict**: **PRD v1.0 "IMPLEMENTED" claim is ACCURATE**
 
@@ -9,7 +9,7 @@
 
 ## Quick Overview
 
-This report verifies that **clnrm v0.7.0+ successfully achieves v1.0 feature completeness** as documented in `PRD-v1.md`. All core claims marked "✅ IMPLEMENTED in v0.7.0+" are accurate and verified through code inspection and testing.
+This report verifies that **clnrm v1.0 successfully achieves v1.0 feature completeness** as documented in `PRD-v1.md`. All core claims marked "✅ IMPLEMENTED in v1.0" are accurate and verified through code inspection and testing.
 
 ### Report Contents
 
@@ -34,7 +34,7 @@ This report verifies that **clnrm v0.7.0+ successfully achieves v1.0 feature com
 
 ### ⚠️ 8 Commands Intentionally Stubbed (v0.8.0+ Roadmap)
 
-These are **properly documented** and **not claimed as v0.7.0 features**:
+These are **properly documented** and **not claimed as v1.0 features**:
 - `pull` (pre-pull images)
 - `graph` (trace visualization)
 - `repro` (baseline reproduction)
@@ -178,7 +178,7 @@ These are **properly documented** and **not claimed as v0.7.0 features**:
    - Macro library has 3 MVP macros (not 8)
 
    ## Upgrade Notes
-   - No breaking changes from v0.7.0
+   - No breaking changes from v0.6.0
    - All existing tests continue to work
    ```
 

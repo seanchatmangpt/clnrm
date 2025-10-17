@@ -55,7 +55,7 @@ impl Function for EnvFn {
     }
 }
 
-// -------- render entrypoint (v0.7.0+ implementation) --------
+// -------- render entrypoint (v1.0 implementation) --------
 fn render_template(template_glob: &str, template_name: &str, user_vars: HashMap<String,Value>) -> String {
     let resolved = resolve(user_vars);
 
@@ -91,7 +91,7 @@ fn main() {
 }
 ```
 
-## Template (v0.7.0+ with macros and no prefixes)
+## Template (v1.0 with macros and no prefixes)
 
 ```toml
 # tests/otel.clnrm.toml.tera
@@ -162,13 +162,13 @@ digest="trace.sha256"
 * The `[vars]` table renders for readability but is ignored at runtime.
 
 
-v0.7.0 Implementation Status — clnrm (Tera-first, flat TOML, OTEL-only) with no-prefix vars and ENV ingestion
+v1.0 Implementation Status — clnrm (Tera-first, flat TOML, OTEL-only) with no-prefix vars and ENV ingestion
 
 ## Summary
 
 **✅ IMPLEMENTED:** Tera → flat TOML → hermetic run → collect OTEL spans → normalize → analyze invariants → verdict + digest. DX first. Deterministic by default. `[vars]` exists for authors and tools, ignored at runtime. Template variables have no prefixes; Rust injects resolved values into the Tera context.
 
-## Current Implementation (v0.7.0)
+## Current Implementation (v1.0)
 
 ### ✅ **Fully Implemented Features**
 - **Tera Template System** - Dynamic configuration with custom functions (`env()`, `now_rfc3339()`, `sha256()`, `toml_encode()`)
@@ -186,11 +186,11 @@ v0.7.0 Implementation Status — clnrm (Tera-first, flat TOML, OTEL-only) with n
 
 * ✅ First green <60 s (typically <30s with current implementation)
 * ✅ Edit→rerun p95 ≤3 s (template hot reload achieved)
-* ✅ Stable schema, CLI, JSON for 0.7.x (maintained since v0.6.0)
+* ✅ Stable schema, CLI, JSON for 1.x (maintained since v0.6.0)
 * ✅ macOS/Linux. Docker or Podman (fully supported)
 * ✅ Happy path implementation complete
 
-## Non-Goals (Post-v0.7.0)
+## Non-Goals (Post-v1.0)
 
 Enterprise policy, signatures, GUIs/TUIs, AI features, Windows polish.
 
@@ -211,7 +211,7 @@ Enterprise policy, signatures, GUIs/TUIs, AI features, Windows polish.
 * **Optional nested `vars` map** mirrors resolved keys for authoring.
 * **Tera `env()` function** optional; precedence already handled in Rust.
 
-### Current v0.7.0+ Implementation (Extended)
+### Current v1.0 Implementation (Extended)
 
 **Note:** Current implementation includes additional Tera functions:
 - `env(name)` - Environment variable access
@@ -355,7 +355,7 @@ freeze_clock="{{ freeze_clock }}"
 json="report.json" ; digest="trace.sha256"
 ```
 
-## CLI Commands (v0.7.0 - All Implemented)
+## CLI Commands (v1.0 - All Implemented)
 
 ### **✅ Core Commands**
 * `clnrm --version` - Show version information
@@ -413,7 +413,7 @@ json="report.json" ; digest="trace.sha256"
 {"spec_hash":"…","digest":"…","verdict":"fail","first_failure":{"rule":"expect.graph.must_include","spans":["clnrm.run","clnrm.step:hello_world"]},"counts":{"spans":23,"events":7}}
 ```
 
-## Performance Targets (v0.7.0 - Achieved)
+## Performance Targets (v1.0 - Achieved)
 
 ### **✅ Verified Performance**
 * **Template cold run:** ≤5 s (typically <3s with macro library)
@@ -429,7 +429,7 @@ json="report.json" ; digest="trace.sha256"
 - **Parallel execution:** 4-8x speedup with `--workers 4` on multi-core systems
 - **Template rendering:** <50ms for typical templates with macro library
 
-## Acceptance Criteria (v0.7.0 - All Verified ✅)
+## Acceptance Criteria (v1.0 - All Verified ✅)
 
 ### **✅ Core Pipeline**
 * **Tera→TOML→exec→OTEL→normalize→analyze→report** works for stdout and OTLP
@@ -463,7 +463,7 @@ json="report.json" ; digest="trace.sha256"
 * **All traits dyn compatible** (no async trait methods)
 * **Zero clippy warnings** (production-ready code quality)
 
-## Metrics (v0.7.0 - All Tracked)
+## Metrics (v1.0 - All Tracked)
 
 ### **✅ Core Performance Metrics**
 * **Time to first green:** Typically <30s (init + first run)
@@ -484,9 +484,9 @@ json="report.json" ; digest="trace.sha256"
 * **Test coverage:** Comprehensive (cache, template, validation, CLI systems)
 * **Zero clippy warnings:** Maintained (production-ready code quality)
 
-## Out of Scope (Post-v0.7.0)
+## Out of Scope (Post-v1.0)
 
-### **Future Enhancements (v0.8.0+)**
+### **Future Enhancements (v1.1+)**
 * **AI-powered test generation** - `learn` from trace patterns and suggest improvements
 * **Coverage analysis** - Track which code paths are tested by scenarios
 * **Graph TUI/SVG** - Visual trace graph exploration and debugging
@@ -494,7 +494,7 @@ json="report.json" ; digest="trace.sha256"
 * **Snapshot reuse v2** - Advanced container and data snapshot management
 * **Windows polish** - Native Windows support and optimization
 
-### **Enterprise Features (v0.9.0+)**
+### **Enterprise Features (v1.2+)**
 * **Policy enforcement** - Security policies, compliance validation
 * **Signature verification** - Cryptographic validation of test artifacts
 * **Advanced RBAC** - Role-based access control for test execution
