@@ -1,0 +1,87 @@
+# generators_full_surface.clnrm.toml.tera
+# Comprehensive template demonstrating all generator functions
+
+[meta]
+name="{{ svc | default(value="test_svc") }}_gen_full"
+version="1.0"
+description="All generators demo"
+
+[generated.core]
+home="{{ env(name="HOME") }}"
+now="{{ now_rfc3339() }}"
+sha="{{ sha256(s=svc | default(value="test_svc")) }}"
+
+[generated.rng]
+# Using existing fake functions
+i="{{ fake_int_range(min=10, max=99, seed=seed | default(value=42)) }}"
+f="{{ fake_float(seed=seed | default(value=42)) }}"
+b="{{ fake_bool(ratio=70, seed=seed | default(value=42)) }}"
+str="{{ fake_string(len=12, seed=seed | default(value=42)) }}"
+
+[generated.ids]
+u4="{{ fake_uuid() }}"
+u4_seeded="{{ fake_uuid_seeded(seed=seed | default(value=42)) }}"
+
+[generated.fake_scalar]
+name="{{ fake_name(seed=seed | default(value=42)) }}"
+email="{{ fake_email(seed=seed | default(value=42)) }}"
+company="{{ fake_company(seed=seed | default(value=42)) }}"
+ipv4="{{ fake_ipv4(seed=seed | default(value=42)) }}"
+ipv6="{{ fake_ipv6(seed=seed | default(value=42)) }}"
+mac="{{ fake_mac_address(seed=seed | default(value=42)) }}"
+port="{{ fake_port(seed=seed | default(value=42)) }}"
+domain="{{ fake_domain(seed=seed | default(value=42)) }}"
+url="{{ fake_url(seed=seed | default(value=42)) }}"
+
+[generated.strings]
+# String transforms using Tera built-ins
+slug="{{ (company | default(value="My Company")) | slugify }}"
+upper="{{ (env | default(value="production")) | upper }}"
+lower="{{ (env | default(value="PRODUCTION")) | lower }}"
+
+[generated.time]
+start="{{ now_rfc3339() }}"
+timestamp="{{ fake_timestamp(seed=seed | default(value=42)) }}"
+date="{{ fake_date(seed=seed | default(value=42)) }}"
+time="{{ fake_time(seed=seed | default(value=42)) }}"
+
+[generated.net]
+phone="{{ fake_phone(seed=seed | default(value=42)) }}"
+city="{{ fake_city(seed=seed | default(value=42)) }}"
+street="{{ fake_street(seed=seed | default(value=42)) }}"
+zip="{{ fake_zip(seed=seed | default(value=42)) }}"
+country="{{ fake_country(seed=seed | default(value=42)) }}"
+
+[generated.lorem]
+word="{{ fake_word(seed=seed | default(value=42)) }}"
+words="{{ fake_words(count=3, seed=seed | default(value=42)) }}"
+sentence="{{ fake_sentence(min=4, max=10, seed=seed | default(value=42)) }}"
+
+[otel]
+exporter="{{ exporter | default(value="stdout") }}"
+{% if exporter == "otlp" %}endpoint="{{ endpoint }}"{% endif %}
+protocol="http/protobuf"
+sample_ratio=1.0
+
+[service.clnrm]
+plugin="generic_container"
+image="{{ image | default(value="alpine:latest") }}"
+env={ "TEST_VAR"="test_value" }
+
+[[scenario]]
+name="gen_full_proof"
+service="clnrm"
+run="echo 'Generated test data'"
+
+[[expect.span]]
+name="clnrm.run"
+kind="internal"
+attrs.all={ "result"="pass" }
+
+[determinism]
+seed={{ seed | default(value=42) }}
+freeze_clock="{{ freeze_clock | default(value="2024-01-01T00:00:00Z") }}"
+
+[report]
+json="report.json"
+digest="trace.sha256"

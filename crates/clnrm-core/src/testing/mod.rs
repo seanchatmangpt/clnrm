@@ -408,12 +408,12 @@ command = ["echo"]
 async fn test_template_rendering() -> Result<()> {
     use crate::template::{TemplateRenderer, TemplateContext};
 
-    let renderer = TemplateRenderer::new()?;
+    let mut renderer = TemplateRenderer::new()?;
     let mut context = TemplateContext::new();
-    context.vars.insert("name".to_string(), "test".to_string());
+    context.vars.insert("name".to_string(), serde_json::Value::String("test".to_string()));
 
     let template = "Hello {{ name }}!";
-    let rendered = renderer.render_string(template, &context).map_err(|e| {
+    let rendered = renderer.render_str(template, "test").map_err(|e| {
         CleanroomError::internal_error("Template rendering failed")
             .with_source(e.to_string())
     })?;
@@ -688,7 +688,7 @@ async fn test_generic_container_plugin() -> Result<()> {
 
 async fn test_surrealdb_plugin() -> Result<()> {
     use crate::cleanroom::ServicePlugin;
-    let plugin = crate::services::surrealdb::SurrealDbPlugin::new("db");
+    let plugin = crate::services::surrealdb::SurrealDbPlugin::new();
     if plugin.name() != "db" {
         return Err(CleanroomError::validation_error("SurrealDB plugin name mismatch"));
     }

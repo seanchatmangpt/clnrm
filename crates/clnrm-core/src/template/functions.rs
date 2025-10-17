@@ -6,10 +6,11 @@
 //! - `sha256(s)` - SHA-256 hex digest
 //! - `toml_encode(value)` - Encode as TOML literal
 //! - 50+ fake data generators for testing
+//! - Extended functions: UUIDs, collections, OTEL helpers, etc.
 
 use crate::error::Result;
 use chrono::Utc;
-use fake::{Fake, Faker};
+use fake::{Fake};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use sha2::{Digest, Sha256};
@@ -27,6 +28,9 @@ pub fn register_functions(tera: &mut Tera) -> Result<()> {
 
     // Fake data generators
     register_fake_data_functions(tera);
+
+    // Extended functions (UUIDs, collections, OTEL, etc.)
+    super::extended::register_extended_functions(tera);
 
     Ok(())
 }

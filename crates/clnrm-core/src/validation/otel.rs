@@ -20,7 +20,7 @@
 //! - **No False Positives** - Uses unimplemented!() for incomplete features
 
 use crate::error::{CleanroomError, Result};
-use crate::telemetry::testing::InMemorySpanExporter;
+use opentelemetry_sdk::trace::InMemorySpanExporter;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -240,7 +240,10 @@ impl OtelValidator {
         let span_exporter = self.span_exporter.as_ref()
             .ok_or_else(|| CleanroomError::validation_error("No span exporter configured for validation"))?;
 
-        let spans = span_exporter.find_spans_by_name(&assertion.name);
+        let spans = span_exporter.get_finished_spans().unwrap_or_default()
+            .into_iter()
+            .filter(|span| span.name == assertion.name)
+            .collect::<Vec<_>>();
         
         if spans.is_empty() && assertion.required {
             return Ok(SpanValidationResult {
@@ -268,10 +271,10 @@ impl OtelValidator {
 
         // Validate attributes against actual span data
         for (key, expected_value) in &assertion.attributes {
-            match span.attributes.iter().find(|(k, _)| k.as_str() == key) {
-                Some((_, actual_value)) => {
-                    let actual_str = actual_value.as_str().unwrap_or(&actual_value.to_string());
-                    if actual_str != expected_value {
+            match span.attributes.iter().find(|attr| attr.key.as_str() == key) {
+                Some(attr) => {
+                    let actual_str = attr.value.as_str();
+                    if actual_str != *expected_value {
                         errors.push(format!(
                             "Attribute '{}' expected '{}' but got '{}'",
                             key, expected_value, actual_str
