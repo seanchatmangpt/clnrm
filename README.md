@@ -196,7 +196,7 @@ clnrm template full-validation > validation.clnrm.toml
 - **[CLI Guide](docs/CLI_GUIDE.md)** - Command reference
 - **[TOML Reference](docs/TOML_REFERENCE.md)** - Configuration format
 
-## 🎯 Legacy v0.5.0 Features
+## 🎯 Legacy v0.6.0 Features
 
 ### **Property-Based Testing with Fake Data**
 
@@ -462,19 +462,24 @@ clnrm plugins
 
 **Breaking Changes:** None - all existing `.toml` files work unchanged.
 
-### **Version 0.5.0** *(2025-10-16)*
-**Major Release: Tera Templating & OTEL Validation**
+### **Version 0.6.0** *(2025-10-16)*
+**Major Release: Enhanced Templating & Advanced Validation**
 
 #### **🚀 New Features**
-- **Tera Templating System** - Property-based testing with 50+ fake data generators
+- **Enhanced Tera Templating** - Advanced Jinja2-like templating system
   - Template files (`.toml.tera`, `.tera`) for dynamic test generation
-  - Deterministic seeding for reproducible property tests
+  - Custom functions: `env()`, `now_rfc3339()`, `sha256()`, `toml_encode()`
+  - Template namespaces: `vars.*`, `matrix.*`, `otel.*`
   - Matrix testing for combinatorial scenario generation
-- **Comprehensive OTEL Validation** - Telemetry-only validation framework
-  - Zero flakiness - deterministic validation across environments
-  - Multi-dimensional validation: structural, temporal, cardinality, hermeticity, attribute
-  - Span validators, graph validators, hermeticity validators
-- **Advanced Validation Framework** - Robust foundation for deterministic testing
+- **Temporal Order Validation** - Nanosecond-precision span ordering validation
+  - `must_precede` and `must_follow` validators for temporal constraints
+  - Status code validation with glob pattern matching
+  - Count, window, graph, and hermeticity validators
+- **Multi-Format Reporting** - Comprehensive reporting system
+  - JSON reports for programmatic access
+  - JUnit XML for CI/CD integration
+  - SHA-256 digests for reproducibility verification
+  - Deterministic output with seeded randomness
 
 #### **🔧 Improvements**
 - Enhanced self-testing with OTEL validation
@@ -485,8 +490,8 @@ clnrm plugins
 #### **📚 Documentation**
 - Complete Tera templating architecture guide
 - OTEL validation PRD and implementation details
-- Hyper-dimensional calculus PhD thesis
-- Updated README with 0.5.0 features
+- Advanced validation framework documentation
+- Updated README with 0.6.0 features
 
 **Breaking Changes:** None - all existing `.toml` files work unchanged.
 
