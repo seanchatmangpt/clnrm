@@ -62,6 +62,7 @@ pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporte
 pub use services::generic::GenericContainerPlugin;
 pub use services::surrealdb::SurrealDbPlugin;
 pub use template::{TemplateContext, TemplateRenderer};
+#[cfg(feature = "otel-traces")]
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
 pub use validation::{PrdExpectations, ShapeValidator, ValidationReport};
 pub use watch::{debouncer::FileDebouncer, WatchConfig};

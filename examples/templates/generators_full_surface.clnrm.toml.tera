@@ -36,8 +36,8 @@ url="{{ fake_url(seed=seed | default(value=42)) }}"
 [generated.strings]
 # String transforms using Tera built-ins
 slug="{{ (company | default(value="My Company")) | slugify }}"
-upper="{{ (env | default(value="production")) | upper }}"
-lower="{{ (env | default(value="PRODUCTION")) | lower }}"
+upper="{{ (environment | default(value="production")) | upper }}"
+lower="{{ (environment | default(value="PRODUCTION")) | lower }}"
 
 [generated.time]
 start="{{ now_rfc3339() }}"

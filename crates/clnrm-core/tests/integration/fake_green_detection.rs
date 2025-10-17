@@ -249,6 +249,12 @@ impl StatusValidator {
     }
 }
 
+impl Default for StatusValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OtelValidator for StatusValidator {
     fn validate(&self, trace_data: &MockTraceData) -> ValidationResult {
         let mut failures = Vec::new();

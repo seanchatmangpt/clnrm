@@ -194,14 +194,26 @@ pub fn display_test_results(results: &FrameworkTestResults) {
     for (idx, test) in results.test_results.iter().enumerate() {
         // Extract suite name from test name
         let suite_name = if test.name.contains("(suite error)") {
-            test.name.split(" (suite error)").next().unwrap_or("unknown")
+            test.name
+                .split(" (suite error)")
+                .next()
+                .unwrap_or("unknown")
         } else {
             // Group tests by detecting suite boundaries
-            if test.name.starts_with("TOML") || test.name.starts_with("Config") || test.name.starts_with("Template") || test.name.starts_with("Service") || test.name.starts_with("Error") {
+            if test.name.starts_with("TOML")
+                || test.name.starts_with("Config")
+                || test.name.starts_with("Template")
+                || test.name.starts_with("Service")
+                || test.name.starts_with("Error")
+            {
                 "framework"
             } else if test.name.starts_with("Container") {
                 "container"
-            } else if test.name.starts_with("Plugin") || test.name.starts_with("GenericContainer") || test.name.starts_with("SurrealDB") || test.name.starts_with("Multi-Plugin") {
+            } else if test.name.starts_with("Plugin")
+                || test.name.starts_with("GenericContainer")
+                || test.name.starts_with("SurrealDB")
+                || test.name.starts_with("Multi-Plugin")
+            {
                 "plugin"
             } else if test.name.starts_with("CLI") {
                 "cli"
@@ -229,11 +241,17 @@ pub fn display_test_results(results: &FrameworkTestResults) {
                 }
 
                 let total_suite = suite_passed + suite_failed;
-                let status = if suite_failed == 0 { "✅ PASS" } else { "❌ FAIL" };
+                let status = if suite_failed == 0 {
+                    "✅ PASS"
+                } else {
+                    "❌ FAIL"
+                };
                 let duration: u64 = suite_tests.iter().map(|t| t.duration_ms).sum();
 
-                println!("Suite: {} ({} tests)... {} ({}ms)",
-                    current_suite, total_suite, status, duration);
+                println!(
+                    "Suite: {} ({} tests)... {} ({}ms)",
+                    current_suite, total_suite, status, duration
+                );
 
                 // Show failed tests details
                 for test in &suite_tests {
@@ -261,15 +279,21 @@ pub fn display_test_results(results: &FrameworkTestResults) {
     }
 
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("Total: {} tests, {} passed, {} failed",
-        results.total_tests, results.passed_tests, results.failed_tests);
+    println!(
+        "Total: {} tests, {} passed, {} failed",
+        results.total_tests, results.passed_tests, results.failed_tests
+    );
 
     let overall_status = if results.failed_tests == 0 {
         "✅ ALL PASSED"
     } else {
         "❌ SOME FAILED"
     };
-    println!("Overall: {} ({:.1}s)\n", overall_status, results.total_duration_ms as f64 / 1000.0);
+    println!(
+        "Overall: {} ({:.1}s)\n",
+        overall_status,
+        results.total_duration_ms as f64 / 1000.0
+    );
 }
 
 /// Generate framework test report

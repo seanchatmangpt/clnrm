@@ -83,11 +83,13 @@ pub async fn run_self_tests(
 
     // Run framework tests with optional suite filter
     use crate::testing::run_framework_tests_by_suite;
-    let test_results = run_framework_tests_by_suite(suite.as_deref()).await.map_err(|e| {
-        CleanroomError::internal_error("Framework self-tests failed")
-            .with_context("Failed to execute framework test suite")
-            .with_source(e.to_string())
-    })?;
+    let test_results = run_framework_tests_by_suite(suite.as_deref())
+        .await
+        .map_err(|e| {
+            CleanroomError::internal_error("Framework self-tests failed")
+                .with_context("Failed to execute framework test suite")
+                .with_source(e.to_string())
+        })?;
 
     // Display results (CLI output is acceptable for user-facing messages)
     crate::cli::commands::report::display_test_results(&test_results);
@@ -170,7 +172,6 @@ fn init_otel_for_self_test(exporter: &str, endpoint: Option<&str>) -> Result<Ote
 
     init_otel(config)
 }
-
 
 #[cfg(test)]
 mod tests {

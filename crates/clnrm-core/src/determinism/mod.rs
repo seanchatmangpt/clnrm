@@ -119,54 +119,63 @@ impl DeterminismEngine {
     /// # Returns
     /// * Random u64 value
     ///
-    /// # Panics
-    /// * Panics if RNG mutex is poisoned (indicates panic in another thread)
-    pub fn next_u64(&self) -> u64 {
+    /// # Errors
+    /// * Returns error if RNG mutex is poisoned (indicates panic in another thread)
+    pub fn next_u64(&self) -> Result<u64> {
         if let Some(ref rng_mutex) = self.rng {
-            // SAFETY: Mutex poisoning only occurs if another thread panicked while holding the lock.
-            // This is an unrecoverable state that indicates a critical bug in the test framework.
-            // We document this as a panic condition rather than propagating an error since:
-            // 1. This should never happen in normal operation
-            // 2. Recovery is not possible once the mutex is poisoned
-            // 3. The panic will provide a clear stack trace for debugging
             let mut rng = rng_mutex
                 .lock()
-                .unwrap_or_else(|e| panic!("RNG mutex poisoned - this indicates a panic in another thread that held the lock: {}", e));
-            rng.next_u64()
+                .map_err(|e| {
+                    CleanroomError::internal_error(format!(
+                        "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
+                        e
+                    ))
+                })?;
+            Ok(rng.next_u64())
         } else {
-            rand::random()
+            Ok(rand::random())
         }
     }
 
     /// Generate next random u32 value
     ///
-    /// # Panics
-    /// * Panics if RNG mutex is poisoned (indicates panic in another thread)
-    pub fn next_u32(&self) -> u32 {
+    /// # Errors
+    /// * Returns error if RNG mutex is poisoned (indicates panic in another thread)
+    pub fn next_u32(&self) -> Result<u32> {
         if let Some(ref rng_mutex) = self.rng {
-            // SAFETY: See next_u64() for rationale on mutex poisoning handling
             let mut rng = rng_mutex
                 .lock()
-                .unwrap_or_else(|e| panic!("RNG mutex poisoned - this indicates a panic in another thread that held the lock: {}", e));
-            rng.next_u32()
+                .map_err(|e| {
+                    CleanroomError::internal_error(format!(
+                        "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
+                        e
+                    ))
+                })?;
+            Ok(rng.next_u32())
         } else {
-            rand::random()
+            Ok(rand::random())
         }
     }
 
     /// Fill buffer with random bytes
     ///
-    /// # Panics
-    /// * Panics if RNG mutex is poisoned (indicates panic in another thread)
-    pub fn fill_bytes(&self, dest: &mut [u8]) {
+    /// # Errors
+    /// * Returns error if RNG mutex is poisoned (indicates panic in another thread)
+    pub fn fill_bytes(&self, dest: &mut [u8]) -> Result<()> {
         if let Some(ref rng_mutex) = self.rng {
-            // SAFETY: See next_u64() for rationale on mutex poisoning handling
             let mut rng = rng_mutex
                 .lock()
-                .unwrap_or_else(|e| panic!("RNG mutex poisoned - this indicates a panic in another thread that held the lock: {}", e));
+                .map_err(|e| {
+                    CleanroomError::internal_error(format!(
+                        "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
+                        e
+                    ))
+                })?;
             rng.fill_bytes(dest);
+            Ok(())
         } else {
             rand::thread_rng().fill_bytes(dest);
+            Ok(())
         }
     }
 
@@ -355,8 +364,8 @@ mod tests {
         let engine2 = DeterminismEngine::new(config)?;
 
         // Act
-        let val1 = engine1.next_u64();
-        let val2 = engine2.next_u64();
+        let val1 = engine1.next_u64()?;
+        let val2 = engine2.next_u64()?;
 
         // Assert
         assert_eq!(
@@ -377,7 +386,9 @@ mod tests {
         let engine = DeterminismEngine::new(config)?;
 
         // Act
-        let values: Vec<u64> = (0..10).map(|_| engine.next_u64()).collect();
+        let values: Vec<u64> = (0..10)
+            .map(|_| engine.next_u64())
+            .collect::<Result<Vec<_>>>()?;
 
         // Assert - values should be different from each other
         let unique_count = values
@@ -449,7 +460,7 @@ mod tests {
         assert_eq!(engine1.get_frozen_clock(), engine2.get_frozen_clock());
 
         // Both should produce same first value (fresh RNG with same seed)
-        assert_eq!(engine1.next_u64(), engine2.next_u64());
+        assert_eq!(engine1.next_u64()?, engine2.next_u64()?);
 
         Ok(())
     }
@@ -467,8 +478,8 @@ mod tests {
         // Act
         let mut buf1 = [0u8; 16];
         let mut buf2 = [0u8; 16];
-        engine1.fill_bytes(&mut buf1);
-        engine2.fill_bytes(&mut buf2);
+        engine1.fill_bytes(&mut buf1)?;
+        engine2.fill_bytes(&mut buf2)?;
 
         // Assert
         assert_eq!(

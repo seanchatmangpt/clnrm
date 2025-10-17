@@ -155,18 +155,15 @@
 use crate::error::{CleanroomError, Result};
 
 #[cfg(feature = "otel-traces")]
-use opentelemetry::{
-    trace::TraceId,
-};
+use opentelemetry::trace::TraceId;
 
 #[cfg(feature = "otel-traces")]
-use opentelemetry_sdk::{
-    trace::{InMemorySpanExporter, SpanData, SpanProcessor},
-};
+use opentelemetry_sdk::trace::{InMemorySpanExporter, SpanData as OtelSpanData, SpanProcessor};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "otel-traces")]
 /// Span collector for validation purposes
 ///
 /// This span processor captures spans for validation while allowing them to continue
@@ -177,15 +174,17 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone)]
 pub struct ValidationSpanProcessor {
     /// Collected spans for validation
-    spans: Arc<Mutex<Vec<SpanData>>>,
+    spans: Arc<Mutex<Vec<OtelSpanData>>>,
 }
 
+#[cfg(feature = "otel-traces")]
 impl Default for ValidationSpanProcessor {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(feature = "otel-traces")]
 impl ValidationSpanProcessor {
     /// Create a new validation span processor
     pub fn new() -> Self {
@@ -200,14 +199,11 @@ impl ValidationSpanProcessor {
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     /// - No unwrap() or expect()
-    pub fn get_spans(&self) -> Result<Vec<SpanData>> {
-        self.spans
-            .lock()
-            .map(|spans| spans.clone())
-            .map_err(|e| {
-                CleanroomError::internal_error(format!("Failed to acquire span lock: {}", e))
-                    .with_context("Span collection for validation")
-            })
+    pub fn get_spans(&self) -> Result<Vec<OtelSpanData>> {
+        self.spans.lock().map(|spans| spans.clone()).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to acquire span lock: {}", e))
+                .with_context("Span collection for validation")
+        })
     }
 
     /// Clear collected spans
@@ -221,8 +217,11 @@ impl ValidationSpanProcessor {
             .lock()
             .map(|mut spans| spans.clear())
             .map_err(|e| {
-                CleanroomError::internal_error(format!("Failed to acquire span lock for clearing: {}", e))
-                    .with_context("Span clearing for validation")
+                CleanroomError::internal_error(format!(
+                    "Failed to acquire span lock for clearing: {}",
+                    e
+                ))
+                .with_context("Span clearing for validation")
             })
     }
 
@@ -232,7 +231,7 @@ impl ValidationSpanProcessor {
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     /// - No unwrap() or expect()
-    pub fn find_spans_by_name(&self, span_name: &str) -> Result<Vec<SpanData>> {
+    pub fn find_spans_by_name(&self, span_name: &str) -> Result<Vec<OtelSpanData>> {
         let spans = self.get_spans()?;
         let matching_spans = spans
             .into_iter()
@@ -248,17 +247,18 @@ impl ValidationSpanProcessor {
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     /// - No unwrap() or expect()
-    pub fn find_spans_by_trace_id(&self, trace_id: &TraceId) -> Result<Vec<SpanData>> {
+    pub fn find_spans_by_trace_id(&self, trace_id: &TraceId) -> Result<Vec<OtelSpanData>> {
         let spans = self.get_spans()?;
         let matching_spans = spans
             .into_iter()
-            .filter(|span| span.span_context.trace_id() == *trace_id)
+            .filter(|span| &span.span_context.trace_id() == trace_id)
             .collect();
 
         Ok(matching_spans)
     }
 }
 
+#[cfg(feature = "otel-traces")]
 impl SpanProcessor for ValidationSpanProcessor {
     /// Process a span for validation collection
     ///
@@ -401,6 +401,7 @@ pub struct TraceValidationResult {
     pub errors: Vec<String>,
 }
 
+#[cfg(feature = "otel-traces")]
 /// OpenTelemetry validator with real span data validation
 #[derive(Debug, Clone)]
 pub struct OtelValidator {
@@ -412,6 +413,7 @@ pub struct OtelValidator {
     validation_processor: Option<ValidationSpanProcessor>,
 }
 
+#[cfg(feature = "otel-traces")]
 impl OtelValidator {
     /// Create a new OTel validator with default configuration
     ///
@@ -496,35 +498,36 @@ impl OtelValidator {
 
         // For now, implement basic validation without OTel SDK integration
         // This provides a foundation that can be extended with actual span data
-        
+
         let mut errors = Vec::new();
         let mut actual_attributes = HashMap::new();
-        
+
         // Validate span name is not empty
         if assertion.name.is_empty() {
             errors.push("Span name cannot be empty".to_string());
         }
-        
+
         // Validate required attributes
         for (key, expected_value) in &assertion.attributes {
             if key.is_empty() {
                 errors.push("Attribute key cannot be empty".to_string());
                 continue;
             }
-            
-            // For now, simulate finding the attribute (in real implementation, 
+
+            // For now, simulate finding the attribute (in real implementation,
             // this would query the span data from OTel SDK)
             actual_attributes.insert(key.clone(), expected_value.clone());
         }
-        
+
         // Validate duration constraints if provided
-        let actual_duration_ms = if assertion.min_duration_ms.is_some() || assertion.max_duration_ms.is_some() {
-            // Simulate a reasonable duration for testing
-            Some(50.0)
-        } else {
-            None
-        };
-        
+        let actual_duration_ms =
+            if assertion.min_duration_ms.is_some() || assertion.max_duration_ms.is_some() {
+                // Simulate a reasonable duration for testing
+                Some(50.0)
+            } else {
+                None
+            };
+
         if let Some(duration) = actual_duration_ms {
             if let Some(min_duration) = assertion.min_duration_ms {
                 if duration < min_duration {
@@ -534,7 +537,7 @@ impl OtelValidator {
                     ));
                 }
             }
-            
+
             if let Some(max_duration) = assertion.max_duration_ms {
                 if duration > max_duration {
                     errors.push(format!(
@@ -544,9 +547,9 @@ impl OtelValidator {
                 }
             }
         }
-        
+
         let passed = errors.is_empty();
-        
+
         Ok(SpanValidationResult {
             passed,
             span_name: assertion.name.clone(),
@@ -571,10 +574,11 @@ impl OtelValidator {
             ));
         }
 
-        let validation_processor = self.validation_processor.as_ref()
-            .ok_or_else(|| CleanroomError::validation_error(
-                "No validation processor configured for real span validation"
-            ))?;
+        let validation_processor = self.validation_processor.as_ref().ok_or_else(|| {
+            CleanroomError::validation_error(
+                "No validation processor configured for real span validation",
+            )
+        })?;
 
         // Query real spans from the validation processor
         let spans = validation_processor.find_spans_by_name(&assertion.name)?;
@@ -583,7 +587,10 @@ impl OtelValidator {
             return Ok(SpanValidationResult {
                 passed: false,
                 span_name: assertion.name.clone(),
-                errors: vec![format!("Required span '{}' not found in telemetry data", assertion.name)],
+                errors: vec![format!(
+                    "Required span '{}' not found in telemetry data",
+                    assertion.name
+                )],
                 actual_attributes: HashMap::new(),
                 actual_duration_ms: None,
             });
@@ -609,7 +616,10 @@ impl OtelValidator {
             }
 
             // Look for the attribute in the real span data
-            let found_attribute = span.attributes.iter().find(|kv| kv.key.as_str() == expected_key);
+            let found_attribute = span
+                .attributes
+                .iter()
+                .find(|kv| kv.key.as_str() == expected_key);
 
             match found_attribute {
                 Some(kv) => {
@@ -633,25 +643,23 @@ impl OtelValidator {
         }
 
         // Validate duration constraints against real span data
-        let actual_duration_ms = if assertion.min_duration_ms.is_some() || assertion.max_duration_ms.is_some() {
-            let start_time = span.start_time;
-            let end_time = span.end_time;
-
-            // start_time and end_time are SystemTime, not Option<SystemTime>
-            match end_time.duration_since(start_time) {
-                Ok(duration) => {
-                    let duration_ns = duration.as_nanos();
-                    let duration_ms = duration_ns as f64 / 1_000_000.0; // Convert nanoseconds to milliseconds
-                    Some(duration_ms)
+        let actual_duration_ms =
+            if assertion.min_duration_ms.is_some() || assertion.max_duration_ms.is_some() {
+                // For OtelSpanData, start_time and end_time are SystemTime, not Option<SystemTime>
+                match span.end_time.duration_since(span.start_time) {
+                    Ok(duration) => {
+                        let duration_ns = duration.as_nanos();
+                        let duration_ms = duration_ns as f64 / 1_000_000.0; // Convert nanoseconds to milliseconds
+                        Some(duration_ms)
+                    }
+                    Err(e) => {
+                        errors.push(format!("Failed to calculate span duration: {}", e));
+                        None
+                    }
                 }
-                Err(e) => {
-                    errors.push(format!("Failed to calculate span duration: {}", e));
-                    None
-                }
-            }
-        } else {
-            None
-        };
+            } else {
+                None
+            };
 
         if let Some(duration) = actual_duration_ms {
             if let Some(min_duration) = assertion.min_duration_ms {
@@ -698,14 +706,14 @@ impl OtelValidator {
 
         let mut errors = Vec::new();
         let mut span_results = Vec::new();
-        
+
         // Validate trace ID if provided
         if let Some(trace_id) = &assertion.trace_id {
             if trace_id.is_empty() {
                 errors.push("Trace ID cannot be empty".to_string());
             }
         }
-        
+
         // Validate each expected span
         for span_assertion in &assertion.expected_spans {
             match self.validate_span(span_assertion) {
@@ -716,8 +724,10 @@ impl OtelValidator {
                     span_results.push(span_result);
                 }
                 Err(e) => {
-                    errors.push(format!("Failed to validate span '{}': {}", 
-                        span_assertion.name, e.message));
+                    errors.push(format!(
+                        "Failed to validate span '{}': {}",
+                        span_assertion.name, e.message
+                    ));
                     span_results.push(SpanValidationResult {
                         passed: false,
                         span_name: span_assertion.name.clone(),
@@ -728,18 +738,19 @@ impl OtelValidator {
                 }
             }
         }
-        
+
         // Validate parent-child relationships
         for (parent_name, child_name) in &assertion.parent_child_relationships {
             if parent_name.is_empty() || child_name.is_empty() {
-                errors.push("Parent or child span name cannot be empty in relationship".to_string());
+                errors
+                    .push("Parent or child span name cannot be empty in relationship".to_string());
                 continue;
             }
-            
+
             // Check if both parent and child spans exist in the trace
             let parent_exists = span_results.iter().any(|r| r.span_name == *parent_name);
             let child_exists = span_results.iter().any(|r| r.span_name == *child_name);
-            
+
             if !parent_exists {
                 errors.push(format!("Parent span '{}' not found in trace", parent_name));
             }
@@ -747,12 +758,12 @@ impl OtelValidator {
                 errors.push(format!("Child span '{}' not found in trace", child_name));
             }
         }
-        
+
         // Check trace completeness if required
         if assertion.complete {
             let expected_count = assertion.expected_spans.len();
             let actual_count = span_results.len();
-            
+
             if actual_count != expected_count {
                 errors.push(format!(
                     "Trace completeness check failed: expected {} spans, found {}",
@@ -760,9 +771,9 @@ impl OtelValidator {
                 ));
             }
         }
-        
+
         let passed = errors.is_empty();
-        
+
         Ok(TraceValidationResult {
             passed,
             trace_id: assertion.trace_id.clone(),
@@ -790,24 +801,24 @@ impl OtelValidator {
         // Validate endpoint format
         if endpoint.is_empty() {
             return Err(CleanroomError::validation_error(
-                "Export endpoint cannot be empty"
+                "Export endpoint cannot be empty",
             ));
         }
-        
+
         // Basic URL validation
         if !endpoint.starts_with("http://") && !endpoint.starts_with("https://") {
             return Err(CleanroomError::validation_error(
-                "Export endpoint must be a valid HTTP/HTTPS URL"
+                "Export endpoint must be a valid HTTP/HTTPS URL",
             ));
         }
-        
+
         // For now, simulate export validation without actual network calls
         // In a real implementation, this would:
         // 1. Start a mock OTLP collector at the endpoint
         // 2. Generate test spans and send them
         // 3. Verify the spans reach the collector
         // 4. Validate span data integrity
-        
+
         // Simulate successful export for testing
         // This provides a foundation that can be extended with actual OTLP integration
         Ok(true)
@@ -839,14 +850,14 @@ impl OtelValidator {
         // Validate endpoint format
         if endpoint.is_empty() {
             return Err(CleanroomError::validation_error(
-                "Export endpoint cannot be empty"
+                "Export endpoint cannot be empty",
             ));
         }
 
         // Basic URL validation
         if !endpoint.starts_with("http://") && !endpoint.starts_with("https://") {
             return Err(CleanroomError::validation_error(
-                "Export endpoint must be a valid HTTP/HTTPS URL"
+                "Export endpoint must be a valid HTTP/HTTPS URL",
             ));
         }
 
@@ -862,9 +873,9 @@ impl OtelValidator {
         match url.scheme() {
             "http" | "https" => {
                 // HTTP/HTTPS endpoints should use standard OTLP ports
-                let port = url.port().unwrap_or_else(|| {
-                    if url.scheme() == "https" { 443 } else { 80 }
-                });
+                let port =
+                    url.port()
+                        .unwrap_or_else(|| if url.scheme() == "https" { 443 } else { 80 });
 
                 // OTLP typically uses 4318 for HTTP or 4317 for gRPC
                 if port != 4318 && port != 4317 && port != 443 && port != 80 {
@@ -922,10 +933,11 @@ impl OtelValidator {
             ));
         }
 
-        let validation_processor = self.validation_processor.as_ref()
-            .ok_or_else(|| CleanroomError::validation_error(
-                "No validation processor configured for real trace validation"
-            ))?;
+        let validation_processor = self.validation_processor.as_ref().ok_or_else(|| {
+            CleanroomError::validation_error(
+                "No validation processor configured for real trace validation",
+            )
+        })?;
 
         let mut errors = Vec::new();
         let mut span_results = Vec::new();
@@ -941,7 +953,8 @@ impl OtelValidator {
             })?;
             // Filter spans by trace ID using span context
             let all_spans = validation_processor.get_spans()?;
-            all_spans.into_iter()
+            all_spans
+                .into_iter()
                 .filter(|span| span.span_context.trace_id() == trace_id)
                 .collect()
         } else {
@@ -961,8 +974,10 @@ impl OtelValidator {
                     }
                 }
                 Err(e) => {
-                    errors.push(format!("Failed to validate span '{}': {}",
-                        span_assertion.name, e.message));
+                    errors.push(format!(
+                        "Failed to validate span '{}': {}",
+                        span_assertion.name, e.message
+                    ));
                     span_results.push(SpanValidationResult {
                         passed: false,
                         span_name: span_assertion.name.clone(),
@@ -977,17 +992,20 @@ impl OtelValidator {
         // Validate parent-child relationships using real span data
         for (parent_name, child_name) in &assertion.parent_child_relationships {
             if parent_name.is_empty() || child_name.is_empty() {
-                errors.push("Parent or child span name cannot be empty in relationship".to_string());
+                errors
+                    .push("Parent or child span name cannot be empty in relationship".to_string());
                 continue;
             }
 
             // Find parent and child spans in the collected trace data
-            let parent_spans: Vec<_> = trace_spans.iter()
-                .filter(|span| span.name == *parent_name)
+            let parent_spans: Vec<_> = trace_spans
+                .iter()
+                .filter(|span| span.name == parent_name.as_str())
                 .collect();
 
-            let child_spans: Vec<_> = trace_spans.iter()
-                .filter(|span| span.name == *child_name)
+            let child_spans: Vec<_> = trace_spans
+                .iter()
+                .filter(|span| span.name == child_name.as_str())
                 .collect();
 
             if parent_spans.is_empty() {
@@ -999,11 +1017,37 @@ impl OtelValidator {
             }
 
             // Validate parent-child relationship by checking span IDs
-            // In a real implementation, you would check the parent_span_id field
-            // For now, we'll do basic validation that both spans exist
             if !parent_spans.is_empty() && !child_spans.is_empty() {
-                // TODO: Implement proper parent-child validation using span.parent_span_id
-                // This would require checking that child spans have the correct parent_span_id
+                // Check that each child span has a parent_span_id that matches a parent span's span_id
+                let mut orphaned_children = Vec::new();
+
+                for child_span in &child_spans {
+                    // Check if the child's parent_id matches any parent's span_id
+                    let valid_parent =
+                        if child_span.parent_span_id != opentelemetry::trace::SpanId::INVALID {
+                            parent_spans.iter().any(|parent_span| {
+                                parent_span.span_context.span_id() == child_span.parent_span_id
+                            })
+                        } else {
+                            false // Child has no parent_span_id
+                        };
+
+                    if !valid_parent {
+                        orphaned_children.push(child_span);
+                    }
+                }
+
+                // Report any orphaned children (children without valid parents)
+                for orphaned_child in orphaned_children {
+                    errors.push(format!(
+                        "Child span '{}' has invalid or missing parent_span_id (expected one of: {})",
+                        orphaned_child.name,
+                        parent_spans.iter()
+                            .map(|p| format!("{:?}", p.span_context.span_id()))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ));
+                }
             }
         }
 
@@ -1071,6 +1115,7 @@ impl OtelValidator {
     }
 }
 
+#[cfg(feature = "otel-traces")]
 impl Default for OtelValidator {
     fn default() -> Self {
         Self::new()
@@ -1106,8 +1151,8 @@ mod tests {
     use super::*;
     use opentelemetry::{
         global,
-        trace::{Tracer, TraceContextExt, Span},
-        KeyValue, Context,
+        trace::{Span, TraceContextExt, Tracer},
+        Context, KeyValue,
     };
 
     #[tokio::test]
@@ -1310,8 +1355,8 @@ mod tests {
             max_overhead_ms: 100.0,
             expected_attributes: HashMap::new(),
         };
-        let validator = OtelValidator::with_config(config)
-            .with_validation_processor(processor.clone());
+        let validator =
+            OtelValidator::with_config(config).with_validation_processor(processor.clone());
 
         // Generate a real test span using OpenTelemetry
         let tracer = global::tracer("test");
@@ -1325,9 +1370,7 @@ mod tests {
         // Act: Validate the span using real data
         let assertion = SpanAssertion {
             name: "test.integration.span".to_string(),
-            attributes: HashMap::from([
-                ("test.attribute".to_string(), "test.value".to_string()),
-            ]),
+            attributes: HashMap::from([("test.attribute".to_string(), "test.value".to_string())]),
             required: true,
             min_duration_ms: None,
             max_duration_ms: None,
@@ -1340,7 +1383,9 @@ mod tests {
         let validation_result = result?;
         assert!(validation_result.passed);
         assert_eq!(validation_result.span_name, "test.integration.span");
-        assert!(validation_result.actual_attributes.contains_key("test.attribute"));
+        assert!(validation_result
+            .actual_attributes
+            .contains_key("test.attribute"));
         assert_eq!(
             validation_result.actual_attributes.get("test.attribute"),
             Some(&"test.value".to_string())
@@ -1372,18 +1417,15 @@ mod tests {
             max_overhead_ms: 100.0,
             expected_attributes: HashMap::new(),
         };
-        let validator = OtelValidator::with_config(config)
-            .with_validation_processor(processor.clone());
+        let validator =
+            OtelValidator::with_config(config).with_validation_processor(processor.clone());
 
         // Generate real trace with parent-child relationships
         let tracer = global::tracer("test");
 
-        let mut parent_span = tracer.start("test.parent.span");
+        let parent_span = tracer.start("test.parent.span");
         let parent_context = Context::current_with_span(parent_span);
-        let mut child_span = tracer.start_with_context(
-            "test.child.span",
-            &parent_context,
-        );
+        let mut child_span = tracer.start_with_context("test.child.span", &parent_context);
 
         child_span.set_attribute(KeyValue::new("child.attribute", "child.value"));
         child_span.end();
@@ -1397,9 +1439,7 @@ mod tests {
         // Act: Validate the trace using real data
         let span_assertion = SpanAssertion {
             name: "test.child.span".to_string(),
-            attributes: HashMap::from([
-                ("child.attribute".to_string(), "child.value".to_string()),
-            ]),
+            attributes: HashMap::from([("child.attribute".to_string(), "child.value".to_string())]),
             required: true,
             min_duration_ms: None,
             max_duration_ms: None,
@@ -1454,11 +1494,13 @@ mod tests {
         assert!(invalid_port_result.is_err());
 
         // Act & Assert: Test invalid endpoint (wrong path)
-        let invalid_path_result = validator.validate_export_real("http://localhost:4318/api/traces");
+        let invalid_path_result =
+            validator.validate_export_real("http://localhost:4318/api/traces");
         assert!(invalid_path_result.is_err());
 
         // Act & Assert: Test invalid endpoint (wrong scheme)
-        let invalid_scheme_result = validator.validate_export_real("ftp://localhost:4318/v1/traces");
+        let invalid_scheme_result =
+            validator.validate_export_real("ftp://localhost:4318/v1/traces");
         assert!(invalid_scheme_result.is_err());
 
         Ok(())

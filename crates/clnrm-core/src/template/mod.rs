@@ -24,6 +24,7 @@ pub use determinism::DeterminismConfig;
 /// - SHA-256 hashing
 /// - TOML encoding
 /// - Macro library for common TOML patterns
+#[derive(Clone)]
 pub struct TemplateRenderer {
     tera: Tera,
     context: TemplateContext,
@@ -129,11 +130,13 @@ impl TemplateRenderer {
     /// Render a template string with macro imports (for testing)
     /// This is a helper method that handles the add_raw_template + render pattern
     pub fn render_template_string(&mut self, template: &str, name: &str) -> Result<String> {
-        self.tera.add_raw_template(name, template)
-            .map_err(|e| CleanroomError::template_error(format!("Failed to add template '{}': {}", name, e)))?;
-        
-        self.tera.render(name, &tera::Context::new())
-            .map_err(|e| CleanroomError::template_error(format!("Failed to render template '{}': {}", name, e)))
+        self.tera.add_raw_template(name, template).map_err(|e| {
+            CleanroomError::template_error(format!("Failed to add template '{}': {}", name, e))
+        })?;
+
+        self.tera.render(name, &tera::Context::new()).map_err(|e| {
+            CleanroomError::template_error(format!("Failed to render template '{}': {}", name, e))
+        })
     }
 
     /// Render template from glob pattern
@@ -242,6 +245,13 @@ pub fn is_template(content: &str) -> bool {
     content.contains("{{") || content.contains("{%") || content.contains("{#")
 }
 
+/// Get a cached template renderer instance
+/// This avoids recompiling Tera templates on every use for better performance
+pub fn get_cached_template_renderer() -> Result<TemplateRenderer> {
+    static INSTANCE: OnceLock<Result<TemplateRenderer>> = OnceLock::new();
+    INSTANCE.get_or_init(TemplateRenderer::new).clone()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(
@@ -316,7 +326,7 @@ mod tests {
     fn test_span_macro_basic() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
-        
+
         // First test basic template without macros
         let simple_template = r#"Hello {{ "world" }}"#;
         let simple_result = renderer.render_str(simple_template, "simple_test");
@@ -324,11 +334,11 @@ mod tests {
             println!("Simple template error: {:?}", e);
         }
         assert!(simple_result.is_ok());
-        
+
         // Check if macro template is registered
         let template_names: Vec<&str> = renderer.tera.get_template_names().collect();
         println!("Registered templates: {:?}", template_names);
-        
+
         // Try to render the macro template directly
         let macro_template = r#"{% macro span(name, parent="", attrs) -%}
 [[expect.span]]
@@ -340,16 +350,18 @@ parent = "{{ parent }}"
 attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}, {% endif %}{% endfor %} }
 {%- endif %}
 {%- endmacro %}"#;
-        
+
         let macro_result = renderer.render_str(macro_template, "macro_test");
         if let Err(e) = &macro_result {
             println!("Macro template error: {:?}", e);
         }
-        
+
         // Try a very simple macro test first - add as template instead of render_str
         let simple_macro_template = r#"{% macro hello(name) %}Hello {{ name }}!{% endmacro %}
 {{ self::hello(name="world") }}"#;
-        let add_result = renderer.tera.add_raw_template("simple_macro", simple_macro_template);
+        let add_result = renderer
+            .tera
+            .add_raw_template("simple_macro", simple_macro_template);
         if let Err(e) = &add_result {
             println!("Add template error: {:?}", e);
         } else {
@@ -360,7 +372,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
                 println!("Simple macro success: {}", render_result.unwrap());
             }
         }
-        
+
         // Now test with macro import - add as template instead of render_str
         let template = r#"
 {% import "_macros.toml.tera" as m %}
@@ -368,18 +380,22 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
 "#;
 
         // Act - add as template and then render
-        let add_result = renderer.tera.add_raw_template("macro_test_template", template);
+        let add_result = renderer
+            .tera
+            .add_raw_template("macro_test_template", template);
         if let Err(e) = &add_result {
             println!("Add macro template error: {:?}", e);
         } else {
-            let render_result = renderer.tera.render("macro_test_template", &tera::Context::new());
+            let render_result = renderer
+                .tera
+                .render("macro_test_template", &tera::Context::new());
             if let Err(e) = &render_result {
                 println!("Render macro template error: {:?}", e);
             } else {
                 println!("Macro template success: {}", render_result.unwrap());
             }
         }
-        
+
         // For the test assertion, we'll use the add_result
         let result = add_result;
 
@@ -388,7 +404,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
             println!("Template rendering error: {:?}", e);
         }
         assert!(result.is_ok());
-        
+
         // If we get here, the template was added successfully
         // We can verify the macro import worked by checking if the template exists
         let template_names: Vec<&str> = renderer.tera.get_template_names().collect();
@@ -450,7 +466,8 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
 "#;
 
         // Act
-        let result = renderer.render_template_string(template, "test_span_macro_with_parent_and_attrs");
+        let result =
+            renderer.render_template_string(template, "test_span_macro_with_parent_and_attrs");
 
         // Assert
         if let Err(e) = &result {
@@ -1058,7 +1075,12 @@ description = "Full integration test using all macros"
         assert_eq!(output.matches("[[expect.span]]").count(), 2);
         assert!(output.contains("name = \"api.call\""));
         assert!(output.contains("name = \"db.query\""));
-        assert_eq!(output.matches("attrs.all = { \"error\" = \"false\" }").count(), 2);
+        assert_eq!(
+            output
+                .matches("attrs.all = { \"error\" = \"false\" }")
+                .count(),
+            2
+        );
     }
 
     #[test]
@@ -1089,7 +1111,8 @@ description = "Comprehensive test using all 8 advanced macros"
 "#;
 
         // Act
-        let result = renderer.render_str(template, "test_comprehensive_template_with_advanced_macros");
+        let result =
+            renderer.render_str(template, "test_comprehensive_template_with_advanced_macros");
 
         // Assert
         assert!(result.is_ok());
@@ -1175,13 +1198,4 @@ name = "mixed-macros"
         assert!(output.contains("[[expect.temporal]]"));
         assert!(output.contains("cache.hit"));
     }
-}
-
-/// Get a cached template renderer instance
-/// This avoids recompiling Tera templates on every use for better performance
-pub fn get_cached_template_renderer() -> &'static TemplateRenderer {
-    static INSTANCE: OnceLock<TemplateRenderer> = OnceLock::new();
-    INSTANCE.get_or_init(|| {
-        TemplateRenderer::new().expect("Failed to create cached template renderer")
-    })
 }

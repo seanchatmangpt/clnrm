@@ -146,13 +146,18 @@ fn format_single_file(file: &Path, verify: bool) -> Result<bool> {
 
 /// Check if a path is a TOML file
 fn is_toml_file(path: &Path) -> bool {
+    // First check for special cases that don't have .toml extension
+    if let Some(name) = path.file_name() {
+        let name_str = name.to_string_lossy();
+        if name_str.ends_with(".clnrm.toml") || name_str.ends_with(".toml.tera") {
+            return true;
+        }
+    }
+
+    // Then check for standard .toml extension
     if let Some(ext) = path.extension() {
         let ext_str = ext.to_string_lossy();
         ext_str == "toml"
-    } else if let Some(name) = path.file_name() {
-        // Handle .clnrm.toml files
-        name.to_string_lossy().ends_with(".clnrm.toml")
-            || name.to_string_lossy().ends_with(".toml.tera")
     } else {
         false
     }

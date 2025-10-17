@@ -321,7 +321,7 @@ mod tests {
             .map_err(|e| CleanroomError::internal_error(format!("Failed to write file: {}", e)))?;
 
         // Act
-        let result = determine_test_paths(&[test_file.clone()])?;
+        let result = determine_test_paths(std::slice::from_ref(&test_file))?;
 
         // Assert
         assert_eq!(result.len(), 1);

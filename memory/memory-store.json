@@ -7,5 +7,14 @@
       "timestamp": 1760600067528,
       "redacted": false
     }
+  ],
+  "default": [
+    {
+      "key": "swarm/tier1/fake-scanner",
+      "value": "complete",
+      "namespace": "default",
+      "timestamp": 1760733549412,
+      "redacted": false
+    }
   ]
 }

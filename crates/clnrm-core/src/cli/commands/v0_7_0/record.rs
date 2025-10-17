@@ -109,7 +109,7 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
         fail_fast: false,
         watch: false,
         verbose: 0,
-        force: true, // Force run all tests for baseline
+        force: true,  // Force run all tests for baseline
         digest: true, // Generate digest for baseline
     };
 

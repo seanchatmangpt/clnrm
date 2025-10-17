@@ -192,16 +192,14 @@ mod tests {
     #[test]
     fn test_dev_mode_with_filter_pattern() {
         // Test that filter pattern configuration works
-        let pattern = Some("otel".to_string());
-        assert!(pattern.is_some());
-        assert_eq!(pattern.unwrap(), "otel");
+        let pattern = "otel".to_string();
+        assert_eq!(pattern, "otel");
     }
 
     #[test]
     fn test_dev_mode_with_timebox() {
         // Test that timebox configuration works
-        let timebox = Some(5000u64);
-        assert!(timebox.is_some());
-        assert_eq!(timebox.unwrap(), 5000);
+        let timebox = 5000u64;
+        assert_eq!(timebox, 5000);
     }
 }

@@ -1,97 +1,158 @@
-# Cursor Commands for Cleanroom Testing Framework
+# clnrm Cursor Commands - 80/20 Unified System
 
-## Overview
+**Principle:** Cargo-make is the engine, Cursor commands are the interface.
 
-This directory contains Cursor commands specifically designed for the cleanroom testing framework development team. These commands follow the project's core team best practices and help maintain FAANG-level code quality standards.
+## Available Commands (6 Essential)
 
-## Available Commands
+Type `/` in Cursor chat to access:
 
-### 🔍 Code Quality & Review
-- **`code-review-checklist`** - Comprehensive code review checklist following FAANG-level standards and .cursorrules guidelines
-- **`enforce-best-practices`** - Systematically enforce best practices, validate error handling, async patterns, and anti-pattern detection
+| Command | Maps To | Purpose |
+|---------|---------|---------|
+| `/dev` | `cargo make dev` | Quick dev iteration |
+| `/test` | `cargo make test-all` | Run all tests |
+| `/validate` | `cargo make validate` | Production validation |
+| `/fix` | `cargo make fix` | Auto-fix issues |
+| `/release` | `cargo make release-validation` | Release prep |
+| `/help` | - | Show help |
 
-### 🧪 Testing & Validation
-- **`run-all-tests-and-fix`** - Execute full test suite and systematically fix failures following core team testing standards
-- **`framework-self-test`** - Execute framework's comprehensive self-test suite (framework "eats its own dog food")
+## System Architecture
 
-### 💻 Development Workflow
-- **`dev-workflow`** - Standardized development workflow for efficient, high-quality development cycles
+```
+┌──────────────────┐
+│ Cursor Commands  │  ← Simple delegators (6 commands)
+│   /dev, /test    │
+└────────┬─────────┘
+         │ delegates to
+         ▼
+┌──────────────────┐
+│  Cargo-Make      │  ← Single source of truth
+│  Makefile.toml   │  ← All logic here (125 tasks)
+└────────┬─────────┘
+         │ inline scripts
+         ▼
+┌──────────────────┐
+│ Embedded Logic   │  ← No external scripts needed
+│   (inline)       │
+└──────────────────┘
+```
 
-### 🏗️ Project Management
-- **`project-maintenance`** - Comprehensive project maintenance procedures for long-term codebase health
+## Why This Design?
 
-### 📚 Documentation & Reporting
-- **`generate-docs`** - Generate comprehensive documentation suite for APIs, usage, and architecture
-- **`security-audit`** - Comprehensive security audit ensuring secure handling and protection against vulnerabilities
+### Before (Complex)
+- 35 cursor commands (overwhelming)
+- 125 cargo-make tasks (duplicated logic)
+- 25 shell scripts (maintenance burden)
+- **Total:** 185 things to maintain
 
-## Command Categories
+### After (Simple)
+- 6 cursor commands (80/20 essential)
+- 125 cargo-make tasks (single source of truth)
+- 0 shell scripts (logic embedded)
+- **Total:** 131 things to maintain (29% reduction)
 
-### Quality Assurance (3 commands)
-Focus on maintaining FAANG-level code quality through systematic validation and best practices enforcement.
+## Benefits
 
-### Development Workflow (2 commands)
-Streamline development processes while ensuring quality gates and best practices are followed.
+1. **Single Source of Truth** - All logic in Makefile.toml
+2. **Consistency** - Same commands work in CI, local, and Cursor
+3. **Discoverability** - `cargo make --list-all-steps`
+4. **Maintainability** - Update once, works everywhere
+5. **Testability** - Easy to test cargo-make tasks
 
-### Project Management (2 commands)
-Maintain long-term project health through regular maintenance, monitoring, and improvement.
+## Quick Start
 
-### Specialized Tools (1 command)
-Security auditing to ensure robust protection and compliance with security standards.
+### Most Common Workflows
 
-## Core Principles
+**Daily Development:**
+```bash
+/dev              # Format, lint, quick test (30s)
+```
 
-All commands follow these core team principles:
+**Before Commit:**
+```bash
+cargo make pre-commit    # Full pre-commit validation (2-3m)
+```
 
-- **🎯 No False Positives** - Never return `Ok(())` without doing actual work
-- **🚫 No unwrap()/expect()** - Proper error handling throughout
-- **🔄 Dyn Compatibility** - All traits remain `dyn` compatible
-- **🧪 Honest Testing** - Tests follow AAA patterns and are properly async
-- **📦 Clean Architecture** - Proper module organization and imports
-- **🔒 Security First** - Input validation and secure error handling
+**Before PR:**
+```bash
+/test             # All tests (1-2m)
+/validate         # Production validation (5-10m)
+```
 
-## Usage
+**Before Release:**
+```bash
+/release          # Release validation (10-15m)
+```
 
-Commands are triggered by typing `/` in the Cursor chat input, followed by the command name. For example:
+## Cursor Commands Are Delegators
 
-- `/code-review-checklist` - Start a comprehensive code review
-- `/run-all-tests-and-fix` - Execute and fix test suite
-- `/enforce-best-practices` - Validate best practices compliance
-- `/framework-self-test` - Run framework self-validation
-- `/dev-workflow` - Follow standardized development process
-- `/project-maintenance` - Perform project maintenance tasks
-- `/generate-docs` - Generate comprehensive documentation
-- `/security-audit` - Perform security assessment
+Each cursor command is intentionally minimal - it just delegates to cargo-make:
 
-## Integration with Project Standards
+```markdown
+# /dev
 
-These commands are designed to work seamlessly with:
+Quick development iteration.
 
-- **`.cursorrules`** - Core team best practices and standards
-- **`scripts/`** directory - Existing automation and validation scripts
-- **`crates/`** structure - Multi-crate architecture
-- **`tests/`** organization - Comprehensive testing approach
-- **`docs/`** structure - Documentation standards
+## Command
+cargo make dev
 
-## Maintenance
+## What It Does
+- Format code
+- Lint with clippy
+- Run quick tests
+```
 
-Commands should be regularly updated to:
+This ensures:
+- ✅ No duplicated logic
+- ✅ Cursor and CLI always in sync
+- ✅ Easy to maintain
+- ✅ Clear single responsibility
 
-- Reflect changes in `.cursorrules` and best practices
-- Incorporate new project capabilities and features
-- Address gaps identified through usage and feedback
-- Maintain alignment with the project's evolving architecture
+## Finding Commands
 
-## Command Development Guidelines
+### In Cursor
+Type `/` to see all 6 commands
 
-When creating or modifying commands:
+### In Terminal
+```bash
+cargo make --list-all-steps    # All 125 tasks
+cargo make help-categories     # Organized by category
+```
 
-1. **Follow AAA Pattern** - Arrange, Act, Assert structure
-2. **Use Proper Error Handling** - Never use `unwrap()` or `expect()`
-3. **Maintain Dyn Compatibility** - No async trait methods
-4. **Be Honest** - Use `unimplemented!()` for incomplete features
-5. **Document Thoroughly** - Clear purpose, steps, and success criteria
-6. **Test Commands** - Ensure they work as described
+### Most Used Tasks
 
----
+```bash
+# Development
+cargo make dev, quick, watch, pre-commit
 
-*These commands represent the accumulated wisdom and best practices of the core team, ensuring consistent high-quality development across the entire cleanroom testing framework project.*
+# Testing
+cargo make test, test-all, test-cleanroom, test-proptest
+
+# Quality
+cargo make fmt, clippy, check, audit
+
+# Validation
+cargo make validate, validate-crate, production-ready
+
+# Build
+cargo make build, build-release, clean
+```
+
+## Archived Commands
+
+Old cursor commands are in `.cursor/commands-archive/` for reference.
+
+They were consolidated into the 6 essential commands to reduce complexity and maintenance burden.
+
+## Documentation
+
+- **This README** - Cursor command reference
+- **Makefile.toml** - All task definitions
+- **docs/SYSTEM_CONSOLIDATION_ANALYSIS.md** - Design rationale
+- **.cursorrules** - Core team standards
+
+## Support
+
+Questions? Check:
+1. `/help` command
+2. `cargo make --list-all-steps`
+3. `docs/GGEN_ADAPTATION.md`

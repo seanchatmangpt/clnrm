@@ -5,9 +5,7 @@
 
 use crate::backend::{Backend, Cmd, RunResult};
 use crate::error::Result;
-use crate::policy::Policy;
 use std::collections::HashMap;
-use std::time::Duration;
 
 /// High-performance mock backend for fast testing
 /// Replaces slow Docker operations with instant responses
@@ -18,7 +16,7 @@ pub struct MockBackend {
 }
 
 #[derive(Debug, Clone)]
-struct MockResponse {
+pub struct MockResponse {
     stdout: String,
     stderr: String,
     exit_code: i32,
@@ -30,35 +28,50 @@ impl MockBackend {
         let mut responses = HashMap::new();
 
         // Pre-configure common mock responses for fast testing
-        responses.insert("echo".to_string(), MockResponse {
-            stdout: "mock echo output".to_string(),
-            stderr: "".to_string(),
-            exit_code: 0,
-        });
+        responses.insert(
+            "echo".to_string(),
+            MockResponse {
+                stdout: "mock echo output".to_string(),
+                stderr: "".to_string(),
+                exit_code: 0,
+            },
+        );
 
-        responses.insert("cat".to_string(), MockResponse {
-            stdout: "mock file content".to_string(),
-            stderr: "".to_string(),
-            exit_code: 0,
-        });
+        responses.insert(
+            "cat".to_string(),
+            MockResponse {
+                stdout: "mock file content".to_string(),
+                stderr: "".to_string(),
+                exit_code: 0,
+            },
+        );
 
-        responses.insert("test".to_string(), MockResponse {
-            stdout: "".to_string(),
-            stderr: "".to_string(),
-            exit_code: 1, // File doesn't exist
-        });
+        responses.insert(
+            "test".to_string(),
+            MockResponse {
+                stdout: "".to_string(),
+                stderr: "".to_string(),
+                exit_code: 1, // File doesn't exist
+            },
+        );
 
-        responses.insert("uname".to_string(), MockResponse {
-            stdout: "Linux\n".to_string(),
-            stderr: "".to_string(),
-            exit_code: 0,
-        });
+        responses.insert(
+            "uname".to_string(),
+            MockResponse {
+                stdout: "Linux\n".to_string(),
+                stderr: "".to_string(),
+                exit_code: 0,
+            },
+        );
 
-        responses.insert("whoami".to_string(), MockResponse {
-            stdout: "root\n".to_string(),
-            stderr: "".to_string(),
-            exit_code: 0,
-        });
+        responses.insert(
+            "whoami".to_string(),
+            MockResponse {
+                stdout: "root\n".to_string(),
+                stderr: "".to_string(),
+                exit_code: 0,
+            },
+        );
 
         responses.insert("env".to_string(), MockResponse {
             stdout: "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nHOSTNAME=mock-container\nHOME=/root\n".to_string(),
@@ -195,12 +208,14 @@ mod tests {
 
     #[test]
     fn test_mock_backend_custom_response() {
-        let backend = MockBackend::new()
-            .add_response("custom_cmd", MockResponse {
+        let backend = MockBackend::new().add_response(
+            "custom_cmd",
+            MockResponse {
                 stdout: "custom output".to_string(),
                 stderr: "".to_string(),
                 exit_code: 42,
-            });
+            },
+        );
 
         let cmd = Cmd::new("custom_cmd");
         let result = backend.run_cmd(cmd).unwrap();

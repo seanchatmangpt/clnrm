@@ -2,9 +2,9 @@ name: Fast Tests (80/20 Optimization)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -73,6 +73,102 @@ jobs:
         run: |
           export USE_MOCK_BACKEND=1
           cargo test --lib config:: -- --test-threads=8
+
+  # Code quality gate: Scan for fake implementations
+  fake-scanner:
+    name: Fake Implementation Scanner
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
+      - name: Run fake implementation scanner
+        id: scan
+        run: |
+          bash scripts/scan-fakes.sh
+        continue-on-error: true
+
+      - name: Upload scan results on failure
+        if: steps.scan.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fake-scan-results
+          path: |
+            fake-scan-*.log
+          retention-days: 30
+
+      - name: Fail if fakes detected
+        if: steps.scan.outcome == 'failure'
+        run: |
+          echo "::error::Fake implementations detected in production code"
+          echo "::error::Review scan output above for details"
+          exit 1
+
+  # Configuration-driven CI gate
+  ci-gate:
+    name: CI Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: clippy
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-git-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-target-
+
+      - name: Run CI gate checks
+        id: gate
+        run: |
+          bash scripts/ci-gate.sh
+        continue-on-error: true
+
+      - name: Upload CI gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-gate-report
+          path: target/ci-gate-report/
+          retention-days: 30
+
+      - name: Fail if CI gate failed
+        if: steps.gate.outcome == 'failure'
+        run: |
+          echo "::error::CI gate checks failed"
+          echo "::error::Review gate report for details"
+          exit 1
 
   # Optional: Full integration tests (runs separately, much slower)
   slow-integration:

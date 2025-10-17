@@ -20,7 +20,9 @@ async fn test_user_registration() -> Result<()> {
     // 📝 Jane's business logic (what she actually cares about)
     let user_id = register_user("jane@example.com", "password123")
         .await
-        .map_err(|e| clnrm_core::CleanroomError::internal_error(format!("User registration failed: {}", e)))?;
+        .map_err(|e| {
+            clnrm_core::CleanroomError::internal_error(format!("User registration failed: {}", e))
+        })?;
 
     // ✅ Rich assertions (Jane's domain-specific checks)
     let user = UserAssertions::new(user_id, "jane@example.com".to_string());

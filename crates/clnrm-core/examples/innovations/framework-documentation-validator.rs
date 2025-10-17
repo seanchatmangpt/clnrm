@@ -201,10 +201,18 @@ impl DocumentationValidator {
         let mut total_score = 0.0;
         let mut validated_claims = 0;
 
-        // Validate each claim in the framework's documentation
-        for claim in &framework.claims {
-            println!("\n🔍 Validating Claim: {}", claim.claim_text);
+        // Collect claims data first to avoid borrowing self
+        let claims_data: Vec<_> = framework
+            .claims
+            .iter()
+            .map(|claim| {
+                println!("\n🔍 Validating Claim: {}", claim.claim_text);
+                claim
+            })
+            .collect();
 
+        // Validate each claim in the framework's documentation
+        for claim in claims_data {
             let claim_result = self.validate_single_claim(framework_name, claim).await?;
 
             if claim_result.verification_successful {

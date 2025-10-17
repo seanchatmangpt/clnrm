@@ -1,3 +1,6 @@
+# OpenTelemetry Collector configuration for clnrm integration testing
+# This configuration accepts OTLP data and exposes it for validation
+
 receivers:
   otlp:
     protocols:
@@ -6,75 +9,31 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
-  # Prometheus receiver for scraping metrics
-  prometheus:
-    config:
-      scrape_configs:
-        - job_name: 'otel-collector'
-          scrape_interval: 10s
-          static_configs:
-            - targets: ['localhost:8888']
-
 processors:
   batch:
-    timeout: 10s
+    timeout: 1s
     send_batch_size: 1024
 
-  # Memory limiter to prevent OOM
   memory_limiter:
     check_interval: 1s
     limit_mib: 512
-    spike_limit_mib: 128
-
-  # Add resource attributes
-  resource:
-    attributes:
-      - key: service.name
-        value: clnrm-integration-tests
-        action: upsert
-      - key: deployment.environment
-        value: test
-        action: upsert
 
 exporters:
-  # Export to Jaeger for trace visualization
+  # Export to stdout for test verification
+  logging:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # Export to Jaeger for visualization (optional)
   otlp/jaeger:
     endpoint: jaeger:4317
     tls:
       insecure: true
 
-  # Export to Prometheus for metrics
+  # Export metrics to Prometheus (optional)
   prometheus:
     endpoint: "0.0.0.0:8889"
-
-  # Console exporter for debugging
-  logging:
-    loglevel: debug
-    sampling_initial: 5
-    sampling_thereafter: 200
-
-  # File exporter for test validation
-  file:
-    path: /tmp/otel-traces.json
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [memory_limiter, batch, resource]
-      exporters: [otlp/jaeger, logging, file]
-
-    metrics:
-      receivers: [otlp, prometheus]
-      processors: [memory_limiter, batch, resource]
-      exporters: [prometheus, logging]
-
-    logs:
-      receivers: [otlp]
-      processors: [memory_limiter, batch, resource]
-      exporters: [logging, file]
-
-  extensions: [health_check, pprof, zpages]
 
 extensions:
   health_check:
@@ -85,3 +44,21 @@ extensions:
 
   zpages:
     endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [logging, otlp/jaeger]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [logging, prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [logging]

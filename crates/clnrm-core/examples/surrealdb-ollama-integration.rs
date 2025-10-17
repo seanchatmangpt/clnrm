@@ -4,7 +4,7 @@
 //! and Ollama for AI processing to provide actual intelligent analysis.
 
 use clnrm_core::{
-    cleanroom::{CleanroomEnvironment, ServiceHandle, ServicePlugin},
+    cleanroom::ServicePlugin,
     error::{CleanroomError, Result},
     services::{
         ollama::{OllamaConfig, OllamaPlugin},

@@ -124,6 +124,30 @@ pub fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<An
             path = %traces_path.display(),
             "Loading spans from explicit traces file"
         );
+
+        // Check if trace file exists and provide helpful error if not
+        if !traces_path.exists() {
+            return Err(CleanroomError::validation_error(format!(
+                "Trace file not found: {}\n\n\
+                 📚 OTEL Collector Setup Required:\n\
+                 \n\
+                 To collect OTEL traces:\n\
+                 1. Start OTEL collector: docker-compose up otel-collector\n\
+                 2. Configure exporter in your tests\n\
+                 3. Run tests to generate traces\n\
+                 4. Traces will be in: /tmp/traces/ or collector output\n\
+                 \n\
+                 📖 Full documentation:\n\
+                 - docs/OPENTELEMETRY_INTEGRATION_GUIDE.md\n\
+                 - https://github.com/seanchatmangpt/clnrm#opentelemetry\n\
+                 \n\
+                 💡 Quick start:\n\
+                 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318\n\
+                 clnrm run --otel-enabled tests/example.toml",
+                traces_path.display()
+            )));
+        }
+
         let validator = SpanValidator::from_file(traces_path)?;
         (validator, traces_path.display().to_string())
     } else {

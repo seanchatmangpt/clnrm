@@ -114,7 +114,7 @@ fn test_error_messages_include_suggestion_for_help() {
         stderr.contains("help")
             || stderr.contains("--help")
             || stderr.contains("unrecognized")
-            || stderr.len() > 0,
+            || !stderr.is_empty(),
         "Error should suggest help or show command error"
     );
 }

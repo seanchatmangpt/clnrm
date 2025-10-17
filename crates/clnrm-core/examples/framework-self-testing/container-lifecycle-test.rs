@@ -244,9 +244,9 @@ async fn test_concurrent_container_operations() -> Result<()> {
     }
 
     // Wait for all to complete
-    let results = future::try_join_all(handles)
-        .await
-        .map_err(|e| clnrm_core::CleanroomError::internal_error(format!("Concurrent operation failed: {}", e)))?;
+    let results = future::try_join_all(handles).await.map_err(|e| {
+        clnrm_core::CleanroomError::internal_error(format!("Concurrent operation failed: {}", e))
+    })?;
 
     println!(
         "✅ Concurrent operations completed in {:?}",
@@ -256,7 +256,7 @@ async fn test_concurrent_container_operations() -> Result<()> {
 
     // Verify all results are correct
     for (i, result) in results.iter().enumerate() {
-        assert!(result.contains(&format!("work-{}", i)));
+        assert!(result.as_ref().unwrap().contains(&format!("work-{}", i)));
     }
 
     // Get container reuse statistics to show framework's parallel execution benefits

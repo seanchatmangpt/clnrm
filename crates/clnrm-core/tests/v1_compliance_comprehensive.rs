@@ -428,14 +428,6 @@ fn test_command_health_exists() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_command_health_exists() {
-    // Health is a basic command
-    use clnrm_core::cli::types::Commands;
-    let _command = Commands::Health { verbose: false };
-    assert!(true, "Health command exists");
-}
-
 // --- Template Commands (5 tests) ---
 
 #[test]

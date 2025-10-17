@@ -36,6 +36,7 @@ expected_output_regex = "test_passed"
 }
 
 /// Creates a test file with services
+#[allow(dead_code)]
 fn create_service_test(dir: &std::path::Path, filename: &str) -> std::path::PathBuf {
     let file_path = dir.join(filename);
     let content = r#"

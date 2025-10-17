@@ -65,11 +65,15 @@ pub fn get_cached_test_config(name: &str) -> Option<&'static crate::config::Test
         let mut configs = HashMap::new();
 
         // Load common test configurations
-        if let Ok(config) = crate::config::loader::load_config_from_file(&std::path::Path::new("tests/basic.clnrm.toml")) {
+        if let Ok(config) = crate::config::loader::load_config_from_file(std::path::Path::new(
+            "tests/basic.clnrm.toml",
+        )) {
             configs.insert("basic".to_string(), config);
         }
 
-        if let Ok(config) = crate::config::loader::load_config_from_file(&std::path::Path::new("tests/integration/end_to_end.toml")) {
+        if let Ok(config) = crate::config::loader::load_config_from_file(std::path::Path::new(
+            "tests/integration/end_to_end.toml",
+        )) {
             configs.insert("end_to_end".to_string(), config);
         }
 
@@ -86,7 +90,9 @@ pub async fn run_framework_tests() -> Result<FrameworkTestResults> {
 }
 
 /// Run framework self-tests with optional suite filter
-pub async fn run_framework_tests_by_suite(suite_filter: Option<&str>) -> Result<FrameworkTestResults> {
+pub async fn run_framework_tests_by_suite(
+    suite_filter: Option<&str>,
+) -> Result<FrameworkTestResults> {
     let start_time = std::time::Instant::now();
     let mut all_results = FrameworkTestResults {
         total_tests: 0,
@@ -98,12 +104,42 @@ pub async fn run_framework_tests_by_suite(suite_filter: Option<&str>) -> Result<
 
     // Run suites based on filter
     let suites = vec![
-        ("framework", run_framework_suite as fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>>),
-        ("container", run_container_suite as fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>>),
-        ("plugin", run_plugin_suite as fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>>),
-        ("cli", run_cli_suite as fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>>),
+        (
+            "framework",
+            run_framework_suite
+                as fn() -> std::pin::Pin<
+                    Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>,
+                >,
+        ),
+        (
+            "container",
+            run_container_suite
+                as fn() -> std::pin::Pin<
+                    Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>,
+                >,
+        ),
+        (
+            "plugin",
+            run_plugin_suite
+                as fn() -> std::pin::Pin<
+                    Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>,
+                >,
+        ),
+        (
+            "cli",
+            run_cli_suite
+                as fn() -> std::pin::Pin<
+                    Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>,
+                >,
+        ),
         #[cfg(feature = "otel")]
-        ("otel", run_otel_suite as fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>>),
+        (
+            "otel",
+            run_otel_suite
+                as fn() -> std::pin::Pin<
+                    Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>,
+                >,
+        ),
     ];
 
     for (suite_name, suite_fn) in suites {
@@ -120,8 +156,10 @@ pub async fn run_framework_tests_by_suite(suite_filter: Option<&str>) -> Result<
                 if suite_result.passed {
                     all_results.passed_tests += suite_result.test_count;
                 } else {
-                    all_results.failed_tests += suite_result.tests.iter().filter(|t| !t.passed).count() as u32;
-                    all_results.passed_tests += suite_result.tests.iter().filter(|t| t.passed).count() as u32;
+                    all_results.failed_tests +=
+                        suite_result.tests.iter().filter(|t| !t.passed).count() as u32;
+                    all_results.passed_tests +=
+                        suite_result.tests.iter().filter(|t| t.passed).count() as u32;
                 }
                 all_results.test_results.extend(suite_result.tests);
             }
@@ -148,7 +186,8 @@ pub async fn run_framework_tests_by_suite(suite_filter: Option<&str>) -> Result<
 // ============================================================================
 
 /// Framework suite: TOML parsing, validation, configuration
-fn run_framework_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
+fn run_framework_suite(
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
     Box::pin(async {
         let start = std::time::Instant::now();
         let mut tests = Vec::new();
@@ -180,7 +219,8 @@ fn run_framework_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = R
 }
 
 /// Container suite: Container creation and execution
-fn run_container_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
+fn run_container_suite(
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
     Box::pin(async {
         let start = std::time::Instant::now();
         let mut tests = Vec::new();
@@ -206,7 +246,8 @@ fn run_container_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = R
 }
 
 /// Plugin suite: Service plugin lifecycle
-fn run_plugin_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
+fn run_plugin_suite(
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
     Box::pin(async {
         let start = std::time::Instant::now();
         let mut tests = Vec::new();
@@ -247,7 +288,8 @@ fn run_plugin_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = Resu
 }
 
 /// CLI suite: Command-line interface
-fn run_cli_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
+fn run_cli_suite(
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
     Box::pin(async {
         let start = std::time::Instant::now();
         let mut tests = Vec::new();
@@ -301,7 +343,8 @@ fn run_cli_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<
 
 /// OTEL suite: OpenTelemetry integration
 #[cfg(feature = "otel")]
-fn run_otel_suite() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
+fn run_otel_suite(
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
     Box::pin(async {
         let start = std::time::Instant::now();
         let mut tests = Vec::new();
@@ -399,8 +442,7 @@ async fn test_config_validation() -> Result<()> {
     use tempfile::TempDir;
 
     let temp_dir = TempDir::new().map_err(|e| {
-        CleanroomError::internal_error("Failed to create temp dir")
-            .with_source(e.to_string())
+        CleanroomError::internal_error("Failed to create temp dir").with_source(e.to_string())
     })?;
 
     let config_path = temp_dir.path().join("test.toml");
@@ -418,8 +460,7 @@ command = ["echo"]
 "#;
 
     fs::write(&config_path, config).map_err(|e| {
-        CleanroomError::internal_error("Failed to write config file")
-            .with_source(e.to_string())
+        CleanroomError::internal_error("Failed to write config file").with_source(e.to_string())
     })?;
 
     let mut validator = ShapeValidator::new();
@@ -434,16 +475,18 @@ command = ["echo"]
 }
 
 async fn test_template_rendering() -> Result<()> {
-    use crate::template::{TemplateRenderer, TemplateContext};
+    use crate::template::{TemplateContext, TemplateRenderer};
 
     let mut renderer = TemplateRenderer::new()?;
     let mut context = TemplateContext::new();
-    context.vars.insert("name".to_string(), serde_json::Value::String("test".to_string()));
+    context.vars.insert(
+        "name".to_string(),
+        serde_json::Value::String("test".to_string()),
+    );
 
     let template = "Hello {{ name }}!";
     let rendered = renderer.render_str(template, "test").map_err(|e| {
-        CleanroomError::internal_error("Template rendering failed")
-            .with_source(e.to_string())
+        CleanroomError::internal_error("Template rendering failed").with_source(e.to_string())
     })?;
 
     if rendered != "Hello test!" {
@@ -497,11 +540,15 @@ async fn test_error_handling() -> Result<()> {
         .with_source("Test source");
 
     if !error.message.contains("Test error") {
-        return Err(CleanroomError::validation_error("Error message not preserved"));
+        return Err(CleanroomError::validation_error(
+            "Error message not preserved",
+        ));
     }
 
     if !error.context.iter().any(|c| c.contains("Test context")) {
-        return Err(CleanroomError::validation_error("Error context not preserved"));
+        return Err(CleanroomError::validation_error(
+            "Error context not preserved",
+        ));
     }
 
     Ok(())
@@ -516,7 +563,8 @@ async fn test_container_creation() -> Result<()> {
 
 async fn test_container_execution() -> Result<()> {
     // Create a CleanroomEnvironment instance
-    let environment = crate::cleanroom::CleanroomEnvironment::new().await
+    let environment = crate::cleanroom::CleanroomEnvironment::new()
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to create CleanroomEnvironment")
                 .with_context("Container execution test setup failed")
@@ -524,8 +572,11 @@ async fn test_container_execution() -> Result<()> {
         })?;
 
     // Register a GenericContainerPlugin with a simple image (alpine:latest)
-    let plugin = crate::services::generic::GenericContainerPlugin::new("test_container", "alpine:latest");
-    environment.register_service(Box::new(plugin)).await
+    let plugin =
+        crate::services::generic::GenericContainerPlugin::new("test_container", "alpine:latest");
+    environment
+        .register_service(Box::new(plugin))
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to register test container plugin")
                 .with_context("Plugin registration failed during container execution test")
@@ -533,7 +584,9 @@ async fn test_container_execution() -> Result<()> {
         })?;
 
     // Start the service
-    let handle = environment.start_service("test_container").await
+    let handle = environment
+        .start_service("test_container")
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to start test container service")
                 .with_context("Service startup failed during container execution test")
@@ -542,7 +595,9 @@ async fn test_container_execution() -> Result<()> {
 
     // Execute a command (echo "test")
     let command = vec!["echo".to_string(), "test".to_string()];
-    let execution_result = environment.execute_in_container("test_container", &command).await
+    let execution_result = environment
+        .execute_in_container("test_container", &command)
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to execute command in test container")
                 .with_context("Command execution failed during container execution test")
@@ -552,32 +607,39 @@ async fn test_container_execution() -> Result<()> {
     // Verify the command output
     if !execution_result.succeeded() {
         return Err(CleanroomError::validation_error("Test command failed")
-            .with_context(format!("Command '{}' exited with code {}", 
-                command.join(" "), execution_result.exit_code))
+            .with_context(format!(
+                "Command '{}' exited with code {}",
+                command.join(" "),
+                execution_result.exit_code
+            ))
             .with_source(format!("stderr: {}", execution_result.stderr)));
     }
 
     if !execution_result.stdout.trim().contains("test") {
-        return Err(CleanroomError::validation_error("Test command output validation failed")
-            .with_context(format!("Expected output to contain 'test', got: '{}'", 
-                execution_result.stdout.trim()))
-            .with_source("Command output did not match expected pattern"));
+        return Err(
+            CleanroomError::validation_error("Test command output validation failed")
+                .with_context(format!(
+                    "Expected output to contain 'test', got: '{}'",
+                    execution_result.stdout.trim()
+                ))
+                .with_source("Command output did not match expected pattern"),
+        );
     }
 
     // Stop and cleanup the service
-    environment.stop_service(&handle.id).await
-        .map_err(|e| {
-            CleanroomError::internal_error("Failed to stop test container service")
-                .with_context("Service cleanup failed during container execution test")
-                .with_source(e.to_string())
-        })?;
+    environment.stop_service(&handle.id).await.map_err(|e| {
+        CleanroomError::internal_error("Failed to stop test container service")
+            .with_context("Service cleanup failed during container execution test")
+            .with_source(e.to_string())
+    })?;
 
     Ok(())
 }
 
 async fn test_plugin_system() -> Result<()> {
     // Create a CleanroomEnvironment instance
-    let environment = crate::cleanroom::CleanroomEnvironment::new().await
+    let environment = crate::cleanroom::CleanroomEnvironment::new()
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to create CleanroomEnvironment")
                 .with_context("Plugin system test setup failed")
@@ -585,8 +647,11 @@ async fn test_plugin_system() -> Result<()> {
         })?;
 
     // Register multiple plugins (GenericContainerPlugin, mock plugins)
-    let container_plugin = crate::services::generic::GenericContainerPlugin::new("test_container", "alpine:latest");
-    environment.register_service(Box::new(container_plugin)).await
+    let container_plugin =
+        crate::services::generic::GenericContainerPlugin::new("test_container", "alpine:latest");
+    environment
+        .register_service(Box::new(container_plugin))
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to register container plugin")
                 .with_context("Container plugin registration failed during plugin system test")
@@ -594,7 +659,9 @@ async fn test_plugin_system() -> Result<()> {
         })?;
 
     let mock_plugin = crate::cleanroom::MockDatabasePlugin::new();
-    environment.register_service(Box::new(mock_plugin)).await
+    environment
+        .register_service(Box::new(mock_plugin))
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to register mock plugin")
                 .with_context("Mock plugin registration failed during plugin system test")
@@ -604,20 +671,26 @@ async fn test_plugin_system() -> Result<()> {
     // Verify plugin registration and lifecycle
     let services = environment.services().await;
     if !services.active_services().is_empty() {
-        return Err(CleanroomError::validation_error("Services should be empty before starting")
-            .with_context("Plugin system test precondition failed")
-            .with_source("Services were already active before test started"));
+        return Err(
+            CleanroomError::validation_error("Services should be empty before starting")
+                .with_context("Plugin system test precondition failed")
+                .with_source("Services were already active before test started"),
+        );
     }
 
     // Test plugin communication and coordination
-    let container_handle = environment.start_service("test_container").await
+    let container_handle = environment
+        .start_service("test_container")
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to start container service")
                 .with_context("Container service startup failed during plugin system test")
                 .with_source(e.to_string())
         })?;
 
-    let mock_handle = environment.start_service("mock_database").await
+    let mock_handle = environment
+        .start_service("mock_database")
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to start mock service")
                 .with_context("Mock service startup failed during plugin system test")
@@ -627,14 +700,21 @@ async fn test_plugin_system() -> Result<()> {
     // Verify both services are running
     let health_status = environment.check_health().await;
     if health_status.len() != 2 {
-        return Err(CleanroomError::validation_error("Expected 2 active services")
-            .with_context("Plugin system test health check failed")
-            .with_source(format!("Expected 2 services, found {}", health_status.len())));
+        return Err(
+            CleanroomError::validation_error("Expected 2 active services")
+                .with_context("Plugin system test health check failed")
+                .with_source(format!(
+                    "Expected 2 services, found {}",
+                    health_status.len()
+                )),
+        );
     }
 
     // Test service coordination by executing a command in the container
     let command = vec!["echo".to_string(), "plugin_coordination_test".to_string()];
-    let execution_result = environment.execute_in_container("test_container", &command).await
+    let execution_result = environment
+        .execute_in_container("test_container", &command)
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to execute coordination test command")
                 .with_context("Plugin coordination test failed")
@@ -642,21 +722,29 @@ async fn test_plugin_system() -> Result<()> {
         })?;
 
     if !execution_result.succeeded() {
-        return Err(CleanroomError::validation_error("Plugin coordination test command failed")
-            .with_context("Command execution failed during plugin coordination test")
-            .with_source(format!("Exit code: {}, stderr: {}", 
-                execution_result.exit_code, execution_result.stderr)));
+        return Err(
+            CleanroomError::validation_error("Plugin coordination test command failed")
+                .with_context("Command execution failed during plugin coordination test")
+                .with_source(format!(
+                    "Exit code: {}, stderr: {}",
+                    execution_result.exit_code, execution_result.stderr
+                )),
+        );
     }
 
     // Verify plugin cleanup on environment drop
-    environment.stop_service(&container_handle.id).await
+    environment
+        .stop_service(&container_handle.id)
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to stop container service")
                 .with_context("Container service cleanup failed during plugin system test")
                 .with_source(e.to_string())
         })?;
 
-    environment.stop_service(&mock_handle.id).await
+    environment
+        .stop_service(&mock_handle.id)
+        .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to stop mock service")
                 .with_context("Mock service cleanup failed during plugin system test")
@@ -666,9 +754,14 @@ async fn test_plugin_system() -> Result<()> {
     // Verify all services are stopped
     let final_health_status = environment.check_health().await;
     if !final_health_status.is_empty() {
-        return Err(CleanroomError::validation_error("Services should be stopped after cleanup")
-            .with_context("Plugin system test cleanup verification failed")
-            .with_source(format!("Expected 0 active services, found {}", final_health_status.len())));
+        return Err(
+            CleanroomError::validation_error("Services should be stopped after cleanup")
+                .with_context("Plugin system test cleanup verification failed")
+                .with_source(format!(
+                    "Expected 0 active services, found {}",
+                    final_health_status.len()
+                )),
+        );
     }
 
     Ok(())
@@ -676,7 +769,8 @@ async fn test_plugin_system() -> Result<()> {
 
 async fn test_container_cleanup() -> Result<()> {
     let environment = crate::cleanroom::CleanroomEnvironment::new().await?;
-    let plugin = crate::services::generic::GenericContainerPlugin::new("cleanup_test", "alpine:latest");
+    let plugin =
+        crate::services::generic::GenericContainerPlugin::new("cleanup_test", "alpine:latest");
     environment.register_service(Box::new(plugin)).await?;
     let handle = environment.start_service("cleanup_test").await?;
     environment.stop_service(&handle.id).await?;
@@ -718,7 +812,9 @@ async fn test_surrealdb_plugin() -> Result<()> {
     use crate::cleanroom::ServicePlugin;
     let plugin = crate::services::surrealdb::SurrealDbPlugin::new();
     if plugin.name() != "db" {
-        return Err(CleanroomError::validation_error("SurrealDB plugin name mismatch"));
+        return Err(CleanroomError::validation_error(
+            "SurrealDB plugin name mismatch",
+        ));
     }
     Ok(())
 }
@@ -727,7 +823,9 @@ async fn test_plugin_health_checks() -> Result<()> {
     let environment = crate::cleanroom::CleanroomEnvironment::new().await?;
     let health = environment.check_health().await;
     if !health.is_empty() {
-        return Err(CleanroomError::validation_error("Unexpected active services"));
+        return Err(CleanroomError::validation_error(
+            "Unexpected active services",
+        ));
     }
     Ok(())
 }
@@ -737,7 +835,9 @@ async fn test_plugin_error_handling() -> Result<()> {
     // Try to start non-existent service
     let result = environment.start_service("nonexistent").await;
     if result.is_ok() {
-        return Err(CleanroomError::validation_error("Should fail for nonexistent service"));
+        return Err(CleanroomError::validation_error(
+            "Should fail for nonexistent service",
+        ));
     }
     Ok(())
 }

@@ -78,10 +78,7 @@ impl AIPoweredTestOptimizer {
         }
     }
 
-    async fn record_test_execution(
-        &mut self,
-        record: TestExecutionRecord,
-    ) -> Result<(), CleanroomError> {
+    async fn record_test_execution(&mut self, record: TestExecutionRecord) -> Result<()> {
         self.execution_history.push(record.clone());
 
         // Use Cleanroom to validate the recording process
@@ -106,7 +103,7 @@ impl AIPoweredTestOptimizer {
         Ok(())
     }
 
-    async fn analyze_patterns(&mut self) -> Result<(), CleanroomError> {
+    async fn analyze_patterns(&mut self) -> Result<()> {
         println!("\n🧠 ANALYZING TEST PATTERNS");
         println!("==========================");
 
@@ -145,7 +142,7 @@ impl AIPoweredTestOptimizer {
         &self,
         test_name: &str,
         executions: Vec<&TestExecutionRecord>,
-    ) -> Result<TestPattern, CleanroomError> {
+    ) -> Result<TestPattern> {
         let total_executions = executions.len();
         let successful_executions = executions.iter().filter(|e| e.success).count();
         let success_rate = successful_executions as f64 / total_executions as f64;
@@ -202,7 +199,7 @@ impl AIPoweredTestOptimizer {
         })
     }
 
-    async fn generate_optimization_strategies(&mut self) -> Result<(), CleanroomError> {
+    async fn generate_optimization_strategies(&mut self) -> Result<()> {
         println!("\n🎯 GENERATING OPTIMIZATION STRATEGIES");
         println!("====================================");
 
@@ -273,12 +270,12 @@ impl AIPoweredTestOptimizer {
         Ok(())
     }
 
-    async fn identify_independent_tests(&self) -> Result<Vec<String>, CleanroomError> {
+    async fn identify_independent_tests(&self) -> Result<Vec<String>> {
         // Use Cleanroom's dependency analysis to identify independent tests
         let _ = self
             .cleanroom_env
             .execute_test("dependency_analysis", || {
-                Ok::<String, CleanroomError>("Analyzing test dependencies".to_string())
+                Ok::<String, clnrm_core::CleanroomError>("Analyzing test dependencies".to_string())
             })
             .await?;
 
@@ -299,7 +296,7 @@ impl AIPoweredTestOptimizer {
         Ok(independent_tests)
     }
 
-    async fn predict_test_failures(&self) -> Result<HashMap<String, f64>, CleanroomError> {
+    async fn predict_test_failures(&self) -> Result<HashMap<String, f64>> {
         println!("\n🔮 PREDICTING TEST FAILURES");
         println!("===========================");
 
@@ -336,7 +333,7 @@ impl AIPoweredTestOptimizer {
         Ok(failure_predictions)
     }
 
-    async fn optimize_test_schedule(&mut self) -> Result<TestSchedule, CleanroomError> {
+    async fn optimize_test_schedule(&mut self) -> Result<TestSchedule> {
         println!("\n📅 OPTIMIZING TEST SCHEDULE");
         println!("===========================");
 
@@ -415,7 +412,7 @@ struct ParallelGroup {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), CleanroomError> {
+async fn main() -> Result<()> {
     println!("🚀 AI-Powered Test Optimizer - Revolutionary Dogfooding Innovation");
     println!("=================================================================");
     println!("Cleanroom framework implementing AI/ML concepts to optimize");

@@ -474,7 +474,10 @@ pub fn load_cleanroom_config() -> Result<CleanroomConfig> {
         eprintln!("DEBUG: Failed to load project cleanroom.toml: {}", e);
     } else {
         let project_config = load_cleanroom_config_from_file("cleanroom.toml").unwrap();
-        eprintln!("DEBUG: Loaded project cleanroom.toml with default_image: {}", project_config.containers.default_image);
+        eprintln!(
+            "DEBUG: Loaded project cleanroom.toml with default_image: {}",
+            project_config.containers.default_image
+        );
         config = merge_configs(config, project_config);
     }
 

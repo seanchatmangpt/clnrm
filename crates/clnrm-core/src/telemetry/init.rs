@@ -17,9 +17,9 @@ use opentelemetry_sdk::{
     Resource,
 };
 #[cfg(feature = "otel-traces")]
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-#[cfg(feature = "otel-traces")]
 use tracing_opentelemetry;
+#[cfg(feature = "otel-traces")]
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[cfg(feature = "otel-traces")]
 /// Handle for managing telemetry lifecycle
@@ -28,6 +28,7 @@ pub struct TelemetryHandle {
     config: TelemetryConfig,
 }
 
+#[cfg(feature = "otel-traces")]
 impl TelemetryHandle {
     /// Create a disabled telemetry handle
     pub fn disabled() -> Self {
@@ -64,11 +65,13 @@ impl TelemetryHandle {
     }
 }
 
+#[cfg(feature = "otel-traces")]
 /// Builder for telemetry configuration
 pub struct TelemetryBuilder {
     config: TelemetryConfig,
 }
 
+#[cfg(feature = "otel-traces")]
 impl TelemetryBuilder {
     /// Create a new telemetry builder
     pub fn new(config: TelemetryConfig) -> Self {
@@ -92,6 +95,7 @@ impl TelemetryBuilder {
         })
     }
 
+    #[cfg(feature = "otel-traces")]
     /// Create OpenTelemetry resource
     fn create_resource(&self) -> Result<Resource> {
         // Build resource with service information
@@ -102,23 +106,28 @@ impl TelemetryBuilder {
                 KeyValue::new("telemetry.sdk.language", "rust"),
                 KeyValue::new("telemetry.sdk.name", "opentelemetry"),
                 KeyValue::new("telemetry.sdk.version", "0.31.0"),
-                KeyValue::new("service.instance.id", format!("clnrm-{}", std::process::id())),
+                KeyValue::new(
+                    "service.instance.id",
+                    format!("clnrm-{}", std::process::id()),
+                ),
             ]);
 
         // Add custom resource attributes from configuration
         for (key, value) in &self.config.resource_attributes {
-            resource_builder = resource_builder.with_attributes([KeyValue::new(key.clone(), value.clone())]);
+            resource_builder =
+                resource_builder.with_attributes([KeyValue::new(key.clone(), value.clone())]);
         }
 
         let resource = resource_builder.build();
         Ok(resource)
     }
 
+    #[cfg(feature = "otel-traces")]
     /// Initialize tracing with OpenTelemetry
     fn init_tracing(&self) -> Result<()> {
         // Create resource with service information
         let resource = self.create_resource()?;
-        
+
         let tracer_provider_builder = trace::SdkTracerProvider::builder()
             .with_sampler(Sampler::TraceIdRatioBased(
                 self.config.sampling.trace_sampling_ratio,
@@ -129,7 +138,9 @@ impl TelemetryBuilder {
         // For now, use only the built-in InMemorySpanExporter for testing
         // This avoids the dyn compatibility issues with custom exporters
         let exporter = opentelemetry_sdk::trace::InMemorySpanExporter::default();
-        let tracer_provider = tracer_provider_builder.with_batch_exporter(exporter).build();
+        let tracer_provider = tracer_provider_builder
+            .with_batch_exporter(exporter)
+            .build();
         let tracer = tracer_provider.tracer("clnrm");
 
         global::set_tracer_provider(tracer_provider);
@@ -142,11 +153,12 @@ impl TelemetryBuilder {
         Ok(())
     }
 
+    #[cfg(feature = "otel-traces")]
     /// Initialize metrics with OpenTelemetry
     fn init_metrics(&self) -> Result<()> {
         // Create resource with service information
         let resource = self.create_resource()?;
-        
+
         // Initialize metrics provider with resource
         let meter_provider = opentelemetry_sdk::metrics::SdkMeterProvider::builder()
             .with_resource(resource)
@@ -158,12 +170,14 @@ impl TelemetryBuilder {
     }
 }
 
+#[cfg(feature = "otel-traces")]
 /// Initialize telemetry with default configuration
 pub fn init_default() -> Result<TelemetryHandle> {
     let config = TelemetryConfig::default();
     TelemetryBuilder::new(config).init()
 }
 
+#[cfg(feature = "otel-traces")]
 /// Initialize telemetry with OTLP configuration
 pub fn init_otlp(endpoint: &str) -> Result<TelemetryHandle> {
     let config = TelemetryConfig {
@@ -178,6 +192,7 @@ pub fn init_otlp(endpoint: &str) -> Result<TelemetryHandle> {
     TelemetryBuilder::new(config).init()
 }
 
+#[cfg(feature = "otel-traces")]
 /// Initialize telemetry with stdout configuration for development
 pub fn init_stdout() -> Result<TelemetryHandle> {
     let config = TelemetryConfig {

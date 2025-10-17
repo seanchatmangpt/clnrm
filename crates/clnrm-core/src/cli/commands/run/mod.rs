@@ -617,7 +617,10 @@ mod single {
         // Load cleanroom configuration for default container settings
         let cleanroom_config = match crate::config::load_cleanroom_config() {
             Ok(config) => {
-                info!("Successfully loaded cleanroom config with default_image: {}", config.containers.default_image);
+                info!(
+                    "Successfully loaded cleanroom config with default_image: {}",
+                    config.containers.default_image
+                );
                 Some(config)
             }
             Err(e) => {
@@ -626,11 +629,13 @@ mod single {
             }
         };
 
-        let environment = CleanroomEnvironment::with_config(cleanroom_config).await.map_err(|e| {
-            CleanroomError::internal_error("Failed to create test environment")
-                .with_context("Test execution requires cleanroom environment")
-                .with_source(e.to_string())
-        })?;
+        let environment = CleanroomEnvironment::with_config(cleanroom_config)
+            .await
+            .map_err(|e| {
+                CleanroomError::internal_error("Failed to create test environment")
+                    .with_context("Test execution requires cleanroom environment")
+                    .with_source(e.to_string())
+            })?;
 
         // Load services from config (support both v0.4.x [services] and v1.0 [service] formats)
         let service_handles = if let Some(services) = &test_config.services {
@@ -689,8 +694,7 @@ mod single {
                 if execution_result.exit_code != 0 {
                     return Err(CleanroomError::validation_error(format!(
                         "Step '{}' failed with exit code: {}",
-                        step.name,
-                        execution_result.exit_code
+                        step.name, execution_result.exit_code
                     )));
                 }
 
@@ -1029,9 +1033,15 @@ mod scenario {
             if let Some(ref hermetic_config) = expect.hermeticity {
                 let hermetic = HermeticityExpectation {
                     no_external_services: hermetic_config.no_external_services,
-                    resource_attrs_must_match: None, // TODO: Extract from hermetic_config.resource_attrs
+                    resource_attrs_must_match: hermetic_config
+                        .resource_attrs
+                        .as_ref()
+                        .and_then(|ra| ra.must_match.clone()),
                     sdk_resource_attrs_must_match: None,
-                    span_attrs_forbid_keys: None, // TODO: Extract from hermetic_config.span_attrs
+                    span_attrs_forbid_keys: hermetic_config
+                        .span_attrs
+                        .as_ref()
+                        .and_then(|sa| sa.forbid_keys.clone()),
                 };
                 expectations = expectations.with_hermeticity(hermetic);
             }

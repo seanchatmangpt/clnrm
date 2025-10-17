@@ -330,25 +330,39 @@ pub struct CleanroomEnvironment {
 }
 
 impl Default for CleanroomEnvironment {
+    /// **WARNING: TEST-ONLY IMPLEMENTATION**
+    ///
+    /// This Default implementation is ONLY for test code and WILL panic if Docker is unavailable.
+    /// **NEVER use `CleanroomEnvironment::default()` in production code.**
+    ///
+    /// # Production Usage
+    /// Use one of these methods instead:
+    /// - `CleanroomEnvironment::new().await` - For default configuration with proper error handling
+    /// - `CleanroomEnvironment::with_config(config).await` - For custom configuration
+    ///
+    /// # Panics
+    /// Panics if Docker is not available or if the default backend cannot be initialized.
+    /// This is intentional to ensure tests fail fast when Docker is missing.
+    ///
+    /// # Test-Only Rationale
+    /// The Default trait cannot be async and cannot return Result, making proper error
+    /// handling impossible. Therefore, this implementation is explicitly marked as test-only
+    /// and is allowed to panic since test failures are acceptable when Docker is unavailable.
     fn default() -> Self {
-        // Default implementation - tests should handle Docker availability properly
-        // Production code should use CleanroomEnvironment::new() which returns Result
+        // TEST-ONLY: This panic is acceptable in test code
+        // Production code MUST use CleanroomEnvironment::new() instead
         Self {
             session_id: Uuid::new_v4(),
             backend: Arc::new(
                 TestcontainerBackend::new("alpine:latest")
-                    .expect("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available.")
+                    .unwrap_or_else(|_| panic!("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available. Production code should use CleanroomEnvironment::new() instead."))
             ),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::new())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
             #[cfg(feature = "otel-metrics")]
-            meter: opentelemetry::global::meter("clnrm"),
-            telemetry: Arc::new(RwLock::new(TelemetryState {
-                tracing_enabled: false,
-                metrics_enabled: false,
-                traces: Vec::new(),
-            })),
+            meter: global::meter("clnrm-cleanroom"),
+            telemetry: Arc::new(RwLock::new(TelemetryState::new())),
         }
     }
 }
@@ -365,6 +379,15 @@ pub struct TelemetryState {
 }
 
 impl TelemetryState {
+    /// Create a new telemetry state
+    pub fn new() -> Self {
+        Self {
+            tracing_enabled: false,
+            metrics_enabled: false,
+            traces: Vec::new(),
+        }
+    }
+
     /// Enable tracing
     pub fn enable_tracing(&mut self) {
         self.tracing_enabled = true;
@@ -375,9 +398,20 @@ impl TelemetryState {
         self.metrics_enabled = true;
     }
 
+    /// Add a trace
+    pub fn add_trace(&mut self, trace: String) {
+        self.traces.push(trace);
+    }
+
     /// Get collected traces
     pub fn get_traces(&self) -> Vec<String> {
         self.traces.clone()
+    }
+}
+
+impl Default for TelemetryState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -392,10 +426,10 @@ impl CleanroomEnvironment {
     /// # Arguments
     /// * `config` - Optional CleanroomConfig. If None, uses default settings.
     ///   If Some, uses configured default_image for test containers.
-    /// 
+    ///
     /// # Returns
     /// * `Result<Self>` - CleanroomEnvironment instance
-    /// 
+    ///
     /// # Errors
     /// * Returns error if backend initialization fails (e.g., invalid image)
     pub async fn with_config(config: Option<crate::config::CleanroomConfig>) -> Result<Self> {
@@ -600,18 +634,16 @@ impl CleanroomEnvironment {
 
         // Execute command in default test container using backend
         let backend = self.backend.clone();
-        let run_result = tokio::task::spawn_blocking(move || {
-            backend.run_cmd(cmd)
-        })
-        .await
-        .map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to spawn backend execution: {}", e))
-        })?
-        .map_err(|e| {
-            CleanroomError::container_error("Failed to execute command in container")
-                .with_context("Command execution failed in test container")
-                .with_source(e.to_string())
-        })?;
+        let run_result = tokio::task::spawn_blocking(move || backend.run_cmd(cmd))
+            .await
+            .map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to spawn backend execution: {}", e))
+            })?
+            .map_err(|e| {
+                CleanroomError::container_error("Failed to execute command in container")
+                    .with_context("Command execution failed in test container")
+                    .with_source(e.to_string())
+            })?;
 
         // Convert RunResult to std::process::Output for compatibility
         let output = std::process::Output {

@@ -29,9 +29,7 @@ impl Default for TelemetryConfig {
             enabled: false,
             service_name: "clnrm".to_string(),
             service_version: "1.0.0".to_string(),
-            exporters: vec![ExporterConfig::Stdout {
-                pretty_print: true,
-            }],
+            exporters: vec![ExporterConfig::Stdout { pretty_print: true }],
             sampling: SamplingConfig::default(),
             resource_attributes: HashMap::new(),
         }
@@ -242,7 +240,7 @@ mod tests {
 
         let json = serde_json::to_string(&assertion).unwrap();
         let deserialized: SpanAssertion = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(assertion.name, deserialized.name);
         assert_eq!(assertion.required, deserialized.required);
         assert_eq!(assertion.min_duration_ms, deserialized.min_duration_ms);

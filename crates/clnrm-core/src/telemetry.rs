@@ -290,19 +290,19 @@ pub mod validation {
     pub fn span_exists(operation_name: &str) -> Result<bool> {
         // Basic validation without OTel SDK integration
         // This provides a foundation that can be extended with actual span data
-        
+
         if operation_name.is_empty() {
             return Err(CleanroomError::validation_error(
-                "Operation name cannot be empty"
+                "Operation name cannot be empty",
             ));
         }
-        
+
         // For now, simulate span existence validation
         // In a real implementation, this would:
         // 1. Query in-memory span exporter for spans matching operation_name
         // 2. Return true if span exists with expected attributes
         // 3. Return false if no matching span found
-        
+
         // Simulate successful validation for testing
         // This provides a foundation that can be extended with actual OTel integration
         Ok(true)
@@ -313,13 +313,13 @@ pub mod validation {
     pub fn capture_test_spans() -> Result<usize> {
         // Basic span capture without OTel SDK integration
         // This provides a foundation that can be extended with actual span data
-        
+
         // For now, simulate span capture
         // In a real implementation, this would:
         // 1. Configure in-memory span exporter
         // 2. Capture all spans during test execution
         // 3. Return actual span count
-        
+
         // Simulate capturing 3 test spans for testing
         // This provides a foundation that can be extended with actual OTel integration
         Ok(3)

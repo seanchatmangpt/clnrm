@@ -6,8 +6,8 @@
 
 use clnrm_core::error::Result;
 use clnrm_core::CleanroomEnvironment;
-use std::time::{Duration, Instant};
-use tracing::{debug, error, info, warn};
+use std::time::Instant;
+use tracing::{debug, info};
 
 /// Innovative observability self-testing using the framework's own features
 #[tokio::main]
@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
         updated_metrics.tests_executed, updated_metrics.containers_created
     );
 
-    if updated_metrics.containers_created >= initial_metrics.containers_created + 1 {
+    if updated_metrics.containers_created > initial_metrics.containers_created {
         println!("✅ Metrics collection working - containers created metric updated");
     } else {
         println!("❌ Metrics collection may not be working properly");

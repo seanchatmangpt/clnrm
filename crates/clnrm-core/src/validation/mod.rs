@@ -24,6 +24,7 @@ pub use hermeticity_validator::{
 };
 pub use orchestrator::{PrdExpectations, ValidationReport};
 pub use order_validator::OrderExpectation;
+#[cfg(feature = "otel-traces")]
 pub use otel::{
     OtelValidationConfig, OtelValidator, SpanAssertion as OtelSpanAssertion, TraceAssertion,
 };

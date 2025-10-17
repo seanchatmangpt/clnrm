@@ -1243,7 +1243,7 @@ mod tests {
 
         // Missing span
         let empty_validator = SpanValidator::from_json("")?;
-        let result = empty_validator.validate_expectations(&[expectation.clone()])?;
+        let result = empty_validator.validate_expectations(std::slice::from_ref(&expectation))?;
 
         // Assert - failure case
         assert!(!result.passed);
@@ -1290,7 +1290,8 @@ mod tests {
         // Missing attribute
         let json_no_attr = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{}}"#;
         let validator_no_attr = SpanValidator::from_json(json_no_attr)?;
-        let result_fail = validator_no_attr.validate_expectations(&[expectation.clone()])?;
+        let result_fail =
+            validator_no_attr.validate_expectations(std::slice::from_ref(&expectation))?;
 
         // Assert - failure
         assert!(!result_fail.passed);
@@ -1330,7 +1331,8 @@ mod tests {
         // No events
         let json_no_events = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{}}"#;
         let validator_no_events = SpanValidator::from_json(json_no_events)?;
-        let result_fail = validator_no_events.validate_expectations(&[expectation.clone()])?;
+        let result_fail =
+            validator_no_events.validate_expectations(std::slice::from_ref(&expectation))?;
 
         // Assert - failure
         assert!(!result_fail.passed);
@@ -1370,7 +1372,8 @@ mod tests {
         // Too short (5ms)
         let json_short = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"start_time_unix_nano":1000000000,"end_time_unix_nano":1005000000}"#;
         let validator_short = SpanValidator::from_json(json_short)?;
-        let result_short = validator_short.validate_expectations(&[expectation.clone()])?;
+        let result_short =
+            validator_short.validate_expectations(std::slice::from_ref(&expectation))?;
 
         // Assert - too short
         assert!(!result_short.passed);
@@ -1379,7 +1382,7 @@ mod tests {
         // Just right (100ms)
         let json_ok = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"start_time_unix_nano":1000000000,"end_time_unix_nano":1100000000}"#;
         let validator_ok = SpanValidator::from_json(json_ok)?;
-        let result_ok = validator_ok.validate_expectations(&[expectation.clone()])?;
+        let result_ok = validator_ok.validate_expectations(std::slice::from_ref(&expectation))?;
 
         // Assert - success
         assert!(result_ok.passed);
@@ -1414,7 +1417,8 @@ mod tests {
         // Missing parent - the parent span doesn't exist in the trace
         let json_no_parent = r#"{"name":"clnrm.step:hello_world","trace_id":"abc123","span_id":"child1","parent_span_id":null,"attributes":{}}"#;
         let validator_no_parent = SpanValidator::from_json(json_no_parent)?;
-        let result_no_parent = validator_no_parent.validate_expectations(&[expectation.clone()])?;
+        let result_no_parent =
+            validator_no_parent.validate_expectations(std::slice::from_ref(&expectation))?;
 
         // Assert - missing parent span in trace
         assert!(!result_no_parent.passed);
@@ -1452,7 +1456,8 @@ mod tests {
         // Wrong kind - use string value "client" instead of integer 3
         let json_wrong_kind = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"kind":"client"}"#;
         let validator_wrong = SpanValidator::from_json(json_wrong_kind)?;
-        let result_wrong = validator_wrong.validate_expectations(&[expectation.clone()])?;
+        let result_wrong =
+            validator_wrong.validate_expectations(std::slice::from_ref(&expectation))?;
 
         // Assert - wrong kind
         assert!(!result_wrong.passed);

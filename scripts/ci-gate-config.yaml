@@ -1,0 +1,126 @@
+# CI Gate Configuration for clnrm
+# Quality enforcement rules and thresholds
+
+# Critical pattern detection
+quality_gates:
+  critical_patterns:
+    timeout: 30
+    retry_attempts: 3
+    patterns:
+      - pattern: "\.unwrap\(\)"
+        severity: "critical"
+        message: "Use proper Result handling instead of .unwrap()"
+      - pattern: "\.expect\("
+        severity: "critical"
+        message: "Use proper Result handling instead of .expect()"
+      - pattern: "panic!\("
+        severity: "critical"
+        message: "Use Result-based error handling instead of panic!"
+      - pattern: "todo!\("
+        severity: "warning"
+        message: "TODO markers found - incomplete implementation"
+      - pattern: "println!\("
+        severity: "warning"
+        message: "Use tracing macros instead of println!"
+      - pattern: "unimplemented!\("
+        severity: "info"
+        message: "Unimplemented markers found (acceptable for WIP)"
+    exclude_paths:
+      - "tests/"
+      - "examples/"
+      - "crates/clnrm-ai/"
+      - "target/"
+      - ".git/"
+
+  # Core API functions that must exist
+  core_functions:
+    timeout: 20
+    required_functions:
+      - function: "CleanroomEnvironment::new"
+        file: "crates/clnrm-core/src/cleanroom.rs"
+        description: "Main environment constructor"
+      - function: "ServicePlugin::start"
+        file: "crates/clnrm-core/src/cleanroom.rs"
+        description: "Service plugin start method"
+      - function: "Backend::create_container"
+        file: "crates/clnrm-core/src/backend/mod.rs"
+        description: "Container creation trait method"
+      - function: "CleanroomError"
+        file: "crates/clnrm-core/src/error.rs"
+        description: "Error type definition"
+
+  # Test coverage requirements
+  coverage:
+    enabled: true
+    minimum_percentage: 85
+    timeout: 120
+    exclude_crates:
+      - "clnrm-ai"
+    exclude_paths:
+      - "examples/"
+      - "tests/"
+      - "benches/"
+
+  # Error handling verification
+  error_handling:
+    timeout: 30
+    required_patterns:
+      - pattern: "Result<.*CleanroomError>"
+        message: "Functions should return Result<T, CleanroomError>"
+      - pattern: "map_err"
+        message: "Error context should be added with map_err"
+    exclude_paths:
+      - "tests/"
+      - "examples/"
+      - "crates/clnrm-ai/"
+
+  # Documentation requirements
+  documentation:
+    timeout: 20
+    require_module_docs: true
+    require_public_item_docs: true
+    exclude_paths:
+      - "tests/"
+      - "examples/"
+
+  # Compilation checks
+  compilation:
+    timeout: 300
+    features:
+      - ""           # Default features
+      - "otel"       # All OTEL features
+      - "otel-traces"
+      - "otel-metrics"
+      - "otel-logs"
+    deny_warnings: true
+
+  # Linting rules
+  linting:
+    timeout: 120
+    deny_warnings: true
+    clippy_flags:
+      - "-D"
+      - "warnings"
+      - "-D"
+      - "clippy::unwrap_used"
+      - "-D"
+      - "clippy::expect_used"
+      - "-D"
+      - "clippy::panic"
+
+# Reporting configuration
+reporting:
+  generate_artifacts: true
+  artifact_path: "target/ci-gate-report"
+  formats:
+    - "json"
+    - "markdown"
+  fail_fast: true
+
+# Retry configuration
+retry:
+  enabled: true
+  max_attempts: 3
+  initial_delay_seconds: 2
+  backoff_multiplier: 2
+  max_delay_seconds: 30

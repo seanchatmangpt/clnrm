@@ -704,10 +704,7 @@ impl Function for FakeBoolFunction {
         use fake::faker::boolean::en::Boolean;
         let seed = get_seed(args);
         let mut rng = StdRng::seed_from_u64(seed);
-        let ratio = args
-            .get("ratio")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(50) as u8;
+        let ratio = args.get("ratio").and_then(|v| v.as_u64()).unwrap_or(50) as u8;
         Ok(Value::Bool(Boolean(ratio).fake_with_rng(&mut rng)))
     }
 }
@@ -929,7 +926,6 @@ impl Function for FakeSemverFunction {
         Ok(Value::String(format!("{}.{}.{}", major, minor, patch)))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1211,5 +1207,4 @@ now: {{ now_rfc3339() }}
         assert!(!name1_str.is_empty() && !name2_str.is_empty());
         assert!(!email1_str.is_empty() && !email2_str.is_empty());
     }
-
 }

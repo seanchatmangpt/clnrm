@@ -411,7 +411,10 @@ pub async fn with_database(image: &str) -> Result<()> {
     // 4. Return connection details
 
     // For now, just log the setup
-    tracing::info!("Database service '{}' setup completed (placeholder implementation)", image);
+    tracing::info!(
+        "Database service '{}' setup completed (placeholder implementation)",
+        image
+    );
 
     // In a real implementation, this would return connection details
     // and the service would be managed by the test framework
@@ -428,7 +431,10 @@ pub async fn with_cache(image: &str) -> Result<()> {
     // 3. Wait for cache to be ready
     // 4. Return connection details
 
-    tracing::info!("Cache service '{}' setup completed (placeholder implementation)", image);
+    tracing::info!(
+        "Cache service '{}' setup completed (placeholder implementation)",
+        image
+    );
     Ok(())
 }
 
@@ -442,7 +448,10 @@ pub async fn with_message_queue(image: &str) -> Result<()> {
     // 3. Wait for queue to be ready
     // 4. Return connection details
 
-    tracing::info!("Message queue service '{}' setup completed (placeholder implementation)", image);
+    tracing::info!(
+        "Message queue service '{}' setup completed (placeholder implementation)",
+        image
+    );
     Ok(())
 }
 
@@ -456,7 +465,10 @@ pub async fn with_web_server(image: &str) -> Result<()> {
     // 3. Wait for server to be ready
     // 4. Return connection details
 
-    tracing::info!("Web server service '{}' setup completed (placeholder implementation)", image);
+    tracing::info!(
+        "Web server service '{}' setup completed (placeholder implementation)",
+        image
+    );
     Ok(())
 }
 
