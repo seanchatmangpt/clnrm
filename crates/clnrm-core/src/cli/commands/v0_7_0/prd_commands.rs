@@ -414,7 +414,10 @@ mod tests {
     #[ignore = "Requires Docker daemon - integration test"]
     async fn test_pull_images_stub() {
         let result = pull_images(None, false, 4).await;
-        assert!(result.is_ok(), "Should pull images when Docker is available");
+        assert!(
+            result.is_ok(),
+            "Should pull images when Docker is available"
+        );
     }
 
     #[test]
@@ -464,7 +467,10 @@ mod tests {
     #[ignore = "Requires valid test files - needs test data setup"]
     async fn test_red_green_validation_stub() {
         let result = run_red_green_validation(&[], false, false).await;
-        assert!(result.is_ok(), "Should validate when test files are available");
+        assert!(
+            result.is_ok(),
+            "Should validate when test files are available"
+        );
     }
 
     #[test]
@@ -493,14 +499,20 @@ mod tests {
     async fn test_collector_start_stub() {
         let result =
             start_collector("otel/opentelemetry-collector:latest", 4318, 4317, false).await;
-        assert!(result.is_ok(), "Should start collector when Docker is available");
+        assert!(
+            result.is_ok(),
+            "Should start collector when Docker is available"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires Docker daemon - integration test"]
     async fn test_collector_stop_stub() {
         let result = stop_collector(false).await;
-        assert!(result.is_ok(), "Should stop collector when Docker is available");
+        assert!(
+            result.is_ok(),
+            "Should stop collector when Docker is available"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -8,7 +8,9 @@ use crate::error::Result;
 #[cfg(feature = "otel-traces")]
 use crate::telemetry::config::{ExporterConfig, OtlpProtocol, TelemetryConfig};
 #[cfg(feature = "otel-traces")]
-use crate::telemetry::exporters::{create_span_exporter, validate_exporter_config, SpanExporterType};
+use crate::telemetry::exporters::{
+    create_span_exporter, validate_exporter_config, SpanExporterType,
+};
 #[cfg(feature = "otel-traces")]
 use opentelemetry::global;
 #[cfg(feature = "otel-traces")]
@@ -134,7 +136,7 @@ impl TelemetryBuilder {
         for exporter_config in &self.config.exporters {
             // Validate configuration first
             validate_exporter_config(exporter_config)?;
-            
+
             // Create the exporter
             let exporter = create_span_exporter(exporter_config)?;
             exporters.push(exporter);
@@ -148,7 +150,7 @@ impl TelemetryBuilder {
     fn init_tracing(&self) -> Result<()> {
         // Create resource with service information
         let resource = self.create_resource()?;
-        
+
         let tracer_provider_builder = trace::SdkTracerProvider::builder()
             .with_sampler(Sampler::TraceIdRatioBased(
                 self.config.sampling.trace_sampling_ratio,
@@ -158,7 +160,7 @@ impl TelemetryBuilder {
 
         // Create exporters based on configuration
         let exporters = self.create_exporters()?;
-        
+
         // Use the first exporter for now (multi-exporter support can be added later)
         if let Some(exporter) = exporters.into_iter().next() {
             let tracer_provider = tracer_provider_builder

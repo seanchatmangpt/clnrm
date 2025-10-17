@@ -214,10 +214,14 @@ async fn analyze_test_file(path: &PathBuf) -> Result<TestFileAnalysis> {
 
     Ok(TestFileAnalysis {
         path: path.clone(),
-        name: test_config.test.as_ref()
+        name: test_config
+            .test
+            .as_ref()
             .map(|t| t.metadata.name.clone())
             .unwrap_or_else(|| "unknown".to_string()),
-        description: test_config.test.as_ref()
+        description: test_config
+            .test
+            .as_ref()
             .and_then(|t| t.metadata.description.clone()),
         complexity_score,
         resource_requirements,

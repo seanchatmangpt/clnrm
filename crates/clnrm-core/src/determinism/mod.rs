@@ -123,14 +123,12 @@ impl DeterminismEngine {
     /// * Returns error if RNG mutex is poisoned (indicates panic in another thread)
     pub fn next_u64(&self) -> Result<u64> {
         if let Some(ref rng_mutex) = self.rng {
-            let mut rng = rng_mutex
-                .lock()
-                .map_err(|e| {
-                    CleanroomError::internal_error(format!(
-                        "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
-                        e
-                    ))
-                })?;
+            let mut rng = rng_mutex.lock().map_err(|e| {
+                CleanroomError::internal_error(format!(
+                    "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
+                    e
+                ))
+            })?;
             Ok(rng.next_u64())
         } else {
             Ok(rand::random())
@@ -143,14 +141,12 @@ impl DeterminismEngine {
     /// * Returns error if RNG mutex is poisoned (indicates panic in another thread)
     pub fn next_u32(&self) -> Result<u32> {
         if let Some(ref rng_mutex) = self.rng {
-            let mut rng = rng_mutex
-                .lock()
-                .map_err(|e| {
-                    CleanroomError::internal_error(format!(
-                        "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
-                        e
-                    ))
-                })?;
+            let mut rng = rng_mutex.lock().map_err(|e| {
+                CleanroomError::internal_error(format!(
+                    "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
+                    e
+                ))
+            })?;
             Ok(rng.next_u32())
         } else {
             Ok(rand::random())
@@ -163,14 +159,12 @@ impl DeterminismEngine {
     /// * Returns error if RNG mutex is poisoned (indicates panic in another thread)
     pub fn fill_bytes(&self, dest: &mut [u8]) -> Result<()> {
         if let Some(ref rng_mutex) = self.rng {
-            let mut rng = rng_mutex
-                .lock()
-                .map_err(|e| {
-                    CleanroomError::internal_error(format!(
-                        "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
-                        e
-                    ))
-                })?;
+            let mut rng = rng_mutex.lock().map_err(|e| {
+                CleanroomError::internal_error(format!(
+                    "Failed to acquire RNG lock - mutex poisoned by panic in another thread: {}",
+                    e
+                ))
+            })?;
             rng.fill_bytes(dest);
             Ok(())
         } else {

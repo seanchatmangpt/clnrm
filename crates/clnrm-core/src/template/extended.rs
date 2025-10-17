@@ -105,9 +105,10 @@ impl Function for SeqFunction {
         let start = args.get("start").and_then(|v| v.as_i64()).unwrap_or(0);
         let step = args.get("step").and_then(|v| v.as_i64()).unwrap_or(1);
 
-        let mut counters = self.counters.lock().map_err(|e| {
-            tera::Error::msg(format!("Failed to lock sequence counter: {}", e))
-        })?;
+        let mut counters = self
+            .counters
+            .lock()
+            .map_err(|e| tera::Error::msg(format!("Failed to lock sequence counter: {}", e)))?;
         let counter = counters.entry(name.to_string()).or_insert(start);
         let value = *counter;
         *counter += step;
@@ -215,7 +216,10 @@ impl Function for UlidFunction {
         for _ in 0..10 {
             let idx = (ts % 32) as usize;
             let ch = base32.chars().nth(idx).ok_or_else(|| {
-                tera::Error::msg(format!("Invalid base32 index {} during ULID timestamp encoding", idx))
+                tera::Error::msg(format!(
+                    "Invalid base32 index {} during ULID timestamp encoding",
+                    idx
+                ))
             })?;
             ulid.insert(0, ch);
             ts /= 32;
@@ -225,7 +229,10 @@ impl Function for UlidFunction {
         for _ in 0..16 {
             let idx = rng.gen_range(0..32);
             let ch = base32.chars().nth(idx).ok_or_else(|| {
-                tera::Error::msg(format!("Invalid base32 index {} during ULID random part generation", idx))
+                tera::Error::msg(format!(
+                    "Invalid base32 index {} during ULID random part generation",
+                    idx
+                ))
             })?;
             ulid.push(ch);
         }
@@ -310,8 +317,11 @@ impl Function for WeightedFunction {
         }
 
         // Fallback to last element (guaranteed non-empty by earlier check)
-        Ok(values.last()
-            .ok_or_else(|| tera::Error::msg("weighted() internal error: empty values after weight calculation"))?
+        Ok(values
+            .last()
+            .ok_or_else(|| {
+                tera::Error::msg("weighted() internal error: empty values after weight calculation")
+            })?
             .clone())
     }
 }
@@ -707,8 +717,8 @@ impl Function for FakeKindsFunction {
 #[cfg(test)]
 mod extended_function_tests {
     use super::*;
-    use tera::Value;
     use serial_test::serial;
+    use tera::Value;
 
     // ========================================
     // UUID V7 Tests (2 tests)
@@ -727,12 +737,19 @@ mod extended_function_tests {
         // Assert
         let uuid_str = result.as_str().expect("Result should be string");
         assert_eq!(uuid_str.len(), 36, "UUID v7 should be 36 characters");
-        assert_eq!(uuid_str.chars().filter(|&c| c == '-').count(), 4, "UUID v7 should have 4 hyphens");
+        assert_eq!(
+            uuid_str.chars().filter(|&c| c == '-').count(),
+            4,
+            "UUID v7 should have 4 hyphens"
+        );
 
         // Check version bit (7th character should be '7')
         let parts: Vec<&str> = uuid_str.split('-').collect();
         assert_eq!(parts.len(), 5, "UUID v7 should have 5 segments");
-        assert!(parts[2].starts_with('7'), "Third segment should start with '7' for version 7");
+        assert!(
+            parts[2].starts_with('7'),
+            "Third segment should start with '7' for version 7"
+        );
     }
 
     #[test]
@@ -756,7 +773,10 @@ mod extended_function_tests {
 
         // Only the random parts should be deterministic with same seed
         // The timestamp part will be the same since calls are close together
-        assert_eq!(uuid1, uuid2, "UUID v7 with same seed should be deterministic");
+        assert_eq!(
+            uuid1, uuid2,
+            "UUID v7 with same seed should be deterministic"
+        );
     }
 
     #[test]
@@ -854,7 +874,10 @@ mod extended_function_tests {
         let ulid2 = result2.as_str().expect("Result should be string");
 
         // Later timestamp should sort after earlier timestamp
-        assert!(ulid2 >= ulid1, "Later ULID should be >= earlier ULID (lexicographic ordering)");
+        assert!(
+            ulid2 >= ulid1,
+            "Later ULID should be >= earlier ULID (lexicographic ordering)"
+        );
     }
 
     // ========================================
@@ -883,7 +906,11 @@ mod extended_function_tests {
         assert_eq!(parts[3].len(), 2, "Flags should be 2 hex chars");
 
         // All hex characters
-        for c in parts[1].chars().chain(parts[2].chars()).chain(parts[3].chars()) {
+        for c in parts[1]
+            .chars()
+            .chain(parts[2].chars())
+            .chain(parts[3].chars())
+        {
             assert!(c.is_ascii_hexdigit(), "Should be hex digit: {}", c);
         }
     }
@@ -902,7 +929,10 @@ mod extended_function_tests {
 
         // Assert
         let traceparent = result.as_str().expect("Result should be string");
-        assert!(traceparent.contains(&custom_trace), "Should contain custom trace ID");
+        assert!(
+            traceparent.contains(&custom_trace),
+            "Should contain custom trace ID"
+        );
     }
 
     #[test]
@@ -921,7 +951,10 @@ mod extended_function_tests {
         let result2 = function.call(&args2).expect("traceparent should succeed");
 
         // Assert
-        assert_eq!(result1, result2, "Traceparent with same seed should be deterministic");
+        assert_eq!(
+            result1, result2,
+            "Traceparent with same seed should be deterministic"
+        );
     }
 
     // ========================================
@@ -944,7 +977,10 @@ mod extended_function_tests {
 
         // Assert
         let baggage = result.as_str().expect("Result should be string");
-        assert_eq!(baggage, "user_id=12345", "Should encode single key-value pair");
+        assert_eq!(
+            baggage, "user_id=12345",
+            "Should encode single key-value pair"
+        );
     }
 
     #[test]
@@ -954,7 +990,10 @@ mod extended_function_tests {
         let function = BaggageFunction;
         let mut map = serde_json::Map::new();
         map.insert("user_id".to_string(), Value::String("12345".to_string()));
-        map.insert("session_id".to_string(), Value::String("abc-def".to_string()));
+        map.insert(
+            "session_id".to_string(),
+            Value::String("abc-def".to_string()),
+        );
         map.insert("env".to_string(), Value::String("prod".to_string()));
 
         let mut args = HashMap::new();
@@ -968,11 +1007,18 @@ mod extended_function_tests {
 
         // Should contain all three pairs (order may vary due to HashMap)
         assert!(baggage.contains("user_id=12345"), "Should contain user_id");
-        assert!(baggage.contains("session_id=abc-def"), "Should contain session_id");
+        assert!(
+            baggage.contains("session_id=abc-def"),
+            "Should contain session_id"
+        );
         assert!(baggage.contains("env=prod"), "Should contain env");
 
         // Should have comma separators
-        assert_eq!(baggage.matches(',').count(), 2, "Should have 2 commas for 3 pairs");
+        assert_eq!(
+            baggage.matches(',').count(),
+            2,
+            "Should have 2 commas for 3 pairs"
+        );
     }
 
     #[test]
@@ -987,7 +1033,10 @@ mod extended_function_tests {
 
         // Assert
         assert!(result.is_err(), "Should error without map parameter");
-        assert!(result.unwrap_err().to_string().contains("map"), "Error should mention 'map'");
+        assert!(
+            result.unwrap_err().to_string().contains("map"),
+            "Error should mention 'map'"
+        );
     }
 
     // ========================================
@@ -1044,7 +1093,10 @@ mod extended_function_tests {
         let result2 = function.call(&args2).expect("pick should succeed");
 
         // Assert
-        assert_eq!(result1, result2, "Pick with same seed should be deterministic");
+        assert_eq!(
+            result1, result2,
+            "Pick with same seed should be deterministic"
+        );
     }
 
     #[test]
@@ -1060,7 +1112,10 @@ mod extended_function_tests {
 
         // Assert
         assert!(result.is_err(), "Should error on empty list");
-        assert!(result.unwrap_err().to_string().contains("non-empty"), "Error should mention non-empty");
+        assert!(
+            result.unwrap_err().to_string().contains("non-empty"),
+            "Error should mention non-empty"
+        );
     }
 
     // ========================================
@@ -1073,8 +1128,14 @@ mod extended_function_tests {
         // Arrange
         let function = WeightedFunction;
         let pairs = vec![
-            Value::Array(vec![Value::String("A".to_string()), Value::Number(serde_json::Number::from_f64(0.8).unwrap())]),
-            Value::Array(vec![Value::String("B".to_string()), Value::Number(serde_json::Number::from_f64(0.2).unwrap())]),
+            Value::Array(vec![
+                Value::String("A".to_string()),
+                Value::Number(serde_json::Number::from_f64(0.8).unwrap()),
+            ]),
+            Value::Array(vec![
+                Value::String("B".to_string()),
+                Value::Number(serde_json::Number::from_f64(0.2).unwrap()),
+            ]),
         ];
 
         let mut args = HashMap::new();
@@ -1095,8 +1156,14 @@ mod extended_function_tests {
         // Arrange
         let function = WeightedFunction;
         let pairs = vec![
-            Value::Array(vec![Value::String("X".to_string()), Value::Number(serde_json::Number::from_f64(0.5).unwrap())]),
-            Value::Array(vec![Value::String("Y".to_string()), Value::Number(serde_json::Number::from_f64(0.5).unwrap())]),
+            Value::Array(vec![
+                Value::String("X".to_string()),
+                Value::Number(serde_json::Number::from_f64(0.5).unwrap()),
+            ]),
+            Value::Array(vec![
+                Value::String("Y".to_string()),
+                Value::Number(serde_json::Number::from_f64(0.5).unwrap()),
+            ]),
         ];
 
         let mut args1 = HashMap::new();
@@ -1112,7 +1179,10 @@ mod extended_function_tests {
         let result2 = function.call(&args2).expect("weighted should succeed");
 
         // Assert
-        assert_eq!(result1, result2, "Weighted with same seed should be deterministic");
+        assert_eq!(
+            result1, result2,
+            "Weighted with same seed should be deterministic"
+        );
     }
 
     #[test]
@@ -1132,7 +1202,10 @@ mod extended_function_tests {
 
         // Assert
         assert!(result.is_err(), "Should error on invalid pairs");
-        assert!(result.unwrap_err().to_string().contains("2 elements"), "Error should mention 2 elements");
+        assert!(
+            result.unwrap_err().to_string().contains("2 elements"),
+            "Error should mention 2 elements"
+        );
     }
 
     // ========================================
@@ -1194,7 +1267,10 @@ mod extended_function_tests {
         let result2 = function.call(&args2).expect("shuffle should succeed");
 
         // Assert
-        assert_eq!(result1, result2, "Shuffle with same seed should be deterministic");
+        assert_eq!(
+            result1, result2,
+            "Shuffle with same seed should be deterministic"
+        );
     }
 
     #[test]
@@ -1225,7 +1301,10 @@ mod extended_function_tests {
 
         // With 8 elements and a fixed seed, very unlikely to be in same order
         let is_different = list.iter().zip(shuffled.iter()).any(|(a, b)| a != b);
-        assert!(is_different, "Shuffle should change order (statistically very likely with 8 elements)");
+        assert!(
+            is_different,
+            "Shuffle should change order (statistically very likely with 8 elements)"
+        );
     }
 
     // ========================================
@@ -1259,7 +1338,10 @@ mod extended_function_tests {
 
         // All sampled elements should be from original list
         for item in sample {
-            assert!(list.contains(item), "Sampled element should be from original list");
+            assert!(
+                list.contains(item),
+                "Sampled element should be from original list"
+            );
         }
     }
 
@@ -1290,7 +1372,10 @@ mod extended_function_tests {
         let result2 = function.call(&args2).expect("sample should succeed");
 
         // Assert
-        assert_eq!(result1, result2, "Sample with same seed should be deterministic");
+        assert_eq!(
+            result1, result2,
+            "Sample with same seed should be deterministic"
+        );
     }
 
     #[test]
@@ -1298,10 +1383,7 @@ mod extended_function_tests {
     fn test_sample_errors_when_k_exceeds_list_size() {
         // Arrange
         let function = SampleFunction;
-        let list = vec![
-            Value::Number(1.into()),
-            Value::Number(2.into()),
-        ];
+        let list = vec![Value::Number(1.into()), Value::Number(2.into())];
 
         let mut args = HashMap::new();
         args.insert("list".to_string(), Value::Array(list));
@@ -1313,6 +1395,9 @@ mod extended_function_tests {
         // Assert
         assert!(result.is_err(), "Should error when k > list size");
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("cannot be larger"), "Error should mention size constraint");
+        assert!(
+            err_msg.contains("cannot be larger"),
+            "Error should mention size constraint"
+        );
     }
 }

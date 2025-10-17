@@ -18,11 +18,11 @@
 //! 4. **Hermetic Isolation**: No state leakage
 //! 5. **Determinism**: 5-iteration hash verification
 
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
-use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
 
 const ITERATIONS: usize = 5;
 const TEST_DIR: &str = "tests/v1.0.1_release";
@@ -114,7 +114,10 @@ fn run_toml_test(test_file: &str) -> Result<TestResult, Box<dyn std::error::Erro
 }
 
 /// Parse test output and extract normalized spans
-fn parse_test_output(_output: &str, scenario: &str) -> Result<TestResult, Box<dyn std::error::Error>> {
+fn parse_test_output(
+    _output: &str,
+    scenario: &str,
+) -> Result<TestResult, Box<dyn std::error::Error>> {
     // For now, create a placeholder implementation
     // In production, this would parse OTEL span data from JSON output
 
@@ -134,9 +137,7 @@ fn parse_test_output(_output: &str, scenario: &str) -> Result<TestResult, Box<dy
             name: "clnrm.step:hello_world".to_string(),
             kind: "internal".to_string(),
             parent: Some("clnrm.run".to_string()),
-            attributes: HashMap::from([
-                ("step.name".to_string(), "hello_world".to_string()),
-            ]),
+            attributes: HashMap::from([("step.name".to_string(), "hello_world".to_string())]),
             events: vec![
                 "container.start".to_string(),
                 "container.exec".to_string(),
@@ -158,31 +159,34 @@ fn normalize_spans(result: &TestResult) -> Vec<NormalizedSpan> {
     // Fields to exclude for determinism:
     // - timestamp, span_id, trace_id, container_id, uuid, duration_ns
 
-    result.spans.iter().map(|span| {
-        let mut normalized = span.clone();
+    result
+        .spans
+        .iter()
+        .map(|span| {
+            let mut normalized = span.clone();
 
-        // Remove non-deterministic attributes
-        normalized.attributes.retain(|k, _| {
-            !k.contains("timestamp") &&
-            !k.contains("span_id") &&
-            !k.contains("trace_id") &&
-            !k.contains("container_id") &&
-            !k.contains("uuid") &&
-            !k.contains("duration")
-        });
+            // Remove non-deterministic attributes
+            normalized.attributes.retain(|k, _| {
+                !k.contains("timestamp")
+                    && !k.contains("span_id")
+                    && !k.contains("trace_id")
+                    && !k.contains("container_id")
+                    && !k.contains("uuid")
+                    && !k.contains("duration")
+            });
 
-        // Sort attributes for consistent ordering
-        let sorted_attrs: HashMap<_, _> = normalized.attributes.into_iter().collect();
-        normalized.attributes = sorted_attrs;
+            // Sort attributes for consistent ordering
+            let sorted_attrs: HashMap<_, _> = normalized.attributes.into_iter().collect();
+            normalized.attributes = sorted_attrs;
 
-        normalized
-    }).collect()
+            normalized
+        })
+        .collect()
 }
 
 /// Calculate SHA-256 hash of normalized spans
 fn calculate_hash(spans: &[NormalizedSpan]) -> String {
-    let serialized = serde_json::to_string(spans)
-        .expect("Failed to serialize spans");
+    let serialized = serde_json::to_string(spans).expect("Failed to serialize spans");
 
     let mut hasher = Sha256::new();
     hasher.update(serialized.as_bytes());
@@ -202,7 +206,9 @@ async fn cleanup_test_containers() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Run determinism validation for a scenario
-async fn validate_determinism(test_file: &str) -> Result<DeterminismResult, Box<dyn std::error::Error>> {
+async fn validate_determinism(
+    test_file: &str,
+) -> Result<DeterminismResult, Box<dyn std::error::Error>> {
     let mut hashes = Vec::new();
 
     for i in 0..ITERATIONS {
@@ -254,9 +260,11 @@ async fn test_scenario_01_minimal_is_deterministic() -> Result<(), Box<dyn std::
         println!("  Hash {}: {}", i + 1, hash);
     }
 
-    assert!(result.is_deterministic,
+    assert!(
+        result.is_deterministic,
         "Scenario 01 must be deterministic across {} runs. Hashes: {:?}",
-        ITERATIONS, result.hashes);
+        ITERATIONS, result.hashes
+    );
 
     Ok(())
 }
@@ -274,7 +282,9 @@ async fn test_scenario_02_full_surface_validation() -> Result<(), Box<dyn std::e
     assert!(result.spans.len() >= 2, "Must have at least 2 spans");
 
     // Validate root span exists with pass result
-    let root_span = result.spans.iter()
+    let root_span = result
+        .spans
+        .iter()
         .find(|s| s.name == "clnrm.run")
         .expect("Root span 'clnrm.run' must exist");
 
@@ -310,18 +320,22 @@ async fn test_scenario_04_hermetic_isolation() -> Result<(), Box<dyn std::error:
 
     // Verify each run is independent (no state leakage)
     for (i, result) in results.iter().enumerate() {
-        let root_span = result.spans.iter()
+        let root_span = result
+            .spans
+            .iter()
             .find(|s| s.name == "clnrm.run")
             .expect("Root span must exist");
 
         // Verify no state leakage attributes
         assert!(
             !root_span.attributes.contains_key("cache.hit"),
-            "Run {} should not have cache hits (state leakage)", i + 1
+            "Run {} should not have cache hits (state leakage)",
+            i + 1
         );
         assert!(
             !root_span.attributes.contains_key("previous_run"),
-            "Run {} should not reference previous runs", i + 1
+            "Run {} should not reference previous runs",
+            i + 1
         );
     }
 
@@ -397,7 +411,11 @@ async fn test_full_release_confidence_suite() -> Result<(), Box<dyn std::error::
     println!("╚═══════════════════════════════════════════════════════════════╝");
     println!("\nVersion: v1.0.1");
     println!("Scenarios Tested: {}", scenario_results.len());
-    println!("Scenarios Passed: {}/{}", passed_count, scenario_results.len());
+    println!(
+        "Scenarios Passed: {}/{}",
+        passed_count,
+        scenario_results.len()
+    );
     println!("Confidence: {:.1}%", total_confidence);
     println!("\n{}", recommendation);
 
@@ -431,20 +449,18 @@ mod span_normalization_tests {
     #[test]
     fn test_normalize_spans_removes_non_deterministic_fields() {
         let test_result = TestResult {
-            spans: vec![
-                NormalizedSpan {
-                    name: "test.span".to_string(),
-                    kind: "internal".to_string(),
-                    parent: None,
-                    attributes: HashMap::from([
-                        ("deterministic".to_string(), "value".to_string()),
-                        ("timestamp".to_string(), "2025-01-01T00:00:00Z".to_string()),
-                        ("span_id".to_string(), "abc123".to_string()),
-                    ]),
-                    events: vec![],
-                    status: "OK".to_string(),
-                },
-            ],
+            spans: vec![NormalizedSpan {
+                name: "test.span".to_string(),
+                kind: "internal".to_string(),
+                parent: None,
+                attributes: HashMap::from([
+                    ("deterministic".to_string(), "value".to_string()),
+                    ("timestamp".to_string(), "2025-01-01T00:00:00Z".to_string()),
+                    ("span_id".to_string(), "abc123".to_string()),
+                ]),
+                events: vec![],
+                status: "OK".to_string(),
+            }],
             scenario: "test".to_string(),
             iteration: None,
         };
@@ -459,18 +475,14 @@ mod span_normalization_tests {
 
     #[test]
     fn test_calculate_hash_is_deterministic() {
-        let spans = vec![
-            NormalizedSpan {
-                name: "test.span".to_string(),
-                kind: "internal".to_string(),
-                parent: None,
-                attributes: HashMap::from([
-                    ("key".to_string(), "value".to_string()),
-                ]),
-                events: vec![],
-                status: "OK".to_string(),
-            },
-        ];
+        let spans = vec![NormalizedSpan {
+            name: "test.span".to_string(),
+            kind: "internal".to_string(),
+            parent: None,
+            attributes: HashMap::from([("key".to_string(), "value".to_string())]),
+            events: vec![],
+            status: "OK".to_string(),
+        }];
 
         let hash1 = calculate_hash(&spans);
         let hash2 = calculate_hash(&spans);

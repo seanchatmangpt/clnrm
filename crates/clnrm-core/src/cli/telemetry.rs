@@ -8,7 +8,7 @@ use crate::{
     telemetry::{init_otel, OtelConfig, OtelGuard},
 };
 use std::env;
-use tracing::{Level, span};
+use tracing::{span, Level};
 
 /// CLI-specific telemetry configuration
 /// Secure by design - no hardcoded secrets or environment variables
@@ -118,14 +118,14 @@ impl CliTelemetry {
                     None => "http://localhost:4318",
                 };
                 Export::OtlpHttp { endpoint }
-            },
+            }
             ExportFormat::OtlpGrpc => {
                 let endpoint = match &config.export_endpoint {
                     Some(ep) => Box::leak(ep.clone().into_boxed_str()) as &'static str,
                     None => "http://localhost:4317",
                 };
                 Export::OtlpGrpc { endpoint }
-            },
+            }
             ExportFormat::Stdout => Export::Stdout,
             ExportFormat::StdoutNdjson => Export::StdoutNdjson,
         };
@@ -135,7 +135,8 @@ impl CliTelemetry {
 
         // Convert String to &'static str by leaking (acceptable for telemetry config that lives for program lifetime)
         let service_name: &'static str = Box::leak(config.service_name.clone().into_boxed_str());
-        let deployment_env: &'static str = Box::leak(config.deployment_env.clone().into_boxed_str());
+        let deployment_env: &'static str =
+            Box::leak(config.deployment_env.clone().into_boxed_str());
 
         Ok(OtelConfig {
             service_name,
@@ -156,7 +157,8 @@ impl CliTelemetry {
         // Format: OTEL_EXPORTER_OTLP_HEADERS_key=value
         for (key, value) in env::vars() {
             if key.starts_with("OTEL_EXPORTER_OTLP_HEADERS_") {
-                let header_key = key.strip_prefix("OTEL_EXPORTER_OTLP_HEADERS_")
+                let header_key = key
+                    .strip_prefix("OTEL_EXPORTER_OTLP_HEADERS_")
                     .ok_or_else(|| CleanroomError::internal_error("Invalid header key format"))?
                     .to_lowercase();
 
@@ -167,7 +169,11 @@ impl CliTelemetry {
             }
         }
 
-        Ok(if headers.is_empty() { None } else { Some(headers) })
+        Ok(if headers.is_empty() {
+            None
+        } else {
+            Some(headers)
+        })
     }
 
     /// Validate header key for security (static version)
@@ -214,22 +220,26 @@ impl CliOtelConfig {
     /// Load configuration from environment variables
     pub fn from_env() -> Result<Self> {
         Ok(Self {
-            service_name: env::var("OTEL_SERVICE_NAME")
-                .unwrap_or_else(|_| "clnrm-cli".to_string()),
+            service_name: env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "clnrm-cli".to_string()),
             service_version: env!("CARGO_PKG_VERSION").to_string(),
             deployment_env: env::var("OTEL_DEPLOYMENT_ENV")
                 .unwrap_or_else(|_| "development".to_string()),
             sample_ratio: env::var("OTEL_SAMPLE_RATIO")
                 .unwrap_or_else(|_| "1.0".to_string())
                 .parse()
-                .map_err(|e| CleanroomError::internal_error(format!("Invalid sample ratio: {}", e)))?,
+                .map_err(|e| {
+                    CleanroomError::internal_error(format!("Invalid sample ratio: {}", e))
+                })?,
             export_endpoint: env::var("OTEL_EXPORTER_OTLP_ENDPOINT").ok(),
-            export_format: Self::parse_export_format(&env::var("OTEL_EXPORT_FORMAT")
-                .unwrap_or_else(|_| "stdout".to_string()))?,
+            export_format: Self::parse_export_format(
+                &env::var("OTEL_EXPORT_FORMAT").unwrap_or_else(|_| "stdout".to_string()),
+            )?,
             enable_console_output: env::var("OTEL_ENABLE_CONSOLE")
                 .unwrap_or_else(|_| "true".to_string())
                 .parse()
-                .map_err(|e| CleanroomError::internal_error(format!("Invalid console setting: {}", e)))?,
+                .map_err(|e| {
+                    CleanroomError::internal_error(format!("Invalid console setting: {}", e))
+                })?,
         })
     }
 
@@ -240,7 +250,10 @@ impl CliOtelConfig {
             "otlp-grpc" | "otlp_grpc" => Ok(ExportFormat::OtlpGrpc),
             "stdout" => Ok(ExportFormat::Stdout),
             "ndjson" => Ok(ExportFormat::StdoutNdjson),
-            _ => Err(CleanroomError::internal_error(format!("Unknown export format: {}", format))),
+            _ => Err(CleanroomError::internal_error(format!(
+                "Unknown export format: {}",
+                format
+            ))),
         }
     }
 }
@@ -270,9 +283,18 @@ mod tests {
 
     #[test]
     fn test_export_format_parsing() -> Result<()> {
-        assert!(matches!(CliOtelConfig::parse_export_format("stdout")?, ExportFormat::Stdout));
-        assert!(matches!(CliOtelConfig::parse_export_format("OTLP-HTTP")?, ExportFormat::OtlpHttp));
-        assert!(matches!(CliOtelConfig::parse_export_format("otlp-grpc")?, ExportFormat::OtlpGrpc));
+        assert!(matches!(
+            CliOtelConfig::parse_export_format("stdout")?,
+            ExportFormat::Stdout
+        ));
+        assert!(matches!(
+            CliOtelConfig::parse_export_format("OTLP-HTTP")?,
+            ExportFormat::OtlpHttp
+        ));
+        assert!(matches!(
+            CliOtelConfig::parse_export_format("otlp-grpc")?,
+            ExportFormat::OtlpGrpc
+        ));
         Ok(())
     }
 
@@ -310,4 +332,3 @@ mod tests {
         Ok(())
     }
 }
-

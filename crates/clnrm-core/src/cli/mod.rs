@@ -8,9 +8,9 @@
 #![allow(hidden_glob_reexports)]
 
 pub mod commands;
+pub mod telemetry;
 pub mod types;
 pub mod utils;
-pub mod telemetry;
 
 use crate::error::Result;
 use clap::Parser;
@@ -18,9 +18,9 @@ use std::path::PathBuf;
 use tracing::error;
 
 // Import utilities - using explicit paths to avoid shadowing pub use exports
+use self::commands::run::run_tests_with_shard_and_report;
 use self::types::{Cli, Commands};
 use self::utils::setup_logging;
-use self::commands::run::run_tests_with_shard_and_report;
 
 // Import all command functions - using self:: to avoid shadowing pub use exports
 use self::commands::health::system_health_check;

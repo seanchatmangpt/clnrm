@@ -371,7 +371,8 @@ mod tests {
         fs::write(
             &input_file,
             serde_json::to_string_pretty(&mock_results).unwrap(),
-        ).map_err(|e| {
+        )
+        .map_err(|e| {
             CleanroomError::internal_error("Failed to write mock data").with_source(e.to_string())
         })?;
 
@@ -417,21 +418,20 @@ mod tests {
             passed_tests: 1,
             failed_tests: 0,
             total_duration_ms: 100,
-            test_results: vec![
-                TestResult {
-                    name: "Mock Test".to_string(),
-                    passed: true,
-                    duration_ms: 100,
-                    error: None,
-                },
-            ],
+            test_results: vec![TestResult {
+                name: "Mock Test".to_string(),
+                passed: true,
+                duration_ms: 100,
+                error: None,
+            }],
         };
 
         // Write mock results to file
         fs::write(
             &input_file,
             serde_json::to_string_pretty(&mock_results).unwrap(),
-        ).map_err(|e| {
+        )
+        .map_err(|e| {
             CleanroomError::internal_error("Failed to write mock data").with_source(e.to_string())
         })?;
 

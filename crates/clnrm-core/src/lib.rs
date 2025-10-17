@@ -13,6 +13,7 @@ pub mod cache;
 pub mod cleanroom;
 pub mod cli;
 pub mod config;
+pub mod coverage;
 pub mod determinism;
 pub mod error;
 pub mod formatting;
@@ -66,6 +67,15 @@ pub use template::{TemplateContext, TemplateRenderer};
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
 pub use validation::{PrdExpectations, ShapeValidator, ValidationReport};
 pub use watch::{debouncer::FileDebouncer, WatchConfig};
+
+// Coverage tracking and reporting
+pub use coverage::manifest::{BehaviorManifest, Dimensions, SystemInfo};
+pub use coverage::report::{ReportFormat, ReportGenerator};
+pub use coverage::tracker::CoverageTracker;
+pub use coverage::{
+    BehaviorCoverage, BehaviorCoverageReport, DimensionCoverage, DimensionWeights, StateTransition,
+    UncoveredBehaviors,
+};
 
 // The cleanroom_test macro is already exported via #[macro_export] in macros.rs
 

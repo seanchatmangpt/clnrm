@@ -1153,12 +1153,12 @@ pub fn trace_assertion_from_toml(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
     use opentelemetry::{
         global,
         trace::{Span, TraceContextExt, Tracer},
         Context, KeyValue,
     };
+    use serial_test::serial;
 
     #[tokio::test(flavor = "multi_thread")]
     #[serial]

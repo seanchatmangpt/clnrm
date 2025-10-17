@@ -1,0 +1,259 @@
+# Behavior Manifest for clnrm Testing Framework
+# This file defines the complete inventory of system behaviors that should be tested
+
+[system]
+name = "clnrm"
+version = "1.0.1"
+description = "Hermetic integration testing framework with OpenTelemetry support"
+
+# Optional custom weights (must sum to 1.0)
+# If omitted, defaults are used: API=0.20, State=0.20, Errors=0.15, Flows=0.20, Integrations=0.15, Spans=0.10
+[weights]
+api_surface = 0.20
+state_transitions = 0.20
+error_scenarios = 0.15
+data_flows = 0.20
+integrations = 0.15
+span_coverage = 0.10
+
+# API Surface Dimension - All CLI commands and their variants
+[dimensions.api_surface]
+endpoints = [
+    "clnrm run",
+    "clnrm run --parallel",
+    "clnrm run --shard 0/2",
+    "clnrm run --digest",
+    "clnrm init",
+    "clnrm init --force",
+    "clnrm validate",
+    "clnrm self-test",
+    "clnrm self-test --suite otel",
+    "clnrm self-test --otel-exporter stdout",
+    "clnrm health",
+    "clnrm report --format html",
+    "clnrm report --format json",
+    "clnrm template otel",
+    "clnrm template matrix",
+    "clnrm plugins",
+    "clnrm services status",
+    "clnrm dev",
+    "clnrm dry-run",
+    "clnrm fmt",
+    "clnrm lint",
+    "clnrm diff",
+    "clnrm record",
+    "clnrm pull",
+    "clnrm graph",
+    "clnrm repro",
+    "clnrm red-green --expect red",
+    "clnrm red-green --expect green",
+    "clnrm render",
+    "clnrm spans",
+    "clnrm collector up",
+    "clnrm collector down",
+    "clnrm collector status",
+    "clnrm collector logs",
+    "clnrm analyze"
+]
+
+# State Transition Dimension - Container and service lifecycle states
+[[dimensions.state_transitions.entities]]
+name = "Container"
+states = ["created", "starting", "running", "stopping", "stopped", "failed"]
+[[dimensions.state_transitions.entities.transitions]]
+from = "created"
+to = "starting"
+trigger = "start_command"
+[[dimensions.state_transitions.entities.transitions]]
+from = "starting"
+to = "running"
+trigger = "ready_signal"
+[[dimensions.state_transitions.entities.transitions]]
+from = "running"
+to = "stopping"
+trigger = "stop_command"
+[[dimensions.state_transitions.entities.transitions]]
+from = "stopping"
+to = "stopped"
+trigger = "cleanup_complete"
+[[dimensions.state_transitions.entities.transitions]]
+from = "starting"
+to = "failed"
+trigger = "startup_error"
+
+[[dimensions.state_transitions.entities]]
+name = "Test"
+states = ["pending", "running", "passed", "failed", "skipped"]
+[[dimensions.state_transitions.entities.transitions]]
+from = "pending"
+to = "running"
+trigger = "test_start"
+[[dimensions.state_transitions.entities.transitions]]
+from = "running"
+to = "passed"
+trigger = "assertions_success"
+[[dimensions.state_transitions.entities.transitions]]
+from = "running"
+to = "failed"
+trigger = "assertion_failure"
+
+[[dimensions.state_transitions.entities]]
+name = "Service"
+states = ["unregistered", "registered", "starting", "healthy", "unhealthy", "stopped"]
+[[dimensions.state_transitions.entities.transitions]]
+from = "unregistered"
+to = "registered"
+trigger = "register_plugin"
+[[dimensions.state_transitions.entities.transitions]]
+from = "registered"
+to = "starting"
+trigger = "start_service"
+[[dimensions.state_transitions.entities.transitions]]
+from = "starting"
+to = "healthy"
+trigger = "health_check_pass"
+[[dimensions.state_transitions.entities.transitions]]
+from = "healthy"
+to = "unhealthy"
+trigger = "health_check_fail"
+
+# Error Scenario Dimension - All error conditions that should be tested
+[[dimensions.error_scenarios.scenarios]]
+name = "missing_docker"
+code = 1
+description = "Docker is not available or not running"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "invalid_toml"
+code = 1
+description = "Test configuration TOML is malformed"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "missing_test_file"
+code = 1
+description = "Specified test file does not exist"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "container_start_failure"
+code = 1
+description = "Container fails to start"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "command_execution_failure"
+code = 1
+description = "Command execution in container fails"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "assertion_failure"
+code = 1
+description = "Test assertion does not match expected output"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "health_check_timeout"
+code = 1
+description = "Service health check times out"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "otel_export_failure"
+code = 1
+description = "OTEL export to collector fails"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "template_rendering_error"
+code = 1
+description = "Tera template rendering fails"
+
+[[dimensions.error_scenarios.scenarios]]
+name = "digest_mismatch"
+code = 1
+description = "Test digest does not match expected value"
+
+# Data Flow Dimension - End-to-end workflows through the system
+[[dimensions.data_flows.flows]]
+name = "simple_test_execution"
+steps = ["parse_toml", "create_container", "execute_command", "validate_output", "cleanup"]
+description = "Basic test execution without services"
+
+[[dimensions.data_flows.flows]]
+name = "service_lifecycle"
+steps = ["register_service", "start_service", "health_check", "execute_test", "stop_service"]
+description = "Full service lifecycle with health monitoring"
+
+[[dimensions.data_flows.flows]]
+name = "otel_tracing"
+steps = ["init_otel", "create_spans", "record_events", "export_traces", "validate_spans"]
+description = "OpenTelemetry tracing from initialization to validation"
+
+[[dimensions.data_flows.flows]]
+name = "parallel_execution"
+steps = ["parse_tests", "shard_distribution", "parallel_run", "aggregate_results", "generate_report"]
+description = "Parallel test execution with sharding"
+
+[[dimensions.data_flows.flows]]
+name = "deterministic_testing"
+steps = ["freeze_time", "seed_rng", "run_test", "calculate_hash", "compare_iterations"]
+description = "Deterministic test execution with 5-iteration validation"
+
+[[dimensions.data_flows.flows]]
+name = "template_generation"
+steps = ["parse_template", "inject_variables", "render_output", "validate_toml", "write_file"]
+description = "Tera template rendering and validation"
+
+[[dimensions.data_flows.flows]]
+name = "coverage_tracking"
+steps = ["load_manifest", "execute_tests", "track_coverage", "calculate_metrics", "generate_report"]
+description = "Behavior coverage tracking and reporting"
+
+# Integration Points Dimension - External dependencies
+[[dimensions.integrations.services]]
+name = "docker"
+operations = ["pull_image", "create_container", "start_container", "exec_command", "stop_container", "remove_container"]
+service_type = "container_runtime"
+
+[[dimensions.integrations.services]]
+name = "testcontainers"
+operations = ["create_generic", "create_image", "run_cmd", "cleanup"]
+service_type = "library"
+
+[[dimensions.integrations.services]]
+name = "postgres"
+operations = ["connect", "query", "execute", "disconnect"]
+service_type = "database"
+
+[[dimensions.integrations.services]]
+name = "redis"
+operations = ["get", "set", "delete", "expire"]
+service_type = "cache"
+
+[[dimensions.integrations.services]]
+name = "jaeger"
+operations = ["export_spans", "query_traces", "health_check"]
+service_type = "observability"
+
+[[dimensions.integrations.services]]
+name = "otel_collector"
+operations = ["http_export", "grpc_export", "stdout_export"]
+service_type = "observability"
+
+# Span Coverage Dimension - Expected OpenTelemetry spans
+[dimensions.span_coverage]
+expected_spans = [
+    "clnrm.run",
+    "clnrm.test",
+    "clnrm.step",
+    "clnrm.service.start",
+    "clnrm.service.stop",
+    "clnrm.container.start",
+    "clnrm.container.exec",
+    "clnrm.container.stop",
+    "clnrm.command.execute",
+    "clnrm.assertion.validate",
+    "clnrm.plugin.registry",
+    "test.user_test",
+    "container.exec.alpine",
+    "service.health_check",
+    "otel.export",
+    "template.render",
+    "validation.execute",
+    "determinism.iteration"
+]

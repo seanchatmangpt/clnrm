@@ -384,7 +384,9 @@ async fn analyze_test_file(path: &std::path::PathBuf) -> Result<TestAnalysis> {
     let parallelization_potential = calculate_parallelization_potential(&test_config);
 
     Ok(TestAnalysis {
-        name: test_config.test.as_ref()
+        name: test_config
+            .test
+            .as_ref()
             .map(|t| t.metadata.name.clone())
             .unwrap_or_else(|| "unknown".to_string()),
         path: path.clone(),

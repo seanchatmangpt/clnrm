@@ -27,7 +27,9 @@ impl opentelemetry_sdk::trace::SpanExporter for SpanExporterType {
     fn export(
         &self,
         batch: Vec<opentelemetry_sdk::trace::SpanData>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = opentelemetry_sdk::error::OTelSdkResult> + Send + '_>> {
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = opentelemetry_sdk::error::OTelSdkResult> + Send + '_>,
+    > {
         match self {
             SpanExporterType::Otlp(exporter) => Box::pin(exporter.export(batch)),
             #[cfg(feature = "otel-stdout")]
@@ -63,18 +65,18 @@ impl opentelemetry_sdk::trace::SpanExporter for SpanExporterType {
 /// * `CleanroomError::InternalError` - Exporter creation failure
 pub fn create_span_exporter(config: &ExporterConfig) -> Result<SpanExporterType> {
     match config {
-        ExporterConfig::Otlp { endpoint, protocol, headers } => {
-            create_otlp_exporter(endpoint, protocol, headers)
-        }
-        ExporterConfig::Jaeger { endpoint, agent_host, agent_port } => {
-            create_jaeger_exporter(endpoint, agent_host, agent_port)
-        }
-        ExporterConfig::Zipkin { endpoint } => {
-            create_zipkin_exporter(endpoint)
-        }
-        ExporterConfig::Stdout { pretty_print } => {
-            create_stdout_exporter(*pretty_print)
-        }
+        ExporterConfig::Otlp {
+            endpoint,
+            protocol,
+            headers,
+        } => create_otlp_exporter(endpoint, protocol, headers),
+        ExporterConfig::Jaeger {
+            endpoint,
+            agent_host,
+            agent_port,
+        } => create_jaeger_exporter(endpoint, agent_host, agent_port),
+        ExporterConfig::Zipkin { endpoint } => create_zipkin_exporter(endpoint),
+        ExporterConfig::Stdout { pretty_print } => create_stdout_exporter(*pretty_print),
     }
 }
 
@@ -97,7 +99,9 @@ fn create_otlp_exporter(
 ) -> Result<SpanExporterType> {
     // Validate endpoint URL
     if endpoint.is_empty() {
-        return Err(CleanroomError::validation_error("OTLP endpoint cannot be empty"));
+        return Err(CleanroomError::validation_error(
+            "OTLP endpoint cannot be empty",
+        ));
     }
 
     // Parse endpoint URL
@@ -106,12 +110,8 @@ fn create_otlp_exporter(
     })?;
 
     match protocol {
-        OtlpProtocol::HttpProto => {
-            create_otlp_http_exporter(&url, headers)
-        }
-        OtlpProtocol::Grpc => {
-            create_otlp_grpc_exporter(&url, headers)
-        }
+        OtlpProtocol::HttpProto => create_otlp_http_exporter(&url, headers),
+        OtlpProtocol::Grpc => create_otlp_grpc_exporter(&url, headers),
     }
 }
 
@@ -246,28 +246,51 @@ fn create_stdout_exporter(_pretty_print: bool) -> Result<SpanExporterType> {
 /// * `Result<()>` - Ok if valid, error if invalid
 pub fn validate_exporter_config(config: &ExporterConfig) -> Result<()> {
     match config {
-        ExporterConfig::Otlp { endpoint, protocol: _, headers: _ } => {
+        ExporterConfig::Otlp {
+            endpoint,
+            protocol: _,
+            headers: _,
+        } => {
             if endpoint.is_empty() {
-                return Err(CleanroomError::validation_error("OTLP endpoint cannot be empty"));
+                return Err(CleanroomError::validation_error(
+                    "OTLP endpoint cannot be empty",
+                ));
             }
             url::Url::parse(endpoint).map_err(|e| {
-                CleanroomError::validation_error(format!("Invalid OTLP endpoint URL '{}': {}", endpoint, e))
+                CleanroomError::validation_error(format!(
+                    "Invalid OTLP endpoint URL '{}': {}",
+                    endpoint, e
+                ))
             })?;
         }
-        ExporterConfig::Jaeger { endpoint, agent_host: _, agent_port: _ } => {
+        ExporterConfig::Jaeger {
+            endpoint,
+            agent_host: _,
+            agent_port: _,
+        } => {
             if endpoint.is_empty() {
-                return Err(CleanroomError::validation_error("Jaeger endpoint cannot be empty"));
+                return Err(CleanroomError::validation_error(
+                    "Jaeger endpoint cannot be empty",
+                ));
             }
             url::Url::parse(endpoint).map_err(|e| {
-                CleanroomError::validation_error(format!("Invalid Jaeger endpoint URL '{}': {}", endpoint, e))
+                CleanroomError::validation_error(format!(
+                    "Invalid Jaeger endpoint URL '{}': {}",
+                    endpoint, e
+                ))
             })?;
         }
         ExporterConfig::Zipkin { endpoint } => {
             if endpoint.is_empty() {
-                return Err(CleanroomError::validation_error("Zipkin endpoint cannot be empty"));
+                return Err(CleanroomError::validation_error(
+                    "Zipkin endpoint cannot be empty",
+                ));
             }
             url::Url::parse(endpoint).map_err(|e| {
-                CleanroomError::validation_error(format!("Invalid Zipkin endpoint URL '{}': {}", endpoint, e))
+                CleanroomError::validation_error(format!(
+                    "Invalid Zipkin endpoint URL '{}': {}",
+                    endpoint, e
+                ))
             })?;
         }
         ExporterConfig::Stdout { pretty_print: _ } => {
@@ -340,9 +363,7 @@ mod tests {
 
     #[test]
     fn test_create_stdout_exporter() -> Result<()> {
-        let config = ExporterConfig::Stdout {
-            pretty_print: true,
-        };
+        let config = ExporterConfig::Stdout { pretty_print: true };
 
         let exporter = create_span_exporter(&config)?;
         match exporter {
@@ -375,7 +396,10 @@ mod tests {
 
         let result = validate_exporter_config(&config);
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("endpoint cannot be empty"));
+        assert!(result
+            .unwrap_err()
+            .message
+            .contains("endpoint cannot be empty"));
     }
 
     #[test]
