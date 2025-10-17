@@ -293,6 +293,56 @@ The framework provides comprehensive validation across multiple dimensions:
 
 **Result:** Proven correctness with zero false positives.
 
+### **Fake-Green Detection** *(v1.0.0)*
+
+**The Problem:** Tests that report "PASS" but never actually executed code.
+
+**The Solution:** OTEL-first validation with 7 independent detection layers:
+
+```toml
+# Tests must PROVE they executed by generating telemetry
+[[expect.span]]
+name = "container.exec"
+events.any = ["container.start", "container.exec", "container.stop"]
+
+[expect.graph]
+must_include = [["test.run", "container.exec"]]
+
+[expect.counts]
+spans_total.gte = 2
+
+[expect.status]
+all = "OK"
+```
+
+**7 Detection Layers:**
+1. **Lifecycle Events** - Container operations generated events
+2. **Span Graph** - Parent-child relationships exist
+3. **Span Counts** - Expected number of operations occurred
+4. **Temporal Ordering** - Operations occurred in correct sequence
+5. **Window Containment** - Child operations within parent timeframes
+6. **Status Validation** - All operations completed successfully
+7. **Hermeticity** - Tests run in isolation without external dependencies
+
+**Analyze Traces:**
+```bash
+# Run test with OTEL
+clnrm run test.toml --otel-endpoint http://localhost:4318
+
+# Validate telemetry evidence
+clnrm analyze test.toml traces.json
+```
+
+**Result:**
+- ✅ **PASS** = Code actually executed with proof
+- ❌ **FAIL** = Fake-green test detected (no evidence)
+
+**Documentation:**
+- [User Guide](docs/FAKE_GREEN_DETECTION_USER_GUIDE.md) - How to use it
+- [Developer Guide](docs/FAKE_GREEN_DETECTION_DEV_GUIDE.md) - How to extend it
+- [TOML Schema](docs/FAKE_GREEN_TOML_SCHEMA.md) - Configuration reference
+- [CLI Reference](docs/CLI_ANALYZE_REFERENCE.md) - Command usage
+
 ## 🎯 **Real Evidence - Not Claims**
 
 ### **Container Execution Works**
