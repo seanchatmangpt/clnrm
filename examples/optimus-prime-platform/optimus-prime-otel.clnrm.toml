@@ -45,8 +45,7 @@ container_path = "/app"
 read_only = false
 
 # Expose port for testing
-[[services.optimus_prime.ports]]
-3000
+# Port configuration removed - not needed for hermetic container testing
 
 # Test Steps - Run in containers and capture traces
 
