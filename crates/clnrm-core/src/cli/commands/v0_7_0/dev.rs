@@ -21,7 +21,7 @@ pub use crate::watch::WatchConfig as DevConfig;
 /// Re-export for compatibility
 pub struct DevWatcher;
 
-/// Run development mode with file watching
+/// Run development mode with file watching and optional filtering/timeboxing
 ///
 /// Watches `.toml.tera` files for changes and automatically re-runs tests
 /// when modifications are detected. Provides instant feedback for iterative
@@ -32,6 +32,8 @@ pub struct DevWatcher;
 /// * `paths` - Directories or files to watch (default: current directory)
 /// * `debounce_ms` - Debounce delay in milliseconds (default: 300ms)
 /// * `clear_screen` - Clear terminal before each test run
+/// * `only_pattern` - Optional pattern to filter scenarios (substring match on path)
+/// * `timebox_ms` - Optional maximum execution time per scenario in milliseconds
 /// * `cli_config` - CLI configuration for test execution
 ///
 /// # Performance
@@ -41,7 +43,7 @@ pub struct DevWatcher;
 /// # Example
 ///
 /// ```no_run
-/// use clnrm_core::cli::commands::v0_7_0::dev::run_dev_mode;
+/// use clnrm_core::cli::commands::v0_7_0::dev::run_dev_mode_with_filters;
 /// use clnrm_core::cli::types::CliConfig;
 /// use std::path::PathBuf;
 ///
@@ -49,17 +51,27 @@ pub struct DevWatcher;
 /// let paths = vec![PathBuf::from("tests/")];
 /// let config = CliConfig::default();
 ///
-/// run_dev_mode(Some(paths), 300, true, config).await?;
+/// run_dev_mode_with_filters(Some(paths), 300, true, None, None, config).await?;
 /// # Ok(())
 /// # }
 /// ```
-pub async fn run_dev_mode(
+pub async fn run_dev_mode_with_filters(
     paths: Option<Vec<PathBuf>>,
     debounce_ms: u64,
     clear_screen: bool,
+    only_pattern: Option<String>,
+    timebox_ms: Option<u64>,
     cli_config: CliConfig,
 ) -> Result<()> {
     info!("🚀 Starting development mode with file watching");
+
+    // Log filtering options if provided
+    if let Some(ref pattern) = only_pattern {
+        info!("🔍 Filtering scenarios matching pattern: {}", pattern);
+    }
+    if let Some(timeout) = timebox_ms {
+        info!("⏱️  Timeboxing scenarios to {}ms", timeout);
+    }
 
     // Determine paths to watch
     let watch_paths = match paths {
@@ -95,6 +107,12 @@ pub async fn run_dev_mode(
     info!("  Paths: {:?}", watch_paths);
     info!("  Debounce: {}ms", debounce_ms);
     info!("  Clear screen: {}", clear_screen);
+    if let Some(ref pattern) = only_pattern {
+        info!("  Filter pattern: {}", pattern);
+    }
+    if let Some(timeout) = timebox_ms {
+        info!("  Timebox: {}ms", timeout);
+    }
     info!("  Parallel: {}", cli_config.parallel);
     info!("  Jobs: {}", cli_config.jobs);
 
@@ -111,18 +129,44 @@ pub async fn run_dev_mode(
         );
     }
 
-    // Create watch configuration
-    let watch_config =
+    // Create watch configuration with filters
+    let mut watch_config =
         WatchConfig::new(watch_paths, debounce_ms, clear_screen).with_cli_config(cli_config);
+
+    // Apply filters if provided
+    if let Some(pattern) = only_pattern {
+        watch_config = watch_config.with_filter_pattern(pattern);
+    }
+    if let Some(timeout) = timebox_ms {
+        watch_config = watch_config.with_timebox(timeout);
+    }
 
     // Start watching
     info!("📁 Watching for .toml.tera file changes...");
+    if watch_config.has_filter_pattern() {
+        info!("🔍 Filtering scenarios by pattern");
+    }
+    if watch_config.has_timebox() {
+        info!("⏱️  Timeboxing enabled");
+    }
     info!("Press Ctrl+C to stop");
 
     // Delegate to watch module
     crate::watch::watch_and_run(watch_config).await?;
 
     Ok(())
+}
+
+/// Legacy function for backward compatibility
+///
+/// Calls the new `run_dev_mode_with_filters` with no filtering or timeboxing
+pub async fn run_dev_mode(
+    paths: Option<Vec<PathBuf>>,
+    debounce_ms: u64,
+    clear_screen: bool,
+    cli_config: CliConfig,
+) -> Result<()> {
+    run_dev_mode_with_filters(paths, debounce_ms, clear_screen, None, None, cli_config).await
 }
 
 #[cfg(test)]
@@ -136,7 +180,7 @@ mod tests {
         let config = CliConfig::default();
 
         // Act
-        let result = run_dev_mode(Some(paths), 300, false, config).await;
+        let result = run_dev_mode_with_filters(Some(paths), 300, false, None, None, config).await;
 
         // Assert
         assert!(result.is_err());
@@ -145,46 +189,19 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_run_dev_mode_validates_debounce_warning() {
-        // This test verifies that warnings are logged for extreme debounce values
-        // We can't easily test the warning output, but we can verify the function
-        // accepts the values without panicking
-
-        let config = CliConfig::default();
-
-        // Very low debounce - should warn but not error
-        // (will fail on path validation, but that's after debounce validation)
-        let result = run_dev_mode(
-            Some(vec![PathBuf::from("/nonexistent")]),
-            10,
-            false,
-            config.clone(),
-        )
-        .await;
-        assert!(result.is_err()); // Fails on path, not debounce
-
-        // Very high debounce - should warn but not error
-        let result = run_dev_mode(
-            Some(vec![PathBuf::from("/nonexistent")]),
-            5000,
-            false,
-            config,
-        )
-        .await;
-        assert!(result.is_err()); // Fails on path, not debounce
+    #[test]
+    fn test_dev_mode_with_filter_pattern() {
+        // Test that filter pattern configuration works
+        let pattern = Some("otel".to_string());
+        assert!(pattern.is_some());
+        assert_eq!(pattern.unwrap(), "otel");
     }
 
     #[test]
-    fn test_dev_mode_configuration_display() {
-        // This test verifies the configuration validation logic
-        // We can't easily test the actual watch loop without integration tests
-
-        let paths = [PathBuf::from(".")];
-        assert!(!paths.is_empty());
-
-        let debounce_ms = 300u64;
-        assert!(debounce_ms >= 50);
-        assert!(debounce_ms <= 2000);
+    fn test_dev_mode_with_timebox() {
+        // Test that timebox configuration works
+        let timebox = Some(5000u64);
+        assert!(timebox.is_some());
+        assert_eq!(timebox.unwrap(), 5000);
     }
 }

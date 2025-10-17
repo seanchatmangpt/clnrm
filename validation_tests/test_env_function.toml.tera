@@ -1,0 +1,4 @@
+[meta]
+name="test"
+home="{{ env(name=\"HOME\") }}"
+user="{{ env(name=\"USER\") }}"

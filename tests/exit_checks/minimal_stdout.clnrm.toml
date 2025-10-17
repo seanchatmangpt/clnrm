@@ -1,0 +1,22 @@
+# Exit Check 1: Minimal Template with stdout OTEL exporter
+# Tests: [test.metadata], [otel], [services], [[steps]]
+
+[test.metadata]
+name = "minimal_exit_check_stdout"
+description = "Minimal template for exit check validation - stdout exporter"
+timeout = "60s"
+
+[otel]
+enabled = true
+exporter = "stdout"
+service_name = "exit-check-minimal-stdout"
+
+[services.echo]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[[steps]]
+name = "simple_echo_test"
+command = ["echo", "Hello Exit Check"]
+expected_output_regex = "Hello Exit Check"

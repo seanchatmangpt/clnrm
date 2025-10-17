@@ -1,0 +1,4 @@
+[meta]
+name="test"
+{% set home_val = env(name="HOME") %}
+home="{{ home_val }}"

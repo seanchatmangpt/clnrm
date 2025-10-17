@@ -1,0 +1,29 @@
+# Exit Check 2: Template with [vars] block
+# Tests: [vars] rendering, sorting, and runtime behavior
+
+[test.metadata]
+description = "Tests [vars] block behavior for exit check validation"
+name = "vars_exit_check"
+timeout = "60s"
+
+[vars]
+alpha_var = "should_be_sorted_first"
+command_text = "Hello Vars Test"
+image_name = "alpine:latest"
+middle_var = "should_be_sorted_middle"
+zulu_var = "should_be_sorted_last"
+
+[otel]
+enabled = true
+exporter = "stdout"
+service_name = "exit-check-vars-test"
+
+[services.echo]
+image = "{{ image_name }}"
+plugin = "generic_container"
+type = "generic_container"
+
+[[steps]]
+name = "test_var_substitution"
+command = ["echo", "{{ command_text }}"]
+expected_output_regex = "Hello Vars Test"

@@ -1,14 +1,14 @@
-# Cleanroom v1.0 Features - Implementation Guide
+# Cleanroom v0.7.0 to v1.0 Migration Guide
 
 ## 🎯 Overview
 
-**✅ IMPLEMENTED** in v0.7.0+ - Cleanroom v1.0 introduces a **simplified templating architecture** with **no-prefix variables** and **Rust-first variable resolution**. These features are available in v0.7.0+ with clean `{{ variable }}` syntax.
+Cleanroom v1.0 introduces a **simplified templating architecture** with **no-prefix variables** and **Rust-first variable resolution**. This guide helps migrate from v0.7.0's `vars.*` prefix model to v1.0's clean `{{ variable }}` syntax.
 
-## 🚀 Key Features (Available in v0.7.0+)
+## 🚀 Key Changes
 
 ### 1. Variable Syntax Simplification
-- **Available**: `{{ svc }}`, `{{ env }}`, `{{ endpoint }}`
-- **Legacy**: `{{ vars.svc }}`, `{{ vars.env }}`, `{{ vars.endpoint }}` (still supported)
+- **Before**: `{{ vars.svc }}`, `{{ vars.env }}`, `{{ vars.endpoint }}`
+- **After**: `{{ svc }}`, `{{ env }}`, `{{ endpoint }}`
 
 ### 2. Variable Resolution in Rust
 - Variables resolved before template rendering (not at runtime)
@@ -20,9 +20,9 @@
 - Better defaults and DX focus
 - Change-aware execution by default
 
-## 📋 Usage Guide
+## 📋 Migration Steps
 
-### Example 1: Using No-Prefix Variables
+### Step 1: Update Template Files
 
 #### Before (v0.7.0)
 ```toml
@@ -57,7 +57,7 @@ resources = {
 }
 ```
 
-### Example 2: CLI Usage
+### Step 2: Update CLI Usage
 
 #### v0.7.0 Commands
 ```bash
@@ -92,52 +92,52 @@ clnrm dry-run
 clnrm fmt
 ```
 
-### Example 3: Variable References
+### Step 3: Update Variable References
 
 #### Remove `[vars]` Tables
 The `[vars]` table is now ignored at runtime. Remove it entirely:
 
 ```toml
-# ❌ Legacy v0.6.0 (remove this section)
+# ❌ v0.7.0 (remove this section)
 [vars]
 svc = "{{ vars.svc | default(value='clnrm') }}"
 env = "{{ env(name='ENV') | default(value='ci') }}"
 
-# ✅ v0.7.0+ (no vars table needed)
+# ✅ v1.0 (no vars table needed)
 ```
 
 #### Update Variable References
 Remove all `vars.` prefixes:
 
 ```toml
-# ❌ Legacy v0.6.0
+# ❌ v0.7.0
 name = "{{ vars.svc }}_test"
 endpoint = "{{ vars.endpoint }}"
 image = "{{ vars.image | default(value='clnrm:1.0.0') }}"
 
-# ✅ v0.7.0+
+# ✅ v1.0
 name = "{{ svc }}_test"
 endpoint = "{{ endpoint }}"
 image = "{{ image }}"
 ```
 
-### Example 4: Custom Functions
+### Step 4: Update Custom Functions
 
 #### Environment Variable Access
 ```toml
-# ❌ Legacy v0.6.0
+# ❌ v0.7.0
 endpoint = "{{ env(name='OTEL_ENDPOINT') | default(value='http://localhost:4318') }}"
 
-# ✅ v0.7.0+ (resolved in Rust)
+# ✅ v1.0 (resolved in Rust)
 endpoint = "{{ endpoint }}"
 ```
 
 #### Timestamp Functions
 ```toml
-# ❌ Legacy v0.6.0
+# ❌ v0.7.0
 timestamp = "{{ now_rfc3339() }}"
 
-# ✅ v0.7.0+ (use freeze_clock variable)
+# ✅ v1.0 (use freeze_clock variable)
 timestamp = "{{ freeze_clock }}"
 ```
 

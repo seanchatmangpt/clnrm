@@ -64,6 +64,10 @@ pub enum Commands {
         /// Force run all tests (bypass cache)
         #[arg(long)]
         force: bool,
+
+        /// Shard tests for parallel execution (format: i/m where i is 1-based index, m is total shards)
+        #[arg(long, value_parser = parse_shard)]
+        shard: Option<(usize, usize)>,
     },
 
     /// Initialize a new test project
@@ -253,6 +257,14 @@ pub enum Commands {
         /// Clear screen on each run
         #[arg(long)]
         clear: bool,
+
+        /// Filter scenarios by pattern (substring match on file path)
+        #[arg(long)]
+        only: Option<String>,
+
+        /// Maximum execution time per scenario in milliseconds
+        #[arg(long)]
+        timebox: Option<u64>,
     },
 
     /// Dry-run validation without execution (v0.7.0)
@@ -701,6 +713,61 @@ pub const TOML_FILE_EXTENSION: &str = ".toml";
 pub const CLNRM_TOML_EXTENSION: &str = ".clnrm.toml";
 pub const ACCEPTED_EXTENSIONS: &[&str] = &[".toml", ".clnrm.toml"];
 
+/// Parse shard argument in format "i/m" where i is 1-based index and m is total shards
+///
+/// # Arguments
+///
+/// * `s` - String in format "i/m" (e.g., "1/4" for first shard of 4 total)
+///
+/// # Returns
+///
+/// * `Ok((i, m))` - Tuple of (shard_index, total_shards) where i is 1-based
+/// * `Err(String)` - Error message if format is invalid
+///
+/// # Examples
+///
+/// ```
+/// # use clnrm_core::cli::types::parse_shard;
+/// assert_eq!(parse_shard("1/4").unwrap(), (1, 4));
+/// assert_eq!(parse_shard("3/8").unwrap(), (3, 8));
+/// assert!(parse_shard("0/4").is_err()); // i must be >= 1
+/// assert!(parse_shard("5/4").is_err()); // i must be <= m
+/// ```
+pub fn parse_shard(s: &str) -> Result<(usize, usize), String> {
+    let parts: Vec<&str> = s.split('/').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "Invalid shard format '{}'. Expected format: i/m (e.g., 1/4)",
+            s
+        ));
+    }
+
+    let i = parts[0]
+        .parse::<usize>()
+        .map_err(|e| format!("Invalid shard index '{}': {}", parts[0], e))?;
+
+    let m = parts[1]
+        .parse::<usize>()
+        .map_err(|e| format!("Invalid total shards '{}': {}", parts[1], e))?;
+
+    if m == 0 {
+        return Err("Total shards (m) must be greater than 0".to_string());
+    }
+
+    if i == 0 {
+        return Err("Shard index (i) must be 1-based (minimum value: 1)".to_string());
+    }
+
+    if i > m {
+        return Err(format!(
+            "Shard index ({}) cannot exceed total shards ({})",
+            i, m
+        ));
+    }
+
+    Ok((i, m))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -780,5 +847,47 @@ mod tests {
         assert_eq!(ACCEPTED_EXTENSIONS.len(), 2);
         assert!(ACCEPTED_EXTENSIONS.contains(&".toml"));
         assert!(ACCEPTED_EXTENSIONS.contains(&".clnrm.toml"));
+    }
+
+    #[test]
+    fn test_parse_shard_valid_formats() {
+        // Test valid shard formats
+        assert_eq!(parse_shard("1/4").unwrap(), (1, 4));
+        assert_eq!(parse_shard("3/8").unwrap(), (3, 8));
+        assert_eq!(parse_shard("10/10").unwrap(), (10, 10));
+        assert_eq!(parse_shard("1/1").unwrap(), (1, 1));
+    }
+
+    #[test]
+    fn test_parse_shard_invalid_index_zero() {
+        // Test that shard index cannot be 0
+        let result = parse_shard("0/4");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("1-based"));
+    }
+
+    #[test]
+    fn test_parse_shard_index_exceeds_total() {
+        // Test that shard index cannot exceed total shards
+        let result = parse_shard("5/4");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("cannot exceed"));
+    }
+
+    #[test]
+    fn test_parse_shard_invalid_format() {
+        // Test invalid format strings
+        assert!(parse_shard("1-4").is_err());
+        assert!(parse_shard("1").is_err());
+        assert!(parse_shard("1/4/8").is_err());
+        assert!(parse_shard("abc/def").is_err());
+    }
+
+    #[test]
+    fn test_parse_shard_zero_total() {
+        // Test that total shards cannot be 0
+        let result = parse_shard("1/0");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("greater than 0"));
     }
 }

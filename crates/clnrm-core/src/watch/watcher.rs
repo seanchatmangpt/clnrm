@@ -58,6 +58,10 @@ pub struct WatchConfig {
     pub clear_screen: bool,
     /// CLI configuration for test execution
     pub cli_config: CliConfig,
+    /// Optional filter pattern for scenario selection (substring match on path)
+    pub filter_pattern: Option<String>,
+    /// Optional timebox limit in milliseconds per scenario
+    pub timebox_ms: Option<u64>,
 }
 
 impl WatchConfig {
@@ -87,6 +91,8 @@ impl WatchConfig {
             debounce_ms,
             clear_screen,
             cli_config: CliConfig::default(),
+            filter_pattern: None,
+            timebox_ms: None,
         }
     }
 
@@ -112,6 +118,66 @@ impl WatchConfig {
     pub fn with_cli_config(mut self, cli_config: CliConfig) -> Self {
         self.cli_config = cli_config;
         self
+    }
+
+    /// Add filter pattern for scenario selection
+    ///
+    /// Only scenarios whose paths contain this substring will be executed.
+    ///
+    /// # Arguments
+    ///
+    /// * `pattern` - Substring to match against scenario file paths
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use clnrm_core::watch::WatchConfig;
+    /// use std::path::PathBuf;
+    ///
+    /// let config = WatchConfig::new(
+    ///     vec![PathBuf::from("tests/")],
+    ///     300,
+    ///     false
+    /// ).with_filter_pattern("otel".to_string());
+    /// ```
+    pub fn with_filter_pattern(mut self, pattern: String) -> Self {
+        self.filter_pattern = Some(pattern);
+        self
+    }
+
+    /// Add timebox limit for scenario execution
+    ///
+    /// Scenarios that exceed this time limit will be terminated.
+    ///
+    /// # Arguments
+    ///
+    /// * `timebox_ms` - Maximum execution time in milliseconds
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use clnrm_core::watch::WatchConfig;
+    /// use std::path::PathBuf;
+    ///
+    /// let config = WatchConfig::new(
+    ///     vec![PathBuf::from("tests/")],
+    ///     300,
+    ///     false
+    /// ).with_timebox(5000);
+    /// ```
+    pub fn with_timebox(mut self, timebox_ms: u64) -> Self {
+        self.timebox_ms = Some(timebox_ms);
+        self
+    }
+
+    /// Check if a filter pattern is set
+    pub fn has_filter_pattern(&self) -> bool {
+        self.filter_pattern.is_some()
+    }
+
+    /// Check if a timebox is set
+    pub fn has_timebox(&self) -> bool {
+        self.timebox_ms.is_some()
     }
 }
 

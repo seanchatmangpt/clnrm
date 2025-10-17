@@ -40,8 +40,56 @@ pub use cache::{
     filter_changed_tests, update_cache_for_results,
 };
 
-/// Run tests from TOML files with cache support
+/// Run tests from TOML files with cache support (legacy, no sharding)
+///
+/// For backward compatibility. New code should use `run_tests_with_shard`.
 pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
+    run_tests_with_shard(paths, config, None).await
+}
+
+/// Run tests from TOML files with optional sharding support
+///
+/// # Arguments
+///
+/// * `paths` - Test file paths to execute
+/// * `config` - CLI configuration
+/// * `shard` - Optional shard configuration (index, total) where index is 1-based
+///
+/// # Example
+///
+/// ```no_run
+/// # use clnrm_core::cli::commands::run::run_tests_with_shard;
+/// # use clnrm_core::cli::types::CliConfig;
+/// # use std::path::PathBuf;
+/// # async fn example() -> clnrm_core::error::Result<()> {
+/// let paths = vec![PathBuf::from("tests/")];
+/// let config = CliConfig::default();
+///
+/// // Run shard 1 of 4
+/// run_tests_with_shard(&paths, &config, Some((1, 4))).await?;
+/// # Ok(())
+/// # }
+/// ```
+pub async fn run_tests_with_shard(
+    paths: &[PathBuf],
+    config: &CliConfig,
+    shard: Option<(usize, usize)>,
+) -> Result<()> {
+    // If sharding is enabled, log it
+    if let Some((i, m)) = shard {
+        info!("🔀 Running shard {}/{}", i, m);
+    }
+
+    // Run tests with sharding applied
+    run_tests_impl(paths, config, shard).await
+}
+
+/// Implementation of run_tests with sharding support
+async fn run_tests_impl(
+    paths: &[PathBuf],
+    config: &CliConfig,
+    shard: Option<(usize, usize)>,
+) -> Result<()> {
     // Create root span for entire test run (OTEL self-testing)
     #[cfg(feature = "otel-traces")]
     let run_span = {
@@ -90,6 +138,25 @@ pub async fn run_tests(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
     } else {
         info!("🔍 Checking cache...");
         filter_changed_tests(&all_test_files, &cache_manager).await?
+    };
+
+    // Apply sharding if requested
+    let tests_to_run = if let Some((i, m)) = shard {
+        info!("🔀 Applying shard {}/{} to {} tests", i, m, tests_to_run.len());
+
+        // Distribute tests across shards using modulo arithmetic
+        // Shard i (1-based) gets tests where (index % m) == (i - 1)
+        let sharded_tests: Vec<PathBuf> = tests_to_run
+            .into_iter()
+            .enumerate()
+            .filter(|(idx, _)| (idx % m) == (i - 1))
+            .map(|(_, path)| path)
+            .collect();
+
+        info!("🔀 Shard {}/{} will run {} test(s)", i, m, sharded_tests.len());
+        sharded_tests
+    } else {
+        tests_to_run
     };
 
     let skipped_count = all_test_files.len() - tests_to_run.len();

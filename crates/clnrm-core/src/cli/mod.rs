@@ -33,6 +33,7 @@ pub async fn run_cli() -> Result<()> {
             watch,
             interactive,
             force,
+            shard,
         } => {
             let config = crate::cli::types::CliConfig {
                 parallel,
@@ -53,7 +54,7 @@ pub async fn run_cli() -> Result<()> {
                 vec![PathBuf::from(".")]
             };
 
-            run_tests(&paths_to_run, &config).await
+            run_tests_with_shard(&paths_to_run, &config, shard).await
         }
 
         Commands::Validate { files } => {
@@ -224,14 +225,14 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::Dev { paths, debounce_ms, clear } => {
+        Commands::Dev { paths, debounce_ms, clear, only, timebox } => {
             let config = crate::cli::types::CliConfig {
                 format: cli.format.clone(),
                 verbose: cli.verbose,
                 ..Default::default()
             };
 
-            run_dev_mode(paths, debounce_ms, clear, config).await
+            run_dev_mode_with_filters(paths, debounce_ms, clear, only, timebox, config).await
         }
 
         Commands::Lint { files, format, deny_warnings } => {

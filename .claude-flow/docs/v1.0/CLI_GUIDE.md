@@ -1,8 +1,8 @@
-# Cleanroom v1.0 CLI Guide
+# Cleanroom v0.7.0+ CLI Guide
 
 ## 🚀 Overview
 
-Cleanroom v1.0 provides a streamlined, developer-experience-first CLI for hermetic integration testing with OpenTelemetry validation. The CLI emphasizes simplicity, speed, and reliability.
+Cleanroom v0.7.0+ provides a streamlined, developer-experience-first CLI for hermetic integration testing with OpenTelemetry validation. The CLI emphasizes simplicity, speed, and reliability with no-prefix variables and Tera-first templating.
 
 ## 🎯 Core Commands
 

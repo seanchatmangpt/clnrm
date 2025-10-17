@@ -16,7 +16,7 @@ pub mod validate;
 // Re-export all public functions for easy access
 pub use run::{
     run_tests, run_tests_parallel, run_tests_parallel_with_results,
-    run_tests_sequential, run_tests_sequential_with_results,
+    run_tests_sequential, run_tests_sequential_with_results, run_tests_with_shard,
 };
 
 pub use init::init_project;
@@ -39,7 +39,7 @@ pub use self_test::run_self_tests;
 pub use health::system_health_check;
 
 // Re-export v0.7.0 commands
-pub use v0_7_0::dev::run_dev_mode;
+pub use v0_7_0::dev::{run_dev_mode, run_dev_mode_with_filters};
 pub use v0_7_0::diff::diff_traces;
 pub use v0_7_0::dry_run::{dry_run_validate, ValidationResult as DryRunValidationResult};
 pub use v0_7_0::fmt::format_files;

@@ -1,0 +1,8 @@
+[meta]
+name="{{ svc }}_test"
+version="1.0.0"
+description="Test no-prefix vars"
+
+[vars]
+svc="{{ svc }}"
+env="{{ env }}"
