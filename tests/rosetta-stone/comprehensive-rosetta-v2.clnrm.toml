@@ -1,0 +1,499 @@
+# Rosetta Stone Test #7: Comprehensive Multi-Dimensional Validation
+# Validates: ALL 5 DIMENSIONS - Structural + Temporal + Cardinality + Hermeticity + Attributes
+# Pattern: Complete end-to-end microservices architecture validation
+#
+# This test combines:
+# ✅ STRUCTURAL: Parent-child relationships, graph topology, trace structure
+# ✅ TEMPORAL: Sequential operations, must_precede constraints, duration bounds
+# ✅ CARDINALITY: Exact span counts, per-service accounting
+# ✅ HERMETICITY: Network isolation, resource limits, DNS constraints
+# ✅ ATTRIBUTES: Semantic conventions, required attributes, value validation
+#
+# Architecture:
+# API Gateway → Auth Service → User Service → Database
+#                           ↘ Cache
+#
+# Request Flow:
+# 1. Client → API Gateway (validates token via Auth)
+# 2. API Gateway → User Service (fetches user data)
+# 3. User Service → Cache (check cache)
+# 4. User Service → Database (if cache miss)
+# 5. Response propagates back through chain
+
+[test.metadata]
+name = "rosetta_comprehensive_v2"
+description = "Complete multi-dimensional OTEL validation across all 5 dimensions"
+timeout = "180s"
+
+# OTEL Collector - Central telemetry hub
+[services.otel_collector]
+type = "otel_collector"
+plugin = "otel_collector"
+image = "otel/opentelemetry-collector:latest"
+
+[services.otel_collector.env]
+ENABLE_OTLP_HTTP = "true"
+ENABLE_OTLP_GRPC = "true"
+
+[services.otel_collector.network]
+mode = "internal"
+
+# API Gateway - Entry point (root span)
+[services.api_gateway]
+type = "generic_container"
+image = "alpine:latest"
+
+[services.api_gateway.env]
+OTEL_SERVICE_NAME = "rosetta-api-gateway"
+OTEL_SERVICE_VERSION = "2.1.0"
+DEPLOYMENT_ENVIRONMENT = "testing"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+
+[services.api_gateway.network]
+mode = "internal"
+external_access = false
+allowed_hosts = ["otel_collector", "auth_service", "user_service"]
+
+[services.api_gateway.resources]
+memory_limit = "512m"
+cpu_limit = "1.0"
+
+# Auth Service - Authentication and authorization
+[services.auth_service]
+type = "generic_container"
+image = "alpine:latest"
+
+[services.auth_service.env]
+OTEL_SERVICE_NAME = "rosetta-auth-service"
+OTEL_SERVICE_VERSION = "1.5.2"
+DEPLOYMENT_ENVIRONMENT = "testing"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+JWT_SECRET = "test-secret-key"
+
+[services.auth_service.network]
+mode = "internal"
+external_access = false
+allowed_hosts = ["otel_collector"]
+
+[services.auth_service.resources]
+memory_limit = "256m"
+cpu_limit = "0.5"
+
+# User Service - Business logic layer
+[services.user_service]
+type = "generic_container"
+image = "alpine:latest"
+
+[services.user_service.env]
+OTEL_SERVICE_NAME = "rosetta-user-service"
+OTEL_SERVICE_VERSION = "3.0.1"
+DEPLOYMENT_ENVIRONMENT = "testing"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+DATABASE_URL = "postgres://postgres:testpass@database:5432/testdb"
+CACHE_URL = "redis://cache:6379"
+
+[services.user_service.network]
+mode = "internal"
+external_access = false
+allowed_hosts = ["otel_collector", "database", "cache"]
+
+[services.user_service.resources]
+memory_limit = "512m"
+cpu_limit = "1.0"
+
+# Database - PostgreSQL data store
+[services.database]
+type = "generic_container"
+image = "postgres:16-alpine"
+
+[services.database.env]
+POSTGRES_PASSWORD = "testpass"
+POSTGRES_DB = "testdb"
+OTEL_SERVICE_NAME = "rosetta-database"
+OTEL_SERVICE_VERSION = "16.0.0"
+DEPLOYMENT_ENVIRONMENT = "testing"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+
+[services.database.network]
+mode = "internal"
+external_access = false
+allowed_hosts = ["otel_collector"]
+
+[services.database.resources]
+memory_limit = "512m"
+cpu_limit = "1.0"
+
+# Cache - Redis caching layer
+[services.cache]
+type = "generic_container"
+image = "redis:7-alpine"
+
+[services.cache.env]
+OTEL_SERVICE_NAME = "rosetta-cache"
+OTEL_SERVICE_VERSION = "7.0.0"
+DEPLOYMENT_ENVIRONMENT = "testing"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+
+[services.cache.network]
+mode = "internal"
+external_access = false
+allowed_hosts = ["otel_collector"]
+
+[services.cache.resources]
+memory_limit = "256m"
+cpu_limit = "0.5"
+
+# Test Steps - Complete request flow
+[[steps]]
+name = "initialize_database_schema"
+service = "database"
+command = ["sh", "-c", "echo 'DB: Initializing schema' && sleep 2 && echo 'DB: Schema ready'"]
+expected_output_regex = "ready"
+
+[[steps]]
+name = "warm_cache"
+service = "cache"
+command = ["sh", "-c", "echo 'Cache: Warming up' && sleep 1 && echo 'Cache: Ready'"]
+expected_output_regex = "Ready"
+
+[[steps]]
+name = "gateway_receives_request_1"
+service = "api_gateway"
+command = ["echo", "Gateway: GET /api/users/123"]
+
+[[steps]]
+name = "auth_validate_token_1"
+service = "auth_service"
+command = ["sh", "-c", "echo 'Auth: Validating JWT' && sleep 0.5 && echo 'Auth: Token valid'"]
+expected_output_regex = "valid"
+
+[[steps]]
+name = "user_service_check_cache_1"
+service = "cache"
+command = ["echo", "Cache: MISS for user:123"]
+
+[[steps]]
+name = "user_service_query_db_1"
+service = "database"
+command = ["sh", "-c", "echo 'DB: SELECT * FROM users WHERE id=123' && sleep 0.3 && echo 'DB: User found'"]
+expected_output_regex = "found"
+
+[[steps]]
+name = "user_service_update_cache_1"
+service = "cache"
+command = ["echo", "Cache: SET user:123"]
+
+[[steps]]
+name = "gateway_returns_response_1"
+service = "api_gateway"
+command = ["echo", "Gateway: 200 OK"]
+
+[[steps]]
+name = "gateway_receives_request_2"
+service = "api_gateway"
+command = ["echo", "Gateway: GET /api/users/123"]
+
+[[steps]]
+name = "auth_validate_token_2"
+service = "auth_service"
+command = ["sh", "-c", "echo 'Auth: Validating JWT' && sleep 0.5 && echo 'Auth: Token valid'"]
+
+[[steps]]
+name = "user_service_check_cache_2"
+service = "cache"
+command = ["echo", "Cache: HIT for user:123"]
+
+[[steps]]
+name = "gateway_returns_response_2"
+service = "api_gateway"
+command = ["echo", "Gateway: 200 OK (from cache)"]
+
+# OTEL Validation - ALL 5 DIMENSIONS
+[otel_validation]
+enabled = true
+validate_spans = true
+validate_traces = true
+validate_temporal_ordering = true
+validate_cardinality = true
+validate_hermeticity = true
+validate_attributes = true
+validate_graph_topology = true
+
+# ==========================================
+# DIMENSION 1: STRUCTURAL - Span hierarchy
+# ==========================================
+
+[[otel_validation.expected_spans]]
+name = "gateway.request"
+required = true
+is_root = true
+count = 2
+
+[otel_validation.expected_spans.attributes]
+"http.method" = "GET"
+"http.target" = "/api/users/123"
+"service.name" = "rosetta-api-gateway"
+
+[[otel_validation.expected_spans]]
+name = "auth.validate"
+required = true
+parent = "gateway.request"
+count = 2
+
+[otel_validation.expected_spans.attributes]
+"auth.method" = "jwt"
+"service.name" = "rosetta-auth-service"
+
+[[otel_validation.expected_spans]]
+name = "cache.lookup"
+required = true
+parent = "user.fetch"
+count = 2
+
+[otel_validation.expected_spans.attributes]
+"cache.operation" = "get"
+"service.name" = "rosetta-cache"
+
+[[otel_validation.expected_spans]]
+name = "db.query"
+required = true
+parent = "user.fetch"
+count = 1  # Only first request queries DB
+
+[otel_validation.expected_spans.attributes]
+"db.system" = "postgresql"
+"db.operation" = "SELECT"
+"service.name" = "rosetta-database"
+
+[[otel_validation.expected_spans]]
+name = "cache.set"
+required = true
+parent = "user.fetch"
+count = 1  # Only first request updates cache
+
+[otel_validation.expected_spans.attributes]
+"cache.operation" = "set"
+
+[[otel_validation.expected_spans]]
+name = "user.fetch"
+required = true
+parent = "gateway.request"
+count = 2
+
+[otel_validation.expected_spans.attributes]
+"service.name" = "rosetta-user-service"
+
+# Graph topology
+[[otel_validation.expected_traces]]
+span_names = ["gateway.request", "auth.validate", "user.fetch", "cache.lookup", "db.query", "cache.set"]
+complete = true
+is_tree = true
+
+[[otel_validation.expected_traces.parent_child]]
+parent = "gateway.request"
+child = "auth.validate"
+
+[[otel_validation.expected_traces.parent_child]]
+parent = "gateway.request"
+child = "user.fetch"
+
+[[otel_validation.expected_traces.parent_child]]
+parent = "user.fetch"
+child = "cache.lookup"
+
+[[otel_validation.expected_traces.parent_child]]
+parent = "user.fetch"
+child = "db.query"
+
+[[otel_validation.expected_traces.parent_child]]
+parent = "user.fetch"
+child = "cache.set"
+
+# ==========================================
+# DIMENSION 2: TEMPORAL - Ordering constraints
+# ==========================================
+
+[[otel_validation.temporal_constraints]]
+span_name = "db.initialize"
+must_precede = ["cache.warm", "gateway.request"]
+reason = "Database must be ready before any requests"
+
+[[otel_validation.temporal_constraints]]
+span_name = "cache.warm"
+must_precede = ["gateway.request"]
+reason = "Cache must be ready before handling requests"
+
+[[otel_validation.temporal_constraints]]
+span_name = "auth.validate"
+must_precede = ["user.fetch"]
+reason = "Authentication must complete before fetching user data"
+
+[[otel_validation.temporal_constraints]]
+span_name = "cache.lookup"
+must_precede = ["db.query"]
+reason = "Cache check must happen before database query"
+
+# Duration constraints
+[[otel_validation.expected_spans]]
+name = "db.initialize"
+min_duration_ms = 2000
+max_duration_ms = 3000
+
+[[otel_validation.expected_spans]]
+name = "auth.validate"
+min_duration_ms = 500
+max_duration_ms = 700
+
+[[otel_validation.expected_spans]]
+name = "db.query"
+min_duration_ms = 300
+max_duration_ms = 500
+
+# ==========================================
+# DIMENSION 3: CARDINALITY - Exact counts
+# ==========================================
+
+[[otel_validation.span_count_constraints]]
+service_name = "rosetta-api-gateway"
+span_name = "gateway.request"
+exact_count = 2
+reason = "Two requests processed"
+
+[[otel_validation.span_count_constraints]]
+service_name = "rosetta-auth-service"
+span_name = "auth.validate"
+exact_count = 2
+reason = "Both requests require authentication"
+
+[[otel_validation.span_count_constraints]]
+service_name = "rosetta-cache"
+span_name = "cache.lookup"
+exact_count = 2
+reason = "Both requests check cache"
+
+[[otel_validation.span_count_constraints]]
+service_name = "rosetta-database"
+span_name = "db.query"
+exact_count = 1
+reason = "Only first request queries database (cache miss)"
+
+[[otel_validation.span_count_constraints]]
+service_name = "rosetta-cache"
+span_name = "cache.set"
+exact_count = 1
+reason = "Only first request updates cache"
+
+[[otel_validation.span_count_constraints]]
+service_name = "rosetta-user-service"
+span_name = "user.fetch"
+exact_count = 2
+reason = "Both requests fetch user data"
+
+# Total span count: 2 gateway + 2 auth + 2 user + 2 cache.lookup + 1 db + 1 cache.set = 10
+[[otel_validation.span_count_constraints]]
+exact_count = 10
+reason = "Total spans across all services"
+
+# ==========================================
+# DIMENSION 4: HERMETICITY - Isolation
+# ==========================================
+
+[[otel_validation.hermeticity_constraints]]
+no_external_network = true
+internal_dns_only = true
+resource_limits_enforced = true
+no_cross_container_pollution = true
+
+# Network isolation validation
+[[otel_validation.expected_spans]]
+name = "network.isolation.verified"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"network.external_blocked" = "true"
+"network.internal_only" = "true"
+
+# Resource limits validation
+[[otel_validation.expected_spans]]
+name = "resource.limit.enforced"
+required = true
+count = 5  # One per service
+
+[otel_validation.expected_spans.attributes]
+"resource.memory.limited" = "true"
+"resource.cpu.limited" = "true"
+
+# ==========================================
+# DIMENSION 5: ATTRIBUTES - Semantic conventions
+# ==========================================
+
+# HTTP semantic conventions (API Gateway)
+[[otel_validation.attribute_constraints]]
+attribute_name = "http.status_code"
+data_type = "integer"
+valid_range = [200, 299]
+
+[[otel_validation.attribute_constraints]]
+attribute_name = "http.method"
+data_type = "string"
+allowed_values = ["GET", "POST", "PUT", "DELETE"]
+
+# Database semantic conventions
+[[otel_validation.attribute_constraints]]
+attribute_name = "db.system"
+data_type = "string"
+allowed_values = ["postgresql"]
+
+[[otel_validation.attribute_constraints]]
+attribute_name = "db.operation"
+data_type = "string"
+allowed_values = ["SELECT", "INSERT", "UPDATE", "DELETE"]
+
+# Service metadata
+[[otel_validation.attribute_constraints]]
+attribute_name = "service.version"
+data_type = "string"
+pattern = "^\\d+\\.\\d+\\.\\d+$"
+
+[[otel_validation.attribute_constraints]]
+attribute_name = "deployment.environment"
+data_type = "string"
+allowed_values = ["testing"]
+
+# Required resource attributes
+[[otel_validation.resource_attributes]]
+required = true
+
+[otel_validation.resource_attributes.attributes]
+"service.name" = { required = true }
+"service.version" = { required = true }
+"deployment.environment" = { required = true }
+
+# Graph topology constraints
+[[otel_validation.graph_topology_constraints]]
+no_orphaned_spans = true
+no_cycles = true
+single_root = true
+max_depth = 4
+
+[assertions]
+# Structural
+span_graph_is_valid_tree = true
+no_orphaned_spans = true
+
+# Temporal
+temporal_ordering_valid = true
+duration_constraints_met = true
+
+# Cardinality
+total_span_count_equals = 10
+per_service_counts_correct = true
+
+# Hermeticity
+execution_hermetic = true
+no_external_network = true
+resource_limits_enforced = true
+
+# Attributes
+all_required_attributes_present = true
+semantic_conventions_followed = true

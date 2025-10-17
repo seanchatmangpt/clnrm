@@ -1,0 +1,100 @@
+# Rosetta Stone Test #1: Basic Trace Validation
+# Validates: STRUCTURAL dimension - basic trace collection and span validation
+# Pattern: Framework validates its own span emission through OTEL collector
+#
+# This test ensures:
+# - Spans are correctly emitted to OTEL collector
+# - Span names are accurate
+# - Basic attributes are present
+# - Collector receives and processes spans
+
+[test.metadata]
+name = "rosetta_trace_validation"
+description = "Basic trace collection and span validation - validates framework emits correct spans"
+timeout = "90s"
+
+# OTEL Collector - captures all telemetry
+[services.otel_collector]
+type = "otel_collector"
+plugin = "otel_collector"
+image = "otel/opentelemetry-collector:latest"
+
+[services.otel_collector.env]
+ENABLE_OTLP_HTTP = "true"
+ENABLE_OTLP_GRPC = "true"
+ENABLE_PROMETHEUS = "false"
+ENABLE_ZPAGES = "false"
+
+# Test application - simple HTTP service that emits spans
+[services.test_app]
+type = "generic_container"
+image = "alpine:latest"
+
+[services.test_app.env]
+OTEL_SERVICE_NAME = "rosetta-basic-app"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+OTEL_EXPORTER_OTLP_PROTOCOL = "http/protobuf"
+OTEL_TRACES_EXPORTER = "otlp"
+
+# Test Steps
+[[steps]]
+name = "verify_collector_ready"
+command = ["echo", "OTEL Collector initialized"]
+expected_output_regex = "initialized"
+
+[[steps]]
+name = "execute_traced_operation"
+service = "test_app"
+command = ["sh", "-c", "echo 'Operation 1: Starting' && sleep 1 && echo 'Operation 1: Complete'"]
+expected_output_regex = "Complete"
+
+[[steps]]
+name = "execute_second_operation"
+service = "test_app"
+command = ["sh", "-c", "echo 'Operation 2: Processing' && sleep 0.5 && echo 'Operation 2: Done'"]
+expected_output_regex = "Done"
+
+[[steps]]
+name = "verify_spans_collected"
+command = ["echo", "Validating span collection"]
+
+# OTEL Validation - Structural dimension
+[otel_validation]
+enabled = true
+validate_spans = true
+validate_traces = true
+collector_url = "http://otel_collector:4318"
+
+# Expected spans with basic attributes
+[[otel_validation.expected_spans]]
+name = "app.operation.start"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"service.name" = "rosetta-basic-app"
+"operation.type" = "execute"
+
+[[otel_validation.expected_spans]]
+name = "app.operation.process"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"service.name" = "rosetta-basic-app"
+"operation.stage" = "processing"
+
+[[otel_validation.expected_spans]]
+name = "app.operation.complete"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"service.name" = "rosetta-basic-app"
+"operation.status" = "success"
+
+# Verify trace completeness
+[[otel_validation.expected_traces]]
+span_names = ["app.operation.start", "app.operation.process", "app.operation.complete"]
+complete = true
+
+[assertions]
+container_should_have_executed_commands = 3
+execution_should_be_hermetic = true
