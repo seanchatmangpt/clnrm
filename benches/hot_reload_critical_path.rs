@@ -34,7 +34,6 @@ use std::time::Duration;
 // Re-export needed types from clnrm_core
 use clnrm_core::config::TestConfig;
 use clnrm_core::error::Result;
-use clnrm_core::template::{TemplateContext, TemplateRenderer};
 
 /// Simulate the complete hot reload path
 ///
@@ -51,6 +50,7 @@ async fn simulate_hot_reload_path() -> Result<()> {
 # Hot reload test template
 [meta]
 name = "hot_reload_benchmark"
+version = "1.0.0"
 description = "Simple test for hot reload validation"
 
 [service.alpine]
@@ -59,8 +59,11 @@ image = "alpine:latest"
 
 [[scenario]]
 name = "hello_world"
+
+[[scenario.steps]]
+name = "echo_test"
 service = "alpine"
-run = "echo 'Hello from hot reload test'"
+command = ["echo", "Hello from hot reload test"]
 "#;
 
     // Simple rendering without context variables for baseline measurement
@@ -93,6 +96,7 @@ fn bench_template_rendering(c: &mut Criterion) {
             let template = r#"
 [meta]
 name = "test_benchmark"
+version = "1.0.0"
 
 [service.svc]
 plugin = "generic_container"
@@ -100,8 +104,11 @@ image = "alpine:latest"
 
 [[scenario]]
 name = "simple"
+
+[[scenario.steps]]
+name = "test_step"
 service = "svc"
-run = "echo hello"
+command = ["echo", "hello"]
 "#;
 
             // Just return the template string (no actual rendering needed for baseline)
@@ -118,6 +125,7 @@ fn bench_toml_parsing(c: &mut Criterion) {
     let toml_content = r#"
 [meta]
 name = "benchmark_test"
+version = "1.0.0"
 description = "TOML parsing benchmark"
 
 [service.alpine]
@@ -126,8 +134,11 @@ image = "alpine:latest"
 
 [[scenario]]
 name = "simple"
+
+[[scenario.steps]]
+name = "test_step"
 service = "alpine"
-run = "echo hello"
+command = ["echo", "hello"]
 "#;
 
     c.bench_function("toml_parsing_simple", |b| {
@@ -206,6 +217,7 @@ fn generate_template(num_services: usize, num_scenarios: usize) -> String {
         r#"
 [meta]
 name = "scalability_test_benchmark"
+version = "1.0.0"
 description = "Scalability benchmark template"
 
 "#,
@@ -231,11 +243,14 @@ image = "alpine:latest"
             r#"
 [[scenario]]
 name = "scenario_{}"
+
+[[scenario.steps]]
+name = "step_{}"
 service = "service_{}"
-run = "echo 'Scenario {}'"
+command = ["echo", "Scenario {}"]
 
 "#,
-            i, service_idx, i
+            i, i, service_idx, i
         ));
     }
 

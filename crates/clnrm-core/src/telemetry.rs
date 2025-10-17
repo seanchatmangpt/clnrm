@@ -39,7 +39,7 @@ pub enum Export {
 #[cfg(feature = "otel-traces")]
 #[derive(Debug)]
 enum SpanExporterType {
-    Otlp(opentelemetry_otlp::SpanExporter),
+    Otlp(Box<opentelemetry_otlp::SpanExporter>),
     #[cfg(feature = "otel-stdout")]
     Stdout(opentelemetry_stdout::SpanExporter),
 }
@@ -52,7 +52,7 @@ impl SpanExporter for SpanExporterType {
         batch: Vec<opentelemetry_sdk::trace::SpanData>,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = OTelSdkResult> + Send + '_>> {
         match self {
-            SpanExporterType::Otlp(exporter) => Box::pin(exporter.export(batch)),
+            SpanExporterType::Otlp(exporter) => Box::pin(exporter.as_ref().export(batch)),
             #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(exporter) => Box::pin(exporter.export(batch)),
         }
@@ -60,7 +60,7 @@ impl SpanExporter for SpanExporterType {
 
     fn shutdown(&mut self) -> OTelSdkResult {
         match self {
-            SpanExporterType::Otlp(exporter) => exporter.shutdown(),
+            SpanExporterType::Otlp(exporter) => exporter.as_mut().shutdown(),
             #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(exporter) => exporter.shutdown(),
         }
@@ -146,7 +146,7 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
                         e
                     ))
                 })?;
-            SpanExporterType::Otlp(exporter)
+            SpanExporterType::Otlp(Box::new(exporter))
         }
         Export::OtlpGrpc { endpoint } => {
             // OTLP gRPC exporter - use environment variables for configuration
@@ -160,7 +160,7 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
                         e
                     ))
                 })?;
-            SpanExporterType::Otlp(exporter)
+            SpanExporterType::Otlp(Box::new(exporter))
         }
         #[cfg(feature = "otel-stdout")]
         Export::Stdout => SpanExporterType::Stdout(opentelemetry_stdout::SpanExporter::default()),

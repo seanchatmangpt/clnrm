@@ -224,11 +224,8 @@ fn compute_sha256(data: &serde_json::Value) -> Result<String> {
 fn extract_file_path(test_name: &str) -> String {
     // Test names from run_tests_sequential include the file path
     // Format: "path/to/test.toml" or just "test_name"
-    if test_name.contains('/') || test_name.contains('\\') {
-        test_name.to_string()
-    } else {
-        test_name.to_string()
-    }
+    // For MVP, we just return the test name as-is
+    test_name.to_string()
 }
 
 #[cfg(test)]

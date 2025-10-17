@@ -10,7 +10,7 @@
 #}
 
 {# ============================================================================
-   MACRO: span(name, parent="", attrs={})
+   MACRO: span(name, parent="", attrs)
 
    Generate [[expect.span]] block for OpenTelemetry span validation.
    This is the MOST CRITICAL macro - 80%+ of templates use span validation.
@@ -43,7 +43,7 @@
      parent = "root"
      attrs.all = { "tx.id" = "123" }
 ============================================================================ #}
-{% macro span(name, parent="", attrs={}) -%}
+{% macro span(name, parent="", attrs) -%}
 [[expect.span]]
 name = "{{ name }}"
 {%- if parent %}
@@ -55,7 +55,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
 {%- endmacro %}
 
 {# ============================================================================
-   MACRO: service(id, image, args=[], env={})
+   MACRO: service(id, image, args, env)
 
    Generate [service.<id>] block for container service definition.
    This is the SECOND most critical macro - every test needs services.
@@ -93,7 +93,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
      args = ["--port", "8080"]
      env.DEBUG = "true"
 ============================================================================ #}
-{% macro service(id, image, args=[], env={}) -%}
+{% macro service(id, image, args, env) -%}
 [service.{{ id }}]
 plugin = "generic_container"
 image = "{{ image }}"
