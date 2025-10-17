@@ -158,10 +158,78 @@ pub enum SpanAssertion {
     },
 }
 
+/// Validation failure details for precise error reporting
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FailureDetails {
+    /// Rule that failed (e.g., "expect.span[clnrm.run].attrs.all")
+    pub rule: String,
+    /// Span name that was validated
+    pub span_name: String,
+    /// Expected value
+    pub expected: String,
+    /// Actual value (if any)
+    pub actual: Option<String>,
+    /// Human-readable error message
+    pub message: String,
+}
+
+/// Validation result with detailed pass/fail information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationResult {
+    /// Whether all validations passed
+    pub passed: bool,
+    /// List of failures (empty if passed)
+    pub failures: Vec<FailureDetails>,
+    /// Number of validations performed
+    pub validations_count: usize,
+}
+
+impl ValidationResult {
+    /// Create a successful validation result
+    pub fn success(validations_count: usize) -> Self {
+        Self {
+            passed: true,
+            failures: Vec::new(),
+            validations_count,
+        }
+    }
+
+    /// Create a failed validation result
+    pub fn failure(failure: FailureDetails) -> Self {
+        Self {
+            passed: false,
+            failures: vec![failure],
+            validations_count: 1,
+        }
+    }
+
+    /// Add a failure to the result
+    pub fn add_failure(&mut self, failure: FailureDetails) {
+        self.passed = false;
+        self.failures.push(failure);
+    }
+
+    /// Merge multiple validation results
+    pub fn merge(results: Vec<ValidationResult>) -> Self {
+        let passed = results.iter().all(|r| r.passed);
+        let failures: Vec<FailureDetails> = results
+            .iter()
+            .flat_map(|r| r.failures.clone())
+            .collect();
+        let validations_count: usize = results.iter().map(|r| r.validations_count).sum();
+
+        Self {
+            passed,
+            failures,
+            validations_count,
+        }
+    }
+}
+
 /// Span validator for OTEL self-testing
 pub struct SpanValidator {
     /// Loaded span data from OTEL collector export
-    spans: Vec<SpanData>,
+    pub(crate) spans: Vec<SpanData>,
 }
 
 impl SpanValidator {
@@ -347,6 +415,422 @@ impl SpanValidator {
     /// Count spans with given name
     pub fn count_spans(&self, name: &str) -> usize {
         self.spans.iter().filter(|s| s.name == name).count()
+    }
+
+    /// Validate spans against PRD-style expectations with detailed error tracking
+    ///
+    /// This is the primary validation method that processes SpanExpectationConfig
+    /// from TOML and returns structured validation results.
+    ///
+    /// # Arguments
+    /// * `expectations` - List of span expectations from TOML `[[expect.span]]` blocks
+    ///
+    /// # Returns
+    /// * `Result<ValidationResult>` - Detailed validation results with failure tracking
+    pub fn validate_expectations(
+        &self,
+        expectations: &[crate::config::SpanExpectationConfig],
+    ) -> Result<ValidationResult> {
+        let mut results = Vec::new();
+
+        for expectation in expectations {
+            let result = self.validate_single_expectation(expectation)?;
+            results.push(result);
+        }
+
+        Ok(ValidationResult::merge(results))
+    }
+
+    /// Validate a single span expectation
+    fn validate_single_expectation(
+        &self,
+        expectation: &crate::config::SpanExpectationConfig,
+    ) -> Result<ValidationResult> {
+        let span_name = &expectation.name;
+
+        // 1. Check span existence
+        let matching_spans = self.find_spans_by_name(span_name);
+        if matching_spans.is_empty() {
+            return Ok(ValidationResult::failure(FailureDetails {
+                rule: format!("expect.span[{}].existence", span_name),
+                span_name: span_name.clone(),
+                expected: format!("Span '{}' to exist", span_name),
+                actual: None,
+                message: format!("Span '{}' not found in trace", span_name),
+            }));
+        }
+
+        let mut validation_count = 1; // existence check
+        let mut failures = Vec::new();
+
+        // Find first matching span for detailed validation
+        // In production, we may want to validate all matching spans
+        let span = matching_spans[0];
+
+        // 2. Validate parent relationship
+        if let Some(ref parent_name) = expectation.parent {
+            validation_count += 1;
+            if let Some(failure) = self.validate_parent_relationship(span, parent_name, span_name)
+            {
+                failures.push(failure);
+            }
+        }
+
+        // 3. Validate span kind
+        if let Some(ref kind_str) = expectation.kind {
+            validation_count += 1;
+            if let Some(failure) = self.validate_span_kind(span, kind_str, span_name)? {
+                failures.push(failure);
+            }
+        }
+
+        // 4. Validate attributes
+        if let Some(ref attrs_config) = expectation.attrs {
+            // attrs.all - ALL attributes must match
+            if let Some(ref all_attrs) = attrs_config.all {
+                validation_count += all_attrs.len();
+                if let Some(failure) = self.validate_attrs_all(span, all_attrs, span_name) {
+                    failures.push(failure);
+                }
+            }
+
+            // attrs.any - At least ONE attribute must match
+            if let Some(ref any_attrs) = attrs_config.any {
+                validation_count += 1;
+                if let Some(failure) = self.validate_attrs_any(span, any_attrs, span_name) {
+                    failures.push(failure);
+                }
+            }
+        }
+
+        // 5. Validate events
+        if let Some(ref events_config) = expectation.events {
+            if let Some(ref any_events) = events_config.any {
+                validation_count += 1;
+                if let Some(failure) = self.validate_events_any(span, any_events, span_name) {
+                    failures.push(failure);
+                }
+            }
+
+            if let Some(ref all_events) = events_config.all {
+                validation_count += all_events.len();
+                if let Some(failure) = self.validate_events_all(span, all_events, span_name) {
+                    failures.push(failure);
+                }
+            }
+        }
+
+        // 6. Validate duration
+        if let Some(ref duration_config) = expectation.duration_ms {
+            validation_count += 1;
+            if let Some(failure) = self.validate_duration(span, duration_config, span_name) {
+                failures.push(failure);
+            }
+        }
+
+        if failures.is_empty() {
+            Ok(ValidationResult::success(validation_count))
+        } else {
+            Ok(ValidationResult {
+                passed: false,
+                failures,
+                validations_count: validation_count,
+            })
+        }
+    }
+
+    /// Validate parent relationship
+    fn validate_parent_relationship(
+        &self,
+        span: &SpanData,
+        parent_name: &str,
+        span_name: &str,
+    ) -> Option<FailureDetails> {
+        // Find parent spans by name
+        let parent_spans = self.find_spans_by_name(parent_name);
+        if parent_spans.is_empty() {
+            return Some(FailureDetails {
+                rule: format!("expect.span[{}].parent", span_name),
+                span_name: span_name.to_string(),
+                expected: format!("Parent span '{}'", parent_name),
+                actual: None,
+                message: format!(
+                    "Parent span '{}' not found for span '{}'",
+                    parent_name, span_name
+                ),
+            });
+        }
+
+        // Check if span has a parent_span_id matching any of the parent spans
+        if let Some(ref parent_id) = span.parent_span_id {
+            if parent_spans.iter().any(|p| &p.span_id == parent_id) {
+                return None; // Valid parent relationship
+            }
+
+            // Parent exists but IDs don't match
+            Some(FailureDetails {
+                rule: format!("expect.span[{}].parent", span_name),
+                span_name: span_name.to_string(),
+                expected: format!("Parent span '{}'", parent_name),
+                actual: Some(format!("Different parent (ID: {})", parent_id)),
+                message: format!(
+                    "Span '{}' parent mismatch: expected '{}', found different parent",
+                    span_name, parent_name
+                ),
+            })
+        } else {
+            // Span has no parent
+            Some(FailureDetails {
+                rule: format!("expect.span[{}].parent", span_name),
+                span_name: span_name.to_string(),
+                expected: format!("Parent span '{}'", parent_name),
+                actual: Some("none".to_string()),
+                message: format!(
+                    "Span '{}' parent mismatch: expected '{}', found none",
+                    span_name, parent_name
+                ),
+            })
+        }
+    }
+
+    /// Validate span kind
+    fn validate_span_kind(
+        &self,
+        span: &SpanData,
+        kind_str: &str,
+        span_name: &str,
+    ) -> Result<Option<FailureDetails>> {
+        let expected_kind = SpanKind::parse_kind(kind_str)?;
+
+        match span.kind {
+            Some(actual_kind) if actual_kind == expected_kind => Ok(None),
+            Some(actual_kind) => Ok(Some(FailureDetails {
+                rule: format!("expect.span[{}].kind", span_name),
+                span_name: span_name.to_string(),
+                expected: format!("{:?}", expected_kind),
+                actual: Some(format!("{:?}", actual_kind)),
+                message: format!(
+                    "Span '{}' kind mismatch: expected {:?}, found {:?}",
+                    span_name, expected_kind, actual_kind
+                ),
+            })),
+            None => Ok(Some(FailureDetails {
+                rule: format!("expect.span[{}].kind", span_name),
+                span_name: span_name.to_string(),
+                expected: format!("{:?}", expected_kind),
+                actual: None,
+                message: format!(
+                    "Span '{}' kind mismatch: expected {:?}, found none",
+                    span_name, expected_kind
+                ),
+            })),
+        }
+    }
+
+    /// Validate attrs.all - ALL attributes must match exactly
+    fn validate_attrs_all(
+        &self,
+        span: &SpanData,
+        all_attrs: &HashMap<String, String>,
+        span_name: &str,
+    ) -> Option<FailureDetails> {
+        let mut missing = Vec::new();
+
+        for (key, expected_value) in all_attrs {
+            let matches = span
+                .attributes
+                .get(key)
+                .and_then(|v| v.as_str())
+                .map(|v| v == expected_value)
+                .unwrap_or(false);
+
+            if !matches {
+                let actual = span
+                    .attributes
+                    .get(key)
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                if actual.is_none() {
+                    missing.push(format!("{}={}", key, expected_value));
+                } else {
+                    missing.push(format!(
+                        "{}={} (found: {})",
+                        key,
+                        expected_value,
+                        actual.unwrap_or_default()
+                    ));
+                }
+            }
+        }
+
+        if missing.is_empty() {
+            None
+        } else {
+            Some(FailureDetails {
+                rule: format!("expect.span[{}].attrs.all", span_name),
+                span_name: span_name.to_string(),
+                expected: format!("All attributes: {:?}", all_attrs),
+                actual: Some(format!("Missing/incorrect: [{}]", missing.join(", "))),
+                message: format!(
+                    "Span '{}' missing required attributes: [{}]",
+                    span_name,
+                    missing.join(", ")
+                ),
+            })
+        }
+    }
+
+    /// Validate attrs.any - At least ONE attribute must be present
+    fn validate_attrs_any(
+        &self,
+        span: &SpanData,
+        any_attrs: &HashMap<String, String>,
+        span_name: &str,
+    ) -> Option<FailureDetails> {
+        let has_any = any_attrs.iter().any(|(key, expected_value)| {
+            span.attributes
+                .get(key)
+                .and_then(|v| v.as_str())
+                .map(|v| v == expected_value)
+                .unwrap_or(false)
+        });
+
+        if has_any {
+            None
+        } else {
+            let patterns: Vec<String> = any_attrs
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect();
+
+            Some(FailureDetails {
+                rule: format!("expect.span[{}].attrs.any", span_name),
+                span_name: span_name.to_string(),
+                expected: format!("Any of: [{}]", patterns.join(", ")),
+                actual: None,
+                message: format!(
+                    "Span '{}' missing any of required attributes: [{}]",
+                    span_name,
+                    patterns.join(", ")
+                ),
+            })
+        }
+    }
+
+    /// Validate events.any - At least ONE event must be present
+    fn validate_events_any(
+        &self,
+        span: &SpanData,
+        any_events: &[String],
+        span_name: &str,
+    ) -> Option<FailureDetails> {
+        if let Some(ref span_events) = span.events {
+            let has_any = any_events.iter().any(|event| span_events.contains(event));
+
+            if has_any {
+                return None;
+            }
+        }
+
+        Some(FailureDetails {
+            rule: format!("expect.span[{}].events.any", span_name),
+            span_name: span_name.to_string(),
+            expected: format!("Any of: [{}]", any_events.join(", ")),
+            actual: span.events.as_ref().map(|events| format!("{:?}", events)),
+            message: format!(
+                "Span '{}' missing required events: [{}]",
+                span_name,
+                any_events.join(", ")
+            ),
+        })
+    }
+
+    /// Validate events.all - ALL events must be present
+    fn validate_events_all(
+        &self,
+        span: &SpanData,
+        all_events: &[String],
+        span_name: &str,
+    ) -> Option<FailureDetails> {
+        if let Some(ref span_events) = span.events {
+            let missing: Vec<&String> = all_events
+                .iter()
+                .filter(|event| !span_events.contains(event))
+                .collect();
+
+            if missing.is_empty() {
+                return None;
+            }
+
+            return Some(FailureDetails {
+                rule: format!("expect.span[{}].events.all", span_name),
+                span_name: span_name.to_string(),
+                expected: format!("All of: [{}]", all_events.join(", ")),
+                actual: Some(format!("Missing: {:?}", missing)),
+                message: format!(
+                    "Span '{}' missing required events: {:?}",
+                    span_name, missing
+                ),
+            });
+        }
+
+        Some(FailureDetails {
+            rule: format!("expect.span[{}].events.all", span_name),
+            span_name: span_name.to_string(),
+            expected: format!("All of: [{}]", all_events.join(", ")),
+            actual: None,
+            message: format!("Span '{}' has no events", span_name),
+        })
+    }
+
+    /// Validate duration constraints
+    fn validate_duration(
+        &self,
+        span: &SpanData,
+        duration_config: &crate::config::DurationBoundConfig,
+        span_name: &str,
+    ) -> Option<FailureDetails> {
+        let duration_ms = span.duration_ms()?;
+
+        // Check minimum duration
+        if let Some(min) = duration_config.min {
+            if duration_ms < min {
+                return Some(FailureDetails {
+                    rule: format!("expect.span[{}].duration_ms.min", span_name),
+                    span_name: span_name.to_string(),
+                    expected: format!("duration >= {}ms", min),
+                    actual: Some(format!("{}ms", duration_ms)),
+                    message: format!(
+                        "Span '{}' duration {}ms < min {}ms",
+                        span_name, duration_ms, min
+                    ),
+                });
+            }
+        }
+
+        // Check maximum duration
+        if let Some(max) = duration_config.max {
+            if duration_ms > max {
+                return Some(FailureDetails {
+                    rule: format!("expect.span[{}].duration_ms.max", span_name),
+                    span_name: span_name.to_string(),
+                    expected: format!("duration <= {}ms", max),
+                    actual: Some(format!("{}ms", duration_ms)),
+                    message: format!(
+                        "Span '{}' duration {}ms > max {}ms",
+                        span_name, duration_ms, max
+                    ),
+                });
+            }
+        }
+
+        None
+    }
+
+    /// Get the first failure from validation results (for error reporting)
+    pub fn first_failure(result: &ValidationResult) -> Option<&FailureDetails> {
+        result.failures.first()
     }
 
     /// Validate a single assertion
@@ -647,6 +1131,7 @@ impl SpanValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::SpanAttributesConfig;
 
     #[test]
     fn test_span_validator_from_json_empty() {
@@ -739,5 +1224,359 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
+    }
+
+    // =========================================================================
+    // PRD-ALIGNED VALIDATION TESTS
+    // =========================================================================
+
+    #[test]
+    fn test_span_existence_validation() -> Result<()> {
+        // Arrange
+        use crate::config::SpanExpectationConfig;
+
+        let expectation = SpanExpectationConfig {
+            name: "test.span".to_string(),
+            parent: None,
+            kind: None,
+            attrs: None,
+            events: None,
+            duration_ms: None,
+        };
+
+        // Missing span
+        let empty_validator = SpanValidator::from_json("")?;
+        let result = empty_validator.validate_expectations(&[expectation.clone()])?;
+
+        // Assert - failure case
+        assert!(!result.passed);
+        assert_eq!(result.failures.len(), 1);
+        assert_eq!(result.failures[0].span_name, "test.span");
+        assert!(result.failures[0].message.contains("not found"));
+
+        // Present span
+        let json = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"start_time_unix_nano":1000000000,"end_time_unix_nano":2000000000}"#;
+        let validator_with_span = SpanValidator::from_json(json)?;
+        let result_success = validator_with_span.validate_expectations(&[expectation])?;
+
+        // Assert - success case
+        assert!(
+            result_success.passed,
+            "Expected pass but got failures: {:?}",
+            result_success.failures
+        );
+        assert_eq!(result_success.failures.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_attrs_all_validation() -> Result<()> {
+        // Arrange
+        use crate::config::SpanExpectationConfig;
+
+        let mut attrs = HashMap::new();
+        attrs.insert("result".to_string(), "pass".to_string());
+
+        let expectation = SpanExpectationConfig {
+            name: "test.span".to_string(),
+            parent: None,
+            kind: None,
+            attrs: Some(SpanAttributesConfig {
+                all: Some(attrs.clone()),
+                any: None,
+            }),
+            events: None,
+            duration_ms: None,
+        };
+
+        // Missing attribute
+        let json_no_attr = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{}}"#;
+        let validator_no_attr = SpanValidator::from_json(json_no_attr)?;
+        let result_fail = validator_no_attr.validate_expectations(&[expectation.clone()])?;
+
+        // Assert - failure
+        assert!(!result_fail.passed);
+        assert!(result_fail.failures[0]
+            .message
+            .contains("missing required attributes"));
+
+        // Correct attribute
+        let json_with_attr = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{"result":"pass"}}"#;
+        let validator_with_attr = SpanValidator::from_json(json_with_attr)?;
+        let result_success = validator_with_attr.validate_expectations(&[expectation])?;
+
+        // Assert - success
+        assert!(result_success.passed);
+        assert_eq!(result_success.failures.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_events_any_validation() -> Result<()> {
+        // Arrange
+        use crate::config::{SpanEventsConfig, SpanExpectationConfig};
+
+        let expectation = SpanExpectationConfig {
+            name: "test.span".to_string(),
+            parent: None,
+            kind: None,
+            attrs: None,
+            events: Some(SpanEventsConfig {
+                any: Some(vec!["event1".to_string(), "event2".to_string()]),
+                all: None,
+            }),
+            duration_ms: None,
+        };
+
+        // No events
+        let json_no_events = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{}}"#;
+        let validator_no_events = SpanValidator::from_json(json_no_events)?;
+        let result_fail = validator_no_events.validate_expectations(&[expectation.clone()])?;
+
+        // Assert - failure
+        assert!(!result_fail.passed);
+        assert!(result_fail.failures[0].message.contains("missing required events"));
+
+        // Has one required event
+        let json_with_event = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"events":["event1"]}"#;
+        let validator_with_event = SpanValidator::from_json(json_with_event)?;
+        let result_success = validator_with_event.validate_expectations(&[expectation])?;
+
+        // Assert - success
+        assert!(result_success.passed);
+        assert_eq!(result_success.failures.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_duration_validation() -> Result<()> {
+        // Arrange
+        use crate::config::{DurationBoundConfig, SpanExpectationConfig};
+
+        let expectation = SpanExpectationConfig {
+            name: "test.span".to_string(),
+            parent: None,
+            kind: None,
+            attrs: None,
+            events: None,
+            duration_ms: Some(DurationBoundConfig {
+                min: Some(10.0),
+                max: Some(1000.0),
+            }),
+        };
+
+        // Too short (5ms)
+        let json_short = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"start_time_unix_nano":1000000000,"end_time_unix_nano":1005000000}"#;
+        let validator_short = SpanValidator::from_json(json_short)?;
+        let result_short = validator_short.validate_expectations(&[expectation.clone()])?;
+
+        // Assert - too short
+        assert!(!result_short.passed);
+        assert!(result_short.failures[0].message.contains("< min"));
+
+        // Just right (100ms)
+        let json_ok = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"start_time_unix_nano":1000000000,"end_time_unix_nano":1100000000}"#;
+        let validator_ok = SpanValidator::from_json(json_ok)?;
+        let result_ok = validator_ok.validate_expectations(&[expectation.clone()])?;
+
+        // Assert - success
+        assert!(result_ok.passed);
+        assert_eq!(result_ok.failures.len(), 0);
+
+        // Too long (2000ms)
+        let json_long = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"start_time_unix_nano":1000000000,"end_time_unix_nano":3000000000}"#;
+        let validator_long = SpanValidator::from_json(json_long)?;
+        let result_long = validator_long.validate_expectations(&[expectation])?;
+
+        // Assert - too long
+        assert!(!result_long.passed);
+        assert!(result_long.failures[0].message.contains("> max"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parent_relationship_validation() -> Result<()> {
+        // Arrange
+        use crate::config::SpanExpectationConfig;
+
+        let expectation = SpanExpectationConfig {
+            name: "clnrm.step:hello_world".to_string(),
+            parent: Some("clnrm.run".to_string()),
+            kind: None,
+            attrs: None,
+            events: None,
+            duration_ms: None,
+        };
+
+        // Missing parent
+        let json_no_parent = r#"{"name":"clnrm.step:hello_world","trace_id":"abc123","span_id":"child1","parent_span_id":null,"attributes":{}}"#;
+        let validator_no_parent = SpanValidator::from_json(json_no_parent)?;
+        let result_no_parent = validator_no_parent.validate_expectations(&[expectation.clone()])?;
+
+        // Assert - missing parent
+        assert!(!result_no_parent.passed);
+        assert!(result_no_parent.failures[0]
+            .message
+            .contains("parent mismatch"));
+        assert!(result_no_parent.failures[0].message.contains("found none"));
+
+        // Correct parent relationship
+        let json_with_parent = r#"{"name":"clnrm.run","trace_id":"abc123","span_id":"parent1","parent_span_id":null,"attributes":{}}
+{"name":"clnrm.step:hello_world","trace_id":"abc123","span_id":"child1","parent_span_id":"parent1","attributes":{}}"#;
+        let validator_with_parent = SpanValidator::from_json(json_with_parent)?;
+        let result_with_parent = validator_with_parent.validate_expectations(&[expectation])?;
+
+        // Assert - success
+        assert!(result_with_parent.passed);
+        assert_eq!(result_with_parent.failures.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_span_kind_validation() -> Result<()> {
+        // Arrange
+        use crate::config::SpanExpectationConfig;
+
+        let expectation = SpanExpectationConfig {
+            name: "test.span".to_string(),
+            parent: None,
+            kind: Some("internal".to_string()),
+            attrs: None,
+            events: None,
+            duration_ms: None,
+        };
+
+        // Wrong kind
+        let json_wrong_kind = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"kind":3}"#;
+        let validator_wrong = SpanValidator::from_json(json_wrong_kind)?;
+        let result_wrong = validator_wrong.validate_expectations(&[expectation.clone()])?;
+
+        // Assert - wrong kind
+        assert!(!result_wrong.passed);
+        assert!(result_wrong.failures[0].message.contains("kind mismatch"));
+
+        // Correct kind (internal = 1)
+        let json_correct_kind = r#"{"name":"test.span","trace_id":"abc123","span_id":"span1","parent_span_id":null,"attributes":{},"kind":1}"#;
+        let validator_correct = SpanValidator::from_json(json_correct_kind)?;
+        let result_correct = validator_correct.validate_expectations(&[expectation])?;
+
+        // Assert - success
+        assert!(result_correct.passed);
+        assert_eq!(result_correct.failures.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_validation_result_merge() {
+        // Arrange
+        let result1 = ValidationResult::success(3);
+        let result2 = ValidationResult::success(2);
+        let result3 = ValidationResult::failure(FailureDetails {
+            rule: "test.rule".to_string(),
+            span_name: "test.span".to_string(),
+            expected: "something".to_string(),
+            actual: None,
+            message: "Test failure".to_string(),
+        });
+
+        // Act
+        let merged_success = ValidationResult::merge(vec![result1.clone(), result2.clone()]);
+        let merged_failure = ValidationResult::merge(vec![result1, result2, result3]);
+
+        // Assert
+        assert!(merged_success.passed);
+        assert_eq!(merged_success.validations_count, 5);
+        assert_eq!(merged_success.failures.len(), 0);
+
+        assert!(!merged_failure.passed);
+        assert_eq!(merged_failure.validations_count, 6);
+        assert_eq!(merged_failure.failures.len(), 1);
+    }
+
+    #[test]
+    fn test_first_failure_helper() {
+        // Arrange
+        let result_success = ValidationResult::success(5);
+        let result_with_failure = ValidationResult::failure(FailureDetails {
+            rule: "test.rule".to_string(),
+            span_name: "test.span".to_string(),
+            expected: "expected".to_string(),
+            actual: Some("actual".to_string()),
+            message: "Test failure message".to_string(),
+        });
+
+        // Act
+        let no_failure = SpanValidator::first_failure(&result_success);
+        let has_failure = SpanValidator::first_failure(&result_with_failure);
+
+        // Assert
+        assert!(no_failure.is_none());
+        assert!(has_failure.is_some());
+        assert_eq!(has_failure.unwrap().message, "Test failure message");
+    }
+
+    #[test]
+    fn test_multiple_expectations_validation() -> Result<()> {
+        // Arrange - complex scenario with multiple expectations
+        use crate::config::{
+            DurationBoundConfig, SpanAttributesConfig, SpanEventsConfig, SpanExpectationConfig,
+        };
+
+        let mut attrs = HashMap::new();
+        attrs.insert("result".to_string(), "pass".to_string());
+
+        let expectations = vec![
+            // Expectation 1: clnrm.run with attributes and duration
+            SpanExpectationConfig {
+                name: "clnrm.run".to_string(),
+                parent: None,
+                kind: Some("internal".to_string()),
+                attrs: Some(SpanAttributesConfig {
+                    all: Some(attrs.clone()),
+                    any: None,
+                }),
+                events: None,
+                duration_ms: Some(DurationBoundConfig {
+                    min: Some(10.0),
+                    max: Some(600000.0),
+                }),
+            },
+            // Expectation 2: clnrm.step with parent and events
+            SpanExpectationConfig {
+                name: "clnrm.step:hello_world".to_string(),
+                parent: Some("clnrm.run".to_string()),
+                kind: None,
+                attrs: None,
+                events: Some(SpanEventsConfig {
+                    any: Some(vec![
+                        "container.start".to_string(),
+                        "container.exec".to_string(),
+                    ]),
+                    all: None,
+                }),
+                duration_ms: None,
+            },
+        ];
+
+        let json = r#"{"name":"clnrm.run","trace_id":"abc123","span_id":"parent1","parent_span_id":null,"attributes":{"result":"pass"},"kind":1,"start_time_unix_nano":1000000000,"end_time_unix_nano":1100000000}
+{"name":"clnrm.step:hello_world","trace_id":"abc123","span_id":"child1","parent_span_id":"parent1","attributes":{},"events":["container.start","container.exec"]}"#;
+
+        let validator = SpanValidator::from_json(json)?;
+
+        // Act
+        let result = validator.validate_expectations(&expectations)?;
+
+        // Assert
+        assert!(result.passed, "Validation should pass: {:?}", result.failures);
+        assert_eq!(result.failures.len(), 0);
+        assert!(result.validations_count >= expectations.len());
+
+        Ok(())
     }
 }

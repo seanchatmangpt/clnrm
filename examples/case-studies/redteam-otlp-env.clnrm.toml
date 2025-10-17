@@ -1,0 +1,164 @@
+# Red-Team OTLP Environment Validation (Rendered)
+#
+# This is a rendered version of redteam-otlp-env.clnrm.toml.tera with default values.
+# It demonstrates what users see after template rendering.
+#
+# DETECTION LAYERS:
+#   1. Span Validator - Requires specific spans with attributes
+#   2. Graph Validator - Validates parent-child relationships
+#   3. Count Validator - Enforces minimum span counts
+#   4. Window Validator - Validates temporal containment
+#   5. Order Validator - Validates execution order
+#   6. Status Validator - Validates span status codes
+#   7. Hermeticity Validator - Validates isolation attributes
+
+[vars]
+svc = "clnrm"
+env = "ci"
+endpoint = "http://localhost:4318"
+exporter = "otlp"
+freeze_clock = "2025-01-01T00:00:00Z"
+image = "registry/clnrm:latest"
+seed = 42
+
+[meta]
+name = "redteam_otlp_env_validation"
+version = "1.0.0"
+description = "Red-team validation of OTLP exporter via ENV variables - catches fake-green tests"
+tags = ["red-team", "otlp", "otel-validation", "fake-green-detection"]
+author = "clnrm-core-team"
+
+[otel]
+exporter = "otlp"
+endpoint = "http://localhost:4318"
+protocol = "http/protobuf"
+sample_ratio = 1.0
+
+[otel.resources]
+"service.name" = "clnrm"
+"deployment.environment" = "ci"
+
+[otel.propagators]
+use = ["tracecontext", "baggage"]
+
+[service.clnrm]
+type = "generic_container"
+plugin = "generic"
+image = "registry/clnrm:latest"
+env = {
+  "OTEL_SERVICE_NAME" = "clnrm",
+  "OTEL_EXPORTER_OTLP_ENDPOINT" = "http://localhost:4318",
+  "OTEL_TRACES_EXPORTER" = "otlp",
+  "RUST_LOG" = "info"
+}
+
+[[scenario]]
+name = "otel_env_proof"
+description = "Validate OTEL tracing via ENV variables"
+steps = [
+    { name = "run_test", command = ["clnrm", "run", "--otel"] }
+]
+
+# DETECTION LAYER 1: Span Validator
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+description = "Root span for test execution"
+
+[expect.span.attrs]
+all = {
+  "clnrm.version" = "0.7.0",
+  "test.hermetic" = "true"
+}
+
+[[expect.span]]
+name = "clnrm.step:run_test"
+parent = "clnrm.run"
+kind = "internal"
+description = "Step span must be child of run span"
+
+[expect.span.events]
+any = ["container.start", "container.exec", "container.stop"]
+
+# DETECTION LAYER 2: Graph Validator
+[expect.graph]
+description = "Validates span causality graph"
+must_include = [
+  ["clnrm.run", "clnrm.step:run_test"]
+]
+acyclic = true
+max_depth = 10
+
+# DETECTION LAYER 3: Count Validator
+[expect.counts]
+description = "Validates minimum span counts"
+
+[expect.counts.spans_total]
+gte = 2
+lte = 1000
+
+[expect.counts.events_total]
+gte = 3
+
+[expect.counts.errors_total]
+lte = 0
+
+[expect.counts.by_name]
+"clnrm.run" = { eq = 1 }
+"clnrm.step:run_test" = { eq = 1 }
+
+# DETECTION LAYER 4: Window Validator
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.step:run_test"]
+description = "Step span must be temporally contained within run span"
+
+# DETECTION LAYER 5: Order Validator
+[expect.order]
+description = "Validates span ordering constraints"
+must_precede = [
+  ["clnrm.plugin.registry", "clnrm.step:run_test"]
+]
+must_follow = [
+  ["clnrm.step:run_test", "clnrm.init"]
+]
+
+# DETECTION LAYER 6: Status Validator
+[expect.status]
+description = "All spans must have OK status"
+all = "OK"
+none = "ERROR"
+
+# DETECTION LAYER 7: Hermeticity Validator
+[expect.hermeticity]
+description = "Validates hermetic execution and OTEL SDK usage"
+no_external_services = true
+
+[expect.hermeticity.resource_attrs]
+must_match = {
+  "service.name" = "clnrm",
+  "deployment.environment" = "ci"
+}
+
+[expect.hermeticity.span_attrs]
+forbid_keys = [
+  "net.peer.name",
+  "http.url",
+  "db.connection_string"
+]
+
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[report]
+json = "redteam-otlp-validation.report.json"
+digest = "redteam-otlp-validation.trace.sha256"
+
+[report.digest]
+algorithm = "sha256"
+include_timestamps = false
+
+[limits]
+cpu_millicores = 1000
+memory_mb = 512

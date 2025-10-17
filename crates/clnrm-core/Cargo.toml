@@ -138,6 +138,10 @@ path = "examples/observability/observability-self-test.rs"
 name = "plugin-self-test"
 path = "examples/plugins/plugin-self-test.rs"
 
+[[example]]
+name = "otel-stdout-exporter-demo"
+path = "../../examples/otel_stdout_exporter_demo.rs"
+
 # Integration tests
 [[test]]
 name = "prd_template_workflow"
@@ -184,6 +188,14 @@ path = "tests/integration/macro_library_integration.rs"
 [[test]]
 name = "report_format_integration"
 path = "tests/integration/report_format_integration.rs"
+
+[[test]]
+name = "fake_green_detection"
+path = "tests/integration/fake_green_detection.rs"
+
+[[test]]
+name = "artifacts_collection_test"
+path = "tests/integration/artifacts_collection_test.rs"
 
 [[example]]
 name = "framework-stress-test"

@@ -25,6 +25,8 @@ pub use otel::{
     OtelValidationConfig, OtelValidator, SpanAssertion as OtelSpanAssertion, TraceAssertion,
 };
 pub use shape::{ErrorCategory, ShapeValidationError, ShapeValidationResult, ShapeValidator};
-pub use span_validator::{SpanAssertion, SpanData, SpanKind, SpanValidator};
+pub use span_validator::{
+    FailureDetails, SpanAssertion, SpanData, SpanKind, SpanValidator, ValidationResult,
+};
 pub use status_validator::{StatusCode, StatusExpectation};
 pub use window_validator::{WindowExpectation, WindowValidator};

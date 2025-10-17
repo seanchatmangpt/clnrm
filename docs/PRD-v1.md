@@ -1,12 +1,12 @@
-# Cleanroom v0.7.0+ PRD - Tera-First Template System
+# Cleanroom v1.0 PRD - Tera-First Template System
 
-**Status**: ✅ **IMPLEMENTED** in v0.7.0+ (no-prefix variables, precedence resolution, Tera rendering)
+**Status**: ✅ **IMPLEMENTED** in v1.0 (no-prefix variables, precedence resolution, Tera rendering)
 
-**Updated**: 2025-10-17 (reflects current v0.7.0 implementation)
+**Updated**: 2025-10-17 (reflects current v1.0 implementation)
 
 You implement precedence and no-prefix vars in **Rust** and render with **Tera**. ENV is ingested in Rust, then injected into the template context. Templates reference plain `{{ svc }}`, `{{ endpoint }}`, etc. No prelude file needed.
 
-## Cargo (v0.7.0+)
+## Cargo (v1.0)
 
 ```toml
 # Cargo.toml (current implementation)

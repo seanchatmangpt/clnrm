@@ -9,6 +9,92 @@ use std::collections::HashMap;
 use super::otel::*;
 use super::services::*;
 
+/// Parse a shell command string into a vector of arguments
+///
+/// Handles quoted strings and escaping. For example:
+/// - `sh -lc 'echo "test"'` -> `["sh", "-lc", "echo \"test\""]`
+/// - `echo "hello world"` -> `["echo", "hello world"]`
+///
+/// # Arguments
+/// * `cmd` - Shell command string to parse
+///
+/// # Returns
+/// * `Result<Vec<String>>` - Parsed command arguments
+///
+/// # Errors
+/// * Returns error if command is empty
+/// * Returns error if quotes are unbalanced
+pub fn parse_shell_command(cmd: &str) -> Result<Vec<String>> {
+    let cmd = cmd.trim();
+
+    if cmd.is_empty() {
+        return Err(CleanroomError::validation_error(
+            "Shell command cannot be empty"
+        ));
+    }
+
+    let mut args = Vec::new();
+    let mut current_arg = String::new();
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
+    let mut escape_next = false;
+    let mut chars = cmd.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if escape_next {
+            current_arg.push(ch);
+            escape_next = false;
+            continue;
+        }
+
+        match ch {
+            '\\' if !in_single_quote => {
+                escape_next = true;
+            }
+            '\'' if !in_double_quote => {
+                in_single_quote = !in_single_quote;
+            }
+            '"' if !in_single_quote => {
+                in_double_quote = !in_double_quote;
+            }
+            ' ' | '\t' if !in_single_quote && !in_double_quote => {
+                if !current_arg.is_empty() {
+                    args.push(current_arg.clone());
+                    current_arg.clear();
+                }
+            }
+            _ => {
+                current_arg.push(ch);
+            }
+        }
+    }
+
+    // Push final argument
+    if !current_arg.is_empty() {
+        args.push(current_arg);
+    }
+
+    // Validate balanced quotes
+    if in_single_quote {
+        return Err(CleanroomError::validation_error(
+            "Unbalanced single quotes in shell command"
+        ));
+    }
+    if in_double_quote {
+        return Err(CleanroomError::validation_error(
+            "Unbalanced double quotes in shell command"
+        ));
+    }
+
+    if args.is_empty() {
+        return Err(CleanroomError::validation_error(
+            "Parsed shell command resulted in no arguments"
+        ));
+    }
+
+    Ok(args)
+}
+
 /// Main test configuration structure
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TestConfig {
@@ -99,14 +185,33 @@ pub struct TestMetadata {
 pub struct ScenarioConfig {
     /// Scenario name
     pub name: String,
-    /// Test steps to execute
+    /// Test steps to execute (v0.4.x - v0.6.0)
+    #[serde(default)]
     pub steps: Vec<StepConfig>,
+    /// Service name to execute scenario on (v1.0)
+    #[serde(default)]
+    pub service: Option<String>,
+    /// Custom command to run (overrides service default args) (v1.0)
+    /// Format: shell command string like "sh -lc 'echo test'"
+    #[serde(default)]
+    pub run: Option<String>,
     /// Whether to run steps concurrently
     pub concurrent: Option<bool>,
     /// Scenario-specific timeout
     pub timeout_ms: Option<u64>,
     /// Scenario-specific policy
     pub policy: Option<PolicyConfig>,
+    /// Artifact collection configuration
+    #[serde(default)]
+    pub artifacts: Option<ArtifactsConfig>,
+}
+
+/// Artifact collection configuration for scenarios
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ArtifactsConfig {
+    /// List of artifact types to collect
+    /// Format: ["spans:default", "logs:stderr", "files:/tmp/output"]
+    pub collect: Vec<String>,
 }
 
 /// Individual test step configuration
@@ -269,12 +374,58 @@ impl TestConfig {
             }
         }
 
+        // Validate service (v0.6.0 format) if present
+        if let Some(services) = &self.service {
+            for (service_name, service) in services.iter() {
+                service.validate().map_err(|e| {
+                    CleanroomError::validation_error(format!("Service {}: {}", service_name, e))
+                })?;
+            }
+        }
+
         // Validate assertions if present (basic validation)
         if let Some(assertions) = &self.assertions {
             // Basic validation - assertions should not be empty
             if assertions.is_empty() {
                 return Err(CleanroomError::validation_error(
                     "Assertions cannot be empty if provided",
+                ));
+            }
+        }
+
+        // Validate OTEL configuration if present
+        if let Some(ref otel) = self.otel {
+            otel.validate()
+                .map_err(|e| CleanroomError::validation_error(format!("OTEL config: {}", e)))?;
+        }
+
+        // Validate expectations if present
+        if let Some(ref expect) = self.expect {
+            // Validate graph expectations
+            if let Some(ref graph) = expect.graph {
+                graph.validate().map_err(|e| {
+                    CleanroomError::validation_error(format!("Graph expectations: {}", e))
+                })?;
+            }
+
+            // Validate status expectations
+            if let Some(ref status) = expect.status {
+                status.validate().map_err(|e| {
+                    CleanroomError::validation_error(format!("Status expectations: {}", e))
+                })?;
+            }
+        }
+
+        // Validate meta config if present
+        if let Some(ref meta) = self.meta {
+            if meta.name.trim().is_empty() {
+                return Err(CleanroomError::validation_error(
+                    "Meta name cannot be empty",
+                ));
+            }
+            if meta.version.trim().is_empty() {
+                return Err(CleanroomError::validation_error(
+                    "Meta version cannot be empty",
                 ));
             }
         }
@@ -292,12 +443,17 @@ impl ScenarioConfig {
             ));
         }
 
-        if self.steps.is_empty() {
+        // v1.0 format: must have either service+run OR steps
+        let has_service_run = self.service.is_some() || self.run.is_some();
+        let has_steps = !self.steps.is_empty();
+
+        if !has_service_run && !has_steps {
             return Err(CleanroomError::validation_error(
-                "At least one step is required",
+                "Scenario must have either 'service'/'run' (v1.0) or 'steps' (v0.6.0)",
             ));
         }
 
+        // Validate steps if present
         for (i, step) in self.steps.iter().enumerate() {
             step.validate()
                 .map_err(|e| CleanroomError::validation_error(format!("Step {}: {}", i, e)))?;
@@ -348,6 +504,150 @@ impl PolicyConfig {
             }
         }
 
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod parse_shell_command_tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_shell_command_with_simple_command() -> Result<()> {
+        // Arrange
+        let cmd = "echo hello";
+
+        // Act
+        let args = parse_shell_command(cmd)?;
+
+        // Assert
+        assert_eq!(args, vec!["echo", "hello"]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_double_quotes() -> Result<()> {
+        // Arrange
+        let cmd = r#"echo "hello world""#;
+
+        // Act
+        let args = parse_shell_command(cmd)?;
+
+        // Assert
+        assert_eq!(args, vec!["echo", "hello world"]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_single_quotes() -> Result<()> {
+        // Arrange
+        let cmd = "sh -lc 'echo test'";
+
+        // Act
+        let args = parse_shell_command(cmd)?;
+
+        // Assert
+        assert_eq!(args, vec!["sh", "-lc", "echo test"]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_nested_quotes() -> Result<()> {
+        // Arrange
+        let cmd = r#"sh -lc 'echo "nested test"'"#;
+
+        // Act
+        let args = parse_shell_command(cmd)?;
+
+        // Assert
+        assert_eq!(args, vec!["sh", "-lc", r#"echo "nested test""#]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_escaping() -> Result<()> {
+        // Arrange
+        let cmd = r#"echo hello\ world"#;
+
+        // Act
+        let args = parse_shell_command(cmd)?;
+
+        // Assert
+        assert_eq!(args, vec!["echo", "hello world"]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_empty_string_returns_error() {
+        // Arrange
+        let cmd = "";
+
+        // Act
+        let result = parse_shell_command(cmd);
+
+        // Assert
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Shell command cannot be empty"));
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_unbalanced_single_quotes_returns_error() {
+        // Arrange
+        let cmd = "echo 'hello";
+
+        // Act
+        let result = parse_shell_command(cmd);
+
+        // Assert
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Unbalanced single quotes"));
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_unbalanced_double_quotes_returns_error() {
+        // Arrange
+        let cmd = r#"echo "hello"#;
+
+        // Act
+        let result = parse_shell_command(cmd);
+
+        // Assert
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Unbalanced double quotes"));
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_multiple_spaces() -> Result<()> {
+        // Arrange
+        let cmd = "echo    hello    world";
+
+        // Act
+        let args = parse_shell_command(cmd)?;
+
+        // Assert
+        assert_eq!(args, vec!["echo", "hello", "world"]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_shell_command_with_tabs() -> Result<()> {
+        // Arrange
+        let cmd = "echo\thello\tworld";
+
+        // Act
+        let args = parse_shell_command(cmd)?;
+
+        // Assert
+        assert_eq!(args, vec!["echo", "hello", "world"]);
         Ok(())
     }
 }

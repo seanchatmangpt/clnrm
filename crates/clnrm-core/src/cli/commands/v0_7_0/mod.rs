@@ -7,6 +7,7 @@
 //! - lint: Linting and static analysis
 //! - diff: Trace comparison
 //! - record: Baseline recording for test runs
+//! - analyze: OTEL trace validation (IMPLEMENTED)
 //!
 //! PRD v1.0 additional commands:
 //! - pull: Image pre-pulling (implemented)
@@ -17,6 +18,7 @@
 //! - spans: Span filtering (IMPLEMENTED)
 //! - collector: OTEL collector management (stub)
 
+pub mod analyze;
 pub mod collector;
 pub mod dev;
 pub mod diff;

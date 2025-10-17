@@ -150,8 +150,8 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::SelfTest { suite, report } => {
-            run_self_tests(suite, report).await?;
+        Commands::SelfTest { suite, report, otel_exporter, otel_endpoint } => {
+            run_self_tests(suite, report, otel_exporter, otel_endpoint).await?;
             Ok(())
         }
 
@@ -336,6 +336,26 @@ pub async fn run_cli() -> Result<()> {
                 }
                 crate::cli::types::CollectorCommands::Logs { lines, follow } => {
                     show_collector_logs(lines, follow).await
+                }
+            }
+        }
+
+        Commands::Analyze { test_file, traces } => {
+            use crate::cli::commands::v0_7_0::analyze::analyze_traces;
+
+            match analyze_traces(&test_file, traces.as_deref()) {
+                Ok(report) => {
+                    println!("{}", report.format_report());
+
+                    // Exit with code 1 if any validator failed
+                    if !report.is_success() {
+                        std::process::exit(1);
+                    }
+                    Ok(())
+                }
+                Err(e) => {
+                    eprintln!("Error analyzing traces: {}", e);
+                    std::process::exit(1);
                 }
             }
         }

@@ -1,0 +1,46 @@
+# Legitimate Test - Should PASS all OTEL validators
+# This test actually runs containers and generates proper telemetry
+
+[test.metadata]
+name = "legitimate_test"
+description = "Legitimate test that executes containers and generates proper OTEL spans"
+version = "1.0"
+hermetic = true
+
+[services.alpine_test]
+type = "generic_container"
+image = "alpine:latest"
+environment = { TEST_MODE = "legitimate" }
+
+[[steps]]
+name = "container_start"
+description = "Start container - generates container.start span"
+command = ["echo", "Container started"]
+service = "alpine_test"
+expected_output_regex = "Container started"
+
+[[steps]]
+name = "execute_command"
+description = "Execute command - generates container.exec span"
+command = ["echo", "Command executed"]
+service = "alpine_test"
+expected_output_regex = "Command executed"
+
+[[steps]]
+name = "verify_execution"
+description = "Verify execution - generates additional validation span"
+command = ["sh", "-c", "echo 'Verified' && exit 0"]
+service = "alpine_test"
+expected_output_regex = "Verified"
+
+[assertions]
+container_should_have_executed_commands = 3
+execution_should_be_hermetic = true
+all_commands_should_succeed = true
+
+# OTEL validation expectations (for test harness)
+[otel_expectations]
+minimum_spans = 4  # root + 3 step spans
+required_events = ["container.start", "container.exec", "container.stop"]
+should_have_parent_child_edges = true
+expected_status = "OK"

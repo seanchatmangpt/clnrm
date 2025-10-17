@@ -1,0 +1,168 @@
+# ====================================================================================
+# clnrm_brew_install_selftest_verbose.clnrm.toml
+# Purpose: End-to-end, hermetic(ish) validation that a Homebrew-installed `clnrm`
+#          can run its own OTEL-only self-test inside a container. Hyper-verbose,
+#          line-by-line commentary of every field. Flat TOML. No indentation blocks.
+#          Uses the STDOUT exporter to avoid collector setup (zero infra).
+# ====================================================================================
+
+# ---- Identity of this specification. Pure metadata for humans/tools. --------------
+[meta]
+name="clnrm_brew_install_selftest_verbose"   # Human-readable test suite name
+version="1.0"                                 # Author's version of this spec file
+description="Brew-install clnrm in-container and validate via OTEL (stdout) spans"
+
+# ---- Authoring-only variables. Ignored by runtime. Helpful for readers/tools. -----
+#      These values mirror what the template would render. They make files easier
+#      to reason about and support `render --map`, `fmt`, and `lint`. Execution and
+#      analysis MUST NOT read these.
+[vars]
+svc="clnrm"                                   # Logical service name we test
+env="ci"                                      # Environment resource attr for traces
+exporter="stdout"                             # Choose "stdout" to avoid network
+image="homebrew/brew:latest"                  # Container image hosting Homebrew
+freeze_clock="2025-01-01T00:00:00Z"           # Deterministic wall-clock for traces
+
+# ---- Telemetry config. Single source of truth for tracing behavior. ---------------
+#      We use stdout exporter so the framework can parse spans from process output.
+#      No collectors, no auth, no network ceremony in the minimal loop.
+[otel]
+exporter="stdout"                             # "stdout" | "otlp"; choose stdout here
+sample_ratio=1.0                              # Export all spans (no sampling)
+resources={ "service.name"="clnrm",           # Required: service identity in traces
+            "service.version"="1.0.0",        # Optional: version string for evidence
+            "env"="ci" }                      # Useful dimension to segment runs
+
+# ---- Optional OTEL headers. Not used by stdout; included as exemplar. -------------
+# [otel.headers]
+# Authorization="Bearer <token>"              # Example for OTLP; leave commented
+
+# ---- Optional propagators. Not required for this case. ----------------------------
+# [otel.propagators]
+# use=["tracecontext","baggage"]              # Example default set
+
+# ---- Service definition. Exactly one fresh container per scenario. ----------------
+#      We pick the official Homebrew image so `brew` exists. The test installs
+#      clnrm from its tap, then runs `clnrm self-test` inside that same container.
+[service.brew]
+plugin="generic_container"                    # Generic container runner
+image="homebrew/brew:latest"                  # Container with Homebrew preinstalled
+args=["bash","-lc","echo ready"]              # Minimal no-op entry; scenario overrides
+env={ "HOMEBREW_NO_ANALYTICS"="1" }           # Keep Homebrew quiet/deterministic
+wait_for_span="clnrm.run"                     # Earliest root span we expect to see
+                                              # from the upcoming `clnrm` execution
+
+# ---- Scenario: install via Homebrew, then run clnrm's self-test with OTEL stdout. -
+#      Rationale: validates packaging + the framework's own telemetry pipeline.
+#      NOTE: Network will be used by Homebrew to fetch formulae. This does NOT
+#            affect our span assertions because spans are emitted by `clnrm`.
+[[scenario]]
+name="brew_install_and_selftest_stdout"       # Unique scenario label
+service="brew"                                # Use the service above
+run="bash -lc 'brew update && brew tap seanchatmangpt/clnrm && brew install clnrm && clnrm self-test --otel-exporter stdout'"
+                                              # Command sequence:
+                                              # 1) brew update (refresh indices)
+                                              # 2) tap the clnrm tap
+                                              # 3) install clnrm
+                                              # 4) run self-test with stdout exporter
+artifacts.collect=["spans:default"]           # Tell clnrm to collect spans from stdout
+
+# ---- Expectations: span structure proves behavior, not text logs. -----------------
+# Root span must exist and reflect passing outcome within reasonable bounds.
+[[expect.span]]
+name="clnrm.run"                              # Root span the framework emits for a run
+kind="internal"                               # OTEL SpanKind; internal by default
+attrs.all={ "result"="pass" }                 # Hard proof: the run result was "pass"
+duration_ms={ min=10, max=600000 }            # Sanity window: 10ms..10min end-to-end
+
+# A concrete step span that proves real execution happened (not fake green).
+[[expect.span]]
+name="clnrm.step:hello_world"                 # Self-test includes a known step
+parent="clnrm.run"                            # Must be child of the root run
+kind="internal"
+events.any=["container.start","container.exec","container.stop"]
+                                              # Lifecycle evidence that a containerized
+                                              # command executed within the run
+
+# (Optional) Another internal span often present in clnrm self-tests.
+# Keep this illustrative; if absent, the suite still passes.
+[[expect.span]]
+name="clnrm.plugin.registry"                  # Framework plugin registry work
+parent="clnrm.run"
+kind="internal"
+attrs.any=["component=plugin.registry"]       # Any of these attributes suffices
+
+# ---- Graph topology: enforce critical parent→child edges and acyclicity. ----------
+[expect.graph]
+must_include=[["clnrm.run","clnrm.step:hello_world"]]  # Root must own the step span
+acyclic=true                                           # No cycles allowed in span graph
+# You can add: ["clnrm.run","clnrm.plugin.registry"] if you want stricter linkage.
+
+# ---- Counts: global/cardinality constraints that detect spoofing or duplication. --
+[expect.counts]
+spans_total={ gte=2, lte=200 }               # At least root+step; cap to bound noise
+errors_total={ eq=0 }                        # No error spans in a passing self-test
+by_name={ "clnrm.run"={ eq=1 },              # Exactly one root run
+         "clnrm.step:hello_world"={ gte=1 } }# At least the canonical step appears
+
+# ---- Windows: temporal containment. Child spans must occur within the root span. --
+[[expect.window]]
+outer="clnrm.run"                            # Root temporal window
+contains=["clnrm.step:hello_world"]          # Child entirely contained within root
+
+# ---- Ordering: if you require particular sequencing, encode minimal invariants. ----
+[expect.order]
+must_precede=[["clnrm.run","clnrm.step:hello_world"]]
+                                            # Root must start before step starts
+# must_follow can assert that step closes before root closes. Kept minimal.
+
+# ---- Status: enforce that spans report success. Globs apply broadly if desired. ---
+[expect.status]
+all="OK"                                     # Require OK status unless overridden
+# by_name={ "clnrm.step:*"="OK","clnrm.run"="OK" }  # Example targeted override
+
+# ---- Hermeticity guardrails: detect accidental leakage via attributes. ------------
+# Note: This suite allows Homebrew's network at the OS level, but our telemetry
+#       comes only from `clnrm`. These checks ensure the framework's spans don't
+#       claim external peer connections themselves.
+[expect.hermeticity]
+no_external_services=true                    # High-level assertion: no external deps in spans
+resource_attrs.must_match={ "service.name"="clnrm","env"="ci" }
+                                            # Proof that resources match our spec
+span_attrs.forbid_keys=["net.peer.name","db.connection_string","http.url"]
+                                            # If clnrm emitted these, it likely leaked data
+
+# ---- Resource caps: keep things modest but not restrictive. -----------------------
+[limits]
+cpu_millicores=500                           # 0.5 vCPU guidance for the container
+memory_mb=512                                # 512 MB RAM guidance
+
+# ---- Determinism: freeze clock and seed so repeated runs are comparable. ----------
+[determinism]
+seed=42                                      # Pseudorandom seed for repeatability
+freeze_clock="2025-01-01T00:00:00Z"          # Wall-clock for spans, stable evidence
+
+# ---- Reporting: machine-readable outputs for automation and local inspection. -----
+[report]
+json="brew-selftest.report.json"             # Structured verdict + summary
+junit="brew-selftest.junit.xml"              # Optional: CI-friendly test report
+digest="brew-selftest.trace.sha256"          # SHA-256 of normalized trace for repro
+
+# ====================================================================================
+# NOTES:
+# - Why stdout exporter? Minimal setup. Spans are parsed from process output; no OTLP.
+# - Why Homebrew container? Ensures `brew` exists without modifying the host.
+# - Why these expectations? They assert behavior via spans, not logs or exit text:
+#     • Root span exists and passes.
+#     • A known step executes with lifecycle events (no fake green).
+#     • Parent→child edge and acyclicity guarantee structure.
+#     • Counts block duplication/shadow spans.
+#     • Windows and order enforce temporal logic.
+#     • Status must be OK; errors_total==0 ensures no hidden failures.
+#     • Hermeticity checks detect attribute-based leakage in clnrm's spans.
+# - Extending this file:
+#     • Add a second scenario for OTLP by switching [otel].exporter="otlp",
+#       setting endpoint/headers (and loosening hermeticity if collector attrs appear).
+#     • Add more [[expect.span]] blocks for additional self-test steps.
+# - Happy-path only: this file assumes the Homebrew tap and formula are available.
+# ====================================================================================

@@ -1,0 +1,43 @@
+# Fake Green - Status Mismatch
+# Reports OK status but has ERROR spans in telemetry
+# Should FAIL: Status validator detects mismatch between reported and actual status
+
+[test.metadata]
+name = "fake_status_mismatch"
+description = "Fake test reporting OK but containing ERROR spans"
+version = "1.0"
+hermetic = true
+fake_mode = "status_mismatch"
+
+[services.alpine_fake]
+type = "generic_container"
+image = "alpine:latest"
+environment = { FAKE_MODE = "hide_errors" }
+
+[[steps]]
+name = "step_with_hidden_error"
+description = "Step that errors but reports OK"
+command = ["sh", "-c", "exit 1"]  # Will fail
+service = "alpine_fake"
+expected_output_regex = ".*"  # Accepts anything
+
+[[steps]]
+name = "step_masking_failure"
+description = "Step that masks previous failure"
+command = ["echo", "All good!"]  # Claims success
+service = "alpine_fake"
+expected_output_regex = "All good!"
+
+[assertions]
+container_should_have_executed_commands = 2
+execution_should_be_hermetic = true
+all_commands_should_succeed = true  # LIES - first command fails
+
+# OTEL validation expectations - should FAIL status validator
+[otel_expectations]
+should_fail = true
+reported_status = "OK"  # Test claims it passed
+actual_span_statuses = ["ERROR", "OK"]  # But telemetry shows error
+failure_reason = "Status validator detects mismatch (reported OK but has ERROR spans)"
+validator_failures = ["status_validator"]
+error_spans = ["step_with_hidden_error"]

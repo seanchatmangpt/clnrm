@@ -36,7 +36,7 @@ impl StatusCode {
     /// # Errors
     /// * Returns `CleanroomError::validation_error` if the string is not a valid status code
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> Result<Self> {
+    pub fn parse(s: &str) -> Result<Self> {
         match s.to_uppercase().as_str() {
             "UNSET" => Ok(StatusCode::Unset),
             "OK" => Ok(StatusCode::Ok),
@@ -188,14 +188,14 @@ impl StatusExpectation {
         // Check otel.status_code attribute
         if let Some(status_val) = span.attributes.get("otel.status_code") {
             if let Some(status_str) = status_val.as_str() {
-                return StatusCode::from_str(status_str);
+                return StatusCode::parse(status_str);
             }
         }
 
         // Check status attribute (alternative)
         if let Some(status_val) = span.attributes.get("status") {
             if let Some(status_str) = status_val.as_str() {
-                return StatusCode::from_str(status_str);
+                return StatusCode::parse(status_str);
             }
         }
 
@@ -249,11 +249,11 @@ mod tests {
     }
 
     #[test]
-    fn test_status_code_from_str_valid() -> Result<()> {
+    fn test_status_code_parse_valid() -> Result<()> {
         // Arrange & Act
-        let unset = StatusCode::from_str("UNSET")?;
-        let ok = StatusCode::from_str("OK")?;
-        let error = StatusCode::from_str("ERROR")?;
+        let unset = StatusCode::parse("UNSET")?;
+        let ok = StatusCode::parse("OK")?;
+        let error = StatusCode::parse("ERROR")?;
 
         // Assert
         assert_eq!(unset, StatusCode::Unset);
@@ -263,10 +263,10 @@ mod tests {
     }
 
     #[test]
-    fn test_status_code_from_str_case_insensitive() -> Result<()> {
+    fn test_status_code_parse_case_insensitive() -> Result<()> {
         // Arrange & Act
-        let ok_lower = StatusCode::from_str("ok")?;
-        let ok_mixed = StatusCode::from_str("Ok")?;
+        let ok_lower = StatusCode::parse("ok")?;
+        let ok_mixed = StatusCode::parse("Ok")?;
 
         // Assert
         assert_eq!(ok_lower, StatusCode::Ok);
@@ -275,9 +275,9 @@ mod tests {
     }
 
     #[test]
-    fn test_status_code_from_str_invalid() {
+    fn test_status_code_parse_invalid() {
         // Arrange & Act
-        let result = StatusCode::from_str("INVALID");
+        let result = StatusCode::parse("INVALID");
 
         // Assert
         assert!(result.is_err());

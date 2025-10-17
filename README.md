@@ -41,7 +41,7 @@ A testing framework for hermetic integration testing with container-based isolat
 - **Database Template** - Database integration testing
 - **API Template** - API service testing
 
-### ✅ **Tera Templating** *(v0.7.0)*
+### ✅ **Tera Templating** *(v1.0)*
 - **Dynamic configuration** - Jinja2-like templates for test files
 - **Custom functions** - `env()`, `now_rfc3339()`, `sha256()`, `toml_encode()`
 - **Template namespaces** - `vars.*`, `matrix.*`, `otel.*`
@@ -49,7 +49,7 @@ A testing framework for hermetic integration testing with container-based isolat
 - **Conditional logic** - Environment-based configuration
 - **Macro library** - 8 reusable macros with 85% boilerplate reduction
 
-### ✅ **Advanced Validators** *(v0.7.0)*
+### ✅ **Advanced Validators** *(v1.0)*
 - **Temporal ordering** - `must_precede` and `must_follow` validation
 - **Status validation** - Glob patterns for span status codes
 - **Count validation** - Span counts by kind and total
@@ -57,7 +57,7 @@ A testing framework for hermetic integration testing with container-based isolat
 - **Graph validation** - Parent-child relationships and topology
 - **Hermeticity validation** - Isolation and resource constraints
 
-### ✅ **Multi-Format Reporting** *(v0.7.0)*
+### ✅ **Multi-Format Reporting** *(v1.0)*
 - **JSON reports** - Programmatic access and parsing
 - **JUnit XML** - CI/CD integration (Jenkins, GitHub Actions)
 - **SHA-256 digests** - Reproducibility verification
@@ -200,12 +200,12 @@ clnrm template otel > my-test.clnrm.toml
 
 ## 📚 Documentation
 
-- **[v0.7.0 Documentation](docs/)** - Complete v0.7.0 guides and references
-- **[PRD: v0.7.0 Tera-First Architecture](PRD-v1.md)** - Product requirements (v1.0 features implemented in v0.7.0+)
+- **[v1.0 Documentation](docs/)** - Complete v1.0 guides and references
+- **[PRD: v1.0 Tera-First Architecture](docs/PRD-v1.md)** - Product requirements
 - **[CLI Guide](docs/CLI_GUIDE.md)** - Command reference
 - **[TOML Reference](docs/TOML_REFERENCE.md)** - Configuration format
 - **[Tera Template Guide](docs/TERA_TEMPLATES.md)** - Template syntax and macros
-- **[Migration Guide](docs/MIGRATION_v0.7.0.md)** - From v0.6.0 to v0.7.0
+- **[Migration Guide](docs/v1.0/MIGRATION_GUIDE.md)** - From v0.6.0 to v1.0
 
 ## 🎯 Legacy v0.6.0 Features
 
@@ -293,7 +293,7 @@ The framework provides comprehensive validation across multiple dimensions:
 
 **Result:** Proven correctness with zero false positives.
 
-### **Fake-Green Detection** *(v1.0.0)*
+### **Fake-Green Detection** *(v1.0)*
 
 **The Problem:** Tests that report "PASS" but never actually executed code.
 
@@ -521,8 +521,8 @@ clnrm plugins
 - 100% backward compatible with v0.6.0
 
 #### **📚 Documentation**
-- DX Architecture guide (`docs/V0.7.0_ARCHITECTURE.md`)
-- Updated README with v0.7.0 features
+- DX Architecture guide (`docs/V1.0_ARCHITECTURE.md`)
+- Updated README with v1.0 features
 - Macro library documentation
 - Template usage examples
 

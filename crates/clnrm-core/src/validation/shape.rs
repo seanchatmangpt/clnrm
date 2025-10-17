@@ -396,15 +396,23 @@ impl ShapeValidator {
 
         // Add must_precede edges (A -> B means A must come before B)
         if let Some(ref must_precede) = order.must_precede {
-            for (first, second) in must_precede {
-                graph.entry(first.clone()).or_default().push(second.clone());
+            for edge in must_precede {
+                if edge.len() == 2 {
+                    let first = &edge[0];
+                    let second = &edge[1];
+                    graph.entry(first.clone()).or_default().push(second.clone());
+                }
             }
         }
 
         // Add must_follow edges (A follows B means B -> A)
         if let Some(ref must_follow) = order.must_follow {
-            for (first, second) in must_follow {
-                graph.entry(second.clone()).or_default().push(first.clone());
+            for edge in must_follow {
+                if edge.len() == 2 {
+                    let first = &edge[0];
+                    let second = &edge[1];
+                    graph.entry(second.clone()).or_default().push(first.clone());
+                }
             }
         }
 
@@ -1035,9 +1043,12 @@ mod tests {
                     expected_exit_code: None,
                     continue_on_failure: None,
                 }],
+                service: None,
+                run: None,
                 concurrent: None,
                 timeout_ms: None,
                 policy: None,
+                artifacts: None,
             }],
             assertions: None,
             otel_validation: None,
@@ -1077,6 +1088,7 @@ mod tests {
                 r#type: "generic_container".to_string(),
                 plugin: "generic_container".to_string(),
                 image: Some("alpine:latest".to_string()),
+                args: None,
                 env: None,
                 ports: None,
                 volumes: None,
@@ -1084,6 +1096,8 @@ mod tests {
                 username: None,
                 password: None,
                 strict: None,
+                wait_for_span: None,
+                wait_for_span_timeout_secs: None,
             },
         );
 
@@ -1109,8 +1123,11 @@ mod tests {
                     expected_exit_code: None,
                     continue_on_failure: None,
                 }],
+                service: None,
+                run: None,
                 concurrent: None,
                 timeout_ms: None,
+                artifacts: None,
                 policy: None,
             }],
             assertions: None,
@@ -1163,14 +1180,19 @@ mod tests {
                     expected_exit_code: None,
                     continue_on_failure: None,
                 }],
+                service: None,
+                run: None,
                 concurrent: None,
                 timeout_ms: None,
                 policy: None,
+                artifacts: None,
             }],
             assertions: None,
             otel_validation: None,
             otel: Some(OtelConfig {
                 exporter: "invalid_exporter".to_string(),
+                endpoint: None,
+                protocol: None,
                 sample_ratio: None,
                 resources: None,
                 headers: None,

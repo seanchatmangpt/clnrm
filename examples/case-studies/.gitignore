@@ -1,0 +1,15 @@
+# Test execution artifacts
+honest-run.json
+fake-run.json
+baseline.json
+
+# OTEL traces
+*.trace
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+
+# Logs
+*.log

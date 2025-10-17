@@ -1,0 +1,49 @@
+# Fake Green - Wrong Counts
+# Reports success with 0 spans generated
+# Should FAIL: Counts validator detects span count mismatch
+
+[test.metadata]
+name = "fake_wrong_counts"
+description = "Fake test reporting success but zero OTEL spans"
+version = "1.0"
+hermetic = true
+fake_mode = "wrong_counts"
+
+[services.alpine_fake]
+type = "generic_container"
+image = "alpine:latest"
+environment = { FAKE_MODE = "no_telemetry" }
+
+[[steps]]
+name = "step_no_telemetry"
+description = "Step that claims success but generates no telemetry"
+command = ["echo", "Success"]
+service = "alpine_fake"
+expected_output_regex = "Success"
+
+[[steps]]
+name = "another_step_no_telemetry"
+description = "Another step with no telemetry"
+command = ["echo", "Also success"]
+service = "alpine_fake"
+expected_output_regex = "Also success"
+
+[[steps]]
+name = "third_step_no_telemetry"
+description = "Third step with no telemetry"
+command = ["echo", "Still success"]
+service = "alpine_fake"
+expected_output_regex = "Still success"
+
+[assertions]
+container_should_have_executed_commands = 3
+execution_should_be_hermetic = true
+all_commands_should_succeed = true
+
+# OTEL validation expectations - should FAIL counts validator
+[otel_expectations]
+should_fail = true
+reported_span_count = 0  # Claims 0 spans
+expected_minimum_spans = 4  # Should have root + 3 steps
+failure_reason = "Counts validator detects span count mismatch (expected >= 4, got 0)"
+validator_failures = ["counts_validator"]

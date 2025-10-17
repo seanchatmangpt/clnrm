@@ -5,6 +5,9 @@
 use crate::CleanroomError;
 
 #[cfg(feature = "otel-traces")]
+pub mod json_exporter;
+
+#[cfg(feature = "otel-traces")]
 use {
     opentelemetry::{
         global, propagation::TextMapCompositePropagator, trace::TracerProvider, KeyValue,
@@ -31,8 +34,10 @@ pub enum Export {
     OtlpHttp { endpoint: &'static str },
     /// OTLP/gRPC to an endpoint, e.g. http://localhost:4317
     OtlpGrpc { endpoint: &'static str },
-    /// Export to stdout for local development and testing
+    /// Export to stdout for local development and testing (human-readable format)
     Stdout,
+    /// Export to stdout as NDJSON (machine-readable, one JSON object per line)
+    StdoutNdjson,
 }
 
 /// Enum to handle different span exporter types
@@ -42,6 +47,7 @@ enum SpanExporterType {
     Otlp(Box<opentelemetry_otlp::SpanExporter>),
     #[cfg(feature = "otel-stdout")]
     Stdout(opentelemetry_stdout::SpanExporter),
+    NdjsonStdout(json_exporter::NdjsonStdoutExporter),
 }
 
 #[cfg(feature = "otel-traces")]
@@ -55,6 +61,7 @@ impl SpanExporter for SpanExporterType {
             SpanExporterType::Otlp(exporter) => Box::pin(exporter.as_ref().export(batch)),
             #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(exporter) => Box::pin(exporter.export(batch)),
+            SpanExporterType::NdjsonStdout(exporter) => Box::pin(exporter.export(batch)),
         }
     }
 
@@ -63,6 +70,7 @@ impl SpanExporter for SpanExporterType {
             SpanExporterType::Otlp(exporter) => exporter.as_mut().shutdown(),
             #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(exporter) => exporter.shutdown(),
+            SpanExporterType::NdjsonStdout(exporter) => exporter.shutdown(),
         }
     }
 }
@@ -75,6 +83,7 @@ pub struct OtelConfig {
     pub sample_ratio: f64,            // 1.0 for always_on
     pub export: Export,
     pub enable_fmt_layer: bool, // local pretty logs
+    pub headers: Option<std::collections::HashMap<String, String>>, // OTLP headers (e.g., Authorization)
 }
 
 /// Guard flushes providers on drop (happy path).
@@ -137,6 +146,15 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
         Export::OtlpHttp { endpoint } => {
             // OTLP HTTP exporter - use environment variables for configuration
             std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint);
+
+            // Set custom headers if provided
+            if let Some(ref headers) = cfg.headers {
+                for (key, value) in headers {
+                    let env_key = format!("OTEL_EXPORTER_OTLP_HEADERS_{}", key.to_uppercase());
+                    std::env::set_var(env_key, value);
+                }
+            }
+
             let exporter = opentelemetry_otlp::SpanExporter::builder()
                 .with_http()
                 .build()
@@ -151,6 +169,15 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
         Export::OtlpGrpc { endpoint } => {
             // OTLP gRPC exporter - use environment variables for configuration
             std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint);
+
+            // Set custom headers if provided
+            if let Some(ref headers) = cfg.headers {
+                for (key, value) in headers {
+                    let env_key = format!("OTEL_EXPORTER_OTLP_HEADERS_{}", key.to_uppercase());
+                    std::env::set_var(env_key, value);
+                }
+            }
+
             let exporter = opentelemetry_otlp::SpanExporter::builder()
                 .with_tonic()
                 .build()
@@ -170,6 +197,7 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
                 "Stdout export requires 'otel-stdout' feature",
             ));
         }
+        Export::StdoutNdjson => SpanExporterType::NdjsonStdout(json_exporter::NdjsonStdoutExporter::new()),
     };
 
     // Tracer provider with batch exporter.
@@ -371,6 +399,20 @@ pub mod spans {
             test.config = config_path,
             test.count = test_count,
             otel.kind = "internal",
+            component = "runner",
+        )
+    }
+
+    /// Create span for test step execution
+    /// Each test step gets its own span with proper parent-child relationship
+    pub fn step_span(step_name: &str, step_index: usize) -> tracing::Span {
+        span!(
+            Level::INFO,
+            "clnrm.step",
+            step.name = step_name,
+            step.index = step_index,
+            otel.kind = "internal",
+            component = "step_executor",
         )
     }
 
@@ -383,6 +425,19 @@ pub mod spans {
             test.name = test_name,
             test.hermetic = true,
             otel.kind = "internal",
+            component = "test_executor",
+        )
+    }
+
+    /// Create span for plugin registry initialization
+    /// Proves plugin system works correctly
+    pub fn plugin_registry_span(plugin_count: usize) -> tracing::Span {
+        span!(
+            Level::INFO,
+            "clnrm.plugin.registry",
+            plugin.count = plugin_count,
+            otel.kind = "internal",
+            component = "plugin_registry",
         )
     }
 
@@ -395,6 +450,45 @@ pub mod spans {
             service.name = service_name,
             service.type = service_type,
             otel.kind = "internal",
+            component = "service_manager",
+        )
+    }
+
+    /// Create span for container start
+    /// Records container lifecycle with image details
+    pub fn container_start_span(image: &str, container_id: &str) -> tracing::Span {
+        span!(
+            Level::INFO,
+            "clnrm.container.start",
+            container.image = image,
+            container.id = container_id,
+            otel.kind = "internal",
+            component = "container_backend",
+        )
+    }
+
+    /// Create span for container exec
+    /// Records command execution in container
+    pub fn container_exec_span(container_id: &str, command: &str) -> tracing::Span {
+        span!(
+            Level::INFO,
+            "clnrm.container.exec",
+            container.id = container_id,
+            command = command,
+            otel.kind = "internal",
+            component = "container_backend",
+        )
+    }
+
+    /// Create span for container stop
+    /// Records container cleanup
+    pub fn container_stop_span(container_id: &str) -> tracing::Span {
+        span!(
+            Level::INFO,
+            "clnrm.container.stop",
+            container.id = container_id,
+            otel.kind = "internal",
+            component = "container_backend",
         )
     }
 
@@ -406,6 +500,7 @@ pub mod spans {
             "clnrm.command.execute",
             command = command,
             otel.kind = "internal",
+            component = "command_executor",
         )
     }
 
@@ -417,7 +512,97 @@ pub mod spans {
             "clnrm.assertion.validate",
             assertion.type = assertion_type,
             otel.kind = "internal",
+            component = "validator",
         )
+    }
+}
+
+/// Span event helpers for recording lifecycle events
+/// Following OpenTelemetry specification for span events
+#[cfg(feature = "otel-traces")]
+pub mod events {
+    use opentelemetry::trace::{Span, Status};
+    use opentelemetry::KeyValue;
+
+    /// Record container.start event with timestamp
+    pub fn record_container_start<S: Span>(span: &mut S, image: &str, container_id: &str) {
+        span.add_event(
+            "container.start",
+            vec![
+                KeyValue::new("container.image", image.to_string()),
+                KeyValue::new("container.id", container_id.to_string()),
+            ],
+        );
+    }
+
+    /// Record container.exec event with command
+    pub fn record_container_exec<S: Span>(span: &mut S, command: &str, exit_code: i32) {
+        span.add_event(
+            "container.exec",
+            vec![
+                KeyValue::new("command", command.to_string()),
+                KeyValue::new("exit_code", exit_code.to_string()),
+            ],
+        );
+    }
+
+    /// Record container.stop event with exit code
+    pub fn record_container_stop<S: Span>(span: &mut S, container_id: &str, exit_code: i32) {
+        span.add_event(
+            "container.stop",
+            vec![
+                KeyValue::new("container.id", container_id.to_string()),
+                KeyValue::new("exit_code", exit_code.to_string()),
+            ],
+        );
+    }
+
+    /// Record step.start event
+    pub fn record_step_start<S: Span>(span: &mut S, step_name: &str) {
+        span.add_event(
+            "step.start",
+            vec![KeyValue::new("step.name", step_name.to_string())],
+        );
+    }
+
+    /// Record step.complete event
+    pub fn record_step_complete<S: Span>(span: &mut S, step_name: &str, status: &str) {
+        span.add_event(
+            "step.complete",
+            vec![
+                KeyValue::new("step.name", step_name.to_string()),
+                KeyValue::new("status", status.to_string()),
+            ],
+        );
+    }
+
+    /// Record test result event
+    pub fn record_test_result<S: Span>(span: &mut S, test_name: &str, passed: bool) {
+        let status_str = if passed { "pass" } else { "fail" };
+        span.add_event(
+            "test.result",
+            vec![
+                KeyValue::new("test.name", test_name.to_string()),
+                KeyValue::new("result", status_str.to_string()),
+            ],
+        );
+
+        if !passed {
+            span.set_status(Status::error("Test failed"));
+        }
+    }
+
+    /// Record error event with details
+    pub fn record_error<S: Span>(span: &mut S, error_type: &str, error_message: &str) {
+        span.add_event(
+            "error",
+            vec![
+                KeyValue::new("error.type", error_type.to_string()),
+                KeyValue::new("error.message", error_message.to_string()),
+            ],
+        );
+        // Use owned string to satisfy 'static lifetime requirement
+        span.set_status(Status::error(error_message.to_string()));
     }
 }
 
@@ -434,10 +619,12 @@ mod tests {
             endpoint: "http://localhost:4317",
         };
         let stdout_export = Export::Stdout;
+        let ndjson_export = Export::StdoutNdjson;
 
         assert!(matches!(http_export, Export::OtlpHttp { .. }));
         assert!(matches!(grpc_export, Export::OtlpGrpc { .. }));
         assert!(matches!(stdout_export, Export::Stdout));
+        assert!(matches!(ndjson_export, Export::StdoutNdjson));
     }
 
     #[test]
@@ -448,6 +635,7 @@ mod tests {
             sample_ratio: 1.0,
             export: Export::Stdout,
             enable_fmt_layer: true,
+            headers: None,
         };
 
         assert_eq!(config.service_name, "test-service");
@@ -467,6 +655,7 @@ mod tests {
             sample_ratio: 1.0,
             export: Export::Stdout,
             enable_fmt_layer: false, // Disable to avoid test output pollution
+            headers: None,
         };
 
         let result = init_otel(config);
@@ -492,6 +681,7 @@ mod tests {
                 endpoint: "http://localhost:4318",
             },
             enable_fmt_layer: false,
+            headers: None,
         };
 
         let result = init_otel(config);
@@ -514,6 +704,7 @@ mod tests {
                 endpoint: "http://localhost:4317",
             },
             enable_fmt_layer: false,
+            headers: None,
         };
 
         // Just verify the config is valid - actual initialization would require tokio runtime
@@ -532,6 +723,7 @@ mod tests {
             sample_ratio: 1.0,
             export: Export::Stdout,
             enable_fmt_layer: false,
+            headers: None,
         };
 
         #[cfg(feature = "otel-traces")]
@@ -559,6 +751,7 @@ mod tests {
                 endpoint: "http://localhost:4318",
             },
             enable_fmt_layer: false,
+            headers: None,
         };
 
         let cloned = config.clone();
@@ -584,6 +777,7 @@ mod tests {
                     endpoint: "http://localhost:4318",
                 },
                 enable_fmt_layer: false,
+                headers: None,
             };
 
             assert_eq!(config.sample_ratio, ratio);
@@ -614,6 +808,7 @@ mod tests {
                     endpoint: "http://localhost:4318",
                 },
                 enable_fmt_layer: true,
+                headers: None,
             };
 
             assert_eq!(config.deployment_env, env);
@@ -643,6 +838,7 @@ mod tests {
                 endpoint: "http://localhost:4317",
             },
             enable_fmt_layer: true,
+            headers: None,
         };
 
         let debug_str = format!("{:?}", config);
@@ -662,6 +858,7 @@ mod tests {
                 endpoint: "http://localhost:4318",
             },
             enable_fmt_layer: false,
+            headers: None,
         };
 
         let grpc_config = OtelConfig {
@@ -672,6 +869,7 @@ mod tests {
                 endpoint: "http://localhost:4317",
             },
             enable_fmt_layer: false,
+            headers: None,
         };
 
         assert_eq!(http_config.service_name, "http-service");
@@ -692,5 +890,8 @@ mod tests {
     fn test_export_stdout_variant() {
         let stdout_export = Export::Stdout;
         assert!(matches!(stdout_export, Export::Stdout));
+
+        let ndjson_export = Export::StdoutNdjson;
+        assert!(matches!(ndjson_export, Export::StdoutNdjson));
     }
 }

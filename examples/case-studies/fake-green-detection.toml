@@ -1,0 +1,140 @@
+# Fake-Green Detection Case Study
+#
+# This test demonstrates clnrm's ability to detect "fake-green" tests—tests that
+# report success without actually executing the system under test.
+#
+# SCENARIO:
+# - Honest implementation: Actually runs clnrm self-test with OTEL tracing
+# - Fake implementation: Just echoes "Passed" without launching containers
+#
+# EXPECTED BEHAVIOR:
+# - Honest: PASS (all OTEL evidence present)
+# - Fake: FAIL (missing lifecycle events, spans, edges, etc.)
+#
+# This demonstrates why OTEL-first validation is superior to traditional
+# assertion-based testing, which would pass the fake implementation.
+
+[vars]
+# Authoring-only variables (ignored at runtime)
+test_name = "fake-green-detection"
+description = "Prove clnrm catches fake-green tests via OTEL-first validation"
+author = "clnrm-team"
+version = "1.0.0"
+
+[test.metadata]
+name = "fake_green_detection_case_study"
+description = "Demonstrates detection of tests that fake success without execution"
+tags = ["case-study", "otel-validation", "fake-green-detection"]
+
+# SERVICE DEFINITIONS
+# Two implementations of the same test:
+# 1. "honest" - Actually runs clnrm with OTEL
+# 2. "fake" - Just echoes success without any execution
+
+[service.honest]
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "/scripts/honest-test.sh"]
+env = { "OTEL_TRACES_EXPORTER" = "otlp", "OTEL_EXPORTER_OTLP_ENDPOINT" = "http://localhost:4318" }
+volumes = ["/Users/sac/clnrm/examples/case-studies/scripts:/scripts:ro"]
+wait_for_span = "clnrm.run"
+timeout_sec = 30
+
+[service.fake]
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "/scripts/fake-green.sh"]
+env = {}
+volumes = ["/Users/sac/clnrm/examples/case-studies/scripts:/scripts:ro"]
+wait_for_span = "clnrm.run"  # Will timeout - no span ever generated
+timeout_sec = 10
+
+# STEP DEFINITION
+# Single step that executes the test (honest or fake depending on --service flag)
+
+[[steps]]
+name = "run_self_test"
+description = "Execute clnrm self-test (honest) or fake success (fake)"
+command = ["echo", "Test execution delegated to service container"]
+service = "default"  # Overridden by --service flag at runtime
+
+# DETECTION LAYER 1: Lifecycle Events
+# The honest implementation MUST produce container lifecycle events
+# The fake implementation will NOT (no containers launched)
+
+[expect.span.lifecycle_events]
+name_pattern = "container\\..*"
+required_events = ["container.start", "container.exec", "container.stop"]
+description = "Container lifecycle events must be present in spans"
+
+# DETECTION LAYER 2: Span Graph Structure
+# Must have parent→child relationship between run and step spans
+
+[expect.graph.parent_child_edge]
+parent_pattern = "clnrm\\.run"
+child_pattern = "clnrm\\.step:.*"
+edge_type = "parent_child"
+description = "Run span must be parent of step span"
+
+# DETECTION LAYER 3: Span Counts
+# Honest implementation produces multiple spans, fake produces zero
+
+[expect.counts.minimum_spans]
+total_spans_min = 2
+total_spans_max = 1000
+description = "Must have at least 2 spans (run + step)"
+
+[expect.counts.step_spans]
+name_pattern = "clnrm\\.step:.*"
+min = 1
+max = 100
+description = "Must have at least 1 step span"
+
+# DETECTION LAYER 4: Ordering Constraints
+# Plugin registry must initialize before step execution
+
+[expect.order.plugin_before_step]
+before_pattern = "plugin\\.registry"
+after_pattern = "clnrm\\.step:.*"
+description = "Plugin registry must initialize before step execution"
+
+# DETECTION LAYER 5: Window Containment
+# Step span must be contained within run span's time window
+
+[expect.window.step_within_run]
+container_pattern = "clnrm\\.run"
+contained_pattern = "clnrm\\.step:.*"
+description = "Step spans must be contained within run span time window"
+
+# DETECTION LAYER 6: Status Validation
+# All spans must have OK status with zero errors
+
+[expect.status.all_spans_ok]
+name_pattern = ".*"
+expected_status = "OK"
+max_errors = 0
+description = "All spans must have OK status with no errors"
+
+# DETECTION LAYER 7: Hermeticity Validation
+# Spans must have hermetic attributes (service.name, deployment.env)
+
+[expect.hermeticity.resource_attributes]
+required_attributes = ["service.name", "deployment.environment"]
+description = "Spans must have hermetic resource attributes"
+
+[expect.hermeticity.span_attributes]
+name_pattern = "clnrm\\.step:.*"
+required_attributes = ["test.name", "step.name"]
+description = "Step spans must have test and step identifiers"
+
+# ASSERTIONS
+# High-level test requirements
+
+[assertions]
+container_should_have_executed_commands = 1
+execution_should_be_hermetic = true
+should_produce_otel_spans = true
+should_have_parent_child_relationships = true
+should_have_lifecycle_events = true
+should_have_hermetic_attributes = true
+should_complete_within_time_window = true

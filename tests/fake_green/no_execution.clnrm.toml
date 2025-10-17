@@ -1,0 +1,33 @@
+# Fake Green - No Execution
+# This test CLAIMS to run but wrapper just echoes "Passed" without containers
+# Should FAIL: Missing lifecycle events (container.start, container.exec, container.stop)
+
+[test.metadata]
+name = "fake_no_execution"
+description = "Fake test that echoes success without actually running containers"
+version = "1.0"
+hermetic = true
+fake_mode = "no_execution"  # Instructs test harness to simulate this scenario
+
+[services.alpine_fake]
+type = "generic_container"
+image = "alpine:latest"
+environment = { FAKE_MODE = "skip_execution" }
+
+[[steps]]
+name = "fake_step"
+description = "Pretends to run but doesn't"
+command = ["echo", "Passed"]  # Just echoes success
+service = "alpine_fake"
+expected_output_regex = "Passed"
+
+[assertions]
+container_should_have_executed_commands = 1
+execution_should_be_hermetic = true
+
+# OTEL validation expectations - this test should FAIL
+[otel_expectations]
+should_fail = true
+missing_events = ["container.start", "container.exec", "container.stop"]
+failure_reason = "Missing required lifecycle events - no container was actually started"
+validator_failures = ["span_validator"]

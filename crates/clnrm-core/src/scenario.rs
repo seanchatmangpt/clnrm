@@ -11,6 +11,7 @@
 //! - **Concurrent execution**: Run steps in parallel for improved performance
 //! - **Deterministic execution**: Reproducible results with seeded randomness
 //! - **Comprehensive reporting**: Detailed step-by-step execution results
+//! - **Artifact collection**: Collect spans, logs, and files from execution
 //!
 //! ## Usage Examples
 //!
@@ -69,10 +70,15 @@
 
 #![allow(clippy::get_first)]
 
+pub mod artifacts;
+
 use crate::backend::{Backend, Cmd};
 use crate::error::Result;
 use crate::policy::Policy;
 use serde::{Deserialize, Serialize};
+
+// Re-export artifacts types
+pub use artifacts::{ArtifactCollector, ArtifactInfo, ArtifactType};
 
 /// Scenario execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]

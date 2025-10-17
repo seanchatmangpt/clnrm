@@ -325,6 +325,7 @@ mod tests {
             r#type: "database".to_string(),
             plugin: "surrealdb".to_string(),
             image: Some("surrealdb/surrealdb:latest".to_string()),
+            args: None,
             env: None,
             ports: None,
             volumes: None,
@@ -332,6 +333,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let plugin = ServiceFactory::create_plugin("test_db", &config)?;
@@ -350,6 +353,7 @@ mod tests {
             r#type: "database".to_string(),
             plugin: "surrealdb".to_string(),
             image: Some("surrealdb/surrealdb:latest".to_string()),
+            args: None,
             env: Some(env),
             ports: None,
             volumes: None,
@@ -357,6 +361,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let plugin = ServiceFactory::create_plugin("test_db", &config)?;
@@ -370,6 +376,7 @@ mod tests {
             r#type: "container".to_string(),
             plugin: "generic_container".to_string(),
             image: Some("alpine:latest".to_string()),
+            args: None,
             env: None,
             ports: None,
             volumes: None,
@@ -377,6 +384,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let plugin = ServiceFactory::create_plugin("test_container", &config)?;
@@ -394,6 +403,7 @@ mod tests {
             r#type: "container".to_string(),
             plugin: "generic_container".to_string(),
             image: Some("nginx:latest".to_string()),
+            args: None,
             env: Some(env),
             ports: Some(vec![8080, 8443]),
             volumes: None,
@@ -401,6 +411,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let plugin = ServiceFactory::create_plugin("nginx", &config)?;
@@ -419,6 +431,7 @@ mod tests {
             r#type: "ollama".to_string(), // Changed from "ai_service"
             plugin: "ollama".to_string(),
             image: None,
+            args: None,
             env: Some(env),
             ports: None,
             volumes: None,
@@ -426,6 +439,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let plugin = ServiceFactory::create_plugin("ollama_service", &config)?;
@@ -447,6 +462,7 @@ mod tests {
             r#type: "network_service".to_string(), // Changed from "ai_service"
             plugin: "tgi".to_string(),
             image: None,
+            args: None,
             env: Some(env),
             ports: None,
             volumes: None,
@@ -454,6 +470,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let plugin = ServiceFactory::create_plugin("tgi_service", &config)?;
@@ -472,6 +490,7 @@ mod tests {
             r#type: "network_service".to_string(), // Changed from "ai_service"
             plugin: "vllm".to_string(),
             image: None,
+            args: None,
             env: Some(env),
             ports: None,
             volumes: None,
@@ -479,6 +498,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let plugin = ServiceFactory::create_plugin("vllm_service", &config)?;
@@ -492,6 +513,7 @@ mod tests {
             r#type: "unknown".to_string(),
             plugin: "unknown_plugin".to_string(),
             image: Some("some:image".to_string()),
+            args: None,
             env: None,
             ports: None,
             volumes: None,
@@ -499,6 +521,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let result = ServiceFactory::create_plugin("test", &config);
@@ -515,6 +539,7 @@ mod tests {
             r#type: "container".to_string(),
             plugin: "generic_container".to_string(),
             image: None, // Missing required field
+            args: None,
             env: None,
             ports: None,
             volumes: None,
@@ -522,6 +547,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let result = ServiceFactory::create_plugin("test", &config);
@@ -538,6 +565,7 @@ mod tests {
             r#type: "ollama".to_string(), // Changed from "ai_service"
             plugin: "ollama".to_string(),
             image: None,
+            args: None,
             env: Some(env),
             ports: None,
             volumes: None,
@@ -545,6 +573,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let result = ServiceFactory::create_plugin("test", &config);
@@ -561,6 +591,7 @@ mod tests {
             r#type: "database".to_string(),
             plugin: "SurrealDB".to_string(), // Mixed case
             image: Some("surrealdb/surrealdb:latest".to_string()),
+            args: None,
             env: None,
             ports: None,
             volumes: None,
@@ -568,6 +599,8 @@ mod tests {
             username: None,
             password: None,
             strict: None,
+            wait_for_span: None,
+            wait_for_span_timeout_secs: None,
         };
 
         let plugin = ServiceFactory::create_plugin("test_db", &config)?;

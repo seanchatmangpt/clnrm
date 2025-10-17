@@ -198,7 +198,7 @@ impl TestcontainerBackend {
     }
 
     /// Execute command in container
-    #[cfg_attr(feature = "otel-traces", instrument(name = "testcontainer.execute", skip(self, cmd), fields(image = %self.image_name, tag = %self.image_tag)))]
+    #[cfg_attr(feature = "otel-traces", instrument(name = "clnrm.container.exec", skip(self, cmd), fields(container.image = %self.image_name, container.tag = %self.image_tag, component = "container_backend")))]
     fn execute_in_container(&self, cmd: &Cmd) -> Result<RunResult> {
         let start_time = Instant::now();
 
@@ -207,6 +207,29 @@ impl TestcontainerBackend {
             "Starting container with image {}:{}",
             self.image_name, self.image_tag
         );
+
+        // Create a unique container ID for tracing
+        let _container_id = uuid::Uuid::new_v4().to_string();
+
+        #[cfg(feature = "otel-traces")]
+        {
+            use opentelemetry::global;
+            use opentelemetry::trace::{Span, Tracer, TracerProvider};
+            use crate::telemetry::events;
+
+            // Get current span and record container.start event
+            let tracer_provider = global::tracer_provider();
+            let mut span = tracer_provider
+                .tracer("clnrm-backend")
+                .start("clnrm.container.start");
+
+            events::record_container_start(
+                &mut span,
+                &format!("{}:{}", self.image_name, self.image_tag),
+                &container_id,
+            );
+            span.end();
+        }
 
         // Docker availability will be checked by the container startup itself
 
@@ -293,6 +316,8 @@ impl TestcontainerBackend {
             .chain(cmd.args.iter().map(|s| s.as_str()))
             .collect();
 
+        let _cmd_string = format!("{} {}", cmd.bin, cmd.args.join(" "));
+
         let exec_cmd = ExecCommand::new(cmd_args);
         let mut exec_result = container
             .exec(exec_cmd)
@@ -323,6 +348,30 @@ impl TestcontainerBackend {
             .exit_code()
             .map_err(|e| BackendError::Runtime(format!("Failed to get exit code: {}", e)))?
             .unwrap_or(-1) as i32;
+
+        #[cfg(feature = "otel-traces")]
+        {
+            use opentelemetry::global;
+            use opentelemetry::trace::{Span, Tracer, TracerProvider};
+            use crate::telemetry::events;
+
+            // Record container.exec event
+            let tracer_provider = global::tracer_provider();
+            let mut exec_span = tracer_provider
+                .tracer("clnrm-backend")
+                .start("clnrm.container.exec");
+
+            events::record_container_exec(&mut exec_span, &cmd_string, exit_code);
+            exec_span.end();
+
+            // Record container.stop event
+            let mut stop_span = tracer_provider
+                .tracer("clnrm-backend")
+                .start("clnrm.container.stop");
+
+            events::record_container_stop(&mut stop_span, &container_id, exit_code);
+            stop_span.end();
+        }
 
         Ok(RunResult {
             exit_code,

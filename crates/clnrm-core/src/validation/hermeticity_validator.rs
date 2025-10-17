@@ -32,6 +32,7 @@ const EXTERNAL_NETWORK_ATTRIBUTES: &[&str] = &[
 /// [expect.hermeticity]
 /// no_external_services=true
 /// resource_attrs.must_match={ "service.name"="clnrm","env"="test" }
+/// sdk_resource_attrs.must_match={ "telemetry.sdk.language"="rust" }
 /// span_attrs.forbid_keys=["net.peer.name","db.connection_string","http.url"]
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -45,6 +46,12 @@ pub struct HermeticityExpectation {
     /// If a key is specified, it must exist with the exact value in resource attributes
     #[serde(default)]
     pub resource_attrs_must_match: Option<HashMap<String, String>>,
+
+    /// Required SDK-provided resource attributes that must be present and match exactly
+    /// These are attributes set by the OpenTelemetry SDK itself (e.g., telemetry.sdk.language)
+    /// Validates that SDK resources are properly configured
+    #[serde(default)]
+    pub sdk_resource_attrs_must_match: Option<HashMap<String, String>>,
 
     /// Attribute keys that must NOT appear in any span
     /// If any span contains these keys, validation fails
@@ -82,6 +89,10 @@ pub enum ViolationType {
     ResourceAttributeMismatch,
     /// Forbidden attribute key found in span
     ForbiddenAttribute,
+    /// SDK-provided resource attribute missing
+    MissingSdkResourceAttribute,
+    /// SDK-provided resource attribute value mismatch
+    SdkResourceAttributeMismatch,
 }
 
 impl HermeticityExpectation {
@@ -90,6 +101,7 @@ impl HermeticityExpectation {
         Self {
             no_external_services: Some(true),
             resource_attrs_must_match: None,
+            sdk_resource_attrs_must_match: None,
             span_attrs_forbid_keys: None,
         }
     }
@@ -99,6 +111,7 @@ impl HermeticityExpectation {
         Self {
             no_external_services: None,
             resource_attrs_must_match: Some(attrs),
+            sdk_resource_attrs_must_match: None,
             span_attrs_forbid_keys: None,
         }
     }
@@ -108,7 +121,18 @@ impl HermeticityExpectation {
         Self {
             no_external_services: None,
             resource_attrs_must_match: None,
+            sdk_resource_attrs_must_match: None,
             span_attrs_forbid_keys: Some(keys),
+        }
+    }
+
+    /// Create a new hermeticity expectation with SDK resource attribute requirements
+    pub fn with_sdk_resource_attrs(attrs: HashMap<String, String>) -> Self {
+        Self {
+            no_external_services: None,
+            resource_attrs_must_match: None,
+            sdk_resource_attrs_must_match: Some(attrs),
+            span_attrs_forbid_keys: None,
         }
     }
 
@@ -139,7 +163,12 @@ impl HermeticityExpectation {
             violations.extend(self.check_resource_attributes(spans, expected_attrs));
         }
 
-        // 3. Ensure forbidden attribute keys are absent from all spans
+        // 3. Validate SDK-provided resource attributes match expected values
+        if let Some(ref expected_sdk_attrs) = self.sdk_resource_attrs_must_match {
+            violations.extend(self.check_sdk_resource_attributes(spans, expected_sdk_attrs));
+        }
+
+        // 4. Ensure forbidden attribute keys are absent from all spans
         if let Some(ref forbidden_keys) = self.span_attrs_forbid_keys {
             violations.extend(self.check_forbidden_attributes(spans, forbidden_keys));
         }
@@ -232,6 +261,73 @@ impl HermeticityExpectation {
                             actual_value: Some(actual_str.clone()),
                             description: format!(
                                 "Resource attribute '{}' mismatch: expected '{}', found '{}'",
+                                key, expected_value, actual_str
+                            ),
+                        });
+                    }
+                }
+            }
+        }
+
+        violations
+    }
+
+    /// Check that SDK-provided resource attributes match expected values
+    /// SDK attributes are those automatically set by the OpenTelemetry SDK
+    /// (e.g., telemetry.sdk.language, telemetry.sdk.name, telemetry.sdk.version)
+    fn check_sdk_resource_attributes(
+        &self,
+        spans: &[SpanData],
+        expected_attrs: &HashMap<String, String>,
+    ) -> Vec<HermeticityViolation> {
+        let mut violations = Vec::new();
+
+        // We need at least one span to check resource attributes
+        if spans.is_empty() {
+            violations.push(HermeticityViolation {
+                violation_type: ViolationType::MissingSdkResourceAttribute,
+                span_name: None,
+                span_id: None,
+                attribute_key: None,
+                expected_value: None,
+                actual_value: None,
+                description: "No spans available to validate SDK resource attributes".to_string(),
+            });
+            return violations;
+        }
+
+        // Check the first span's resource attributes
+        // In OTEL, resource attributes are shared across all spans in a resource
+        let first_span = &spans[0];
+
+        for (key, expected_value) in expected_attrs {
+            match first_span.resource_attributes.get(key) {
+                None => {
+                    violations.push(HermeticityViolation {
+                        violation_type: ViolationType::MissingSdkResourceAttribute,
+                        span_name: Some(first_span.name.clone()),
+                        span_id: Some(first_span.span_id.clone()),
+                        attribute_key: Some(key.clone()),
+                        expected_value: Some(expected_value.clone()),
+                        actual_value: None,
+                        description: format!(
+                            "Required SDK resource attribute '{}' is missing (expected '{}') - SDK may not be properly configured",
+                            key, expected_value
+                        ),
+                    });
+                }
+                Some(actual_value) => {
+                    let actual_str = Self::extract_string_value(actual_value);
+                    if actual_str != *expected_value {
+                        violations.push(HermeticityViolation {
+                            violation_type: ViolationType::SdkResourceAttributeMismatch,
+                            span_name: Some(first_span.name.clone()),
+                            span_id: Some(first_span.span_id.clone()),
+                            attribute_key: Some(key.clone()),
+                            expected_value: Some(expected_value.clone()),
+                            actual_value: Some(actual_str.clone()),
+                            description: format!(
+                                "SDK resource attribute '{}' mismatch: expected '{}', found '{}' - verify SDK configuration",
                                 key, expected_value, actual_str
                             ),
                         });
@@ -569,6 +665,7 @@ mod tests {
         let expectation = HermeticityExpectation {
             no_external_services: Some(true),
             resource_attrs_must_match: Some(expected_attrs),
+            sdk_resource_attrs_must_match: None,
             span_attrs_forbid_keys: Some(vec!["http.url".to_string()]),
         };
 
@@ -601,6 +698,7 @@ mod tests {
         let expectation = HermeticityExpectation {
             no_external_services: Some(true),
             resource_attrs_must_match: Some(expected_attrs),
+            sdk_resource_attrs_must_match: None,
             span_attrs_forbid_keys: Some(vec!["http.url".to_string()]),
         };
 
@@ -648,5 +746,243 @@ mod tests {
         assert!(int_result.contains("42"));
         assert!(bool_result.contains("true"));
         assert_eq!(plain_result, "plain");
+    }
+
+    // =========================================================================
+    // SDK RESOURCE ATTRIBUTE VALIDATION TESTS
+    // =========================================================================
+
+    #[test]
+    fn test_sdk_resource_attributes_validation_passes_with_correct_language() {
+        // Arrange
+        let mut expected_sdk_attrs = HashMap::new();
+        expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
+
+        let expectation = HermeticityExpectation::with_sdk_resource_attrs(expected_sdk_attrs);
+
+        let mut resource_attrs = HashMap::new();
+        resource_attrs.insert("telemetry.sdk.language".to_string(), json!("rust"));
+
+        let spans = vec![create_test_span(
+            "test.span",
+            "span1",
+            HashMap::new(),
+            resource_attrs,
+        )];
+
+        // Act
+        let result = expectation.validate(&spans);
+
+        // Assert
+        assert!(result.is_ok(), "Expected validation to pass with SDK language=rust");
+    }
+
+    #[test]
+    fn test_sdk_resource_attributes_validation_fails_when_missing() {
+        // Arrange
+        let mut expected_sdk_attrs = HashMap::new();
+        expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
+
+        let expectation = HermeticityExpectation::with_sdk_resource_attrs(expected_sdk_attrs);
+
+        // Span without SDK resource attributes
+        let spans = vec![create_test_span(
+            "test.span",
+            "span1",
+            HashMap::new(),
+            HashMap::new(),
+        )];
+
+        // Act
+        let result = expectation.validate(&spans);
+
+        // Assert
+        assert!(result.is_err(), "Expected validation to fail with missing SDK attribute");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("telemetry.sdk.language"));
+        assert!(err_msg.contains("missing"));
+        assert!(err_msg.contains("SDK may not be properly configured"));
+    }
+
+    #[test]
+    fn test_sdk_resource_attributes_validation_fails_with_wrong_language() {
+        // Arrange
+        let mut expected_sdk_attrs = HashMap::new();
+        expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
+
+        let expectation = HermeticityExpectation::with_sdk_resource_attrs(expected_sdk_attrs);
+
+        let mut resource_attrs = HashMap::new();
+        resource_attrs.insert("telemetry.sdk.language".to_string(), json!("python"));
+
+        let spans = vec![create_test_span(
+            "test.span",
+            "span1",
+            HashMap::new(),
+            resource_attrs,
+        )];
+
+        // Act
+        let result = expectation.validate(&spans);
+
+        // Assert
+        assert!(result.is_err(), "Expected validation to fail with wrong SDK language");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("telemetry.sdk.language"));
+        assert!(err_msg.contains("mismatch"));
+        assert!(err_msg.contains("expected 'rust'"));
+        assert!(err_msg.contains("found 'python'"));
+        assert!(err_msg.contains("verify SDK configuration"));
+    }
+
+    #[test]
+    fn test_sdk_resource_attributes_validation_with_multiple_sdk_attrs() {
+        // Arrange
+        let mut expected_sdk_attrs = HashMap::new();
+        expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
+        expected_sdk_attrs.insert("telemetry.sdk.name".to_string(), "opentelemetry".to_string());
+        expected_sdk_attrs.insert("telemetry.sdk.version".to_string(), "0.21.0".to_string());
+
+        let expectation = HermeticityExpectation::with_sdk_resource_attrs(expected_sdk_attrs);
+
+        let mut resource_attrs = HashMap::new();
+        resource_attrs.insert("telemetry.sdk.language".to_string(), json!("rust"));
+        resource_attrs.insert("telemetry.sdk.name".to_string(), json!("opentelemetry"));
+        resource_attrs.insert("telemetry.sdk.version".to_string(), json!("0.21.0"));
+
+        let spans = vec![create_test_span(
+            "test.span",
+            "span1",
+            HashMap::new(),
+            resource_attrs,
+        )];
+
+        // Act
+        let result = expectation.validate(&spans);
+
+        // Assert
+        assert!(result.is_ok(), "Expected validation to pass with all SDK attributes correct");
+    }
+
+    #[test]
+    fn test_sdk_and_user_resource_attributes_validation_combined() {
+        // Arrange
+        let mut expected_user_attrs = HashMap::new();
+        expected_user_attrs.insert("service.name".to_string(), "clnrm".to_string());
+        expected_user_attrs.insert("env".to_string(), "test".to_string());
+
+        let mut expected_sdk_attrs = HashMap::new();
+        expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
+
+        let expectation = HermeticityExpectation {
+            no_external_services: None,
+            resource_attrs_must_match: Some(expected_user_attrs),
+            sdk_resource_attrs_must_match: Some(expected_sdk_attrs),
+            span_attrs_forbid_keys: None,
+        };
+
+        let mut resource_attrs = HashMap::new();
+        resource_attrs.insert("service.name".to_string(), json!("clnrm"));
+        resource_attrs.insert("env".to_string(), json!("test"));
+        resource_attrs.insert("telemetry.sdk.language".to_string(), json!("rust"));
+
+        let spans = vec![create_test_span(
+            "test.span",
+            "span1",
+            HashMap::new(),
+            resource_attrs,
+        )];
+
+        // Act
+        let result = expectation.validate(&spans);
+
+        // Assert
+        assert!(result.is_ok(), "Expected validation to pass with both user and SDK attributes correct");
+    }
+
+    #[test]
+    fn test_sdk_resource_attributes_can_distinguish_from_user_attrs() {
+        // Arrange - user attributes are correct but SDK attributes are wrong
+        let mut expected_user_attrs = HashMap::new();
+        expected_user_attrs.insert("service.name".to_string(), "clnrm".to_string());
+
+        let mut expected_sdk_attrs = HashMap::new();
+        expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
+
+        let expectation = HermeticityExpectation {
+            no_external_services: None,
+            resource_attrs_must_match: Some(expected_user_attrs),
+            sdk_resource_attrs_must_match: Some(expected_sdk_attrs),
+            span_attrs_forbid_keys: None,
+        };
+
+        let mut resource_attrs = HashMap::new();
+        resource_attrs.insert("service.name".to_string(), json!("clnrm")); // User attr correct
+        resource_attrs.insert("telemetry.sdk.language".to_string(), json!("python")); // SDK attr wrong
+
+        let spans = vec![create_test_span(
+            "test.span",
+            "span1",
+            HashMap::new(),
+            resource_attrs,
+        )];
+
+        // Act
+        let result = expectation.validate(&spans);
+
+        // Assert
+        assert!(result.is_err(), "Expected validation to fail with wrong SDK attribute");
+        let err_msg = format!("{}", result.unwrap_err());
+
+        // Should specifically report SDK attribute mismatch, not user attribute issue
+        assert!(err_msg.contains("SDK resource attribute"));
+        assert!(err_msg.contains("telemetry.sdk.language"));
+        assert!(err_msg.contains("mismatch"));
+        assert!(!err_msg.contains("service.name"), "Should not report user attribute error");
+    }
+
+    #[test]
+    fn test_sdk_resource_attributes_validation_handles_otel_format() {
+        // Arrange
+        let mut expected_sdk_attrs = HashMap::new();
+        expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
+
+        let expectation = HermeticityExpectation::with_sdk_resource_attrs(expected_sdk_attrs);
+
+        // OTEL format with stringValue wrapper
+        let mut resource_attrs = HashMap::new();
+        resource_attrs.insert("telemetry.sdk.language".to_string(), json!({"stringValue": "rust"}));
+
+        let spans = vec![create_test_span(
+            "test.span",
+            "span1",
+            HashMap::new(),
+            resource_attrs,
+        )];
+
+        // Act
+        let result = expectation.validate(&spans);
+
+        // Assert
+        assert!(result.is_ok(), "Expected validation to pass with OTEL-formatted SDK attribute");
+    }
+
+    #[test]
+    fn test_sdk_resource_attributes_validation_fails_with_empty_spans() {
+        // Arrange
+        let mut expected_sdk_attrs = HashMap::new();
+        expected_sdk_attrs.insert("telemetry.sdk.language".to_string(), "rust".to_string());
+
+        let expectation = HermeticityExpectation::with_sdk_resource_attrs(expected_sdk_attrs);
+        let spans = vec![];
+
+        // Act
+        let result = expectation.validate(&spans);
+
+        // Assert
+        assert!(result.is_err(), "Expected validation to fail with no spans");
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("No spans available"));
+        assert!(err_msg.contains("SDK resource attributes"));
     }
 }

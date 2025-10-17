@@ -13,6 +13,10 @@ pub struct ServiceConfig {
     pub plugin: String,
     /// Service image (optional for network services)
     pub image: Option<String>,
+    /// Service command arguments (v1.0 - default args for service)
+    /// Can be overridden by scenario.run
+    #[serde(default)]
+    pub args: Option<Vec<String>>,
     /// Service environment variables
     pub env: Option<HashMap<String, String>>,
     /// Service ports
@@ -27,6 +31,11 @@ pub struct ServiceConfig {
     pub password: Option<String>,
     /// SurrealDB strict mode (optional, defaults to false)
     pub strict: Option<bool>,
+    /// Span name to wait for before marking service as ready
+    /// Service will poll for this span in OTEL output until detected or timeout
+    pub wait_for_span: Option<String>,
+    /// Timeout in seconds for waiting for span (default: 30)
+    pub wait_for_span_timeout_secs: Option<u64>,
 }
 
 /// Volume configuration

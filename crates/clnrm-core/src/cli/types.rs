@@ -127,7 +127,7 @@ pub enum Commands {
         format: ReportFormat,
     },
 
-    /// Run framework self-tests
+    /// Run framework self-tests with optional OTEL export
     SelfTest {
         /// Run specific test suite (framework, container, plugin, cli, otel)
         #[arg(short, long)]
@@ -136,6 +136,14 @@ pub enum Commands {
         /// Generate detailed report
         #[arg(short, long)]
         report: bool,
+
+        /// OTEL exporter type (none, stdout, otlp-http, otlp-grpc)
+        #[arg(long, default_value = "none")]
+        otel_exporter: String,
+
+        /// OTEL endpoint (for otlp-http/otlp-grpc)
+        #[arg(long)]
+        otel_endpoint: Option<String>,
     },
 
     /// AI-powered test orchestration
@@ -442,6 +450,17 @@ pub enum Commands {
     Collector {
         #[command(subcommand)]
         command: CollectorCommands,
+    },
+
+    /// Analyze OTEL traces against test expectations (v0.7.0)
+    Analyze {
+        /// Test configuration file with expectations
+        #[arg(value_name = "TEST_FILE")]
+        test_file: PathBuf,
+
+        /// OTEL traces JSON file (optional, will auto-load from artifacts if not provided)
+        #[arg(long, value_name = "TRACES")]
+        traces: Option<PathBuf>,
     },
 }
 

@@ -1,0 +1,164 @@
+# Red Team: Fake-Green Detection Case Study
+# Tests that clnrm analyzer catches spoofed test results through comprehensive validation
+#
+# Failure Mode: A wrapper script echoes "Passed" and exits 0 without actually running tests
+# Expected: Analyzer detects missing lifecycle events, parent-child edges, and hermetic violations
+#
+# This test is DESIGNED TO FAIL. It represents an attack where a malicious script
+# pretends to run tests but actually does nothing. The analyzer should catch:
+# - Attack Vector A: No execution (missing spans entirely)
+# - Attack Vector B: Missing edges (no parent-child relationships)
+# - Attack Vector C: Wrong counts (too few lifecycle events)
+
+[meta]
+name="clnrm_redteam_catch_verbose"
+version="1.0"
+description="Red team case study: fake-green detection with 8-layer validation"
+
+[vars]
+svc="clnrm"
+env="ci"
+endpoint="http://localhost:4318"
+exporter="stdout"
+freeze_clock="2025-01-01T00:00:00Z"
+image="clnrm:test"
+
+[otel]
+exporter="stdout"
+endpoint="stdout://default"
+protocol="json"
+sample_ratio=1.0
+resources={ "service.name"="clnrm", "service.version"="1.0.0", "env"="ci" }
+
+[otel.headers]
+# Intentionally empty - no authentication needed for stdout
+
+[otel.propagators]
+use=["tracecontext","baggage"]
+
+[service.clnrm]
+plugin="generic_container"
+image="clnrm:test"
+args=["self-test","--otel-exporter","stdout"]
+env={ "OTEL_TRACES_EXPORTER"="stdout", "RUST_LOG"="info" }
+wait_for_span="clnrm.run"
+
+[[scenario]]
+name="fake_green_attack"
+service="clnrm"
+run="echo 'PASSED' && exit 0"
+artifacts.collect=["spans:default"]
+
+# ========================================
+# ANTI-FAKE-GREEN VALIDATION LAYER 1: Span Structure
+# ========================================
+# Ensures actual test execution happened by requiring specific span hierarchy
+
+[[expect.span]]
+name="clnrm.run"
+kind="internal"
+attrs.all={ "result"="pass" }
+duration_ms={ min=10, max=600000 }
+
+[[expect.span]]
+name="clnrm.step:hello_world"
+parent="clnrm.run"
+kind="internal"
+attrs.any=["step.name=hello_world","status=ok"]
+events.any=["container.start","container.exec","container.stop"]
+duration_ms={ min=1, max=120000 }
+
+[[expect.span]]
+name="clnrm.plugin.registry"
+parent="clnrm.run"
+kind="internal"
+attrs.any=["component=plugin.registry"]
+
+# ========================================
+# ANTI-FAKE-GREEN VALIDATION LAYER 2: Graph Topology
+# ========================================
+# Validates parent-child relationships that prove container execution
+
+[expect.graph]
+must_include=[["clnrm.run","clnrm.step:hello_world"],["clnrm.run","clnrm.plugin.registry"]]
+must_not_cross=[["clnrm.step:hello_world","clnrm.plugin.registry"]]
+acyclic=true
+
+# ========================================
+# ANTI-FAKE-GREEN VALIDATION LAYER 3: Lifecycle Events
+# ========================================
+# Requires actual container lifecycle events (start, exec, stop)
+# A fake script cannot produce these without actually launching containers
+
+# ========================================
+# ANTI-FAKE-GREEN VALIDATION LAYER 4: Count Guardrails
+# ========================================
+# Prevents "echo Passed" from satisfying requirements
+
+[expect.counts]
+spans_total={ gte=2, lte=200 }
+events_total={ gte=2 }
+errors_total={ eq=0 }
+by_name={ "clnrm.run"={ eq=1 }, "clnrm.step:hello_world"={ eq=1 } }
+
+# ========================================
+# ANTI-FAKE-GREEN VALIDATION LAYER 5: Temporal Windows
+# ========================================
+# Validates that child spans are temporally contained within parent
+
+[[expect.window]]
+outer="clnrm.run"
+contains=["clnrm.step:hello_world","clnrm.plugin.registry"]
+
+# ========================================
+# ANTI-FAKE-GREEN VALIDATION LAYER 6: Ordering Constraints
+# ========================================
+# Ensures correct execution order (plugin registry before steps)
+
+[expect.order]
+must_precede=[["clnrm.plugin.registry","clnrm.step:hello_world"]]
+must_follow=[["clnrm.step:hello_world","clnrm.run"]]
+
+# ========================================
+# ANTI-FAKE-GREEN VALIDATION LAYER 7: Status Validation
+# ========================================
+# All spans must report OK status (not just exit code 0)
+
+[expect.status]
+all="OK"
+by_name={ "clnrm.*"="OK" }
+
+# ========================================
+# ANTI-FAKE-GREEN VALIDATION LAYER 8: Hermeticity Assertions
+# ========================================
+# Validates resource attributes and forbids external network calls
+
+[expect.hermeticity]
+no_external_services=true
+resource_attrs.must_match={ "service.name"="clnrm", "env"="ci" }
+span_attrs.forbid_keys=["net.peer.name","db.connection_string","http.url"]
+
+# ========================================
+# Resource Limits (prevents resource exhaustion attacks)
+# ========================================
+
+[limits]
+cpu_millicores=500
+memory_mb=512
+
+# ========================================
+# Determinism (enables reproducible verification)
+# ========================================
+
+[determinism]
+seed=42
+freeze_clock="2025-01-01T00:00:00Z"
+
+# ========================================
+# Multi-Format Reporting (digest for repro)
+# ========================================
+
+[report]
+json="report.json"
+junit="report.junit.xml"
+digest="trace.sha256"

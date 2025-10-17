@@ -1,0 +1,37 @@
+# Attack Vector C: Empty OTEL Path
+# Malicious test that sets OTEL env vars but doesn't emit spans
+# Expected: FAIL on missing spans (env vars set but no telemetry)
+# First Failing Rule: "expect.span[clnrm.run].existence"
+
+[meta]
+name="attack_c_empty_otel"
+version="1.0"
+description="Attack vector: Set OTEL vars but emit no spans"
+
+[[scenario]]
+name="empty_otel_config"
+service="red"
+run="sh -lc 'export OTEL_EXPORTER_OTLP_ENDPOINT=http://nowhere:4318; export OTEL_TRACES_EXPORTER=otlp; echo \"OTEL configured\"; echo \"Tests complete\"; exit 0'"
+artifacts.collect=["spans:default"]
+
+[service.red]
+plugin="generic_container"
+image="alpine:latest"
+env={ "ATTACK"="empty_otel", "OTEL_SERVICE_NAME"="fake-service" }
+
+# VALIDATION: Require actual span emission
+[[expect.span]]
+name="clnrm.run"
+kind="internal"
+attrs.all={ "result"="pass" }
+duration_ms={ min=1 }
+
+[[expect.span]]
+name="clnrm.plugin.registry"
+parent="clnrm.run"
+
+# Graph validation - require parent-child edges
+[expect.graph]
+must_include=[["clnrm.run","clnrm.plugin.registry"]]
+
+# This test should FAIL immediately on span existence

@@ -1,0 +1,68 @@
+# Template Rendering Test for [vars] Section
+# Tests complete variable substitution and precedence
+
+{% import "_macros.toml.tera" as m %}
+
+# === AUTHORING-ONLY VARIABLES (Flat TOML) ===
+# These variables are used during template rendering and are NOT passed to runtime
+# After rendering, all {{ }} markers should be replaced with actual values
+[vars]
+svc = "{{ svc }}"
+env = "{{ env }}"
+endpoint = "{{ endpoint }}"
+exporter = "{{ exporter }}"
+image = "{{ image }}"
+freeze_clock = "{{ freeze_clock }}"
+token = "{{ token }}"
+custom_var = "custom_value"
+
+# === RUNTIME CONFIGURATION ===
+[meta]
+name = "{{ svc }}_vars_rendering_test"
+version = "1.0.0"
+description = "Comprehensive test for [vars] section rendering with {{ exporter }} in {{ env }}"
+
+# OTEL configuration uses template variables
+[otel]
+exporter = "{{ exporter }}"
+{% if endpoint != "" %}endpoint = "{{ endpoint }}"{% endif %}
+protocol = "http/protobuf"
+sample_ratio = 1.0
+
+[otel.resources]
+"service.name" = "{{ svc }}"
+"env" = "{{ env }}"
+"template.rendered" = "true"
+"custom.var" = "{{ vars.custom_var }}"
+
+# Headers with conditional rendering
+[otel.headers]
+{% if token != "" %}Authorization = "Bearer {{ token }}"{% endif %}
+
+# Service using template variables
+{{ m::service("test_svc", image, env={"APP_ENV": env, "SERVICE_NAME": svc}) }}
+
+# Scenarios
+{{ m::scenario("vars_test", "test_svc", "echo Testing vars: {{ svc }} in {{ env }}") }}
+
+{{ m::scenario("endpoint_test", "test_svc", "echo Endpoint: {{ endpoint }}") }}
+
+# Span expectations
+{{ m::span("clnrm.run", attrs={"service.name": svc, "env": env}) }}
+
+{{ m::span("clnrm.scenario.vars_test", parent="clnrm.run", attrs={"test.type": "vars"}) }}
+
+[expect.status]
+all = "OK"
+
+[expect.hermeticity]
+no_external_services = true
+resource_attrs.must_match = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
+
+[determinism]
+seed = 42
+freeze_clock = "{{ freeze_clock }}"
+
+[report]
+json = "reports/vars_rendering_{{ svc }}.json"
+digest = "reports/vars_rendering_{{ svc }}.sha256"

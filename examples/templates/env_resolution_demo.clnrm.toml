@@ -1,0 +1,155 @@
+# Environment Variable Resolution Demo Template
+#
+# This template demonstrates automatic ENV variable resolution following
+# the precedence chain: template vars → ENV → defaults
+#
+# Supported ENV Variables:
+# - SERVICE_NAME → svc (default: clnrm)
+# - ENV → env (default: ci)
+# - OTEL_ENDPOINT → endpoint (default: http://localhost:4318)
+# - OTEL_TRACES_EXPORTER → exporter (default: otlp)
+# - CLNRM_IMAGE → image (default: registry/clnrm:1.0.0)
+# - FREEZE_CLOCK → freeze_clock (default: 2025-01-01T00:00:00Z)
+# - OTEL_TOKEN → token (default: "")
+
+[meta]
+name = "{{ svc }}_env_demo"
+version = "1.0.0"
+description = "Demonstrates ENV variable resolution in templates"
+
+# OpenTelemetry Configuration
+# Uses ENV variables with fallback to defaults
+[otel]
+exporter = "{{ exporter }}"
+endpoint = "{{ endpoint }}"
+sample_ratio = 1.0
+
+[otel.resources]
+"service.name" = "{{ svc }}"
+"service.version" = "1.0.0"
+"deployment.environment" = "{{ env }}"
+"test.framework" = "clnrm"
+
+# Conditional header based on token availability
+{% if token != "" %}
+[otel.headers]
+"Authorization" = "Bearer {{ token }}"
+"X-Service-Name" = "{{ svc }}"
+{% endif %}
+
+# Propagators configuration
+[otel.propagators]
+use = ["tracecontext", "baggage"]
+
+# Service Definition
+# Uses CLNRM_IMAGE ENV variable for container image
+[service.test_runner]
+plugin = "generic_container"
+image = "{{ image }}"
+args = ["sh", "-c", "echo 'Running test in {{ env }} environment'"]
+wait_for_span = "test_runner.start"
+
+# Environment-specific configuration using conditionals
+{% if env == "production" %}
+# Production-specific settings
+[service.test_runner.health_check]
+interval = "5s"
+timeout = "30s"
+retries = 5
+{% elif env == "staging" %}
+# Staging-specific settings
+[service.test_runner.health_check]
+interval = "10s"
+timeout = "60s"
+retries = 3
+{% else %}
+# CI/Development settings (default)
+[service.test_runner.health_check]
+interval = "2s"
+timeout = "10s"
+retries = 2
+{% endif %}
+
+# Test Scenarios
+[[scenario]]
+name = "verify_environment"
+service = "test_runner"
+run = "echo 'Service: {{ svc }}, Env: {{ env }}, Endpoint: {{ endpoint }}'"
+
+[[scenario]]
+name = "check_determinism"
+service = "test_runner"
+run = "date && echo 'Frozen at: {{ freeze_clock }}'"
+
+[[scenario]]
+name = "test_otel_export"
+service = "test_runner"
+run = "echo 'Exporting to {{ exporter }} at {{ endpoint }}'"
+
+# Span Expectations
+# Verify expected telemetry was produced
+[[expect.span]]
+name = "test_runner.start"
+kind = "server"
+attrs.all = {
+    "service.name" = "{{ svc }}",
+    "deployment.environment" = "{{ env }}"
+}
+
+[[expect.span]]
+name = "test_runner.exec"
+kind = "internal"
+attrs.any = {
+    "exec.command" = "echo"
+}
+
+[[expect.span]]
+name = "test_runner.stop"
+kind = "server"
+attrs.all = {
+    "container.state" = "stopped"
+}
+
+# Temporal ordering expectations
+[expect.order]
+must_precede = [
+    ["test_runner.start", "test_runner.exec"],
+    ["test_runner.exec", "test_runner.stop"]
+]
+
+# Status expectations
+[expect.status]
+all = "ok"
+by_name."test_runner.*" = "ok"
+
+# Count expectations
+[expect.counts]
+spans_total = { gte = 3 }
+errors_total = { eq = 0 }
+spans_by_kind.server = { gte = 2 }
+spans_by_kind.internal = { gte = 1 }
+
+# Deterministic Configuration
+# Uses FREEZE_CLOCK ENV variable
+[determinism]
+seed = 42
+freeze_clock = "{{ freeze_clock }}"
+
+# Resource Limits
+# Adjust based on environment
+{% if env == "production" %}
+[limits]
+cpu_millicores = 1000
+memory_mb = 1024
+{% else %}
+[limits]
+cpu_millicores = 500
+memory_mb = 512
+{% endif %}
+
+# Reporting Configuration
+# Paths include service name and environment
+[report]
+json = "reports/{{ svc }}_{{ env }}_report.json"
+junit = "reports/{{ svc }}_{{ env }}_junit.xml"
+digest = "reports/{{ svc }}_{{ env }}_digest.sha256"

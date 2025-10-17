@@ -1,0 +1,290 @@
+# ============================================================================
+# GitHub Actions Workflow Example
+# Homebrew Installation Validation
+# ============================================================================
+#
+# This workflow demonstrates how to integrate the Homebrew installation
+# validation test into a CI/CD pipeline.
+#
+# Features:
+#   - Runs on push and pull requests
+#   - Installs clnrm from source
+#   - Executes validation test
+#   - Uploads artifacts for debugging
+#   - Caches dependencies for faster builds
+#
+# To use this workflow:
+#   1. Copy to .github/workflows/homebrew-validation.yml
+#   2. Adjust triggers and settings as needed
+#   3. Push to repository
+#
+# ============================================================================
+
+name: Homebrew Installation Validation
+
+# Trigger on push to main/master and all pull requests
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  # Allow manual trigger
+  workflow_dispatch:
+
+# Define environment variables for the workflow
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Main validation job
+  homebrew-validation:
+    name: Validate Homebrew Installation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install Rust toolchain
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          cache: true
+
+      # Step 3: Cache Cargo dependencies
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # Step 4: Build clnrm (debug mode for faster CI)
+      - name: Build clnrm
+        run: |
+          cargo build --workspace
+          cargo build -p clnrm
+
+      # Step 5: Install clnrm binary
+      - name: Install clnrm
+        run: cargo install --path crates/clnrm
+
+      # Step 6: Verify installation
+      - name: Verify clnrm installation
+        run: |
+          which clnrm
+          clnrm --version
+
+      # Step 7: Check Docker availability
+      - name: Check Docker
+        run: |
+          docker --version
+          docker info
+
+      # Step 8: Run Homebrew validation test
+      - name: Run Homebrew validation test
+        working-directory: examples/integration-tests
+        run: ./run-homebrew-test.sh
+
+      # Step 9: Display results
+      - name: Display test results
+        if: always()
+        working-directory: examples/integration-tests
+        run: |
+          echo "=== Test Report ==="
+          if [ -f brew-selftest.report.json ]; then
+            cat brew-selftest.report.json | jq '.'
+          else
+            echo "Report file not found"
+          fi
+          echo ""
+          echo "=== Digest ==="
+          if [ -f brew-selftest.trace.sha256 ]; then
+            cat brew-selftest.trace.sha256
+          else
+            echo "Digest file not found"
+          fi
+
+      # Step 10: Upload test artifacts
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-validation-results-${{ github.run_number }}
+          path: |
+            examples/integration-tests/brew-selftest.report.json
+            examples/integration-tests/brew-selftest.trace.sha256
+          retention-days: 30
+
+      # Step 11: Parse and report validation results
+      - name: Parse validation results
+        if: always()
+        working-directory: examples/integration-tests
+        run: |
+          if [ -f brew-selftest.report.json ]; then
+            VERDICT=$(jq -r '.verdict // "unknown"' brew-selftest.report.json)
+            SPANS=$(jq -r '.spans_collected // 0' brew-selftest.report.json)
+            ERRORS=$(jq -r '.errors_total // 0' brew-selftest.report.json)
+
+            echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
+            echo "spans_collected=$SPANS" >> $GITHUB_OUTPUT
+            echo "errors_total=$ERRORS" >> $GITHUB_OUTPUT
+
+            echo "::notice::Test Verdict: $VERDICT"
+            echo "::notice::Spans Collected: $SPANS"
+            echo "::notice::Errors: $ERRORS"
+
+            if [ "$VERDICT" != "pass" ]; then
+              echo "::error::Homebrew validation test failed with verdict: $VERDICT"
+              exit 1
+            fi
+          else
+            echo "::error::Test report not found"
+            exit 1
+          fi
+
+  # Optional: Run on multiple platforms
+  cross-platform-validation:
+    name: Validate on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        # Windows support can be added when Docker Desktop is configured
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Build and install clnrm
+        run: cargo install --path crates/clnrm
+
+      - name: Verify Docker (Ubuntu)
+        if: runner.os == 'Linux'
+        run: docker info
+
+      - name: Verify Docker (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # On macOS, Docker Desktop may need to be started
+          if ! docker info &> /dev/null; then
+            echo "::warning::Docker not running on macOS, skipping test"
+            exit 0
+          fi
+
+      - name: Run Homebrew validation test
+        working-directory: examples/integration-tests
+        run: ./run-homebrew-test.sh
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.os }}-${{ github.run_number }}
+          path: |
+            examples/integration-tests/brew-selftest.report.json
+            examples/integration-tests/brew-selftest.trace.sha256
+
+  # Optional: Performance regression check
+  performance-check:
+    name: Performance Regression Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: homebrew-validation
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install clnrm
+        run: cargo install --path crates/clnrm
+
+      - name: Download baseline artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: homebrew-validation-results-${{ github.run_number }}
+          path: baseline/
+
+      - name: Run performance test
+        working-directory: examples/integration-tests
+        run: |
+          # Run test multiple times and average
+          TOTAL=0
+          RUNS=3
+          for i in $(seq 1 $RUNS); do
+            START=$(date +%s%3N)
+            ./run-homebrew-test.sh > /dev/null 2>&1
+            END=$(date +%s%3N)
+            DURATION=$((END - START))
+            TOTAL=$((TOTAL + DURATION))
+            echo "Run $i: ${DURATION}ms"
+          done
+          AVG=$((TOTAL / RUNS))
+          echo "Average: ${AVG}ms"
+
+          # Save performance data
+          echo "{\"average_ms\": $AVG, \"runs\": $RUNS}" > performance.json
+
+      - name: Upload performance data
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-data-${{ github.run_number }}
+          path: examples/integration-tests/performance.json
+
+  # Optional: Security scan
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Run cargo audit
+        run: |
+          cargo install cargo-audit
+          cargo audit
+
+      - name: Run cargo deny
+        run: |
+          cargo install cargo-deny
+          cargo deny check
+
+# Workflow summary
+# This workflow provides comprehensive CI/CD integration for Homebrew validation:
+#   1. Main validation on Ubuntu
+#   2. Cross-platform testing (Ubuntu, macOS)
+#   3. Performance regression detection
+#   4. Security scanning
+#
+# All artifacts are preserved for debugging and analysis.

@@ -1,0 +1,30 @@
+# Attack Vector A: Echo Pass
+# Malicious test that just echoes "All tests passed" without actually running anything
+# Expected: FAIL on missing root span "clnrm.run"
+# First Failing Rule: "expect.span[clnrm.run].existence"
+
+[meta]
+name="attack_a_echo_pass"
+version="1.0"
+description="Attack vector: Echo success message without execution"
+
+[[scenario]]
+name="echo_fake_pass"
+service="red"
+run="sh -lc 'echo \"✅ All tests passed\"; exit 0'"
+artifacts.collect=["spans:default"]
+
+[service.red]
+plugin="generic_container"
+image="alpine:latest"
+env={ "ATTACK"="echo_pass" }
+
+# VALIDATION: Require root span that proves actual test execution
+[[expect.span]]
+name="clnrm.run"
+kind="internal"
+attrs.all={ "result"="pass" }
+duration_ms={ min=1, max=600000 }
+
+# This test should FAIL because no clnrm execution happens
+# The first failing rule will be span existence check

@@ -1,0 +1,47 @@
+# Legitimate Self-Test
+# This test actually runs clnrm and should PASS all validators
+# Expected: PASS (all 7 validators green)
+
+[meta]
+name="legitimate_clnrm_self_test"
+version="1.0"
+description="Legitimate test running actual clnrm with OTEL"
+
+[[scenario]]
+name="real_clnrm_execution"
+service="clnrm_image"
+run="clnrm self-test --otel-exporter stdout"
+artifacts.collect=["spans:default"]
+
+[service.clnrm_image]
+plugin="generic_container"
+image="clnrm:test"  # Assumes clnrm Docker image exists
+env={ "OTEL_SERVICE_NAME"="clnrm", "RUST_LOG"="info" }
+
+# VALIDATION: All spans should be present
+[[expect.span]]
+name="clnrm.run"
+kind="internal"
+attrs.all={ "result"="pass" }
+duration_ms={ min=10, max=600000 }
+
+[[expect.span]]
+name="clnrm.plugin.registry"
+parent="clnrm.run"
+kind="internal"
+
+# Graph validation
+[expect.graph]
+must_include=[["clnrm.run","clnrm.plugin.registry"]]
+acyclic=true
+
+# Count guardrails
+[expect.counts]
+spans_total={ gte=2, lte=200 }
+by_name={ "clnrm.run"={ eq=1 } }
+
+# Status validation
+[expect.status]
+all="OK"
+
+# This test should PASS with all validators green

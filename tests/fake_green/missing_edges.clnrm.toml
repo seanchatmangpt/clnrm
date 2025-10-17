@@ -1,0 +1,42 @@
+# Fake Green - Missing Edges
+# Reports root span but no child step spans
+# Should FAIL: Graph validator detects missing parent→child edges
+
+[test.metadata]
+name = "fake_missing_edges"
+description = "Fake test with root span but no child spans"
+version = "1.0"
+hermetic = true
+fake_mode = "missing_edges"
+
+[services.alpine_fake]
+type = "generic_container"
+image = "alpine:latest"
+environment = { FAKE_MODE = "missing_edges" }
+
+[[steps]]
+name = "step_with_no_span"
+description = "Step that should create child span but doesn't"
+command = ["echo", "Step 1"]
+service = "alpine_fake"
+expected_output_regex = "Step 1"
+
+[[steps]]
+name = "another_missing_span"
+description = "Another step with missing span"
+command = ["echo", "Step 2"]
+service = "alpine_fake"
+expected_output_regex = "Step 2"
+
+[assertions]
+container_should_have_executed_commands = 2
+execution_should_be_hermetic = true
+
+# OTEL validation expectations - should FAIL graph validator
+[otel_expectations]
+should_fail = true
+has_root_span = true
+missing_child_spans = ["step_with_no_span", "another_missing_span"]
+failure_reason = "Graph validator detects missing parent→child edges"
+validator_failures = ["graph_validator"]
+expected_edge_count = 0  # No edges because no children

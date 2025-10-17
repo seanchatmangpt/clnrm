@@ -1,0 +1,257 @@
+# Red-Team OTLP Environment Validation Template
+#
+# This template validates OTLP exporter configuration via ENV variables.
+# It detects fake-green tests by requiring complete OTEL execution evidence.
+#
+# USAGE:
+#   clnrm template render redteam-otlp-env.clnrm.toml.tera \
+#     -e OTEL_SERVICE_NAME=myservice \
+#     -e OTEL_DEPLOYMENT_ENV=staging \
+#     -e OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318 \
+#     -e OTEL_EXPORTER_TYPE=otlp \
+#     -e CONTAINER_IMAGE=alpine:latest \
+#     -e FREEZE_CLOCK=2025-01-01T00:00:00Z \
+#     -e TEST_SEED=42
+#
+# DETECTION LAYERS:
+#   1. Span Validator - Requires specific spans with attributes
+#   2. Graph Validator - Validates parent-child relationships
+#   3. Count Validator - Enforces minimum span counts
+#   4. Window Validator - Validates temporal containment
+#   5. Order Validator - Validates execution order
+#   6. Status Validator - Validates span status codes
+#   7. Hermeticity Validator - Validates isolation attributes
+#
+# WHY THIS CATCHES FAKE-GREEN:
+#   - Echo-based tests produce zero spans → Count validator fails
+#   - Spoofed spans lack lifecycle events → Span validator fails
+#   - Missing SDK resources → Hermeticity validator fails
+#   - No parent-child edges → Graph validator fails
+
+[vars]
+# Template variables with defaults
+svc = "{{ OTEL_SERVICE_NAME | default(value="clnrm") }}"
+env = "{{ OTEL_DEPLOYMENT_ENV | default(value="ci") }}"
+endpoint = "{{ OTEL_EXPORTER_OTLP_ENDPOINT | default(value="http://localhost:4318") }}"
+exporter = "{{ OTEL_EXPORTER_TYPE | default(value="otlp") }}"
+freeze_clock = "{{ FREEZE_CLOCK | default(value="2025-01-01T00:00:00Z") }}"
+image = "{{ CONTAINER_IMAGE | default(value="registry/clnrm:latest") }}"
+seed = {{ TEST_SEED | default(value="42") }}
+
+[meta]
+name = "redteam_otlp_env_validation"
+version = "1.0.0"
+description = "Red-team validation of OTLP exporter via ENV variables - catches fake-green tests"
+tags = ["red-team", "otlp", "otel-validation", "fake-green-detection"]
+author = "clnrm-core-team"
+
+# OTEL Configuration Section
+# Configures OpenTelemetry SDK for trace export and validation
+[otel]
+exporter = "{{ exporter }}"
+endpoint = "{{ endpoint }}"
+protocol = "http/protobuf"
+sample_ratio = 1.0
+
+[otel.resources]
+"service.name" = "{{ svc }}"
+"deployment.environment" = "{{ env }}"
+
+[otel.headers]
+# Optional: Add authentication headers if needed
+# Authorization = "Bearer ${OTEL_AUTH_TOKEN}"
+
+[otel.propagators]
+use = ["tracecontext", "baggage"]
+
+# Service Configuration
+# Defines the container that runs the system under test
+[service.clnrm]
+type = "generic_container"
+plugin = "generic"
+image = "{{ image }}"
+env = {
+  "OTEL_SERVICE_NAME" = "{{ svc }}",
+  "OTEL_EXPORTER_OTLP_ENDPOINT" = "{{ endpoint }}",
+  "OTEL_TRACES_EXPORTER" = "{{ exporter }}",
+  "RUST_LOG" = "info"
+}
+
+# Scenario Definition
+# Single scenario that executes the test
+[[scenario]]
+name = "otel_env_proof"
+description = "Validate OTEL tracing via ENV variables"
+steps = [
+    { name = "run_test", command = ["clnrm", "run", "--otel"] }
+]
+
+# ============================================================================
+# DETECTION LAYER 1: Span Validator
+# ============================================================================
+# Validates that specific spans exist with required attributes and events
+# CATCHES: Echo-based fake tests (no spans generated)
+
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+description = "Root span for test execution"
+
+[expect.span.attrs]
+all = {
+  "clnrm.version" = "0.7.0",
+  "test.hermetic" = "true"
+}
+
+[[expect.span]]
+name = "clnrm.step:run_test"
+parent = "clnrm.run"
+kind = "internal"
+description = "Step span must be child of run span"
+
+[expect.span.events]
+# CRITICAL: Lifecycle events prove actual execution
+# Fake tests won't have these events
+any = ["container.start", "container.exec", "container.stop"]
+
+# ============================================================================
+# DETECTION LAYER 2: Graph Validator
+# ============================================================================
+# Validates parent-child relationships and causality
+# CATCHES: Spoofed spans without proper relationships
+
+[expect.graph]
+description = "Validates span causality graph"
+
+# Must have edge from parent to child
+must_include = [
+  ["clnrm.run", "clnrm.step:run_test"]
+]
+
+# Graph must be acyclic
+acyclic = true
+
+# Maximum depth (prevents infinite recursion)
+max_depth = 10
+
+# ============================================================================
+# DETECTION LAYER 3: Count Validator
+# ============================================================================
+# Enforces minimum span counts
+# CATCHES: Tests that produce zero or too few spans
+
+[expect.counts]
+description = "Validates minimum span counts"
+
+[expect.counts.spans_total]
+gte = 2  # At least run + step
+lte = 1000  # Reasonable upper bound
+
+[expect.counts.events_total]
+gte = 3  # At least start, exec, stop
+
+[expect.counts.errors_total]
+lte = 0  # Zero errors expected
+
+[expect.counts.by_name]
+"clnrm.run" = { eq = 1 }  # Exactly one run span
+"clnrm.step:run_test" = { eq = 1 }  # Exactly one step span
+
+# ============================================================================
+# DETECTION LAYER 4: Window Validator
+# ============================================================================
+# Validates temporal containment
+# CATCHES: Spans with impossible timing relationships
+
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.step:run_test"]
+description = "Step span must be temporally contained within run span"
+
+# ============================================================================
+# DETECTION LAYER 5: Order Validator
+# ============================================================================
+# Validates execution order
+# CATCHES: Out-of-order execution (impossible in real systems)
+
+[expect.order]
+description = "Validates span ordering constraints"
+
+# Plugin registry must initialize before steps
+must_precede = [
+  ["clnrm.plugin.registry", "clnrm.step:run_test"]
+]
+
+# Steps must follow initialization
+must_follow = [
+  ["clnrm.step:run_test", "clnrm.init"]
+]
+
+# ============================================================================
+# DETECTION LAYER 6: Status Validator
+# ============================================================================
+# Validates span status codes
+# CATCHES: Spans with error status (indicates real execution with failures)
+
+[expect.status]
+description = "All spans must have OK status"
+all = "OK"  # All spans must be OK
+none = "ERROR"  # No spans should have ERROR status
+
+# ============================================================================
+# DETECTION LAYER 7: Hermeticity Validator
+# ============================================================================
+# Validates isolation and hermetic attributes
+# CATCHES: Tests missing SDK resource attributes (proves real OTEL SDK usage)
+
+[expect.hermeticity]
+description = "Validates hermetic execution and OTEL SDK usage"
+
+# Must not access external services
+no_external_services = true
+
+# Must have SDK resource attributes (proves real SDK, not spoofed spans)
+[expect.hermeticity.resource_attrs]
+must_match = {
+  "service.name" = "{{ svc }}",
+  "deployment.environment" = "{{ env }}"
+}
+
+# Span attributes must not contain external references
+[expect.hermeticity.span_attrs]
+forbid_keys = [
+  "net.peer.name",
+  "http.url",
+  "db.connection_string"
+]
+
+# ============================================================================
+# Determinism Configuration
+# ============================================================================
+# Ensures reproducible test results
+
+[determinism]
+seed = {{ seed }}
+freeze_clock = "{{ freeze_clock }}"
+
+# ============================================================================
+# Report Configuration
+# ============================================================================
+# Defines output formats for validation results
+
+[report]
+json = "redteam-otlp-validation.report.json"
+digest = "redteam-otlp-validation.trace.sha256"
+
+[report.digest]
+algorithm = "sha256"
+include_timestamps = false  # Exclude for determinism
+
+# ============================================================================
+# Resource Limits
+# ============================================================================
+# Prevents resource exhaustion
+
+[limits]
+cpu_millicores = 1000  # 1 CPU core
+memory_mb = 512  # 512MB RAM

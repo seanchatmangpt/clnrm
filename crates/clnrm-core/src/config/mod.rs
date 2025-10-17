@@ -18,17 +18,18 @@ pub mod types;
 
 // Re-export commonly used types for backward compatibility
 pub use types::{
-    DeterminismConfig, LimitsConfig, MetaConfig, PolicyConfig, ReportConfig, ScenarioConfig,
-    StepConfig, TestConfig, TestMetadata, TestMetadataSection, TimeoutConfig,
+    ArtifactsConfig, DeterminismConfig, LimitsConfig, MetaConfig, PolicyConfig, ReportConfig,
+    ScenarioConfig, StepConfig, TestConfig, TestMetadata, TestMetadataSection, TimeoutConfig,
 };
 
 pub use services::{HealthCheckConfig, ServiceConfig, VolumeConfig};
 
 pub use otel::{
-    CountBoundConfig, CountExpectationConfig, ExpectationsConfig, ExpectedSpanConfig,
-    ExpectedTraceConfig, GraphExpectationConfig, HermeticityExpectationConfig,
-    OrderExpectationConfig, OtelConfig, OtelHeadersConfig, OtelPropagatorsConfig,
-    OtelValidationSection, SpanAttributesConfig, SpanExpectationConfig, StatusExpectationConfig,
+    CountBoundConfig, CountExpectationConfig, DurationBoundConfig, ExpectationsConfig,
+    ExpectedSpanConfig, ExpectedTraceConfig, GraphExpectationConfig,
+    HermeticityExpectationConfig, OrderExpectationConfig, OtelConfig, OtelHeadersConfig,
+    OtelPropagatorsConfig, OtelValidationSection, ResourceAttrsConfig, SpanAttrsConfig,
+    SpanAttributesConfig, SpanEventsConfig, SpanExpectationConfig, StatusExpectationConfig,
     WindowExpectationConfig,
 };
 
@@ -160,6 +161,354 @@ max_execution_time = 300
             vars: None,
             matrix: None,
             expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
+        };
+
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_v1_schema_otel_config() {
+        // Test v1.0 schema with OtelConfig
+        let config = TestConfig {
+            test: None,
+            meta: Some(MetaConfig {
+                name: "otel_test".to_string(),
+                version: "1.0.0".to_string(),
+                description: Some("OTEL validation test".to_string()),
+            }),
+            services: None,
+            service: None,
+            steps: vec![StepConfig {
+                name: "test_step".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                service: None,
+                expected_output_regex: None,
+                workdir: None,
+                env: None,
+                expected_exit_code: None,
+                continue_on_failure: None,
+            }],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: Some(OtelConfig {
+                exporter: "otlp".to_string(),
+                endpoint: Some("http://localhost:4318".to_string()),
+                protocol: Some("http/protobuf".to_string()),
+                sample_ratio: Some(1.0),
+                resources: Some(
+                    [("service.name".to_string(), "clnrm".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                ),
+                headers: None,
+                propagators: None,
+            }),
+            vars: None,
+            matrix: None,
+            expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
+        };
+
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_v1_schema_graph_expectations() {
+        // Test v1.0 schema with graph expectations
+        let config = TestConfig {
+            test: None,
+            meta: Some(MetaConfig {
+                name: "graph_test".to_string(),
+                version: "1.0.0".to_string(),
+                description: Some("Graph validation test".to_string()),
+            }),
+            services: None,
+            service: None,
+            steps: vec![StepConfig {
+                name: "test_step".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                service: None,
+                expected_output_regex: None,
+                workdir: None,
+                env: None,
+                expected_exit_code: None,
+                continue_on_failure: None,
+            }],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: Some(ExpectationsConfig {
+                span: vec![],
+                order: None,
+                status: None,
+                counts: None,
+                window: vec![],
+                graph: Some(GraphExpectationConfig {
+                    must_include: Some(vec![
+                        vec!["parent_span".to_string(), "child_span".to_string()],
+                    ]),
+                    must_not_cross: None,
+                    acyclic: Some(true),
+                }),
+                hermeticity: None,
+            }),
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
+        };
+
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_v1_schema_status_expectations() {
+        // Test v1.0 schema with status expectations
+        let config = TestConfig {
+            test: None,
+            meta: Some(MetaConfig {
+                name: "status_test".to_string(),
+                version: "1.0.0".to_string(),
+                description: Some("Status validation test".to_string()),
+            }),
+            services: None,
+            service: None,
+            steps: vec![StepConfig {
+                name: "test_step".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                service: None,
+                expected_output_regex: None,
+                workdir: None,
+                env: None,
+                expected_exit_code: None,
+                continue_on_failure: None,
+            }],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: Some(ExpectationsConfig {
+                span: vec![],
+                order: None,
+                status: Some(StatusExpectationConfig {
+                    all: Some("OK".to_string()),
+                    by_name: None,
+                }),
+                counts: None,
+                window: vec![],
+                graph: None,
+                hermeticity: None,
+            }),
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
+        };
+
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_invalid_otel_exporter() {
+        let config = TestConfig {
+            test: None,
+            meta: Some(MetaConfig {
+                name: "invalid_otel".to_string(),
+                version: "1.0.0".to_string(),
+                description: None,
+            }),
+            services: None,
+            service: None,
+            steps: vec![StepConfig {
+                name: "test_step".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                service: None,
+                expected_output_regex: None,
+                workdir: None,
+                env: None,
+                expected_exit_code: None,
+                continue_on_failure: None,
+            }],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: Some(OtelConfig {
+                exporter: "invalid_exporter".to_string(),
+                endpoint: None,
+                protocol: None,
+                sample_ratio: None,
+                resources: None,
+                headers: None,
+                propagators: None,
+            }),
+            vars: None,
+            matrix: None,
+            expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
+        };
+
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_invalid_sample_ratio() {
+        let config = TestConfig {
+            test: None,
+            meta: Some(MetaConfig {
+                name: "invalid_sample".to_string(),
+                version: "1.0.0".to_string(),
+                description: None,
+            }),
+            services: None,
+            service: None,
+            steps: vec![StepConfig {
+                name: "test_step".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                service: None,
+                expected_output_regex: None,
+                workdir: None,
+                env: None,
+                expected_exit_code: None,
+                continue_on_failure: None,
+            }],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: Some(OtelConfig {
+                exporter: "otlp".to_string(),
+                endpoint: None,
+                protocol: None,
+                sample_ratio: Some(1.5), // Invalid: > 1.0
+                resources: None,
+                headers: None,
+                propagators: None,
+            }),
+            vars: None,
+            matrix: None,
+            expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
+        };
+
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_invalid_graph_edge() {
+        let config = TestConfig {
+            test: None,
+            meta: Some(MetaConfig {
+                name: "invalid_graph".to_string(),
+                version: "1.0.0".to_string(),
+                description: None,
+            }),
+            services: None,
+            service: None,
+            steps: vec![StepConfig {
+                name: "test_step".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                service: None,
+                expected_output_regex: None,
+                workdir: None,
+                env: None,
+                expected_exit_code: None,
+                continue_on_failure: None,
+            }],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: Some(ExpectationsConfig {
+                span: vec![],
+                order: None,
+                status: None,
+                counts: None,
+                window: vec![],
+                graph: Some(GraphExpectationConfig {
+                    must_include: Some(vec![
+                        vec!["parent".to_string()], // Invalid: only 1 element
+                    ]),
+                    must_not_cross: None,
+                    acyclic: None,
+                }),
+                hermeticity: None,
+            }),
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
+        };
+
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_invalid_status_value() {
+        let config = TestConfig {
+            test: None,
+            meta: Some(MetaConfig {
+                name: "invalid_status".to_string(),
+                version: "1.0.0".to_string(),
+                description: None,
+            }),
+            services: None,
+            service: None,
+            steps: vec![StepConfig {
+                name: "test_step".to_string(),
+                command: vec!["echo".to_string(), "test".to_string()],
+                service: None,
+                expected_output_regex: None,
+                workdir: None,
+                env: None,
+                expected_exit_code: None,
+                continue_on_failure: None,
+            }],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: Some(ExpectationsConfig {
+                span: vec![],
+                order: None,
+                status: Some(StatusExpectationConfig {
+                    all: Some("INVALID".to_string()), // Invalid status
+                    by_name: None,
+                }),
+                counts: None,
+                window: vec![],
+                graph: None,
+                hermeticity: None,
+            }),
             report: None,
             determinism: None,
             limits: None,

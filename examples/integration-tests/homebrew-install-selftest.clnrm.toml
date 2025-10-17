@@ -1,0 +1,162 @@
+# ============================================================================
+# Homebrew Installation Validation Test
+# ============================================================================
+#
+# This test validates the complete clnrm installation and execution loop:
+#   1. Homebrew installs clnrm in a fresh container
+#   2. Installed clnrm runs self-test with OTEL tracing
+#   3. OTEL spans prove successful execution (no exit code checking)
+#   4. All validators pass on the spans
+#
+# This is the canonical example of OTEL-first validation where proof of
+# correctness comes from telemetry data, not exit codes.
+#
+# ============================================================================
+
+# Determinism configuration for reproducibility
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+# Authoring-only variables (replaced before execution)
+[vars]
+IMAGE = "homebrew/brew:latest"
+OTEL_EXPORTER = "stdout"
+REPORT_FILE = "brew-selftest.report.json"
+DIGEST_FILE = "brew-selftest.trace.sha256"
+
+# Test metadata
+[test.metadata]
+name = "homebrew_install_validation"
+description = "Validates clnrm installation via Homebrew and self-test with OTEL spans"
+version = "1.0.0"
+author = "clnrm core team"
+tags = ["integration", "homebrew", "otel", "validation"]
+
+# Service configuration - Homebrew container
+[services.brew]
+type = "generic_container"
+image = "homebrew/brew:latest"
+wait_for_ready = true
+env = [
+    "HOMEBREW_NO_AUTO_UPDATE=1",
+    "HOMEBREW_NO_INSTALL_CLEANUP=1",
+]
+
+# Step 1: Update Homebrew
+[[steps]]
+name = "update_homebrew"
+command = ["brew", "update"]
+service = "brew"
+expected_output_regex = "Already up-to-date|Updated"
+
+# Step 2: Install clnrm (from local tap or formula)
+# Note: In real scenario, this would install from official tap
+[[steps]]
+name = "install_clnrm"
+command = ["brew", "install", "clnrm"]
+service = "brew"
+expected_output_regex = "clnrm.*was successfully installed"
+
+# Step 3: Verify clnrm is in PATH
+[[steps]]
+name = "verify_clnrm_installed"
+command = ["which", "clnrm"]
+service = "brew"
+expected_output_regex = "/.*clnrm"
+
+# Step 4: Check clnrm version
+[[steps]]
+name = "check_version"
+command = ["clnrm", "--version"]
+service = "brew"
+expected_output_regex = "clnrm \\d+\\.\\d+\\.\\d+"
+
+# Step 5: Run clnrm self-test with stdout OTEL exporter
+# This is the critical step - self-test produces OTEL spans to stdout
+[[steps]]
+name = "run_selftest_with_otel"
+command = [
+    "clnrm",
+    "self-test",
+    "--otel-exporter", "stdout",
+    "--otel-service-name", "clnrm-homebrew-validation",
+    "--otel-sample-ratio", "1.0",
+]
+service = "brew"
+capture_stdout = true
+capture_stderr = true
+
+# Assertions - Validation via OTEL spans only
+[assertions]
+# These assertions operate on the OTEL span data, not exit codes
+container_should_have_executed_commands = 5
+execution_should_be_hermetic = true
+
+# Expect: Span validation
+[expect.span]
+# Validate specific spans exist with required attributes
+spans = [
+    {
+        name = "clnrm.run",
+        attributes = {
+            "clnrm.version" = { exists = true },
+            "test.config" = { exists = true },
+            "test.count" = { gte = 1 },
+            "otel.kind" = "internal",
+            "component" = "runner",
+        }
+    },
+    {
+        name = "clnrm.test",
+        attributes = {
+            "test.name" = { exists = true },
+            "test.hermetic" = true,
+            "otel.kind" = "internal",
+            "component" = "test_executor",
+        }
+    },
+]
+
+# Expect: Graph structure validation
+[expect.graph]
+# Validate parent-child relationships in span tree
+edges = [
+    { parent = "clnrm.run", child = "clnrm.test" },
+    { parent = "clnrm.test", child = "clnrm.container.start" },
+    { parent = "clnrm.container.start", child = "clnrm.container.exec" },
+]
+acyclic = true
+max_depth = 5
+
+# Expect: Span count thresholds
+[expect.counts]
+spans_total = { gte = 2, lte = 200 }
+spans_per_service = { "clnrm" = { gte = 2 } }
+spans_per_kind = { "internal" = { gte = 2 } }
+
+# Expect: Status codes
+[expect.status]
+all_ok = true
+error_count = 0
+failed_spans = []
+
+# Expect: Hermeticity validation
+[expect.hermeticity]
+# No external network calls allowed
+no_external_services = true
+allowed_images = ["homebrew/brew:latest"]
+network_isolation = true
+
+# Output configuration
+[output]
+format = "json"
+file = "brew-selftest.report.json"
+include_spans = true
+include_metrics = true
+
+# Digest for reproducibility
+[output.digest]
+algorithm = "sha256"
+file = "brew-selftest.trace.sha256"
+include_timestamps = false  # For deterministic digests
