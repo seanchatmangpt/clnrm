@@ -1,0 +1,434 @@
+# ====================================================================================
+# Chaos Test: Timeout Scenarios
+# Purpose: Validate deadline enforcement and timeout handling
+# Strategy: Various timeout scenarios with recovery and cleanup validation
+# ====================================================================================
+
+[meta]
+name = "chaos_timeout_scenarios"
+version = "1.0.1"
+description = "Deadline and timeout scenarios with enforcement validation"
+author = "clnrm core team"
+tags = ["chaos", "timeout", "deadline", "enforcement", "resilience"]
+
+[determinism]
+seed = 669
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[vars]
+short_timeout_ms = 100
+medium_timeout_ms = 1000
+long_timeout_ms = 5000
+
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = {
+    "service.name" = "clnrm-chaos",
+    "service.version" = "1.0.1",
+    "env" = "chaos-testing",
+    "chaos.type" = "timeout"
+}
+
+# ============================================================================
+# Scenario 1: Step Timeout Enforcement
+# ============================================================================
+[service.timeout_victim_01]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:timeout_enforcement"
+
+[[scenario]]
+name = "step_timeout_enforcement"
+service = "timeout_victim_01"
+run = "sh -c 'echo \"Starting long operation...\" && sleep 30'"
+timeout_ms = 1000  # Kill after 1 second
+artifacts.collect = ["spans:default", "logs:all"]
+expect_failure = true
+
+# Validate timeout enforcement
+[[expect.span]]
+name = "clnrm.timeout.enforced"
+kind = "internal"
+attrs.all = {
+    "timeout.triggered" = "true",
+    "timeout.ms" = "1000",
+    "timeout.type" = "step"
+}
+
+# Validate step was killed
+[[expect.span]]
+name = "clnrm.step:timeout_enforcement"
+kind = "internal"
+attrs.all = { "result" = "error", "error.type" = "timeout" }
+status = "ERROR"
+duration_ms = { min = 1000, max = 1500 }  # Should timeout around 1000ms
+
+# Validate cleanup after timeout
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+attrs.all = { "cleanup.triggered" = "timeout", "cleanup.success" = "true" }
+parent = "clnrm.timeout.enforced"
+
+# ============================================================================
+# Scenario 2: Graceful vs Hard Timeout
+# ============================================================================
+[service.timeout_victim_02]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:graceful_timeout"
+
+[[scenario]]
+name = "graceful_vs_hard_timeout"
+service = "timeout_victim_02"
+run = """
+    sh -c '
+    # Setup signal handler
+    trap "echo \"Graceful shutdown received\"; exit 0" SIGTERM
+
+    echo "Running with signal handler..."
+    sleep 30
+    '
+"""
+timeout_ms = 2000
+timeout_strategy = "graceful"  # SIGTERM first, then SIGKILL
+grace_period_ms = 500
+artifacts.collect = ["spans:default"]
+expect_failure = true
+
+# Validate graceful timeout attempt
+[[expect.span]]
+name = "clnrm.timeout.graceful"
+kind = "internal"
+attrs.all = {
+    "timeout.strategy" = "graceful",
+    "signal" = "SIGTERM",
+    "grace_period.ms" = "500"
+}
+
+# Validate hard timeout if graceful fails
+[[expect.span]]
+name = "clnrm.timeout.hard"
+kind = "internal"
+attrs.all = {
+    "signal" = "SIGKILL",
+    "preceded_by" = "graceful"
+}
+parent = "clnrm.timeout.graceful"
+
+# ============================================================================
+# Scenario 3: Cascading Timeout Scenarios
+# ============================================================================
+[service.timeout_cascading]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:cascading_timeout"
+
+[[scenario]]
+name = "cascading_timeout_test"
+service = "timeout_cascading"
+timeout_ms = 3000  # Overall timeout
+steps = [
+    { name = "step_1", run = "sleep 0.5", timeout_ms = 1000 },
+    { name = "step_2", run = "sleep 0.5", timeout_ms = 1000 },
+    { name = "step_3", run = "sleep 5", timeout_ms = 1000 },  # This will timeout
+    { name = "step_4", run = "echo 'never reached'", timeout_ms = 1000 }
+]
+artifacts.collect = ["spans:default"]
+expect_partial_failure = true
+
+# Validate individual step timeouts
+[[expect.span]]
+name = "clnrm.step:step_1"
+attrs.all = { "result" = "pass" }
+duration_ms = { max = 1000 }
+
+[[expect.span]]
+name = "clnrm.step:step_2"
+attrs.all = { "result" = "pass" }
+duration_ms = { max = 1000 }
+
+[[expect.span]]
+name = "clnrm.step:step_3"
+attrs.all = { "result" = "error", "error.type" = "timeout" }
+duration_ms = { min = 1000, max = 1500 }
+
+# Step 4 should not execute
+[[expect.span]]
+name = "clnrm.step:step_4"
+count = { eq = 0 }
+
+# ============================================================================
+# Scenario 4: Deadline-Based Scheduling
+# ============================================================================
+[service.deadline_test]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:deadline_scheduling"
+
+[[scenario]]
+name = "deadline_scheduling"
+service = "deadline_test"
+run = """
+    sh -c '
+    echo "Testing deadline-based scheduling..."
+
+    # Task 1: Should complete within deadline
+    start=$(date +%s%3N)
+    sleep 0.5
+    end=$(date +%s%3N)
+    duration=$((end - start))
+    echo "Task 1 duration: ${duration}ms"
+
+    # Task 2: Should miss deadline
+    start=$(date +%s%3N)
+    sleep 3
+    end=$(date +%s%3N)
+    duration=$((end - start))
+    echo "Task 2 duration: ${duration}ms"
+    '
+"""
+deadline_ms = 2000  # Absolute deadline from start
+artifacts.collect = ["spans:default"]
+expect_partial_failure = true
+
+# Validate deadline enforcement
+[[expect.span]]
+name = "clnrm.deadline.enforced"
+kind = "internal"
+attrs.all = {
+    "deadline.ms" = "2000",
+    "deadline.exceeded" = "true"
+}
+
+# Validate tasks within deadline
+[[expect.span]]
+name = "clnrm.task.completed"
+attrs.all = { "within_deadline" = "true" }
+count = { gte = 1 }
+
+# ============================================================================
+# Scenario 5: Timeout with Resource Cleanup
+# ============================================================================
+[service.timeout_cleanup]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:timeout_cleanup"
+
+[[scenario]]
+name = "timeout_with_resource_cleanup"
+service = "timeout_cleanup"
+run = """
+    sh -c '
+    # Create resources
+    echo "Creating resources..."
+    for i in 1 2 3 4 5; do
+        dd if=/dev/zero of=/tmp/resource_$i bs=1M count=10 &
+    done
+
+    # Long-running operation that will timeout
+    sleep 30
+    '
+"""
+timeout_ms = 2000
+artifacts.collect = ["spans:default", "logs:all"]
+expect_failure = true
+
+# Validate cleanup after timeout
+[[expect.span]]
+name = "clnrm.cleanup.timeout"
+kind = "internal"
+attrs.all = {
+    "cleanup.triggered_by" = "timeout",
+    "resources.cleaned" = "true",
+    "processes.killed" = { gte = 1 }
+}
+
+# Validate no resource leakage
+[[expect.span]]
+name = "clnrm.cleanup.verification"
+kind = "internal"
+attrs.all = {
+    "files.cleaned" = "true",
+    "processes.remaining" = "0"
+}
+parent = "clnrm.cleanup.timeout"
+
+# ============================================================================
+# Scenario 6: Exponential Backoff Timeout
+# ============================================================================
+[service.backoff_test]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl && echo ready"]
+wait_for_span = "clnrm.step:exponential_backoff"
+
+[[scenario]]
+name = "exponential_backoff_timeout"
+service = "backoff_test"
+run = """
+    sh -c '
+    echo "Testing exponential backoff..."
+
+    # Retry with exponential backoff
+    attempt=0
+    max_attempts=5
+    backoff=100  # Start with 100ms
+
+    while [ $attempt -lt $max_attempts ]; do
+        attempt=$((attempt + 1))
+        echo "Attempt $attempt (backoff ${backoff}ms)..."
+
+        # Simulate failing operation
+        curl -s -m 1 http://localhost:9999/test && break || true
+
+        # Exponential backoff
+        sleep_sec=$(echo "scale=3; $backoff/1000" | bc 2>/dev/null || echo "0.1")
+        sleep $sleep_sec
+        backoff=$((backoff * 2))
+
+        # Max backoff 5s
+        [ $backoff -gt 5000 ] && backoff=5000
+    done
+
+    echo "Backoff test complete after $attempt attempts"
+    '
+"""
+timeout_ms = 10000
+artifacts.collect = ["spans:default"]
+expect_failure = true
+
+# Validate backoff pattern
+[[expect.span]]
+name = "clnrm.retry.backoff"
+kind = "internal"
+attrs.all = {
+    "backoff.strategy" = "exponential",
+    "attempts.total" = { gte = 3 }
+}
+
+# Validate individual retry spans
+[[expect.span]]
+name = "clnrm.retry.attempt"
+kind = "internal"
+count = { gte = 3, lte = 5 }
+events.any = ["retry.1", "retry.2", "retry.3"]
+
+# ============================================================================
+# Scenario 7: Timeout Race Conditions
+# ============================================================================
+[service.timeout_race]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:timeout_race"
+
+[[scenario]]
+name = "timeout_race_conditions"
+service = "timeout_race"
+run = """
+    sh -c '
+    echo "Testing timeout race conditions..."
+
+    # Spawn multiple processes
+    for i in 1 2 3 4 5; do
+        (sleep $i && echo "Process $i completed") &
+    done
+
+    # Wait for all processes
+    wait
+    '
+"""
+timeout_ms = 3000  # Some processes will timeout
+artifacts.collect = ["spans:default"]
+expect_partial_failure = true
+
+# Validate some processes completed
+[[expect.span]]
+name = "clnrm.process.completed"
+kind = "internal"
+count = { gte = 1, lte = 3 }
+
+# Validate some processes timed out
+[[expect.span]]
+name = "clnrm.process.timeout"
+kind = "internal"
+count = { gte = 1 }
+
+# ============================================================================
+# Global Expectations
+# ============================================================================
+
+[expect.counts]
+spans_total = { gte = 8 }
+errors_total = { gte = 2 }  # Timeouts are expected
+by_name = {
+    "clnrm.timeout.enforced" = { gte = 1 },
+    "clnrm.cleanup" = { gte = 1 }
+}
+
+[expect.graph]
+must_include = [
+    ["clnrm.timeout.enforced", "clnrm.cleanup"],
+    ["clnrm.timeout.graceful", "clnrm.timeout.hard"]
+]
+acyclic = true
+
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.timeout.enforced", "clnrm.cleanup"]
+
+[expect.status]
+errors_allowed = true
+cleanup_must_succeed = true
+
+[expect.hermeticity]
+no_container_leakage = true
+no_network_leakage = true
+no_process_leakage = true
+no_resource_leakage = true
+
+[expect.chaos]
+timeout_enforcement_verified = true
+cleanup_after_timeout = true
+no_zombie_processes = true
+
+# Timeout-specific validation
+[expect.timeouts]
+# All timeouts should be enforced within tolerance
+enforcement_tolerance_ms = 500
+# Cleanup should complete quickly
+cleanup_max_duration_ms = 2000
+# No timeout should hang indefinitely
+max_timeout_duration_ms = 60000
+
+[limits]
+cpu_millicores = 500
+memory_mb = 256
+max_containers = 3
+max_duration_seconds = 120
+
+[report]
+json = "chaos_timeout_scenarios.report.json"
+junit = "chaos_timeout_scenarios.junit.xml"
+digest = "chaos_timeout_scenarios.trace.sha256"
+timeout_metrics = "chaos_timeout_scenarios.metrics.json"
+
+[cleanup]
+containers = "always"
+networks = "always"
+verify_cleanup = true
+kill_timeout_ms = 5000

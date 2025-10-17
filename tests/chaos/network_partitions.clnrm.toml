@@ -1,0 +1,345 @@
+# ====================================================================================
+# Chaos Test: Network Partitions
+# Purpose: Simulate network failures and validate service resilience
+# Strategy: Network delays, disconnects, packet loss with hermetic validation
+# ====================================================================================
+
+[meta]
+name = "chaos_network_partitions"
+version = "1.0.1"
+description = "Network chaos scenarios with connectivity validation via OTEL"
+author = "clnrm core team"
+tags = ["chaos", "network", "partition", "latency", "resilience", "otel"]
+
+[determinism]
+seed = 667
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[vars]
+latency_ms = 500
+packet_loss_percent = 30
+partition_duration_ms = 2000
+
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = {
+    "service.name" = "clnrm-chaos",
+    "service.version" = "1.0.1",
+    "env" = "chaos-testing",
+    "chaos.type" = "network-partition"
+}
+
+# ============================================================================
+# Scenario 1: Network Latency Injection
+# ============================================================================
+[service.latency_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl iproute2 && echo ready"]
+env = { "NETWORK_CHAOS" = "latency" }
+capabilities = ["NET_ADMIN"]  # Required for traffic control
+wait_for_span = "clnrm.step:latency_test"
+
+[[scenario]]
+name = "network_latency_injection"
+service = "latency_victim"
+run = """
+    sh -c '
+    # Baseline ping
+    ping -c 1 -W 1 8.8.8.8 || echo "baseline failed"
+
+    # Inject 500ms latency
+    tc qdisc add dev eth0 root netem delay 500ms
+
+    # Measure latency impact
+    time curl -s -m 10 http://httpbin.org/delay/1 || echo "latency test failed"
+
+    # Cleanup
+    tc qdisc del dev eth0 root netem
+    '
+"""
+artifacts.collect = ["spans:default", "logs:all"]
+
+# Validate latency impact recorded
+[[expect.span]]
+name = "clnrm.step:latency_test"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+duration_ms = { min = 1500 }  # At least 1s delay + 500ms latency
+events.any = ["network.latency.injected", "network.latency.measured"]
+
+# Validate network chaos metadata
+[[expect.span]]
+name = "clnrm.network.chaos"
+kind = "internal"
+attrs.all = {
+    "chaos.type" = "latency",
+    "latency.ms" = "500",
+    "network.degraded" = "true"
+}
+
+# ============================================================================
+# Scenario 2: Packet Loss Simulation
+# ============================================================================
+[service.packet_loss_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl iproute2 && echo ready"]
+capabilities = ["NET_ADMIN"]
+wait_for_span = "clnrm.step:packet_loss_test"
+
+[[scenario]]
+name = "packet_loss_simulation"
+service = "packet_loss_victim"
+run = """
+    sh -c '
+    # Inject 30% packet loss
+    tc qdisc add dev eth0 root netem loss 30%
+
+    # Attempt communication with packet loss
+    for i in 1 2 3 4 5; do
+        ping -c 1 -W 1 8.8.8.8 && echo "ping $i success" || echo "ping $i failed"
+    done
+
+    # Cleanup
+    tc qdisc del dev eth0 root netem
+    '
+"""
+artifacts.collect = ["spans:default"]
+
+# Validate packet loss detection
+[[expect.span]]
+name = "clnrm.step:packet_loss_test"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+events.any = ["network.packet_loss.detected"]
+
+# ============================================================================
+# Scenario 3: Complete Network Partition
+# ============================================================================
+[service.partition_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl iptables && echo ready"]
+capabilities = ["NET_ADMIN"]
+wait_for_span = "clnrm.step:partition_test"
+
+[[scenario]]
+name = "complete_network_partition"
+service = "partition_victim"
+run = """
+    sh -c '
+    # Block all outbound traffic
+    iptables -A OUTPUT -j DROP
+
+    # Attempt communication (should fail)
+    curl -s -m 2 http://httpbin.org/get || echo "partition detected"
+
+    # Restore network
+    iptables -F
+
+    # Verify recovery
+    curl -s -m 5 http://httpbin.org/get && echo "network restored"
+    '
+"""
+artifacts.collect = ["spans:default"]
+expect_partial_failure = true
+
+# Validate partition detection
+[[expect.span]]
+name = "clnrm.network.partition"
+kind = "internal"
+attrs.all = {
+    "partition.detected" = "true",
+    "partition.duration_ms" = { gte = 1000 }
+}
+
+# Validate recovery
+[[expect.span]]
+name = "clnrm.network.recovery"
+kind = "internal"
+attrs.all = {
+    "recovery.success" = "true",
+    "recovery.type" = "network_restore"
+}
+parent = "clnrm.network.partition"
+
+# ============================================================================
+# Scenario 4: Split-Brain Network Partition
+# ============================================================================
+[service.node_a]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl netcat-openbsd && nc -l -p 8080"]
+env = { "NODE_ID" = "A" }
+wait_for_span = "clnrm.step:split_brain_test"
+
+[service.node_b]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl netcat-openbsd && echo ready"]
+env = { "NODE_ID" = "B" }
+wait_for_span = "clnrm.step:split_brain_test"
+
+[[scenario]]
+name = "split_brain_partition"
+parallel_services = ["node_a", "node_b"]
+run = [
+    {
+        service = "node_a",
+        command = """
+            sh -c 'echo "Node A: Waiting for connection..." && \
+            echo "message from A" | nc -l -p 8080 -w 5'
+        """
+    },
+    {
+        service = "node_b",
+        command = """
+            sh -c 'sleep 1 && \
+            echo "Node B: Attempting connection..." && \
+            nc -w 5 node_a 8080 || echo "partition detected"'
+        """
+    }
+]
+artifacts.collect = ["spans:default"]
+
+# Validate split-brain detection
+[[expect.span]]
+name = "clnrm.split_brain"
+kind = "internal"
+attrs.all = {
+    "nodes.partitioned" = "true",
+    "partition.type" = "split-brain"
+}
+
+# ============================================================================
+# Scenario 5: Network Timeout Scenarios
+# ============================================================================
+[service.timeout_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl && echo ready"]
+wait_for_span = "clnrm.step:timeout_test"
+
+[[scenario]]
+name = "network_timeout_scenarios"
+service = "timeout_victim"
+run = """
+    sh -c '
+    # Test 1: Fast timeout (should fail)
+    curl -s -m 1 http://httpbin.org/delay/5 || echo "timeout 1s"
+
+    # Test 2: Reasonable timeout (should succeed)
+    curl -s -m 10 http://httpbin.org/delay/2 && echo "timeout 10s success"
+
+    # Test 3: Very short timeout (should fail)
+    curl -s -m 0.1 http://httpbin.org/get || echo "timeout 100ms"
+    '
+"""
+artifacts.collect = ["spans:default"]
+expect_partial_failure = true
+
+# Validate timeout handling
+[[expect.span]]
+name = "clnrm.step:timeout_test"
+kind = "internal"
+attrs.any = { "timeout.triggered" = "true" }
+events.any = ["timeout.1s", "timeout.10s", "timeout.100ms"]
+
+# ============================================================================
+# Scenario 6: Connection Refused Scenario
+# ============================================================================
+[service.connection_refused]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl && echo ready"]
+wait_for_span = "clnrm.step:connection_refused"
+
+[[scenario]]
+name = "connection_refused_handling"
+service = "connection_refused"
+run = """
+    sh -c '
+    # Attempt to connect to non-existent service
+    curl -s -m 2 http://localhost:9999/test || echo "connection refused"
+
+    # Attempt DNS failure
+    curl -s -m 2 http://nonexistent.invalid/test || echo "dns failure"
+    '
+"""
+artifacts.collect = ["spans:default"]
+expect_failure = true
+
+# Validate connection refused detection
+[[expect.span]]
+name = "clnrm.step:connection_refused"
+kind = "internal"
+attrs.all = { "result" = "error", "error.type" = "connection_refused" }
+status = "ERROR"
+
+# Validate cleanup after connection failures
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+attrs.all = { "cleanup.success" = "true" }
+status = "OK"
+
+# ============================================================================
+# Global Expectations
+# ============================================================================
+
+[expect.counts]
+spans_total = { gte = 5 }
+errors_total = { gte = 1 }  # Network chaos causes errors
+by_name = {
+    "clnrm.network.chaos" = { gte = 1 },
+    "clnrm.cleanup" = { gte = 1 }
+}
+
+[expect.graph]
+must_include = [
+    ["clnrm.network.partition", "clnrm.network.recovery"]
+]
+acyclic = true
+
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.network.chaos", "clnrm.network.recovery"]
+
+[expect.status]
+errors_allowed = true
+cleanup_must_succeed = true
+
+[expect.hermeticity]
+no_external_services = false  # Network tests require external connectivity
+no_container_leakage = true
+no_network_leakage = true
+
+[expect.chaos]
+network_degradation_detected = true
+recovery_verified = true
+cleanup_spans_match_failures = true
+
+[limits]
+cpu_millicores = 500
+memory_mb = 256
+max_containers = 5
+max_duration_seconds = 120
+
+[report]
+json = "chaos_network_partitions.report.json"
+junit = "chaos_network_partitions.junit.xml"
+digest = "chaos_network_partitions.trace.sha256"
+
+[cleanup]
+containers = "always"
+networks = "always"
+verify_cleanup = true

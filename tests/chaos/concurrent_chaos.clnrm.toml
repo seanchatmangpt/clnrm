@@ -1,0 +1,507 @@
+# ====================================================================================
+# Chaos Test: Concurrent Multi-Failure Scenarios
+# Purpose: Validate resilience under simultaneous multiple failure conditions
+# Strategy: Combine container, network, resource, and timeout chaos concurrently
+# ====================================================================================
+
+[meta]
+name = "chaos_concurrent_multi_failure"
+version = "1.0.1"
+description = "Concurrent multi-failure chaos scenarios testing system resilience"
+author = "clnrm core team"
+tags = ["chaos", "concurrent", "multi-failure", "stress-test", "resilience"]
+
+[determinism]
+seed = 670
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[vars]
+chaos_duration_s = 30
+recovery_window_s = 10
+failure_rate_percent = 40
+
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = {
+    "service.name" = "clnrm-chaos",
+    "service.version" = "1.0.1",
+    "env" = "chaos-testing",
+    "chaos.type" = "concurrent-multi-failure"
+}
+
+# ============================================================================
+# Scenario 1: Concurrent Container Failures
+# ============================================================================
+[service.concurrent_container_01]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:concurrent_01"
+
+[service.concurrent_container_02]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:concurrent_02"
+
+[service.concurrent_container_03]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:concurrent_03"
+
+[[scenario]]
+name = "concurrent_container_failures"
+parallel_services = ["concurrent_container_01", "concurrent_container_02", "concurrent_container_03"]
+run = [
+    {
+        service = "concurrent_container_01",
+        command = "sh -c 'sleep 2 && exit 1'",
+        timeout_ms = 5000
+    },
+    {
+        service = "concurrent_container_02",
+        command = "sh -c 'sleep 3 && kill -9 $$'",
+        timeout_ms = 5000
+    },
+    {
+        service = "concurrent_container_03",
+        command = "sh -c 'sleep 10'",
+        timeout_ms = 5000
+    }
+]
+artifacts.collect = ["spans:default", "logs:all"]
+expect_failure = true
+
+# Validate all three containers started
+[[expect.span]]
+name = "clnrm.step:concurrent_01"
+attrs.all = { "result" = "error" }
+
+[[expect.span]]
+name = "clnrm.step:concurrent_02"
+attrs.all = { "result" = "error" }
+
+[[expect.span]]
+name = "clnrm.step:concurrent_03"
+attrs.all = { "result" = "error", "error.type" = "timeout" }
+
+# Validate concurrent cleanup
+[[expect.span]]
+name = "clnrm.cleanup.concurrent"
+kind = "internal"
+attrs.all = {
+    "containers.cleaned" = "3",
+    "cleanup.parallel" = "true"
+}
+
+# ============================================================================
+# Scenario 2: Network + Resource Chaos Combined
+# ============================================================================
+[service.network_resource_chaos]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl iproute2 && echo ready"]
+capabilities = ["NET_ADMIN"]
+limits = {
+    memory_mb = 128,
+    cpu_millicores = 200
+}
+wait_for_span = "clnrm.step:network_resource_chaos"
+
+[[scenario]]
+name = "network_and_resource_chaos_combined"
+service = "network_resource_chaos"
+run = """
+    sh -c '
+    echo "Starting combined chaos test..."
+
+    # Inject network latency
+    tc qdisc add dev eth0 root netem delay 200ms &
+    net_pid=$!
+
+    # Create memory pressure
+    dd if=/dev/zero of=/tmp/pressure bs=1M count=100 &
+    mem_pid=$!
+
+    # Create CPU pressure
+    yes > /dev/null &
+    cpu_pid=$!
+
+    # Attempt network operation under resource pressure
+    sleep 2
+    curl -s -m 5 http://httpbin.org/get || echo "Failed under chaos"
+
+    # Cleanup
+    kill $net_pid $mem_pid $cpu_pid 2>/dev/null || true
+    tc qdisc del dev eth0 root netem 2>/dev/null || true
+    rm -f /tmp/pressure
+
+    echo "Combined chaos test complete"
+    '
+"""
+timeout_ms = 15000
+artifacts.collect = ["spans:default"]
+expect_partial_failure = true
+
+# Validate concurrent chaos types detected
+[[expect.span]]
+name = "clnrm.chaos.concurrent"
+kind = "internal"
+attrs.all = {
+    "chaos.types" = ["network", "memory", "cpu"],
+    "concurrent" = "true"
+}
+
+# Validate system remained operational
+[[expect.span]]
+name = "clnrm.step:network_resource_chaos"
+kind = "internal"
+attrs.all = { "result" = "pass", "degraded" = "true" }
+
+# ============================================================================
+# Scenario 3: Cascading Failure Propagation
+# ============================================================================
+[service.cascade_primary]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache netcat-openbsd && nc -l -p 8080"]
+wait_for_span = "clnrm.step:cascade_primary"
+
+[service.cascade_secondary]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache netcat-openbsd && echo ready"]
+wait_for_span = "clnrm.step:cascade_secondary"
+
+[service.cascade_tertiary]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache netcat-openbsd && echo ready"]
+wait_for_span = "clnrm.step:cascade_tertiary"
+
+[[scenario]]
+name = "cascading_failure_propagation"
+parallel_services = ["cascade_primary", "cascade_secondary", "cascade_tertiary"]
+run = [
+    {
+        service = "cascade_primary",
+        command = "sh -c 'sleep 2 && exit 1'",  # Primary fails first
+        timeout_ms = 5000
+    },
+    {
+        service = "cascade_secondary",
+        command = """
+            sh -c '
+            sleep 1
+            nc -w 5 cascade_primary 8080 || echo "Primary failed, secondary failing"
+            exit 2
+            '
+        """,
+        timeout_ms = 10000
+    },
+    {
+        service = "cascade_tertiary",
+        command = """
+            sh -c '
+            sleep 2
+            nc -w 5 cascade_secondary 8080 || echo "Secondary failed, tertiary failing"
+            exit 3
+            '
+        """,
+        timeout_ms = 10000
+    }
+]
+artifacts.collect = ["spans:default"]
+expect_failure = true
+
+# Validate cascade detection
+[[expect.span]]
+name = "clnrm.failure.cascade"
+kind = "internal"
+attrs.all = {
+    "cascade.detected" = "true",
+    "cascade.depth" = { gte = 2 }
+}
+
+# Validate failure propagation order
+[[expect.span]]
+name = "clnrm.step:cascade_primary"
+attrs.all = { "result" = "error", "exit.code" = "1" }
+
+[[expect.span]]
+name = "clnrm.step:cascade_secondary"
+attrs.all = { "result" = "error", "exit.code" = "2" }
+
+[[expect.span]]
+name = "clnrm.step:cascade_tertiary"
+attrs.all = { "result" = "error", "exit.code" = "3" }
+
+# ============================================================================
+# Scenario 4: Chaos Monkey - Random Failure Injection
+# ============================================================================
+[service.chaos_monkey_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { memory_mb = 256 }
+wait_for_span = "clnrm.step:chaos_monkey"
+
+[[scenario]]
+name = "chaos_monkey_random_failures"
+service = "chaos_monkey_victim"
+run = """
+    sh -c '
+    echo "Chaos Monkey active - random failures ahead..."
+
+    # Function to randomly fail
+    random_failure() {
+        rand=$(( RANDOM % 100 ))
+        if [ $rand -lt 40 ]; then  # 40% failure rate
+            failure_type=$(( RANDOM % 4 ))
+            case $failure_type in
+                0) echo "OOM simulation" && dd if=/dev/zero of=/tmp/oom bs=1M count=300 ;;
+                1) echo "Process crash" && kill -9 $$ ;;
+                2) echo "Timeout" && sleep 100 ;;
+                3) echo "Exit failure" && exit $(( RANDOM % 255 )) ;;
+            esac
+        fi
+    }
+
+    # Run 10 operations with random failures
+    for i in $(seq 1 10); do
+        echo "Operation $i..."
+        random_failure || echo "Operation $i succeeded"
+        sleep 0.5
+    done
+
+    echo "Chaos Monkey test complete"
+    '
+"""
+timeout_ms = 20000
+artifacts.collect = ["spans:default", "logs:all"]
+expect_partial_failure = true
+
+# Validate chaos monkey execution
+[[expect.span]]
+name = "clnrm.chaos.monkey"
+kind = "internal"
+attrs.all = {
+    "chaos.random" = "true",
+    "failure.rate" = { gte = 0.2, lte = 0.6 }  # Around 40% ±20%
+}
+
+# ============================================================================
+# Scenario 5: Stress Test - Maximum Concurrent Failures
+# ============================================================================
+[service.stress_01]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { memory_mb = 64, cpu_millicores = 100 }
+
+[service.stress_02]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { memory_mb = 64, cpu_millicores = 100 }
+
+[service.stress_03]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { memory_mb = 64, cpu_millicores = 100 }
+
+[service.stress_04]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { memory_mb = 64, cpu_millicores = 100 }
+
+[service.stress_05]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { memory_mb = 64, cpu_millicores = 100 }
+
+[[scenario]]
+name = "maximum_concurrent_stress"
+parallel_services = ["stress_01", "stress_02", "stress_03", "stress_04", "stress_05"]
+run = [
+    { service = "stress_01", command = "sh -c 'yes > /dev/null & sleep 5'", timeout_ms = 3000 },
+    { service = "stress_02", command = "sh -c 'dd if=/dev/zero of=/tmp/mem bs=1M count=100'", timeout_ms = 3000 },
+    { service = "stress_03", command = "sh -c 'sleep 10'", timeout_ms = 2000 },
+    { service = "stress_04", command = "sh -c 'exit 1'", timeout_ms = 3000 },
+    { service = "stress_05", command = "sh -c 'kill -9 $$'", timeout_ms = 3000 }
+]
+artifacts.collect = ["spans:default"]
+expect_failure = true
+
+# Validate stress test metrics
+[[expect.span]]
+name = "clnrm.stress.concurrent"
+kind = "internal"
+attrs.all = {
+    "containers.concurrent" = "5",
+    "failures.total" = { gte = 3 }
+}
+
+# Validate all cleanups succeeded
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+count = { eq = 5 }
+status = "OK"
+
+# ============================================================================
+# Scenario 6: Recovery Under Concurrent Failures
+# ============================================================================
+[service.recovery_test]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { memory_mb = 256 }
+wait_for_span = "clnrm.step:recovery_under_chaos"
+
+[[scenario]]
+name = "recovery_under_concurrent_failures"
+service = "recovery_test"
+run = """
+    sh -c '
+    echo "Testing recovery under concurrent failures..."
+
+    # Phase 1: Normal operation
+    echo "Phase 1: Normal operation"
+    dd if=/dev/zero of=/tmp/baseline bs=1M count=10
+    rm /tmp/baseline
+
+    # Phase 2: Inject multiple failures concurrently
+    echo "Phase 2: Concurrent failures"
+    yes > /dev/null &
+    cpu_pid=$!
+    dd if=/dev/zero of=/tmp/mem bs=1M count=200 &
+    mem_pid=$!
+    sleep 2 &
+    sleep_pid=$!
+
+    # Phase 3: Attempt recovery
+    sleep 3
+    echo "Phase 3: Recovery"
+    kill $cpu_pid $mem_pid $sleep_pid 2>/dev/null || true
+    wait
+
+    rm -f /tmp/mem
+
+    # Phase 4: Verify recovery
+    echo "Phase 4: Verification"
+    dd if=/dev/zero of=/tmp/verify bs=1M count=10
+    rm /tmp/verify
+
+    echo "Recovery test complete"
+    '
+"""
+timeout_ms = 20000
+artifacts.collect = ["spans:default"]
+
+# Validate recovery phases
+[[expect.span]]
+name = "clnrm.recovery.phase"
+kind = "internal"
+count = { eq = 4 }
+events.any = ["normal", "chaos", "recovery", "verification"]
+
+# Validate successful recovery
+[[expect.span]]
+name = "clnrm.recovery.success"
+kind = "internal"
+attrs.all = {
+    "recovery.complete" = "true",
+    "system.stable" = "true"
+}
+
+# ============================================================================
+# Global Expectations
+# ============================================================================
+
+[expect.counts]
+spans_total = { gte = 15 }
+errors_total = { gte = 5 }  # Multiple concurrent failures expected
+by_name = {
+    "clnrm.cleanup" = { gte = 5 },  # Multiple cleanups
+    "clnrm.chaos.concurrent" = { gte = 1 }
+}
+
+[expect.graph]
+must_include = [
+    ["clnrm.failure.cascade", "clnrm.cleanup"],
+    ["clnrm.chaos.concurrent", "clnrm.recovery.success"]
+]
+acyclic = true
+
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.cleanup", "clnrm.recovery.success"]
+max_duration_ms = 60000
+
+[expect.status]
+errors_allowed = true
+cleanup_must_succeed = true
+
+[expect.hermeticity]
+no_container_leakage = true
+no_network_leakage = true
+no_volume_leakage = true
+no_process_leakage = true
+
+[expect.chaos]
+concurrent_failures_handled = true
+cascading_failures_detected = true
+recovery_successful = true
+cleanup_spans_match_failures = true
+no_zombie_processes = true
+
+# Concurrent chaos specific validation
+[expect.concurrent]
+# All containers should be cleaned up
+cleanup_complete = true
+# No deadlocks during concurrent failures
+no_deadlocks = true
+# System should remain responsive
+system_responsive = true
+# Maximum concurrent failures handled
+max_concurrent = { gte = 5 }
+
+[limits]
+cpu_millicores = 2000
+memory_mb = 1024
+max_containers = 10
+max_duration_seconds = 120
+
+[report]
+json = "chaos_concurrent_multi_failure.report.json"
+junit = "chaos_concurrent_multi_failure.junit.xml"
+digest = "chaos_concurrent_multi_failure.trace.sha256"
+stress_metrics = "chaos_concurrent_multi_failure.stress.json"
+
+[cleanup]
+containers = "always"
+networks = "always"
+volumes = "always"
+verify_cleanup = true
+parallel_cleanup = true
+cleanup_timeout_ms = 30000

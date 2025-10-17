@@ -1,0 +1,422 @@
+# ====================================================================================
+# Chaos Test: Resource Exhaustion
+# Purpose: Validate graceful degradation under resource pressure
+# Strategy: Memory limits, CPU throttling, disk exhaustion with recovery validation
+# ====================================================================================
+
+[meta]
+name = "chaos_resource_exhaustion"
+version = "1.0.1"
+description = "Resource exhaustion scenarios with graceful degradation validation"
+author = "clnrm core team"
+tags = ["chaos", "resource-exhaustion", "memory", "cpu", "disk", "resilience"]
+
+[determinism]
+seed = 668
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[vars]
+memory_limit_mb = 128
+cpu_limit_millicores = 100
+disk_limit_mb = 100
+
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = {
+    "service.name" = "clnrm-chaos",
+    "service.version" = "1.0.1",
+    "env" = "chaos-testing",
+    "chaos.type" = "resource-exhaustion"
+}
+
+# ============================================================================
+# Scenario 1: Memory Exhaustion with Graceful Degradation
+# ============================================================================
+[service.memory_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+env = { "MEMORY_LIMIT" = "128M" }
+limits = { memory_mb = 128, memory_swap_mb = 128 }  # Strict memory limit
+wait_for_span = "clnrm.step:memory_exhaustion"
+
+[[scenario]]
+name = "memory_exhaustion_graceful"
+service = "memory_victim"
+run = """
+    sh -c '
+    echo "Testing memory exhaustion..."
+
+    # Attempt to allocate 64MB (should succeed)
+    dd if=/dev/zero of=/tmp/small bs=1M count=64 2>&1
+
+    # Attempt to allocate 256MB (should fail gracefully)
+    dd if=/dev/zero of=/tmp/large bs=1M count=256 2>&1 || echo "OOM handled gracefully"
+
+    # Cleanup
+    rm -f /tmp/small /tmp/large
+    '
+"""
+artifacts.collect = ["spans:default", "logs:all"]
+expect_partial_failure = true
+
+# Validate memory pressure detection
+[[expect.span]]
+name = "clnrm.resource.memory_pressure"
+kind = "internal"
+attrs.all = {
+    "resource.type" = "memory",
+    "pressure.level" = "high",
+    "limit.mb" = "128"
+}
+
+# Validate graceful handling
+[[expect.span]]
+name = "clnrm.step:memory_exhaustion"
+kind = "internal"
+attrs.all = { "result" = "pass", "degraded" = "true" }
+events.any = ["memory.allocation.failed", "oom.handled"]
+
+# ============================================================================
+# Scenario 2: CPU Throttling
+# ============================================================================
+[service.cpu_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { cpu_millicores = 100 }  # 10% of one CPU core
+wait_for_span = "clnrm.step:cpu_throttling"
+
+[[scenario]]
+name = "cpu_throttling_test"
+service = "cpu_victim"
+run = """
+    sh -c '
+    echo "Testing CPU throttling..."
+
+    # Baseline CPU test
+    time sh -c "i=0; while [ \$i -lt 1000 ]; do i=\$((i+1)); done"
+
+    # CPU-intensive task (should be throttled)
+    time sh -c "
+        for i in 1 2 3 4 5; do
+            yes > /dev/null &
+        done
+        sleep 2
+        pkill yes
+    "
+
+    echo "CPU throttling test complete"
+    '
+"""
+artifacts.collect = ["spans:default", "logs:all"]
+
+# Validate CPU throttling detection
+[[expect.span]]
+name = "clnrm.resource.cpu_throttle"
+kind = "internal"
+attrs.all = {
+    "resource.type" = "cpu",
+    "throttle.detected" = "true",
+    "limit.millicores" = "100"
+}
+
+# Validate performance degradation
+[[expect.span]]
+name = "clnrm.step:cpu_throttling"
+kind = "internal"
+attrs.all = { "result" = "pass", "degraded" = "true" }
+duration_ms = { min = 2000 }  # Should take longer due to throttling
+
+# ============================================================================
+# Scenario 3: Disk Space Exhaustion
+# ============================================================================
+[service.disk_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+env = { "DISK_LIMIT" = "100M" }
+# Note: Docker doesn't enforce disk limits by default, we simulate it
+wait_for_span = "clnrm.step:disk_exhaustion"
+
+[[scenario]]
+name = "disk_exhaustion_handling"
+service = "disk_victim"
+run = """
+    sh -c '
+    echo "Testing disk exhaustion..."
+
+    # Create small file (should succeed)
+    dd if=/dev/zero of=/tmp/small.dat bs=1M count=10 2>&1
+
+    # Attempt to create large file (simulate disk full)
+    # Use a tmpfs mount with size limit to enforce disk quota
+    mkdir -p /tmp/limited
+    mount -t tmpfs -o size=50M tmpfs /tmp/limited 2>/dev/null || echo "tmpfs not available"
+
+    # Fill disk to capacity
+    dd if=/dev/zero of=/tmp/limited/fill bs=1M count=100 2>&1 || echo "Disk full handled"
+
+    # Verify we can still operate
+    df -h /tmp/limited || df -h /tmp
+
+    # Cleanup
+    umount /tmp/limited 2>/dev/null || true
+    rm -rf /tmp/small.dat /tmp/limited
+    '
+"""
+artifacts.collect = ["spans:default", "logs:all"]
+expect_partial_failure = true
+
+# Validate disk exhaustion detection
+[[expect.span]]
+name = "clnrm.resource.disk_full"
+kind = "internal"
+attrs.all = {
+    "resource.type" = "disk",
+    "disk.full" = "true"
+}
+
+# Validate graceful handling
+[[expect.span]]
+name = "clnrm.step:disk_exhaustion"
+kind = "internal"
+attrs.all = { "result" = "pass", "degraded" = "true" }
+events.any = ["disk.write.failed", "disk.full.handled"]
+
+# ============================================================================
+# Scenario 4: File Descriptor Exhaustion
+# ============================================================================
+[service.fd_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+env = { "FD_LIMIT" = "256" }
+limits = { max_file_descriptors = 256 }
+wait_for_span = "clnrm.step:fd_exhaustion"
+
+[[scenario]]
+name = "file_descriptor_exhaustion"
+service = "fd_victim"
+run = """
+    sh -c '
+    echo "Testing FD exhaustion..."
+
+    # Show current limit
+    ulimit -n
+
+    # Open many files to approach limit
+    for i in $(seq 1 200); do
+        exec 3<> /tmp/fd_$i
+    done
+
+    # Attempt to open more (should fail gracefully)
+    for i in $(seq 201 300); do
+        exec 3<> /tmp/fd_$i 2>&1 || echo "FD limit reached at $i"
+        [ $? -ne 0 ] && break
+    done
+
+    # Cleanup
+    exec 3>&-
+    rm -f /tmp/fd_*
+    '
+"""
+artifacts.collect = ["spans:default"]
+expect_partial_failure = true
+
+# Validate FD exhaustion detection
+[[expect.span]]
+name = "clnrm.resource.fd_exhaustion"
+kind = "internal"
+attrs.all = {
+    "resource.type" = "file_descriptors",
+    "limit.reached" = "true"
+}
+
+# ============================================================================
+# Scenario 5: Concurrent Resource Pressure
+# ============================================================================
+[service.concurrent_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = {
+    memory_mb = 128,
+    cpu_millicores = 200,
+    max_file_descriptors = 512
+}
+wait_for_span = "clnrm.step:concurrent_pressure"
+
+[[scenario]]
+name = "concurrent_resource_pressure"
+service = "concurrent_victim"
+run = """
+    sh -c '
+    echo "Testing concurrent resource pressure..."
+
+    # Memory pressure
+    dd if=/dev/zero of=/tmp/mem1 bs=1M count=50 &
+    mem_pid=$!
+
+    # CPU pressure
+    yes > /dev/null &
+    cpu_pid=$!
+
+    # Disk I/O pressure
+    dd if=/dev/zero of=/tmp/io1 bs=1M count=20 &
+    io_pid=$!
+
+    # Wait for pressure to build
+    sleep 3
+
+    # Cleanup
+    kill $cpu_pid 2>/dev/null || true
+    kill $mem_pid 2>/dev/null || true
+    kill $io_pid 2>/dev/null || true
+    wait
+
+    rm -f /tmp/mem1 /tmp/io1
+
+    echo "Concurrent pressure test complete"
+    '
+"""
+artifacts.collect = ["spans:default", "logs:all"]
+
+# Validate multiple resource pressure
+[[expect.span]]
+name = "clnrm.resource.concurrent_pressure"
+kind = "internal"
+attrs.all = {
+    "pressure.types" = ["memory", "cpu", "disk"],
+    "concurrent" = "true"
+}
+
+# Validate system remained stable
+[[expect.span]]
+name = "clnrm.step:concurrent_pressure"
+kind = "internal"
+attrs.all = { "result" = "pass", "degraded" = "true", "stable" = "true" }
+
+# ============================================================================
+# Scenario 6: Resource Recovery After Pressure
+# ============================================================================
+[service.recovery_test]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+limits = { memory_mb = 256 }
+wait_for_span = "clnrm.step:resource_recovery"
+
+[[scenario]]
+name = "resource_recovery_validation"
+service = "recovery_test"
+run = """
+    sh -c '
+    echo "Testing resource recovery..."
+
+    # Phase 1: Apply memory pressure
+    dd if=/dev/zero of=/tmp/pressure bs=1M count=200 2>&1
+    echo "Pressure applied"
+
+    # Phase 2: Release pressure
+    rm -f /tmp/pressure
+    sync
+    echo "Pressure released"
+
+    # Phase 3: Verify recovery
+    dd if=/dev/zero of=/tmp/verify bs=1M count=100
+    rm -f /tmp/verify
+    echo "Recovery verified"
+    '
+"""
+artifacts.collect = ["spans:default"]
+
+# Validate recovery cycle
+[[expect.span]]
+name = "clnrm.resource.recovery"
+kind = "internal"
+attrs.all = {
+    "recovery.phase" = "complete",
+    "resources.restored" = "true"
+}
+parent = "clnrm.resource.memory_pressure"
+
+# Validate cleanup always succeeds
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+attrs.all = { "cleanup.success" = "true" }
+status = "OK"
+
+# ============================================================================
+# Global Expectations
+# ============================================================================
+
+[expect.counts]
+spans_total = { gte = 6 }
+errors_total = { lte = 3 }  # Some degradation expected, not catastrophic
+by_name = {
+    "clnrm.resource.memory_pressure" = { gte = 1 },
+    "clnrm.resource.cpu_throttle" = { gte = 1 },
+    "clnrm.cleanup" = { gte = 1 }
+}
+
+[expect.graph]
+must_include = [
+    ["clnrm.resource.memory_pressure", "clnrm.resource.recovery"]
+]
+acyclic = true
+
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.resource.memory_pressure", "clnrm.resource.recovery"]
+max_duration_ms = 60000
+
+[expect.status]
+errors_allowed = true
+cleanup_must_succeed = true
+
+[expect.hermeticity]
+no_container_leakage = true
+resource_attrs.must_match = { "env" = "chaos-testing" }
+
+[expect.chaos]
+graceful_degradation = true
+no_crashes = true
+recovery_verified = true
+cleanup_spans_match_failures = true
+
+# Resource-specific validation
+[expect.resources]
+# Memory should be reclaimed after test
+memory_leak_detected = false
+# CPU usage should return to baseline
+cpu_runaway_detected = false
+# Disk should be cleaned up
+disk_leak_detected = false
+
+[limits]
+cpu_millicores = 1000
+memory_mb = 512
+max_containers = 3
+max_duration_seconds = 120
+
+[report]
+json = "chaos_resource_exhaustion.report.json"
+junit = "chaos_resource_exhaustion.junit.xml"
+digest = "chaos_resource_exhaustion.trace.sha256"
+resource_metrics = "chaos_resource_exhaustion.metrics.json"
+
+[cleanup]
+containers = "always"
+networks = "always"
+volumes = "always"
+verify_cleanup = true
+verify_resources_freed = true

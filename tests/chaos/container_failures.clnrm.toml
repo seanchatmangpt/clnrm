@@ -1,0 +1,315 @@
+# ====================================================================================
+# Chaos Test: Container Failures
+# Purpose: Validate framework resilience when containers fail mid-execution
+# Strategy: Kill containers, verify cleanup, validate recovery spans
+# ====================================================================================
+
+[meta]
+name = "chaos_container_failures"
+version = "1.0.1"
+description = "Container kill scenarios with cleanup verification via OTEL"
+author = "clnrm core team"
+tags = ["chaos", "container-failure", "cleanup", "resilience", "otel"]
+
+# Determinism for reproducible chaos
+[determinism]
+seed = 666  # Chaos seed
+freeze_clock = "2025-01-01T00:00:00Z"
+
+[vars]
+chaos_intensity = "high"
+recovery_timeout = "30s"
+image = "alpine:latest"
+
+# OTEL validation - stdout exporter for zero-infrastructure chaos testing
+[otel]
+exporter = "stdout"
+sample_ratio = 1.0
+resources = {
+    "service.name" = "clnrm-chaos",
+    "service.version" = "1.0.1",
+    "env" = "chaos-testing",
+    "chaos.type" = "container-failure"
+}
+
+# ============================================================================
+# Scenario 1: Container Killed Mid-Step
+# ============================================================================
+[service.chaos_victim_01]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "sleep 1000"]  # Long-running process
+env = { "CHAOS_TARGET" = "true" }
+wait_for_span = "clnrm.step:chaos_kill_container"
+
+[[scenario]]
+name = "container_killed_mid_step"
+service = "chaos_victim_01"
+run = """
+    sh -c 'echo "Starting vulnerable process..." && \
+    sleep 2 && \
+    echo "This should not complete" && \
+    sleep 1000'
+"""
+artifacts.collect = ["spans:default", "logs:all"]
+chaos_injection = {
+    type = "kill_container",
+    delay_ms = 500,  # Kill after 500ms
+    signal = "SIGKILL"
+}
+
+# CRITICAL: Validate cleanup span is emitted even after failure
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+attrs.all = { "cleanup.triggered" = "true", "cleanup.success" = "true" }
+events.any = ["container.stop", "container.remove", "cleanup.complete"]
+status = "OK"
+
+# Validate error handling span
+[[expect.span]]
+name = "clnrm.step:chaos_kill_container"
+kind = "internal"
+attrs.all = { "result" = "error", "error.type" = "container_killed" }
+status = "ERROR"
+
+# Validate recovery span
+[[expect.span]]
+name = "clnrm.recovery"
+kind = "internal"
+attrs.all = { "recovery.strategy" = "cleanup", "recovery.success" = "true" }
+parent = "clnrm.cleanup"
+
+# Graph validation - cleanup must happen even on failure
+[expect.graph]
+must_include = [
+    ["clnrm.step:chaos_kill_container", "clnrm.cleanup"],
+    ["clnrm.cleanup", "clnrm.recovery"]
+]
+acyclic = true
+
+# ============================================================================
+# Scenario 2: Container OOM Kill
+# ============================================================================
+[service.chaos_oom_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+env = { "CHAOS_TARGET" = "true" }
+limits = { memory_mb = 64 }  # Very low memory limit
+wait_for_span = "clnrm.step:oom_kill_test"
+
+[[scenario]]
+name = "container_oom_killed"
+service = "chaos_oom_victim"
+run = """
+    sh -c 'echo "Allocating memory..." && \
+    dd if=/dev/zero of=/tmp/bigfile bs=1M count=128'
+"""
+artifacts.collect = ["spans:default", "logs:all"]
+expect_failure = true
+
+# Validate OOM detection span
+[[expect.span]]
+name = "clnrm.step:oom_kill_test"
+kind = "internal"
+attrs.all = { "result" = "error", "error.type" = "oom_killed" }
+status = "ERROR"
+
+# CRITICAL: Cleanup must still succeed despite OOM
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+attrs.all = { "cleanup.triggered" = "true", "cleanup.success" = "true" }
+status = "OK"
+
+# ============================================================================
+# Scenario 3: Container Network Disconnection
+# ============================================================================
+[service.chaos_network_victim]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "apk add --no-cache curl && echo ready"]
+env = { "CHAOS_TARGET" = "true" }
+wait_for_span = "clnrm.step:network_chaos"
+
+[[scenario]]
+name = "container_network_disconnect"
+service = "chaos_network_victim"
+run = """
+    sh -c 'curl -s -m 5 http://httpbin.org/delay/1 && echo "Network working"'
+"""
+artifacts.collect = ["spans:default"]
+chaos_injection = {
+    type = "network_disconnect",
+    delay_ms = 200
+}
+expect_failure = true
+
+# Validate network error detection
+[[expect.span]]
+name = "clnrm.step:network_chaos"
+kind = "internal"
+attrs.all = { "result" = "error", "error.type" = "network_failure" }
+status = "ERROR"
+
+# Validate cleanup despite network failure
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+attrs.all = { "cleanup.success" = "true" }
+status = "OK"
+
+# ============================================================================
+# Scenario 4: Container Exit Code Validation
+# ============================================================================
+[service.chaos_exit_codes]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo ready"]
+wait_for_span = "clnrm.step:exit_code_test"
+
+[[scenario]]
+name = "container_non_zero_exit"
+service = "chaos_exit_codes"
+run = "sh -c 'echo \"Failing intentionally\" && exit 42'"
+artifacts.collect = ["spans:default"]
+expect_failure = true
+
+# Validate exit code captured in span
+[[expect.span]]
+name = "clnrm.step:exit_code_test"
+kind = "internal"
+attrs.all = { "result" = "error", "exit.code" = "42" }
+status = "ERROR"
+
+# Validate cleanup occurred
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+attrs.all = { "cleanup.success" = "true" }
+status = "OK"
+
+# ============================================================================
+# Scenario 5: Concurrent Container Failures
+# ============================================================================
+[service.chaos_concurrent_01]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "sleep 10"]
+wait_for_span = "clnrm.step:concurrent_chaos_01"
+
+[service.chaos_concurrent_02]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "sleep 10"]
+wait_for_span = "clnrm.step:concurrent_chaos_02"
+
+[[scenario]]
+name = "concurrent_container_failures"
+parallel_services = ["chaos_concurrent_01", "chaos_concurrent_02"]
+run = [
+    { service = "chaos_concurrent_01", command = "sh -c 'sleep 1 && exit 1'" },
+    { service = "chaos_concurrent_02", command = "sh -c 'sleep 1 && exit 2'" }
+]
+artifacts.collect = ["spans:default"]
+expect_failure = true
+
+# Both containers should fail independently
+[[expect.span]]
+name = "clnrm.step:concurrent_chaos_01"
+attrs.all = { "result" = "error", "exit.code" = "1" }
+status = "ERROR"
+
+[[expect.span]]
+name = "clnrm.step:concurrent_chaos_02"
+attrs.all = { "result" = "error", "exit.code" = "2" }
+status = "ERROR"
+
+# Both cleanups should succeed
+[[expect.span]]
+name = "clnrm.cleanup"
+kind = "internal"
+attrs.any = { "container.id" = ["concurrent_01", "concurrent_02"] }
+count = { eq = 2 }  # Two cleanup spans
+status = "OK"
+
+# ============================================================================
+# Global Expectations
+# ============================================================================
+
+# Span count validation
+[expect.counts]
+spans_total = { gte = 3 }  # At least: step, cleanup, recovery
+errors_total = { gte = 1 }  # Chaos should cause errors
+by_name = {
+    "clnrm.cleanup" = { gte = 1 },  # Cleanup must always happen
+}
+
+# Temporal containment - cleanup must complete within reasonable time
+[[expect.window]]
+outer = "clnrm.run"
+contains = ["clnrm.cleanup", "clnrm.recovery"]
+max_duration_ms = 30000  # 30s timeout for recovery
+
+# Critical ordering - cleanup must follow failure
+[expect.order]
+must_precede = [
+    ["clnrm.step:chaos_kill_container", "clnrm.cleanup"],
+    ["clnrm.cleanup", "clnrm.recovery"]
+]
+
+# Status validation - errors expected, but cleanup must succeed
+[expect.status]
+errors_allowed = true
+cleanup_must_succeed = true
+
+# Hermeticity validation - no container leakage!
+[expect.hermeticity]
+no_container_leakage = true  # CRITICAL: All containers must be cleaned up
+no_network_leakage = true
+no_volume_leakage = true
+resource_attrs.must_match = { "env" = "chaos-testing" }
+
+# Container isolation validation
+[expect.isolation]
+unique_container_ids = true
+no_persistent_state = true
+cleanup_verified = true
+
+# Chaos-specific validation
+[expect.chaos]
+# Validate cleanup spans exist for all failed containers
+cleanup_spans_match_failures = true
+# No zombie containers left behind
+zombie_processes = { eq = 0 }
+# Resource cleanup completed
+resource_cleanup = "complete"
+
+# Resource limits
+[limits]
+cpu_millicores = 1000
+memory_mb = 512
+max_containers = 5
+max_duration_seconds = 60
+
+# Reporting
+[report]
+json = "chaos_container_failures.report.json"
+junit = "chaos_container_failures.junit.xml"
+digest = "chaos_container_failures.trace.sha256"
+cleanup_verification = "chaos_container_failures.cleanup.json"
+
+# Cleanup policy - ALWAYS cleanup, even on failure
+[cleanup]
+containers = "always"
+networks = "always"
+volumes = "always"
+on_failure = "cleanup_and_report"
+verify_cleanup = true  # CRITICAL: Verify all resources freed

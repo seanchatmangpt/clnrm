@@ -285,3 +285,4 @@ by_name = { "weaver.registry.check" = { eq = 1 }, "weaver.codegen.generate" = { 
 The integration of OTEL Weaver with Cleanroom provides a powerful combination of schema-first telemetry validation and automated code generation. This enhances the framework's ability to validate observability instrumentation while providing better developer experience and semantic convention compliance.
 
 The implementation follows cleanroom's core principles of reliability, type safety, and comprehensive validation while maintaining backward compatibility and following the 80/20 principle for maximum value delivery.
+
