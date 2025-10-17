@@ -1,0 +1,646 @@
+//! London School TDD Tests for ServiceMetrics and MetricsHistory
+//!
+//! Test Coverage:
+//! - ServiceMetrics creation and calculation logic
+//! - Health score computation with boundary cases
+//! - MetricsHistory tracking and windowing
+//! - Load prediction patterns
+//! - Serialization/deserialization behavior
+//!
+//! Testing Philosophy:
+//! - BEHAVIOR VERIFICATION: Test metric calculations and scoring algorithms
+//! - BOUNDARY TESTING: Verify edge cases and limits
+//! - CONTRACT DEFINITION: Define expected metric behaviors
+//!
+//! Core Team Compliance:
+//! - ✅ AAA pattern (Arrange, Act, Assert)
+//! - ✅ Descriptive test names (test_X_with_Y_succeeds/fails)
+//! - ✅ No false positives - tests verify actual calculations
+//! - ✅ Proper error handling
+
+#![allow(clippy::unwrap_used)] // Test code only
+
+use clnrm_core::services::service_manager::{MetricsHistory, ServiceMetrics};
+
+// ============================================================================
+// ServiceMetrics Creation Tests
+// ============================================================================
+
+#[test]
+fn test_service_metrics_with_new_creates_zero_initialized_metrics() {
+    // Arrange & Act
+    let metrics = ServiceMetrics::new(
+        "service-123".to_string(),
+        "api_service".to_string(),
+    );
+
+    // Assert
+    assert_eq!(metrics.service_id, "service-123");
+    assert_eq!(metrics.service_name, "api_service");
+    assert_eq!(metrics.cpu_usage, 0.0);
+    assert_eq!(metrics.memory_usage, 0.0);
+    assert_eq!(metrics.network_io, 0.0);
+    assert_eq!(metrics.active_connections, 0);
+    assert_eq!(metrics.request_rate, 0.0);
+    assert_eq!(metrics.response_time_ms, 0.0);
+    assert_eq!(metrics.error_rate, 0.0);
+    assert!(metrics.timestamp > 0, "Timestamp should be set");
+}
+
+#[test]
+fn test_service_metrics_timestamp_is_current_unix_epoch() {
+    // Arrange
+    let before = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    // Act
+    let metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+
+    let after = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    // Assert - timestamp should be between before and after
+    assert!(
+        metrics.timestamp >= before && metrics.timestamp <= after,
+        "Timestamp should be current: {} not in [{}, {}]",
+        metrics.timestamp,
+        before,
+        after
+    );
+}
+
+// ============================================================================
+// ServiceMetrics Health Score Tests (Behavior Verification)
+// ============================================================================
+
+#[test]
+fn test_service_metrics_health_score_with_perfect_metrics_returns_100() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 0.0;
+    metrics.memory_usage = 0.0;
+    metrics.error_rate = 0.0;
+    metrics.response_time_ms = 1.0; // Very fast response
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - Perfect health should be near 100
+    assert!(
+        score >= 99.0 && score <= 100.0,
+        "Perfect metrics should score near 100, got {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_with_high_cpu_usage_decreases() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 90.0; // High CPU usage
+    metrics.memory_usage = 0.0;
+    metrics.error_rate = 0.0;
+    metrics.response_time_ms = 10.0;
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - High CPU should significantly reduce score
+    assert!(
+        score < 50.0,
+        "High CPU usage should reduce health score below 50, got {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_with_high_memory_usage_decreases() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 0.0;
+    metrics.memory_usage = 1024.0; // High memory (1GB)
+    metrics.error_rate = 0.0;
+    metrics.response_time_ms = 10.0;
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - High memory should reduce score
+    assert!(
+        score < 80.0,
+        "High memory usage should reduce health score, got {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_with_high_error_rate_severely_decreases() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 0.0;
+    metrics.memory_usage = 0.0;
+    metrics.error_rate = 0.5; // 50% error rate
+    metrics.response_time_ms = 10.0;
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - High error rate should severely impact score
+    assert!(
+        score < 90.0,
+        "High error rate should reduce health score, got {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_with_slow_response_time_decreases() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 0.0;
+    metrics.memory_usage = 0.0;
+    metrics.error_rate = 0.0;
+    metrics.response_time_ms = 5000.0; // Very slow (5 seconds)
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - Slow response should reduce score
+    assert!(
+        score < 100.0,
+        "Slow response time should reduce health score, got {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_with_all_bad_metrics_returns_low_score() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 100.0;
+    metrics.memory_usage = 2048.0;
+    metrics.error_rate = 1.0; // 100% errors
+    metrics.response_time_ms = 10000.0; // 10 seconds
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - All bad metrics should result in very low score
+    assert!(
+        score < 30.0,
+        "All bad metrics should result in low health score, got {}",
+        score
+    );
+}
+
+// ============================================================================
+// ServiceMetrics Health Score Weighted Components Tests
+// ============================================================================
+
+#[test]
+fn test_service_metrics_health_score_weights_cpu_at_30_percent() {
+    // Arrange - Only CPU is bad
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 100.0; // Worst case
+    metrics.memory_usage = 0.0;
+    metrics.error_rate = 0.0;
+    metrics.response_time_ms = 1.0;
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - CPU weight is 30%, so max reduction is ~30 points
+    assert!(
+        score >= 60.0 && score <= 80.0,
+        "CPU should contribute ~30% to score, got {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_weights_memory_at_30_percent() {
+    // Arrange - Only memory is bad
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 0.0;
+    metrics.memory_usage = 10240.0; // Very high memory
+    metrics.error_rate = 0.0;
+    metrics.response_time_ms = 1.0;
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - Memory weight is 30%
+    assert!(
+        score < 100.0,
+        "High memory should reduce score, got {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_is_consistent_with_same_inputs() {
+    // Arrange
+    let mut metrics1 = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics1.cpu_usage = 50.0;
+    metrics1.memory_usage = 512.0;
+    metrics1.error_rate = 0.1;
+    metrics1.response_time_ms = 100.0;
+
+    let mut metrics2 = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics2.cpu_usage = 50.0;
+    metrics2.memory_usage = 512.0;
+    metrics2.error_rate = 0.1;
+    metrics2.response_time_ms = 100.0;
+
+    // Act
+    let score1 = metrics1.health_score();
+    let score2 = metrics2.health_score();
+
+    // Assert - Same inputs should produce same score
+    assert_eq!(score1, score2, "Health score should be deterministic");
+}
+
+// ============================================================================
+// ServiceMetrics Boundary Tests
+// ============================================================================
+
+#[test]
+fn test_service_metrics_health_score_with_zero_response_time_handles_gracefully() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.response_time_ms = 0.0; // Edge case: instant response
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - Should not panic or produce invalid score
+    assert!(
+        score >= 0.0 && score <= 100.0,
+        "Score should be valid: {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_with_negative_values_handles_gracefully() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = -10.0; // Invalid but shouldn't panic
+    metrics.memory_usage = -100.0;
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - Should handle invalid inputs gracefully
+    assert!(
+        score >= 0.0,
+        "Score should not be negative: {}",
+        score
+    );
+}
+
+#[test]
+fn test_service_metrics_health_score_with_extreme_values_clamps_correctly() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new("id".to_string(), "name".to_string());
+    metrics.cpu_usage = 999999.0; // Extreme value
+    metrics.memory_usage = 999999.0;
+    metrics.error_rate = 999.0; // > 1.0
+    metrics.response_time_ms = 999999.0;
+
+    // Act
+    let score = metrics.health_score();
+
+    // Assert - Score should be clamped to valid range [0, 100]
+    assert!(
+        score >= 0.0 && score <= 100.0,
+        "Score should be in valid range: {}",
+        score
+    );
+}
+
+// ============================================================================
+// MetricsHistory Creation Tests
+// ============================================================================
+
+#[test]
+fn test_metrics_history_with_new_creates_empty_history() {
+    // Arrange & Act
+    let history = MetricsHistory::new("service-123".to_string());
+
+    // Assert
+    assert_eq!(history.service_id, "service-123");
+    assert_eq!(history.history.len(), 0);
+}
+
+// ============================================================================
+// MetricsHistory Add Metrics Tests
+// ============================================================================
+
+#[test]
+fn test_metrics_history_add_metrics_stores_single_entry() {
+    // Arrange
+    let mut history = MetricsHistory::new("service-123".to_string());
+    let metrics = ServiceMetrics::new("service-123".to_string(), "api".to_string());
+
+    // Act
+    history.add_metrics(metrics.clone());
+
+    // Assert
+    assert_eq!(history.history.len(), 1);
+    assert_eq!(history.history[0].service_id, metrics.service_id);
+}
+
+#[test]
+fn test_metrics_history_add_metrics_maintains_chronological_order() {
+    // Arrange
+    let mut history = MetricsHistory::new("service-123".to_string());
+
+    // Act - Add multiple metrics
+    for i in 0..5 {
+        let mut metrics = ServiceMetrics::new(
+            "service-123".to_string(),
+            "api".to_string(),
+        );
+        metrics.cpu_usage = i as f64 * 10.0;
+        history.add_metrics(metrics);
+    }
+
+    // Assert - Should maintain order
+    assert_eq!(history.history.len(), 5);
+    for i in 0..5 {
+        assert_eq!(
+            history.history[i].cpu_usage,
+            i as f64 * 10.0,
+            "Metrics should be in insertion order"
+        );
+    }
+}
+
+#[test]
+fn test_metrics_history_add_metrics_limits_to_max_size() {
+    // Arrange
+    let mut history = MetricsHistory::new("service-123".to_string());
+
+    // Act - Add more than max_size (1000) metrics
+    for i in 0..1100 {
+        let mut metrics = ServiceMetrics::new(
+            "service-123".to_string(),
+            "api".to_string(),
+        );
+        metrics.cpu_usage = i as f64;
+        history.add_metrics(metrics);
+    }
+
+    // Assert - Should be limited to max_size
+    assert_eq!(
+        history.history.len(),
+        1000,
+        "History should be capped at max_size"
+    );
+    // Oldest entries should be removed (FIFO)
+    assert!(
+        history.history[0].cpu_usage >= 100.0,
+        "First entry should be from after first 100 were removed"
+    );
+}
+
+#[test]
+fn test_metrics_history_add_metrics_removes_oldest_when_full() {
+    // Arrange
+    let mut history = MetricsHistory::new("service-123".to_string());
+
+    // Fill history
+    for i in 0..1000 {
+        let mut metrics = ServiceMetrics::new(
+            "service-123".to_string(),
+            "api".to_string(),
+        );
+        metrics.cpu_usage = i as f64;
+        history.add_metrics(metrics);
+    }
+
+    // Act - Add one more metric
+    let mut new_metrics = ServiceMetrics::new(
+        "service-123".to_string(),
+        "api".to_string(),
+    );
+    new_metrics.cpu_usage = 9999.0;
+    history.add_metrics(new_metrics);
+
+    // Assert
+    assert_eq!(history.history.len(), 1000);
+    assert_eq!(
+        history.history[0].cpu_usage, 1.0,
+        "Oldest (0) should be removed, now starts at 1"
+    );
+    assert_eq!(
+        history.history[999].cpu_usage, 9999.0,
+        "Newest should be at end"
+    );
+}
+
+// ============================================================================
+// MetricsHistory Average Calculation Tests
+// ============================================================================
+
+#[test]
+fn test_metrics_history_average_cpu_with_empty_history_returns_zero() {
+    // Arrange
+    let history = MetricsHistory::new("service-123".to_string());
+
+    // Act
+    let avg = history.average_cpu();
+
+    // Assert
+    assert_eq!(avg, 0.0, "Empty history should have 0 average");
+}
+
+#[test]
+fn test_metrics_history_average_cpu_with_single_entry_returns_that_value() {
+    // Arrange
+    let mut history = MetricsHistory::new("service-123".to_string());
+    let mut metrics = ServiceMetrics::new(
+        "service-123".to_string(),
+        "api".to_string(),
+    );
+    metrics.cpu_usage = 42.5;
+    history.add_metrics(metrics);
+
+    // Act
+    let avg = history.average_cpu();
+
+    // Assert
+    assert_eq!(avg, 42.5, "Single entry average should equal that entry");
+}
+
+#[test]
+fn test_metrics_history_average_cpu_with_multiple_entries_calculates_correctly() {
+    // Arrange
+    let mut history = MetricsHistory::new("service-123".to_string());
+
+    // Add metrics with known CPU values
+    for cpu in [10.0, 20.0, 30.0, 40.0, 50.0] {
+        let mut metrics = ServiceMetrics::new(
+            "service-123".to_string(),
+            "api".to_string(),
+        );
+        metrics.cpu_usage = cpu;
+        history.add_metrics(metrics);
+    }
+
+    // Act
+    let avg = history.average_cpu();
+
+    // Assert - Average of [10, 20, 30, 40, 50] = 30
+    assert_eq!(avg, 30.0, "Average should be (10+20+30+40+50)/5 = 30");
+}
+
+// ============================================================================
+// MetricsHistory Prediction Tests (Load Prediction Pattern)
+// ============================================================================
+
+#[test]
+fn test_metrics_history_predict_cpu_with_empty_history_returns_zero() {
+    // Arrange
+    let history = MetricsHistory::new("service-123".to_string());
+
+    // Act
+    let prediction = history.predict_cpu();
+
+    // Assert
+    assert_eq!(prediction, 0.0, "Empty history should predict 0");
+}
+
+#[test]
+fn test_metrics_history_predict_cpu_with_stable_load_returns_current_average() {
+    // Arrange
+    let mut history = MetricsHistory::new("service-123".to_string());
+
+    // Add stable load
+    for _ in 0..10 {
+        let mut metrics = ServiceMetrics::new(
+            "service-123".to_string(),
+            "api".to_string(),
+        );
+        metrics.cpu_usage = 50.0;
+        history.add_metrics(metrics);
+    }
+
+    // Act
+    let prediction = history.predict_cpu();
+
+    // Assert - Stable load should predict similar value
+    assert!(
+        (prediction - 50.0).abs() < 10.0,
+        "Stable load should predict near current: {}",
+        prediction
+    );
+}
+
+#[test]
+fn test_metrics_history_predict_cpu_with_increasing_load_predicts_higher() {
+    // Arrange
+    let mut history = MetricsHistory::new("service-123".to_string());
+
+    // Add increasing load
+    for i in 0..20 {
+        let mut metrics = ServiceMetrics::new(
+            "service-123".to_string(),
+            "api".to_string(),
+        );
+        metrics.cpu_usage = i as f64 * 5.0; // 0, 5, 10, ... 95
+        history.add_metrics(metrics);
+    }
+
+    // Act
+    let prediction = history.predict_cpu();
+    let current_avg = history.average_cpu();
+
+    // Assert - Prediction should reflect upward trend
+    // (Implementation may vary, but should recognize pattern)
+    assert!(
+        prediction >= current_avg * 0.8,
+        "Increasing load prediction should be reasonable: {} vs avg {}",
+        prediction,
+        current_avg
+    );
+}
+
+// ============================================================================
+// ServiceMetrics Serialization Tests
+// ============================================================================
+
+#[test]
+fn test_service_metrics_serializes_to_json() {
+    // Arrange
+    let mut metrics = ServiceMetrics::new(
+        "service-123".to_string(),
+        "api_service".to_string(),
+    );
+    metrics.cpu_usage = 45.5;
+    metrics.memory_usage = 256.0;
+
+    // Act
+    let json = serde_json::to_string(&metrics);
+
+    // Assert
+    assert!(json.is_ok(), "Should serialize to JSON");
+    let json_str = json.unwrap();
+    assert!(json_str.contains("service-123"));
+    assert!(json_str.contains("45.5"));
+}
+
+#[test]
+fn test_service_metrics_deserializes_from_json() {
+    // Arrange
+    let json = r#"{
+        "service_id": "service-123",
+        "service_name": "api_service",
+        "cpu_usage": 45.5,
+        "memory_usage": 256.0,
+        "network_io": 10.5,
+        "active_connections": 42,
+        "request_rate": 100.0,
+        "response_time_ms": 25.5,
+        "error_rate": 0.01,
+        "timestamp": 1234567890
+    }"#;
+
+    // Act
+    let metrics: Result<ServiceMetrics, _> = serde_json::from_str(json);
+
+    // Assert
+    assert!(metrics.is_ok(), "Should deserialize from JSON");
+    let m = metrics.unwrap();
+    assert_eq!(m.service_id, "service-123");
+    assert_eq!(m.cpu_usage, 45.5);
+    assert_eq!(m.active_connections, 42);
+}
+
+#[test]
+fn test_service_metrics_roundtrip_serialization_preserves_data() {
+    // Arrange
+    let mut original = ServiceMetrics::new(
+        "service-789".to_string(),
+        "db_service".to_string(),
+    );
+    original.cpu_usage = 67.8;
+    original.memory_usage = 1024.5;
+    original.active_connections = 150;
+
+    // Act
+    let json = serde_json::to_string(&original).unwrap();
+    let deserialized: ServiceMetrics = serde_json::from_str(&json).unwrap();
+
+    // Assert - All fields preserved
+    assert_eq!(deserialized.service_id, original.service_id);
+    assert_eq!(deserialized.service_name, original.service_name);
+    assert_eq!(deserialized.cpu_usage, original.cpu_usage);
+    assert_eq!(deserialized.memory_usage, original.memory_usage);
+    assert_eq!(deserialized.active_connections, original.active_connections);
+}

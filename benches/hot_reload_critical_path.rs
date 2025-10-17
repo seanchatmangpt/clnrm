@@ -54,6 +54,7 @@ version = "1.0.0"
 description = "Simple test for hot reload validation"
 
 [service.alpine]
+type = "generic_container"
 plugin = "generic_container"
 image = "alpine:latest"
 
@@ -99,6 +100,7 @@ name = "test_benchmark"
 version = "1.0.0"
 
 [service.svc]
+type = "generic_container"
 plugin = "generic_container"
 image = "alpine:latest"
 
@@ -129,6 +131,7 @@ version = "1.0.0"
 description = "TOML parsing benchmark"
 
 [service.alpine]
+type = "generic_container"
 plugin = "generic_container"
 image = "alpine:latest"
 
@@ -228,6 +231,7 @@ description = "Scalability benchmark template"
         template.push_str(&format!(
             r#"
 [service.service_{}]
+type = "generic_container"
 plugin = "generic_container"
 image = "alpine:latest"
 

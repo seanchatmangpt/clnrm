@@ -12,6 +12,9 @@ use clap::Parser;
 use std::path::PathBuf;
 use tracing::error;
 
+// Import utilities
+use crate::cli::utils::setup_logging;
+
 // Remove global config - we'll load it per command as needed
 
 /// Main CLI entry point
@@ -287,6 +290,54 @@ pub async fn run_cli() -> Result<()> {
             let marketplace = crate::marketplace::Marketplace::default().await?;
             crate::marketplace::commands::execute_marketplace_command(&marketplace, command).await
         }
+
+        // PRD v1.0 additional commands
+        Commands::Pull { paths, parallel, jobs } => {
+            pull_images(paths, parallel, jobs).await
+        }
+
+        Commands::Graph { trace, format, highlight_missing, filter } => {
+            let format_str = match format {
+                crate::cli::types::GraphFormat::Ascii => "ascii",
+                crate::cli::types::GraphFormat::Dot => "dot",
+                crate::cli::types::GraphFormat::Json => "json",
+                crate::cli::types::GraphFormat::Mermaid => "mermaid",
+            };
+            visualize_graph(&trace, format_str, highlight_missing, filter.as_deref())
+        }
+
+        Commands::Repro { baseline, verify_digest, output } => {
+            reproduce_baseline(&baseline, verify_digest, output.as_ref()).await
+        }
+
+        Commands::RedGreen { paths, verify_red, verify_green } => {
+            run_red_green_validation(&paths, verify_red, verify_green).await
+        }
+
+        Commands::Render { template, map, output, show_vars } => {
+            render_template_with_vars(&template, &map, output.as_ref(), show_vars)
+        }
+
+        Commands::Spans { trace, grep, format, show_attrs, show_events } => {
+            filter_spans(&trace, grep.as_deref(), &format, show_attrs, show_events)
+        }
+
+        Commands::Collector { command } => {
+            match command {
+                crate::cli::types::CollectorCommands::Up { image, http_port, grpc_port, detach } => {
+                    start_collector(&image, http_port, grpc_port, detach).await
+                }
+                crate::cli::types::CollectorCommands::Down { volumes } => {
+                    stop_collector(volumes).await
+                }
+                crate::cli::types::CollectorCommands::Status => {
+                    show_collector_status().await
+                }
+                crate::cli::types::CollectorCommands::Logs { lines, follow } => {
+                    show_collector_logs(lines, follow).await
+                }
+            }
+        }
     };
 
     if let Err(e) = result {
@@ -300,4 +351,3 @@ pub async fn run_cli() -> Result<()> {
 // Re-export all public types and functions for backward compatibility
 pub use commands::*;
 pub use types::*;
-pub use utils::*;

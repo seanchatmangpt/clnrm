@@ -1,101 +1,210 @@
-# TOML Configuration Reference
+# TOML Configuration Reference for Cleanroom v1.0.0
 
-Complete reference for writing Cleanroom test configurations in TOML format.
+Complete reference for writing Cleanroom v1.0.0 test configurations in flat TOML format with no-prefix variables.
 
-> **💡 Pro Tip:** See our [comprehensive TOML examples](https://github.com/cleanroom-testing/clnrm/tree/main/examples/toml-config/) for real-world configurations that demonstrate every feature and verify all claims.
+> **🎯 Key Innovation:** No-prefix variables with Rust-based precedence resolution. Templates use clean `{{ svc }}`, `{{ endpoint }}` syntax with variables resolved in Rust: template vars → ENV → defaults.
 
-## Test Metadata
+## Schema Overview
+
+Cleanroom v1.0.0 uses a **flat TOML schema** focused on OTEL-based validation:
+
+### **Required Sections**
+- `[meta]` - Test metadata
+- `[otel]` - OpenTelemetry configuration
+- `[service.<id>]` - Service definition (e.g., `[service.clnrm]`)
+- `[[scenario]]` - Test scenario definition
+
+### **Optional Sections**
+- `[[expect.span]]` - Span validation rules
+- `[expect.graph]` - Graph relationship validation
+- `[expect.status]` - Status code validation
+- `[expect.hermeticity]` - Isolation validation
+- `[determinism]` - Deterministic testing configuration
+- `[report]` - Report generation settings
+
+### **Authoring-Only Section**
+- `[vars]` - Template variables for documentation (ignored at runtime)
+
+## Variable Resolution
+
+Variables are resolved in **Rust** with clear precedence:
+
+1. **Template variables** (highest priority) - Define in `[vars]` section
+2. **Environment variables** - `$SERVICE_NAME`, `$OTEL_ENDPOINT`, etc.
+3. **Defaults** (lowest priority) - Built-in fallback values
+
+**Available Variables:**
+- `svc` - Service name (default: "clnrm")
+- `env` - Environment (default: "ci")
+- `endpoint` - OTEL endpoint (default: "http://localhost:4318")
+- `exporter` - OTEL exporter (default: "otlp")
+- `image` - Container image (default: "registry/clnrm:1.0.0")
+- `freeze_clock` - Deterministic time (default: "2025-01-01T00:00:00Z")
+- `token` - OTEL auth token (default: "")
+
+## Required Sections
+
+### [meta] - Test Metadata
 
 ```toml
-[test.metadata]
-name = "my_test"                    # Required: Test identifier
-description = "Test description"    # Optional: Human-readable description
-timeout = "60s"                     # Optional: Test timeout (default: 300s)
-concurrent = true                   # Optional: Run steps in parallel (default: false)
+[meta]
+name = "{{ svc }}_otel_proof"        # Required: Test identifier (uses resolved variable)
+version = "1.0"                     # Required: Test version
+description = "Telemetry-only"      # Required: Human-readable description
 ```
 
-## Service Configuration
+### [otel] - OpenTelemetry Configuration
 
 ```toml
-[services.my_database]
-type = "generic_container"          # Service type
-plugin = "alpine"                   # Plugin implementation
-image = "alpine:latest"             # Container image
+[otel]
+exporter = "{{ exporter }}"         # Required: "stdout" or "otlp"
+endpoint = "{{ endpoint }}"         # Required: OTLP endpoint URL
+protocol = "http/protobuf"          # Required: Protocol specification
+sample_ratio = 1.0                  # Required: Sampling ratio (0.0-1.0)
 
-# Optional: Port mappings
-ports = [8080, 5432]               # Expose container ports
+# Optional: Service resources
+resources = {
+  "service.name" = "{{ svc }}",
+  "env" = "{{ env }}"
+}
 
-# Optional: Environment variables
-[services.my_database.env]
-DEBUG = "true"
-DATABASE_URL = "postgres://localhost/testdb"
-
-# Optional: Volume mounts (NEW in v0.4.0) ✅
-[[services.my_database.volumes]]
-host_path = "/tmp/test-data"       # Absolute path on host (must exist)
-container_path = "/data"            # Absolute path in container
-read_only = false                   # Allow writes (default: false)
-
-[[services.my_database.volumes]]
-host_path = "/tmp/config"          # Configuration directory
-container_path = "/config"          # Mount point in container
-read_only = true                    # Mount as read-only for security
+# Optional: Authentication headers
+[otel.headers]
+{% if token != "" %}
+Authorization = "Bearer {{ token }}"
+{% endif %}
 ```
 
-### Volume Mounting (v0.4.0+)
+### [service.<id>] - Service Definition
 
-Volume mounts enable sharing files between the host and container:
-
-**Security Features:**
-- Host paths must be absolute and exist before test execution
-- Container paths must be absolute
-- Default whitelist: `/tmp`, `/var/tmp`, current working directory
-- Path canonicalization prevents traversal attacks
-- Read-only enforcement at kernel level
-
-**Common Use Cases:**
 ```toml
-# Test data input
-[[services.processor.volumes]]
-host_path = "/tmp/clnrm-test-data"
-container_path = "/data"
-read_only = true                    # Prevent accidental modification
-
-# Configuration files
-[[services.app.volumes]]
-host_path = "/tmp/clnrm-config"
-container_path = "/etc/app"
-read_only = true                    # Configuration should be immutable
-
-# Test output capture
-[[services.analyzer.volumes]]
-host_path = "/tmp/clnrm-output"
-container_path = "/output"
-read_only = false                   # Need write access for results
-
-# Shared workspace
-[[services.build.volumes]]
-host_path = "/tmp/clnrm-workspace"
-container_path = "/workspace"
-read_only = false                   # Build artifacts
+[service.clnrm]                     # Required: Service identifier
+plugin = "generic_container"        # Required: Plugin type
+image = "{{ image }}"               # Required: Container image
+args = [                            # Required: Command arguments
+  "self-test",
+  "--otel-exporter", "{{ exporter }}",
+  "--otel-endpoint", "{{ endpoint }}"
+]
+env = {                             # Required: Environment variables
+  "OTEL_TRACES_EXPORTER" = "{{ exporter }}",
+  "OTEL_EXPORTER_OTLP_ENDPOINT" = "{{ endpoint }}"
+}
+wait_for_span = "clnrm.run"         # Required: Wait for this span before starting
 ```
 
-**Example:** See [examples/volume-mount-demo.clnrm.toml](../examples/volume-mount-demo.clnrm.toml) for a complete working example.
+### [[scenario]] - Test Scenario
 
-### Built-in Service Types
+```toml
+[[scenario]]                        # Required: At least one scenario
+name = "otel_only_proof"            # Required: Scenario identifier
+service = "clnrm"                   # Required: Service to execute
+run = "clnrm run --otel-exporter {{ exporter }} --otel-endpoint {{ endpoint }}"
+artifacts.collect = ["spans:default"]  # Required: Collect telemetry spans
 
-- **`generic_container`** - Basic container execution ✅ (implemented)
-- **`api`** - API service testing 🔄 (planned)
-- **`database`** - Database service testing 🔄 (planned)
-- **`cache`** - Cache service testing 🔄 (planned)
-- **`message_queue`** - Message queue testing 🔄 (planned)
+## Optional Sections
 
-### Built-in Plugins
+### [[expect.span]] - Span Validation
 
-- **`alpine`** - Alpine Linux containers
-- **`ubuntu`** - Ubuntu containers
-- **`debian`** - Debian containers
-- **`network_tools`** - curl, wget utilities
+```toml
+[[expect.span]]
+name = "clnrm.run"                  # Required: Span name to validate
+kind = "internal"                   # Required: Span kind
+attrs.all = { "result" = "pass" }   # Required: Attributes that must match
+
+# Optional: Parent-child relationships
+[[expect.span]]
+name = "clnrm.step:hello_world"
+parent = "clnrm.run"                # Must be child of parent span
+kind = "internal"
+events.any = [                      # Must contain at least one of these events
+  "container.start",
+  "container.exec",
+  "container.stop"
+]
+
+# Optional: Duration constraints
+[[expect.span]]
+name = "database.query"
+kind = "client"
+duration_ms = { min = 10, max = 5000 }  # Duration must be in range
+```
+
+### [expect.graph] - Graph Validation
+
+```toml
+[expect.graph]
+must_include = [                    # Required: These parent-child relationships must exist
+  ["clnrm.run", "clnrm.step:hello_world"]
+]
+acyclic = true                      # Required: Graph must be acyclic
+
+# Optional: Relationships that must NOT exist
+must_not_cross = [
+  ["service.a", "service.b"]        # These spans must not both be ancestors of the same span
+]
+```
+
+### [expect.status] - Status Validation
+
+```toml
+[expect.status]
+all = "OK"                          # Required: All spans must have OK status
+
+# Optional: Status validation by span name pattern
+by_name."api.*" = "OK"              # Spans matching pattern must have OK status
+by_name."error.*" = "ERROR"         # Error spans must have ERROR status
+```
+
+### [expect.hermeticity] - Isolation Validation
+
+```toml
+[expect.hermeticity]
+no_external_services = true         # Required: No external service calls allowed
+resource_attrs.must_match = {       # Required: Resource attributes must match
+  "service.name" = "{{ svc }}",
+  "env" = "{{ env }}"
+}
+
+# Optional: Forbidden attribute keys
+span_attrs.forbid_keys = [          # These attribute keys must not appear
+  "secret.api_key",
+  "internal.database_password"
+]
+```
+
+### [determinism] - Deterministic Testing
+
+```toml
+[determinism]
+seed = 42                           # Required: Random seed for reproducibility
+freeze_clock = "{{ freeze_clock }}" # Required: Frozen timestamp for time-based operations
+```
+
+### [report] - Report Generation
+
+```toml
+[report]
+json = "report.json"                # Optional: Generate JSON report
+junit = "junit.xml"                 # Optional: Generate JUnit XML for CI/CD
+digest = "trace.sha256"             # Optional: Generate SHA-256 digest of normalized trace
+```
+
+## Authoring-Only Section
+
+### [vars] - Template Variables (Documentation Only)
+
+```toml
+[vars]                              # Ignored at runtime - for documentation only
+svc = "{{ svc }}"                   # Shows resolved service name
+env = "{{ env }}"                   # Shows resolved environment
+endpoint = "{{ endpoint }}"         # Shows resolved OTEL endpoint
+exporter = "{{ exporter }}"         # Shows resolved OTEL exporter
+freeze_clock = "{{ freeze_clock }}" # Shows frozen timestamp
+image = "{{ image }}"               # Shows container image
+```
+
+This section helps authors understand what values will be used but is ignored during execution.
 
 ## Step Configuration
 

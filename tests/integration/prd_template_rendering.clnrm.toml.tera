@@ -1,0 +1,68 @@
+# PRD v1.0 Template Rendering Test
+# This is a Tera template that validates template rendering with variable substitution
+
+{% import "_macros.toml.tera" as m %}
+
+[meta]
+name = "{{ svc }}_template_rendering_test"
+version = "1.0.0"
+description = "Test template rendering with {{ exporter }} exporter in {{ env }} environment"
+
+# Authoring-only variables (flat, ignored at runtime)
+[vars]
+svc = "{{ svc }}"
+env = "{{ env }}"
+endpoint = "{{ endpoint }}"
+exporter = "{{ exporter }}"
+image = "{{ image }}"
+freeze_clock = "{{ freeze_clock }}"
+
+# OTEL configuration with variable substitution
+[otel]
+exporter = "{{ exporter }}"
+{% if endpoint != "" %}endpoint = "{{ endpoint }}"{% endif %}
+protocol = "http/protobuf"
+sample_ratio = 1.0
+
+[otel.resources]
+"service.name" = "{{ svc }}"
+"env" = "{{ env }}"
+"template.rendered" = "true"
+
+# Optional token-based authentication
+[otel.headers]
+{% if token != "" %}Authorization = "Bearer {{ token }}"{% endif %}
+
+# Service definition using macro
+{{ m::service("test_app", image, env={"APP_ENV": env, "DEBUG": "true"}) }}
+
+# Scenarios using macro
+{{ m::scenario("template_vars_test", "test_app", "env | grep APP_ENV") }}
+
+{{ m::scenario("verify_rendering", "test_app", "echo Template rendered successfully") }}
+
+# Span expectations using macro
+{{ m::span("clnrm.run", attrs={"result": "pass", "template.test": "true"}) }}
+
+{{ m::span("clnrm.scenario.template_vars_test", parent="clnrm.run", attrs={"test.type": "template"}) }}
+
+{{ m::span("clnrm.scenario.verify_rendering", parent="clnrm.run", attrs={"test.type": "rendering"}) }}
+
+# Status expectations
+[expect.status]
+all = "OK"
+
+# Hermeticity validation
+[expect.hermeticity]
+no_external_services = true
+resource_attrs.must_match = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
+
+# Determinism configuration
+[determinism]
+seed = {{ seed | default(value=42) }}
+freeze_clock = "{{ freeze_clock }}"
+
+# Report configuration
+[report]
+json = "template_rendering_report.json"
+digest = "template_rendering.sha256"

@@ -48,10 +48,37 @@ impl TemplateRenderer {
         })
     }
 
+    /// Create renderer with default PRD v1.0 variable resolution
+    ///
+    /// Initializes context with standard variables resolved via precedence:
+    /// template vars → ENV → defaults
+    pub fn with_defaults() -> Result<Self> {
+        let mut tera = Tera::default();
+
+        // Register custom functions
+        functions::register_functions(&mut tera)?;
+
+        // Add macro library template
+        tera.add_raw_template("_macros.toml.tera", MACRO_LIBRARY)
+            .map_err(|e| CleanroomError::template_error(format!("Failed to load macro library: {}", e)))?;
+
+        Ok(Self {
+            tera,
+            context: TemplateContext::with_defaults(),
+        })
+    }
+
     /// Set template context variables
     pub fn with_context(mut self, context: TemplateContext) -> Self {
         self.context = context;
         self
+    }
+
+    /// Merge user-provided variables into context (respects precedence)
+    ///
+    /// User variables take highest priority in the precedence chain
+    pub fn merge_user_vars(&mut self, user_vars: std::collections::HashMap<String, serde_json::Value>) {
+        self.context.merge_user_vars(user_vars);
     }
 
     /// Render template file to TOML string
@@ -75,12 +102,100 @@ impl TemplateRenderer {
             ))
         })
     }
+
+    /// Render template from glob pattern
+    ///
+    /// Useful for rendering multiple templates with shared context
+    pub fn render_from_glob(&mut self, glob_pattern: &str, template_name: &str) -> Result<String> {
+        // Add templates matching glob pattern
+        self.tera.add_template_files(vec![(glob_pattern, Some(template_name))])
+            .map_err(|e| CleanroomError::template_error(format!("Failed to add template files: {}", e)))?;
+
+        // Build Tera context
+        let tera_ctx = self.context.to_tera_context()?;
+
+        // Render template
+        self.tera.render(template_name, &tera_ctx).map_err(|e| {
+            CleanroomError::template_error(format!(
+                "Template rendering failed for '{}': {}",
+                template_name, e
+            ))
+        })
+    }
 }
 
 impl Default for TemplateRenderer {
     fn default() -> Self {
         Self::new().expect("Failed to create default TemplateRenderer")
     }
+}
+
+/// Render template with user variables and PRD v1.0 defaults
+///
+/// This is the main entrypoint matching PRD v1.0 requirements:
+/// 1. Resolve inputs with precedence: template vars → ENV → defaults
+/// 2. Render template using Tera with no-prefix variables
+/// 3. Return flat TOML string
+///
+/// # Arguments
+///
+/// * `template_content` - Template string with Tera syntax
+/// * `user_vars` - User-provided variables (highest precedence)
+///
+/// # Returns
+///
+/// Rendered TOML string ready for parsing
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use clnrm_core::template::render_template;
+/// use std::collections::HashMap;
+///
+/// let user_vars = HashMap::new();
+/// let template = r#"
+/// [meta]
+/// name = "{{ svc }}_test"
+/// "#;
+///
+/// let rendered = render_template(template, user_vars).unwrap();
+/// ```
+pub fn render_template(
+    template_content: &str,
+    user_vars: std::collections::HashMap<String, serde_json::Value>,
+) -> Result<String> {
+    // Create renderer with defaults
+    let mut renderer = TemplateRenderer::with_defaults()?;
+
+    // Merge user variables (highest precedence)
+    renderer.merge_user_vars(user_vars);
+
+    // Render template
+    renderer.render_str(template_content, "template")
+}
+
+/// Render template file with user variables and PRD v1.0 defaults
+///
+/// File-based variant of `render_template`
+///
+/// # Arguments
+///
+/// * `template_path` - Path to template file
+/// * `user_vars` - User-provided variables (highest precedence)
+///
+/// # Returns
+///
+/// Rendered TOML string ready for parsing
+pub fn render_template_file(
+    template_path: &Path,
+    user_vars: std::collections::HashMap<String, serde_json::Value>,
+) -> Result<String> {
+    // Read template file
+    let template_content = std::fs::read_to_string(template_path)
+        .map_err(|e| CleanroomError::config_error(format!("Failed to read template file: {}", e)))?;
+
+    // Render with user vars
+    render_template(&template_content, user_vars)
 }
 
 /// Check if file content should be treated as a template

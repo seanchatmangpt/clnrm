@@ -1,0 +1,100 @@
+# PRD v1.0 OTEL Workflow Integration Test
+# This test validates the complete Tera → TOML → Execute → OTEL → Validate workflow
+
+[meta]
+name = "prd_otel_workflow_integration"
+version = "1.0.0"
+description = "Integration test for PRD v1.0 OTEL workflow with hermetic execution"
+
+# Template variables (authoring only - ignored at runtime)
+[vars]
+svc = "clnrm"
+env = "integration_test"
+endpoint = "http://localhost:4318"
+exporter = "stdout"
+image = "alpine:latest"
+freeze_clock = "2025-01-01T00:00:00Z"
+
+# OTEL Configuration (flat structure as per PRD)
+[otel]
+exporter = "stdout"
+protocol = "http/protobuf"
+sample_ratio = 1.0
+
+[otel.resources]
+"service.name" = "clnrm"
+"env" = "integration_test"
+"test.type" = "prd_workflow"
+
+# Test service - hermetic container
+[service.test_container]
+plugin = "generic_container"
+image = "alpine:latest"
+
+[service.test_container.env]
+TEST_ENV = "hermetic"
+ISOLATION = "true"
+
+# Test scenarios
+[[scenario]]
+name = "verify_hermetic_execution"
+service = "test_container"
+run = "echo 'Hermetic test execution'"
+
+[[scenario.steps]]
+name = "check_isolation"
+command = ["echo", "isolated"]
+
+[[scenario.steps]]
+name = "verify_no_external_access"
+command = ["echo", "no external services"]
+
+[[scenario]]
+name = "validate_container_lifecycle"
+service = "test_container"
+run = "sh -c 'echo start && sleep 0.1 && echo end'"
+
+# Span expectations - prove workflow works via OTEL
+[[expect.span]]
+name = "clnrm.scenario.verify_hermetic_execution"
+kind = "internal"
+
+[[expect.span]]
+name = "clnrm.scenario.validate_container_lifecycle"
+kind = "internal"
+
+# Graph expectations - validate span hierarchy
+[expect.graph]
+must_include = [
+    ["clnrm.scenario.verify_hermetic_execution", "clnrm.step.check_isolation"],
+    ["clnrm.scenario.verify_hermetic_execution", "clnrm.step.verify_no_external_access"]
+]
+acyclic = true
+
+# Status expectations - all spans must succeed
+[expect.status]
+all = "OK"
+
+# Hermeticity validation
+[expect.hermeticity]
+no_external_services = true
+
+[expect.hermeticity.resource_attrs]
+"service.name" = "clnrm"
+"env" = "integration_test"
+
+# Determinism configuration
+[determinism]
+seed = 42
+freeze_clock = "2025-01-01T00:00:00Z"
+
+# Report configuration
+[report]
+json = "prd_otel_workflow_report.json"
+digest = "prd_otel_workflow.sha256"
+
+# Assertions - verify behavior
+[assertions]
+container_should_have_executed_commands = 2
+execution_should_be_hermetic = true
+all_scenarios_should_pass = true

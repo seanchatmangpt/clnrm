@@ -321,6 +321,155 @@ pub enum Commands {
         #[arg(short, long, default_value = ".clnrm/baseline.json")]
         output: Option<PathBuf>,
     },
+
+    /// Pre-pull Docker images from test configurations
+    Pull {
+        /// Test files to scan for images (default: all test files)
+        paths: Option<Vec<PathBuf>>,
+
+        /// Pull in parallel
+        #[arg(short, long)]
+        parallel: bool,
+
+        /// Maximum parallel pulls
+        #[arg(short = 'j', long, default_value = "4")]
+        jobs: usize,
+    },
+
+    /// Visualize OpenTelemetry trace graph
+    Graph {
+        /// Trace file or test run to visualize
+        trace: PathBuf,
+
+        /// Output format
+        #[arg(short, long, default_value = "ascii")]
+        format: GraphFormat,
+
+        /// Highlight missing edges
+        #[arg(long)]
+        highlight_missing: bool,
+
+        /// Show only specific span names (filter)
+        #[arg(long)]
+        filter: Option<String>,
+    },
+
+    /// Reproduce a previous test run from baseline
+    Repro {
+        /// Baseline file to reproduce
+        baseline: PathBuf,
+
+        /// Verify digest matches
+        #[arg(long)]
+        verify_digest: bool,
+
+        /// Output file for reproduction results
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Run red/green TDD workflow validation
+    RedGreen {
+        /// Test files to validate
+        paths: Vec<PathBuf>,
+
+        /// Verify that tests fail first (red)
+        #[arg(long)]
+        verify_red: bool,
+
+        /// Verify that tests pass after fix (green)
+        #[arg(long)]
+        verify_green: bool,
+    },
+
+    /// Render Tera templates with variable mapping
+    Render {
+        /// Template file to render
+        template: PathBuf,
+
+        /// Variable mappings in key=value format
+        #[arg(short, long)]
+        map: Vec<String>,
+
+        /// Output file (default: stdout)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Show resolved variables
+        #[arg(long)]
+        show_vars: bool,
+    },
+
+    /// Search and filter OpenTelemetry spans
+    Spans {
+        /// Trace file or test run
+        trace: PathBuf,
+
+        /// Grep pattern to filter spans
+        #[arg(long)]
+        grep: Option<String>,
+
+        /// Output format
+        #[arg(short, long, default_value = "human")]
+        format: OutputFormat,
+
+        /// Show span attributes
+        #[arg(long)]
+        show_attrs: bool,
+
+        /// Show span events
+        #[arg(long)]
+        show_events: bool,
+    },
+
+    /// Manage local OTEL collector
+    Collector {
+        #[command(subcommand)]
+        command: CollectorCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum CollectorCommands {
+    /// Start local OTEL collector
+    Up {
+        /// Collector image to use
+        #[arg(long, default_value = "otel/opentelemetry-collector:latest")]
+        image: String,
+
+        /// HTTP endpoint port
+        #[arg(long, default_value = "4318")]
+        http_port: u16,
+
+        /// gRPC endpoint port
+        #[arg(long, default_value = "4317")]
+        grpc_port: u16,
+
+        /// Detach (run in background)
+        #[arg(short, long)]
+        detach: bool,
+    },
+
+    /// Stop local OTEL collector
+    Down {
+        /// Remove volumes
+        #[arg(short, long)]
+        volumes: bool,
+    },
+
+    /// Show collector status
+    Status,
+
+    /// Show collector logs
+    Logs {
+        /// Number of lines to show
+        #[arg(short = 'n', long, default_value = "50")]
+        lines: usize,
+
+        /// Follow logs
+        #[arg(short, long)]
+        follow: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -424,6 +573,18 @@ pub enum DiffFormat {
     Json,
     /// Side-by-side comparison
     SideBySide,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum GraphFormat {
+    /// ASCII tree visualization
+    Ascii,
+    /// DOT format for Graphviz
+    Dot,
+    /// JSON graph structure
+    Json,
+    /// Mermaid diagram format
+    Mermaid,
 }
 
 /// CLI configuration
