@@ -17,7 +17,7 @@ timeout = "120s"
 # OTEL Collector
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
+plugin = "generic_container"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -26,6 +26,7 @@ ENABLE_OTLP_HTTP = "true"
 # API Gateway - root of the trace tree
 [services.api_gateway]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.api_gateway.env]
@@ -35,6 +36,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
 # Auth Service - child of gateway
 [services.auth_service]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.auth_service.env]
@@ -44,6 +46,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
 # User Service - child of gateway, sibling of auth
 [services.user_service]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.user_service.env]
@@ -53,6 +56,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
 # Database - child of user service
 [services.database]
 type = "generic_container"
+plugin = "generic_container"
 image = "postgres:16-alpine"
 
 [services.database.env]

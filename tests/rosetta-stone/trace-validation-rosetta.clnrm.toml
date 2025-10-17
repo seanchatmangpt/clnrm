@@ -16,7 +16,7 @@ timeout = "90s"
 # OTEL Collector - captures all telemetry
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
+plugin = "generic_container"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -28,6 +28,7 @@ ENABLE_ZPAGES = "false"
 # Test application - simple HTTP service that emits spans
 [services.test_app]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.test_app.env]

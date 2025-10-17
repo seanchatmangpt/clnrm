@@ -17,7 +17,7 @@ timeout = "90s"
 # OTEL Collector
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
+plugin = "generic_container"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -26,6 +26,7 @@ ENABLE_OTLP_HTTP = "true"
 # HTTP Server - produces spans with HTTP semantic conventions
 [services.http_server]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.http_server.env]
@@ -37,6 +38,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
 # Database Client - produces spans with DB semantic conventions
 [services.db_client]
 type = "generic_container"
+plugin = "generic_container"
 image = "postgres:16-alpine"
 
 [services.db_client.env]
@@ -49,6 +51,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
 # Messaging Service - produces spans with messaging semantic conventions
 [services.messaging_service]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.messaging_service.env]

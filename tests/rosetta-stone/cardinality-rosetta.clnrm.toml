@@ -16,7 +16,7 @@ timeout = "90s"
 # OTEL Collector
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
+plugin = "generic_container"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -25,6 +25,7 @@ ENABLE_OTLP_HTTP = "true"
 # Service A - performs exactly 5 operations
 [services.service_a]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.service_a.env]
@@ -34,6 +35,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
 # Service B - performs exactly 3 operations
 [services.service_b]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.service_b.env]
@@ -43,6 +45,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
 # Service C - performs exactly 7 operations
 [services.service_c]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.service_c.env]

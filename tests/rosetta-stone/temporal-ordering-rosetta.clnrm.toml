@@ -16,7 +16,7 @@ timeout = "120s"
 # OTEL Collector
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
+plugin = "generic_container"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -26,6 +26,7 @@ ENABLE_OTLP_GRPC = "true"
 # Database service - must start first
 [services.database]
 type = "generic_container"
+plugin = "generic_container"
 image = "postgres:16-alpine"
 
 [services.database.env]
@@ -37,6 +38,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
 # Application server - depends on database
 [services.app_server]
 type = "generic_container"
+plugin = "generic_container"
 image = "alpine:latest"
 
 [services.app_server.env]
