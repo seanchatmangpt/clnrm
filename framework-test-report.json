@@ -1,35 +1,17 @@
 {
-  "total_tests": 5,
-  "passed_tests": 5,
+  "total_tests": 2,
+  "passed_tests": 2,
   "failed_tests": 0,
-  "total_duration_ms": 1,
+  "total_duration_ms": 0,
   "test_results": [
     {
-      "name": "validate_framework",
+      "name": "Container Execution",
       "passed": true,
       "duration_ms": 0,
       "error": null
     },
     {
-      "name": "test_container_lifecycle",
-      "passed": true,
-      "duration_ms": 0,
-      "error": null
-    },
-    {
-      "name": "test_plugin_system",
-      "passed": true,
-      "duration_ms": 0,
-      "error": null
-    },
-    {
-      "name": "test_cli_functionality",
-      "passed": true,
-      "duration_ms": 1,
-      "error": null
-    },
-    {
-      "name": "test_otel_integration",
+      "name": "Plugin System",
       "passed": true,
       "duration_ms": 0,
       "error": null

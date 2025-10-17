@@ -206,6 +206,7 @@ async fn test_all_validators_exist() -> Result<()> {
     let hermeticity_expectation = HermeticityExpectation {
         no_external_services: Some(true),
         resource_attrs_must_match: None,
+        sdk_resource_attrs_must_match: None,
         span_attrs_forbid_keys: None,
     };
     let hermeticity_validator = HermeticityValidator::new(hermeticity_expectation);
