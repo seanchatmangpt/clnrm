@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn test_formatter_type_from_str_human() {
         // Arrange & Act
-        let result = FormatterType::from_str("human");
+        let result = FormatterType::from_string("human");
 
         // Assert
         assert_eq!(result, Some(FormatterType::Human));
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn test_formatter_type_from_str_json() {
         // Arrange & Act
-        let result = FormatterType::from_str("json");
+        let result = FormatterType::from_string("json");
 
         // Assert
         assert_eq!(result, Some(FormatterType::Json));
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn test_formatter_type_from_str_junit() {
         // Arrange & Act
-        let result = FormatterType::from_str("junit");
+        let result = FormatterType::from_string("junit");
 
         // Assert
         assert_eq!(result, Some(FormatterType::Junit));
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_formatter_type_from_str_tap() {
         // Arrange & Act
-        let result = FormatterType::from_str("tap");
+        let result = FormatterType::from_string("tap");
 
         // Assert
         assert_eq!(result, Some(FormatterType::Tap));
@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn test_formatter_type_from_str_case_insensitive() {
         // Arrange & Act
-        let result = FormatterType::from_str("HUMAN");
+        let result = FormatterType::from_string("HUMAN");
 
         // Assert
         assert_eq!(result, Some(FormatterType::Human));
@@ -132,9 +132,9 @@ mod tests {
     #[test]
     fn test_formatter_type_from_str_aliases() {
         // Arrange & Act
-        let human_alias = FormatterType::from_str("h");
-        let json_alias = FormatterType::from_str("j");
-        let junit_alias = FormatterType::from_str("xml");
+        let human_alias = FormatterType::from_string("h");
+        let json_alias = FormatterType::from_string("j");
+        let junit_alias = FormatterType::from_string("xml");
 
         // Assert
         assert_eq!(human_alias, Some(FormatterType::Human));
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_formatter_type_from_str_invalid() {
         // Arrange & Act
-        let result = FormatterType::from_str("invalid");
+        let result = FormatterType::from_string("invalid");
 
         // Assert
         assert_eq!(result, None);
