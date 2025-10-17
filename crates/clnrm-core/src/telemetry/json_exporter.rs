@@ -186,7 +186,7 @@ mod tests {
         trace::{SpanContext, SpanId, SpanKind, Status, TraceFlags, TraceId, TraceState},
         KeyValue,
     };
-    use opentelemetry_sdk::InstrumentationScope;
+    use opentelemetry::InstrumentationScope;
     use std::time::SystemTime;
 
     #[test]

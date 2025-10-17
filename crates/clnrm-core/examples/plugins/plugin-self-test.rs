@@ -148,6 +148,7 @@ async fn main() -> Result<()> {
 }
 
 /// Plugin self-test implementation that uses the framework's plugin system to test itself
+#[derive(Debug)]
 struct PluginSelfTestPlugin {
     name: String,
     metadata: HashMap<String, String>,

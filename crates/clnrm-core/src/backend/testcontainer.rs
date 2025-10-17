@@ -209,7 +209,8 @@ impl TestcontainerBackend {
         );
 
         // Create a unique container ID for tracing
-        let _container_id = uuid::Uuid::new_v4().to_string();
+        #[allow(unused_variables)]
+        let container_id = uuid::Uuid::new_v4().to_string();
 
         #[cfg(feature = "otel-traces")]
         {
@@ -316,7 +317,8 @@ impl TestcontainerBackend {
             .chain(cmd.args.iter().map(|s| s.as_str()))
             .collect();
 
-        let _cmd_string = format!("{} {}", cmd.bin, cmd.args.join(" "));
+        #[allow(unused_variables)]
+        let cmd_string = format!("{} {}", cmd.bin, cmd.args.join(" "));
 
         let exec_cmd = ExecCommand::new(cmd_args);
         let mut exec_result = container

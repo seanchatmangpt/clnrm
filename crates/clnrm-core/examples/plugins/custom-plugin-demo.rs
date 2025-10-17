@@ -181,7 +181,7 @@ async fn main() -> Result<()> {
     println!("\n📋 Test 3: Health Checks");
     println!("========================");
 
-    let all_health = env.check_health().await?;
+    let all_health = env.check_health().await;
     let db_health = all_health
         .get(&db_handle.id)
         .cloned()

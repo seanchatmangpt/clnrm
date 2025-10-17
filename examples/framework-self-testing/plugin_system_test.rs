@@ -146,6 +146,7 @@ async fn main() -> Result<(), CleanroomError> {
     let start = Instant::now();
 
     // Create a custom plugin for testing
+    #[derive(Debug)]
     struct TestPlugin {
         name: String,
     }

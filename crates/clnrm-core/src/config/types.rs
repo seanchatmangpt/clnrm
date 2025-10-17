@@ -38,9 +38,9 @@ pub fn parse_shell_command(cmd: &str) -> Result<Vec<String>> {
     let mut in_single_quote = false;
     let mut in_double_quote = false;
     let mut escape_next = false;
-    let mut chars = cmd.chars().peekable();
+    let chars = cmd.chars();
 
-    while let Some(ch) = chars.next() {
+    for ch in chars {
         if escape_next {
             current_arg.push(ch);
             escape_next = false;
