@@ -311,6 +311,16 @@ pub enum Commands {
         #[arg(long)]
         only_changes: bool,
     },
+
+    /// Record baseline for test runs (v0.7.0)
+    Record {
+        /// Test files or directories to record (default: discover all)
+        paths: Option<Vec<PathBuf>>,
+
+        /// Output path for baseline
+        #[arg(short, long, default_value = ".clnrm/baseline.json")]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand)]

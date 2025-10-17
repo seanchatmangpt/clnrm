@@ -293,7 +293,18 @@ impl Cache for FileCache {
 
 impl Default for FileCache {
     fn default() -> Self {
-        Self::new().expect("Failed to create default cache manager")
+        // Use unwrap_or_else to provide fallback if cache creation fails
+        // This avoids panic in Default impl by falling back to temp directory cache
+        Self::new().unwrap_or_else(|e| {
+            // Log error and create in-memory fallback
+            eprintln!("Warning: Failed to create default cache: {}. Using temp directory.", e);
+            // Create cache in temp directory as fallback
+            let temp_path = std::env::temp_dir().join(".clnrm-cache").join("hashes.json");
+            Self::with_path(temp_path).unwrap_or_else(|_| {
+                // Last resort: panic with meaningful message
+                panic!("Fatal: Cannot create cache in temp directory. Check permissions.")
+            })
+        })
     }
 }
 

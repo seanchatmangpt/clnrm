@@ -21,18 +21,26 @@ pub use determinism::DeterminismConfig;
 /// - Deterministic timestamps
 /// - SHA-256 hashing
 /// - TOML encoding
+/// - Macro library for common TOML patterns
 pub struct TemplateRenderer {
     tera: Tera,
     context: TemplateContext,
 }
 
+/// Macro library content embedded at compile time
+const MACRO_LIBRARY: &str = include_str!("_macros.toml.tera");
+
 impl TemplateRenderer {
-    /// Create new template renderer with custom functions
+    /// Create new template renderer with custom functions and macro library
     pub fn new() -> Result<Self> {
         let mut tera = Tera::default();
 
         // Register custom functions
         functions::register_functions(&mut tera)?;
+
+        // Add macro library template
+        tera.add_raw_template("_macros.toml.tera", MACRO_LIBRARY)
+            .map_err(|e| CleanroomError::template_error(format!("Failed to load macro library: {}", e)))?;
 
         Ok(Self {
             tera,
@@ -141,5 +149,327 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(matches!(err.kind, crate::error::ErrorKind::TemplateError));
+    }
+
+    #[test]
+    fn test_macro_library_loaded() {
+        // Arrange & Act
+        let renderer = TemplateRenderer::new().unwrap();
+
+        // Assert - macro library should be available
+        assert!(renderer.tera.get_template_names().any(|n| n == "_macros.toml.tera"));
+    }
+
+    #[test]
+    fn test_span_macro_basic() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::span("test.span") }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_span_macro_basic");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[[expect.span]]"));
+        assert!(output.contains("name = \"test.span\""));
+    }
+
+    #[test]
+    fn test_span_macro_with_parent() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::span("child.span", parent="parent.span") }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_span_macro_with_parent");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[[expect.span]]"));
+        assert!(output.contains("name = \"child.span\""));
+        assert!(output.contains("parent = \"parent.span\""));
+    }
+
+    #[test]
+    fn test_span_macro_with_attrs() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::span("http.request", attrs={"http.method": "GET", "http.status": "200"}) }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_span_macro_with_attrs");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[[expect.span]]"));
+        assert!(output.contains("name = \"http.request\""));
+        assert!(output.contains("attrs.all = {"));
+        assert!(output.contains("\"http.method\" = \"GET\""));
+        assert!(output.contains("\"http.status\" = \"200\""));
+    }
+
+    #[test]
+    fn test_span_macro_with_parent_and_attrs() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::span("db.query", parent="http.request", attrs={"db.system": "postgres"}) }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_span_macro_with_parent_and_attrs");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[[expect.span]]"));
+        assert!(output.contains("name = \"db.query\""));
+        assert!(output.contains("parent = \"http.request\""));
+        assert!(output.contains("attrs.all = {"));
+        assert!(output.contains("\"db.system\" = \"postgres\""));
+    }
+
+    #[test]
+    fn test_service_macro_basic() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::service("postgres", "postgres:15") }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_service_macro_basic");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[service.postgres]"));
+        assert!(output.contains("plugin = \"generic_container\""));
+        assert!(output.contains("image = \"postgres:15\""));
+    }
+
+    #[test]
+    fn test_service_macro_with_args() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::service("api", "nginx:alpine", args=["nginx", "-g", "daemon off;"]) }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_service_macro_with_args");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[service.api]"));
+        assert!(output.contains("plugin = \"generic_container\""));
+        assert!(output.contains("image = \"nginx:alpine\""));
+        assert!(output.contains("args = [\"nginx\", \"-g\", \"daemon off;\"]"));
+    }
+
+    #[test]
+    fn test_service_macro_with_env() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::service("redis", "redis:7", env={"REDIS_PASSWORD": "secret", "DEBUG": "true"}) }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_service_macro_with_env");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[service.redis]"));
+        assert!(output.contains("plugin = \"generic_container\""));
+        assert!(output.contains("image = \"redis:7\""));
+        assert!(output.contains("env.REDIS_PASSWORD = \"secret\""));
+        assert!(output.contains("env.DEBUG = \"true\""));
+    }
+
+    #[test]
+    fn test_service_macro_with_args_and_env() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::service("web", "myapp:latest", args=["--port", "8080"], env={"DEBUG": "true"}) }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_service_macro_with_args_and_env");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[service.web]"));
+        assert!(output.contains("plugin = \"generic_container\""));
+        assert!(output.contains("image = \"myapp:latest\""));
+        assert!(output.contains("args = [\"--port\", \"8080\"]"));
+        assert!(output.contains("env.DEBUG = \"true\""));
+    }
+
+    #[test]
+    fn test_scenario_macro_basic() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::scenario("check_health", "api", "curl localhost:8080/health") }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_scenario_macro_basic");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[[scenario]]"));
+        assert!(output.contains("name = \"check_health\""));
+        assert!(output.contains("service = \"api\""));
+        assert!(output.contains("run = \"curl localhost:8080/health\""));
+        assert!(output.contains("expect_success = true"));
+    }
+
+    #[test]
+    fn test_scenario_macro_expect_failure() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::scenario("fail_test", "app", "exit 1", expect_success=false) }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_scenario_macro_expect_failure");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[[scenario]]"));
+        assert!(output.contains("name = \"fail_test\""));
+        assert!(output.contains("service = \"app\""));
+        assert!(output.contains("run = \"exit 1\""));
+        assert!(output.contains("expect_success = false"));
+    }
+
+    #[test]
+    fn test_complete_template_with_all_macros() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+[test.metadata]
+name = "integration-test"
+description = "Full integration test using all macros"
+
+{{ m::service("postgres", "postgres:15", env={"POSTGRES_PASSWORD": "test"}) }}
+
+{{ m::service("api", "nginx:alpine") }}
+
+{{ m::scenario("start_db", "postgres", "pg_isready") }}
+
+{{ m::scenario("test_api", "api", "curl localhost") }}
+
+{{ m::span("test.root") }}
+
+{{ m::span("db.connect", parent="test.root", attrs={"db.system": "postgres"}) }}
+
+{{ m::span("http.request", parent="test.root", attrs={"http.method": "GET"}) }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_complete_template_with_all_macros");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+
+        // Verify test metadata
+        assert!(output.contains("[test.metadata]"));
+        assert!(output.contains("name = \"integration-test\""));
+
+        // Verify services
+        assert!(output.contains("[service.postgres]"));
+        assert!(output.contains("[service.api]"));
+
+        // Verify scenarios
+        assert!(output.contains("[[scenario]]"));
+        assert!(output.contains("name = \"start_db\""));
+        assert!(output.contains("name = \"test_api\""));
+
+        // Verify spans
+        assert!(output.contains("[[expect.span]]"));
+        assert!(output.contains("name = \"test.root\""));
+        assert!(output.contains("name = \"db.connect\""));
+        assert!(output.contains("name = \"http.request\""));
+    }
+
+    #[test]
+    fn test_multiple_spans_same_template() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{{ m::span("span1") }}
+{{ m::span("span2") }}
+{{ m::span("span3") }}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_multiple_spans_same_template");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+
+        // Count occurrences of [[expect.span]]
+        let span_count = output.matches("[[expect.span]]").count();
+        assert_eq!(span_count, 3);
+        assert!(output.contains("name = \"span1\""));
+        assert!(output.contains("name = \"span2\""));
+        assert!(output.contains("name = \"span3\""));
+    }
+
+    #[test]
+    fn test_macro_with_loop() {
+        // Arrange
+        let mut renderer = TemplateRenderer::new().unwrap();
+        let template = r#"
+{% import "_macros.toml.tera" as m %}
+{% set services = ["postgres", "redis", "nginx"] %}
+{% for svc in services %}
+{{ m::service(svc, "alpine:latest") }}
+{% endfor %}
+"#;
+
+        // Act
+        let result = renderer.render_str(template, "test_macro_with_loop");
+
+        // Assert
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert!(output.contains("[service.postgres]"));
+        assert!(output.contains("[service.redis]"));
+        assert!(output.contains("[service.nginx]"));
     }
 }

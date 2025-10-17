@@ -100,7 +100,9 @@ impl ShapeValidator {
         let toml_content = if crate::template::is_template(&content) {
             // Render as Tera template
             let mut renderer = crate::template::TemplateRenderer::new()?;
-            renderer.render_str(&content, path.to_str().unwrap_or("config"))?
+            let path_str = path.to_str()
+                .ok_or_else(|| CleanroomError::validation_error("Invalid file path encoding"))?;
+            renderer.render_str(&content, path_str)?
         } else {
             content
         };
@@ -730,15 +732,26 @@ impl ShapeValidator {
         }
 
         // Validate key format (must start with letter or underscore, contain only alphanumeric and underscore)
-        let env_var_regex = Regex::new(r"^[A-Za-z_][A-Za-z0-9_]*$").unwrap();
-        if !env_var_regex.is_match(key) {
-            self.errors.push(ShapeValidationError::new(
-                ErrorCategory::InvalidStructure,
-                format!(
-                    "{}: invalid environment variable name '{}'. Names must start with a letter or underscore and contain only alphanumeric characters and underscores. Example: 'DATABASE_URL'",
-                    context, key
-                ),
-            ));
+        // Regex pattern is static and known to be valid, but handle error gracefully
+        match Regex::new(r"^[A-Za-z_][A-Za-z0-9_]*$") {
+            Ok(env_var_regex) => {
+                if !env_var_regex.is_match(key) {
+                    self.errors.push(ShapeValidationError::new(
+                        ErrorCategory::InvalidStructure,
+                        format!(
+                            "{}: invalid environment variable name '{}'. Names must start with a letter or underscore and contain only alphanumeric characters and underscores. Example: 'DATABASE_URL'",
+                            context, key
+                        ),
+                    ));
+                }
+            }
+            Err(e) => {
+                // This should never happen with a static pattern, but handle gracefully
+                self.errors.push(ShapeValidationError::new(
+                    ErrorCategory::InvalidStructure,
+                    format!("{}: internal error compiling regex: {}", context, e),
+                ));
+            }
         }
 
         // Warn about potential hardcoded secrets

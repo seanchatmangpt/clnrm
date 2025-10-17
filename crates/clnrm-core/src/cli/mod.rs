@@ -265,6 +265,10 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
+        Commands::Record { paths, output } => {
+            run_record(paths, output).await
+        }
+
         Commands::AiMonitor {
             interval: _,
             anomaly_threshold: _,

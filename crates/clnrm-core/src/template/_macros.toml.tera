@@ -1,0 +1,152 @@
+{# _macros.toml.tera - Cleanroom v0.7.0 MVP Macro Pack
+
+   Essential macros for 80% of test authoring use cases.
+   Import with: {% import "_macros.toml.tera" as m %}
+
+   This MVP pack focuses on the three most critical patterns:
+   1. span() - OTEL span expectations (most used)
+   2. service() - Service definitions (required for every test)
+   3. scenario() - Test scenarios (required for execution)
+#}
+
+{# ============================================================================
+   MACRO: span(name, parent="", attrs={})
+
+   Generate [[expect.span]] block for OpenTelemetry span validation.
+   This is the MOST CRITICAL macro - 80%+ of templates use span validation.
+
+   Parameters:
+     - name (string): Span name to match
+     - parent (string): Optional parent span name for hierarchy
+     - attrs (object): Optional attribute key-value pairs
+
+   Examples:
+     {{ m::span("http.request") }}
+     {{ m::span("db.query", parent="http.request") }}
+     {{ m::span("api.call", attrs={"http.method": "GET", "http.status": "200"}) }}
+     {{ m::span("transaction", parent="root", attrs={"tx.id": "123"}) }}
+
+   Produces:
+     [[expect.span]]
+     name = "http.request"
+
+     [[expect.span]]
+     name = "db.query"
+     parent = "http.request"
+
+     [[expect.span]]
+     name = "api.call"
+     attrs.all = { "http.method" = "GET", "http.status" = "200" }
+
+     [[expect.span]]
+     name = "transaction"
+     parent = "root"
+     attrs.all = { "tx.id" = "123" }
+============================================================================ #}
+{% macro span(name, parent="", attrs={}) -%}
+[[expect.span]]
+name = "{{ name }}"
+{%- if parent %}
+parent = "{{ parent }}"
+{%- endif %}
+{%- if attrs and attrs | length > 0 %}
+attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}, {% endif %}{% endfor %} }
+{%- endif %}
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: service(id, image, args=[], env={})
+
+   Generate [service.<id>] block for container service definition.
+   This is the SECOND most critical macro - every test needs services.
+
+   Parameters:
+     - id (string): Service identifier
+     - image (string): Docker image name
+     - args (array): Optional container arguments
+     - env (object): Optional environment variables
+
+   Examples:
+     {{ m::service("postgres", "postgres:15") }}
+     {{ m::service("api", "nginx:alpine", args=["nginx", "-g", "daemon off;"]) }}
+     {{ m::service("redis", "redis:7", env={"REDIS_PASSWORD": "secret"}) }}
+     {{ m::service("web", "myapp:latest", args=["--port", "8080"], env={"DEBUG": "true"}) }}
+
+   Produces:
+     [service.postgres]
+     plugin = "generic_container"
+     image = "postgres:15"
+
+     [service.api]
+     plugin = "generic_container"
+     image = "nginx:alpine"
+     args = ["nginx", "-g", "daemon off;"]
+
+     [service.redis]
+     plugin = "generic_container"
+     image = "redis:7"
+     env.REDIS_PASSWORD = "secret"
+
+     [service.web]
+     plugin = "generic_container"
+     image = "myapp:latest"
+     args = ["--port", "8080"]
+     env.DEBUG = "true"
+============================================================================ #}
+{% macro service(id, image, args=[], env={}) -%}
+[service.{{ id }}]
+plugin = "generic_container"
+image = "{{ image }}"
+{%- if args and args | length > 0 %}
+args = [{% for arg in args %}"{{ arg }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+{%- endif %}
+{%- if env and env | length > 0 %}
+{% for k, v in env -%}
+env.{{ k }} = "{{ v }}"
+{% endfor -%}
+{%- endif %}
+{%- endmacro %}
+
+{# ============================================================================
+   MACRO: scenario(name, service, cmd, expect_success=true)
+
+   Generate [[scenario]] block for test execution.
+   This is the THIRD most critical macro - every test needs scenarios.
+
+   Parameters:
+     - name (string): Scenario name
+     - service (string): Service to run command in
+     - cmd (string): Command to execute
+     - expect_success (bool): Whether command should succeed (default: true)
+
+   Examples:
+     {{ m::scenario("check_health", "api", "curl localhost:8080/health") }}
+     {{ m::scenario("run_migration", "postgres", "psql -c 'SELECT 1'") }}
+     {{ m::scenario("fail_test", "app", "exit 1", expect_success=false) }}
+
+   Produces:
+     [[scenario]]
+     name = "check_health"
+     service = "api"
+     run = "curl localhost:8080/health"
+     expect_success = true
+
+     [[scenario]]
+     name = "run_migration"
+     service = "postgres"
+     run = "psql -c 'SELECT 1'"
+     expect_success = true
+
+     [[scenario]]
+     name = "fail_test"
+     service = "app"
+     run = "exit 1"
+     expect_success = false
+============================================================================ #}
+{% macro scenario(name, service, cmd, expect_success=true) -%}
+[[scenario]]
+name = "{{ name }}"
+service = "{{ service }}"
+run = "{{ cmd }}"
+expect_success = {{ expect_success }}
+{%- endmacro %}

@@ -6,9 +6,11 @@
 //! - dry-run: Shape validation without execution
 //! - lint: Linting and static analysis
 //! - diff: Trace comparison
+//! - record: Baseline recording for test runs
 
 pub mod dev;
 pub mod dry_run;
 pub mod fmt;
 pub mod lint;
 pub mod diff;
+pub mod record;

@@ -65,6 +65,15 @@ globset = "0.4.17"
 # Property-based testing
 proptest = "1.4"
 
+# Benchmarking
+criterion = { workspace = true }
+tempfile = { workspace = true }
+
+[[bench]]
+name = "hot_reload_critical_path"
+harness = false
+path = "../../benches/hot_reload_critical_path.rs"
+
 [[example]]
 name = "status-validator-demo"
 path = "examples/validation/status_validator_demo.rs"

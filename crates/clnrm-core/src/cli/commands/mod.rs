@@ -45,3 +45,4 @@ pub use v0_7_0::diff::diff_traces;
 pub use v0_7_0::dry_run::{dry_run_validate, ValidationResult as DryRunValidationResult};
 pub use v0_7_0::fmt::format_files;
 pub use v0_7_0::lint::lint_files;
+pub use v0_7_0::record::run_record;
