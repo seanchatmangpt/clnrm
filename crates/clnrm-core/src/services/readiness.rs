@@ -277,7 +277,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_wait_for_span_timeout() {
         let config = SpanReadinessConfig::new("nonexistent.span".to_string(), Some(1));
         let source = SpanSource::Stdout(String::new());
@@ -290,7 +290,7 @@ mod tests {
         assert!(err.message.contains("not detected within 1 seconds"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_wait_for_span_success() {
         let config = SpanReadinessConfig::new("clnrm.run".to_string(), Some(5));
         let output = r#"{"name":"clnrm.run","trace_id":"abc123"}"#;

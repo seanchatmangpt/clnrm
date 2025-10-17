@@ -1153,13 +1153,15 @@ pub fn trace_assertion_from_toml(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use opentelemetry::{
         global,
         trace::{Span, TraceContextExt, Tracer},
         Context, KeyValue,
     };
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
     async fn test_otel_validator_creation() -> Result<()> {
         // Arrange & Act
         let validator = OtelValidator::new();
@@ -1170,7 +1172,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
     async fn test_otel_validator_with_custom_config() -> Result<()> {
         // Arrange
         let config = OtelValidationConfig {
@@ -1347,7 +1350,8 @@ mod tests {
     /// - Proper error handling with Result<T, CleanroomError>
     /// - Descriptive test name explaining what is being tested
     /// - No unwrap() or expect() in test code
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
     async fn test_real_span_validation_integration() -> Result<()> {
         // Arrange: Set up validator with validation processor
         let processor = ValidationSpanProcessor::new();
@@ -1409,7 +1413,8 @@ mod tests {
     /// - Async test function for integration testing
     /// - Proper error handling with Result<T, CleanroomError>
     /// - Descriptive test name explaining what is being tested
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
     async fn test_real_trace_validation_integration() -> Result<()> {
         // Arrange: Set up validator with validation processor
         let processor = ValidationSpanProcessor::new();
@@ -1480,7 +1485,8 @@ mod tests {
     /// - Async test function for integration testing
     /// - Proper error handling with Result<T, CleanroomError>
     /// - Descriptive test name explaining what is being tested
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
+    #[serial]
     async fn test_real_export_validation_integration() -> Result<()> {
         // Arrange
         let validator = OtelValidator::new();

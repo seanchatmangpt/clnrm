@@ -410,7 +410,7 @@ mod tests {
     use super::*;
     use tempfile::NamedTempFile;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires Docker daemon - integration test"]
     async fn test_pull_images_stub() {
         let result = pull_images(None, false, 4).await;
@@ -426,7 +426,7 @@ mod tests {
         assert!(result.is_ok(), "Should delegate to graph module");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_reproduce_baseline_with_invalid_file_returns_error() {
         let temp_file = NamedTempFile::new().unwrap();
         // Write invalid JSON
@@ -438,7 +438,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_reproduce_baseline_with_empty_tests_returns_error() {
         use tempfile::tempdir;
         let temp_dir = tempdir().unwrap();
@@ -460,7 +460,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires valid test files - needs test data setup"]
     async fn test_red_green_validation_stub() {
         let result = run_red_green_validation(&[], false, false).await;
@@ -488,7 +488,7 @@ mod tests {
         assert!(result.is_ok(), "Should delegate to spans module");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires Docker daemon - integration test"]
     async fn test_collector_start_stub() {
         let result =
@@ -496,20 +496,20 @@ mod tests {
         assert!(result.is_ok(), "Should start collector when Docker is available");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires Docker daemon - integration test"]
     async fn test_collector_stop_stub() {
         let result = stop_collector(false).await;
         assert!(result.is_ok(), "Should stop collector when Docker is available");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_collector_status_stub() {
         let result = show_collector_status().await;
         assert!(result.is_ok(), "Stub should return Ok");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires Docker daemon and running collector - integration test"]
     async fn test_collector_logs_stub() {
         let result = show_collector_logs(50, false).await;

@@ -262,8 +262,10 @@ mod tests {
     )]
 
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_template_detection() {
         assert!(is_template("{{ var }}"));
         assert!(is_template("{% for x in list %}"));
@@ -273,12 +275,14 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_renderer_creation() {
         let renderer = TemplateRenderer::new();
         assert!(renderer.is_ok());
     }
 
     #[test]
+    #[serial]
     fn test_basic_rendering() {
         let mut renderer = TemplateRenderer::new().unwrap();
         let result = renderer.render_str("Hello {{ name }}", "test");
@@ -287,6 +291,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_rendering_with_context() {
         let mut renderer = TemplateRenderer::new().unwrap();
         let mut context = TemplateContext::new();
@@ -302,6 +307,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_error_handling_invalid_template() {
         let mut renderer = TemplateRenderer::new().unwrap();
         let result = renderer.render_str("{{ unclosed", "test");
@@ -311,6 +317,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_macro_library_loaded() {
         // Arrange & Act
         let renderer = TemplateRenderer::new().unwrap();
@@ -323,6 +330,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_span_macro_basic() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -412,6 +420,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_span_macro_with_parent() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -435,6 +444,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_span_macro_with_attrs() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -457,6 +467,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_span_macro_with_parent_and_attrs() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -481,6 +492,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_service_macro_basic() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -501,6 +513,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_service_macro_with_args() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -522,6 +535,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_service_macro_with_env() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -544,6 +558,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_service_macro_with_args_and_env() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -566,6 +581,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_scenario_macro_basic() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -588,6 +604,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_scenario_macro_expect_failure() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -610,6 +627,7 @@ attrs.all = { {% for k, v in attrs %}"{{ k }}" = "{{ v }}"{% if not loop.last %}
     }
 
     #[test]
+    #[serial]
     fn test_complete_template_with_all_macros() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -662,6 +680,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_multiple_spans_same_template() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -688,6 +707,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_macro_with_loop() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -715,6 +735,7 @@ description = "Full integration test using all macros"
     // ========================================================================
 
     #[test]
+    #[serial]
     fn test_span_exists_macro() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -735,6 +756,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_span_exists_multiple() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -758,6 +780,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_graph_relationship_macro_default() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -779,6 +802,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_graph_relationship_macro_custom() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -800,6 +824,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_temporal_ordering_macro() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -820,6 +845,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_temporal_ordering_chain() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -842,6 +868,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_error_propagation_macro() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -864,6 +891,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_error_propagation_multiple_sources() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -885,6 +913,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_service_interaction_macro_default() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -906,6 +935,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_service_interaction_macro_custom_method() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -927,6 +957,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_service_interaction_microservices() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -949,6 +980,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_attribute_validation_macro() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -969,6 +1001,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_attribute_validation_multiple() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -992,6 +1025,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_resource_check_macro() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -1013,6 +1047,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_resource_check_multiple_types() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -1036,6 +1071,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_batch_validation_macro() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -1058,6 +1094,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_batch_validation_with_attrs() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -1084,6 +1121,7 @@ description = "Full integration test using all macros"
     }
 
     #[test]
+    #[serial]
     fn test_comprehensive_template_with_advanced_macros() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -1144,6 +1182,7 @@ description = "Comprehensive test using all 8 advanced macros"
     }
 
     #[test]
+    #[serial]
     fn test_advanced_macros_in_loop() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();
@@ -1170,6 +1209,7 @@ description = "Comprehensive test using all 8 advanced macros"
     }
 
     #[test]
+    #[serial]
     fn test_mixed_basic_and_advanced_macros() {
         // Arrange
         let mut renderer = TemplateRenderer::new().unwrap();

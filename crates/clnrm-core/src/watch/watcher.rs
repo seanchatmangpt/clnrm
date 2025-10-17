@@ -486,7 +486,7 @@ mod tests {
     // NotifyWatcher integration tests
     // =================================================================
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_notify_watcher_rejects_nonexistent_path() {
         // Arrange
         let (tx, _rx) = mpsc::channel(100);
@@ -501,7 +501,7 @@ mod tests {
         assert!(err.message.contains("non-existent"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_notify_watcher_creates_successfully_with_valid_path() -> Result<()> {
         // Arrange
         let temp_dir = tempfile::tempdir().map_err(|e| {
@@ -517,7 +517,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires filesystem watching - hangs in test runner"]
     async fn test_notify_watcher_detects_file_creation() -> Result<()> {
         // Arrange
@@ -552,7 +552,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires filesystem watching - hangs in test runner"]
     async fn test_notify_watcher_detects_file_modification() -> Result<()> {
         // Arrange
@@ -594,7 +594,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Requires filesystem watching - hangs in test runner"]
     async fn test_notify_watcher_watches_multiple_paths() -> Result<()> {
         // Arrange

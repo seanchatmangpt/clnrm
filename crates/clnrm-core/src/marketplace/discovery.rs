@@ -316,7 +316,7 @@ impl PluginDiscovery {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_search_plugins() -> Result<()> {
         let config = MarketplaceConfig::default();
         let discovery = PluginDiscovery::new(&config)?;
@@ -327,7 +327,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_search_by_category() -> Result<()> {
         let config = MarketplaceConfig::default();
         let discovery = PluginDiscovery::new(&config)?;
@@ -347,7 +347,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_get_trending() -> Result<()> {
         let config = MarketplaceConfig::default();
         let discovery = PluginDiscovery::new(&config)?;
@@ -359,7 +359,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_get_recommendations() -> Result<()> {
         let config = MarketplaceConfig::default();
         let discovery = PluginDiscovery::new(&config)?;

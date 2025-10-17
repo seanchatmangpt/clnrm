@@ -54,7 +54,7 @@ impl CliTelemetry {
     /// No unwrap() calls - proper error handling throughout
     pub fn init(config: CliOtelConfig) -> Result<Self> {
         // Create OTel configuration from CLI config
-        let otel_config = Self::create_otel_config(&config)?;
+        let otel_config = CliTelemetry::create_otel_config_static(&config)?;
 
         // Initialize OTel if enabled (lazy initialization)
         let guard = if config.is_enabled() {
@@ -105,35 +105,51 @@ impl CliTelemetry {
         ))
     }
 
-    /// Convert CLI config to OTel config
+    /// Convert CLI config to OTel config (static version for init)
     /// Secure - no hardcoded values, all from configuration
-    fn create_otel_config(&self, config: &CliOtelConfig) -> Result<OtelConfig> {
+    fn create_otel_config_static(config: &CliOtelConfig) -> Result<OtelConfig> {
         use crate::telemetry::Export;
 
+        // Convert endpoint to &'static str if needed
         let export = match config.export_format {
-            ExportFormat::OtlpHttp => Export::OtlpHttp {
-                endpoint: config.export_endpoint.as_deref().unwrap_or("http://localhost:4318"),
+            ExportFormat::OtlpHttp => {
+                let endpoint = match &config.export_endpoint {
+                    Some(ep) => Box::leak(ep.clone().into_boxed_str()) as &'static str,
+                    None => "http://localhost:4318",
+                };
+                Export::OtlpHttp { endpoint }
             },
-            ExportFormat::OtlpGrpc => Export::OtlpGrpc {
-                endpoint: config.export_endpoint.as_deref().unwrap_or("http://localhost:4317"),
+            ExportFormat::OtlpGrpc => {
+                let endpoint = match &config.export_endpoint {
+                    Some(ep) => Box::leak(ep.clone().into_boxed_str()) as &'static str,
+                    None => "http://localhost:4317",
+                };
+                Export::OtlpGrpc { endpoint }
             },
             ExportFormat::Stdout => Export::Stdout,
             ExportFormat::StdoutNdjson => Export::StdoutNdjson,
         };
 
+        // Load secure headers
+        let headers = Self::load_secure_headers_static()?;
+
+        // Convert String to &'static str by leaking (acceptable for telemetry config that lives for program lifetime)
+        let service_name: &'static str = Box::leak(config.service_name.clone().into_boxed_str());
+        let deployment_env: &'static str = Box::leak(config.deployment_env.clone().into_boxed_str());
+
         Ok(OtelConfig {
-            service_name: config.service_name.as_str(),
-            deployment_env: config.deployment_env.as_str(),
+            service_name,
+            deployment_env,
             sample_ratio: config.sample_ratio,
             export,
             enable_fmt_layer: config.enable_console_output,
-            headers: self.load_secure_headers()?,
+            headers,
         })
     }
 
-    /// Load secure headers from environment variables
+    /// Load secure headers from environment variables (static version)
     /// No hardcoded secrets - all from env vars
-    fn load_secure_headers(&self) -> Result<Option<std::collections::HashMap<String, String>>> {
+    fn load_secure_headers_static() -> Result<Option<std::collections::HashMap<String, String>>> {
         let mut headers = std::collections::HashMap::new();
 
         // Load OTLP headers from environment variables
@@ -145,7 +161,7 @@ impl CliTelemetry {
                     .to_lowercase();
 
                 // Validate header key for security
-                if self.is_safe_header_key(&header_key) {
+                if Self::is_safe_header_key(&header_key) {
                     headers.insert(header_key, value);
                 }
             }
@@ -154,8 +170,8 @@ impl CliTelemetry {
         Ok(if headers.is_empty() { None } else { Some(headers) })
     }
 
-    /// Validate header key for security
-    fn is_safe_header_key(&self, key: &str) -> bool {
+    /// Validate header key for security (static version)
+    fn is_safe_header_key(key: &str) -> bool {
         // Only allow safe header keys, no injection vulnerabilities
         let safe_keys = ["authorization", "api-key", "user-agent"];
         safe_keys.contains(&key.to_lowercase().as_str())
@@ -294,3 +310,4 @@ mod tests {
         Ok(())
     }
 }
+

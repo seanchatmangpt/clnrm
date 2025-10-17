@@ -459,7 +459,7 @@ mod tests {
         assert!(err_msg.contains("Unknown artifact type"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_artifact_collector_new() {
         // Arrange & Act
         let collector = ArtifactCollector::new("test_scenario");
@@ -472,7 +472,7 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_collect_spans_parses_ndjson() -> Result<()> {
         // Arrange
         let temp_dir = tempfile::tempdir().map_err(|e| {
@@ -503,7 +503,7 @@ not json line
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_collect_spans_empty_stdout() -> Result<()> {
         // Arrange
         let temp_dir = tempfile::tempdir().map_err(|e| {

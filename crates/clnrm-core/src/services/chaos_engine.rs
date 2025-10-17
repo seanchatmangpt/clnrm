@@ -419,7 +419,7 @@ mod tests {
         assert!(!config.scenarios.is_empty());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_chaos_scenarios() {
         let plugin = ChaosEnginePlugin::new("test");
 
@@ -440,7 +440,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_chaos_metrics() {
         let plugin = ChaosEnginePlugin::new("test");
         let metrics = plugin.get_metrics().await;

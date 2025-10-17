@@ -173,7 +173,7 @@ pub async fn run_dev_mode(
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_dev_mode_with_nonexistent_path() -> Result<()> {
         // Arrange
         let paths = vec![PathBuf::from("/nonexistent/path/that/does/not/exist")];

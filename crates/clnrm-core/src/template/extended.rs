@@ -105,7 +105,9 @@ impl Function for SeqFunction {
         let start = args.get("start").and_then(|v| v.as_i64()).unwrap_or(0);
         let step = args.get("step").and_then(|v| v.as_i64()).unwrap_or(1);
 
-        let mut counters = self.counters.lock().unwrap();
+        let mut counters = self.counters.lock().map_err(|e| {
+            tera::Error::msg(format!("Failed to lock sequence counter: {}", e))
+        })?;
         let counter = counters.entry(name.to_string()).or_insert(start);
         let value = *counter;
         *counter += step;
@@ -211,14 +213,21 @@ impl Function for UlidFunction {
         let mut ulid = String::with_capacity(26);
         let mut ts = timestamp_ms;
         for _ in 0..10 {
-            ulid.insert(0, base32.chars().nth((ts % 32) as usize).unwrap());
+            let idx = (ts % 32) as usize;
+            let ch = base32.chars().nth(idx).ok_or_else(|| {
+                tera::Error::msg(format!("Invalid base32 index {} during ULID timestamp encoding", idx))
+            })?;
+            ulid.insert(0, ch);
             ts /= 32;
         }
 
         // Random part (80 bits, 16 base32 chars)
         for _ in 0..16 {
             let idx = rng.gen_range(0..32);
-            ulid.push(base32.chars().nth(idx).unwrap());
+            let ch = base32.chars().nth(idx).ok_or_else(|| {
+                tera::Error::msg(format!("Invalid base32 index {} during ULID random part generation", idx))
+            })?;
+            ulid.push(ch);
         }
 
         Ok(Value::String(ulid))
@@ -300,8 +309,10 @@ impl Function for WeightedFunction {
             }
         }
 
-        // Fallback to last element
-        Ok(values.last().unwrap().clone())
+        // Fallback to last element (guaranteed non-empty by earlier check)
+        Ok(values.last()
+            .ok_or_else(|| tera::Error::msg("weighted() internal error: empty values after weight calculation"))?
+            .clone())
     }
 }
 
@@ -697,12 +708,14 @@ impl Function for FakeKindsFunction {
 mod extended_function_tests {
     use super::*;
     use tera::Value;
+    use serial_test::serial;
 
     // ========================================
     // UUID V7 Tests (2 tests)
     // ========================================
 
     #[test]
+    #[serial]
     fn test_uuid_v7_generates_valid_format() {
         // Arrange
         let function = UuidV7Function;
@@ -723,6 +736,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_uuid_v7_with_seed_is_deterministic() {
         // Arrange
         let function = UuidV7Function;
@@ -746,6 +760,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_uuid_v7_without_seed_generates_different_values() {
         // Arrange
         let function = UuidV7Function;
@@ -771,6 +786,7 @@ mod extended_function_tests {
     // ========================================
 
     #[test]
+    #[serial]
     fn test_ulid_generates_valid_format() {
         // Arrange
         let function = UlidFunction;
@@ -786,7 +802,7 @@ mod extended_function_tests {
         // All characters should be valid base32 (Crockford alphabet)
         for c in ulid_str.chars() {
             assert!(
-                c.is_ascii_digit() || ('A'..='Z').contains(&c),
+                c.is_ascii_digit() || c.is_ascii_uppercase(),
                 "ULID should only contain 0-9 and A-Z, found: {}",
                 c
             );
@@ -794,6 +810,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_ulid_with_seed_is_deterministic() {
         // Arrange
         let function = UlidFunction;
@@ -815,6 +832,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_ulid_is_lexicographically_sortable() {
         // Arrange
         let function = UlidFunction;
@@ -844,6 +862,7 @@ mod extended_function_tests {
     // ========================================
 
     #[test]
+    #[serial]
     fn test_traceparent_generates_valid_w3c_format() {
         // Arrange
         let function = TraceparentFunction;
@@ -870,6 +889,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_traceparent_with_custom_trace_id() {
         // Arrange
         let function = TraceparentFunction;
@@ -886,6 +906,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_traceparent_with_seed_is_deterministic() {
         // Arrange
         let function = TraceparentFunction;
@@ -908,6 +929,7 @@ mod extended_function_tests {
     // ========================================
 
     #[test]
+    #[serial]
     fn test_baggage_encodes_single_key_value() {
         // Arrange
         let function = BaggageFunction;
@@ -926,6 +948,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_baggage_encodes_multiple_key_values() {
         // Arrange
         let function = BaggageFunction;
@@ -953,6 +976,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_baggage_requires_map_parameter() {
         // Arrange
         let function = BaggageFunction;
@@ -971,6 +995,7 @@ mod extended_function_tests {
     // ========================================
 
     #[test]
+    #[serial]
     fn test_pick_selects_from_list() {
         // Arrange
         let function = PickFunction;
@@ -996,6 +1021,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_pick_with_seed_is_deterministic() {
         // Arrange
         let function = PickFunction;
@@ -1022,6 +1048,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_pick_errors_on_empty_list() {
         // Arrange
         let function = PickFunction;
@@ -1041,6 +1068,7 @@ mod extended_function_tests {
     // ========================================
 
     #[test]
+    #[serial]
     fn test_weighted_selects_based_on_weights() {
         // Arrange
         let function = WeightedFunction;
@@ -1062,6 +1090,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_weighted_with_seed_is_deterministic() {
         // Arrange
         let function = WeightedFunction;
@@ -1087,6 +1116,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_weighted_errors_on_invalid_pairs() {
         // Arrange
         let function = WeightedFunction;
@@ -1110,6 +1140,7 @@ mod extended_function_tests {
     // ========================================
 
     #[test]
+    #[serial]
     fn test_shuffle_preserves_all_elements() {
         // Arrange
         let function = ShuffleFunction;
@@ -1139,6 +1170,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_shuffle_with_seed_is_deterministic() {
         // Arrange
         let function = ShuffleFunction;
@@ -1166,6 +1198,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_shuffle_actually_shuffles() {
         // Arrange
         let function = ShuffleFunction;
@@ -1200,6 +1233,7 @@ mod extended_function_tests {
     // ========================================
 
     #[test]
+    #[serial]
     fn test_sample_returns_k_elements() {
         // Arrange
         let function = SampleFunction;
@@ -1230,6 +1264,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_sample_with_seed_is_deterministic() {
         // Arrange
         let function = SampleFunction;
@@ -1259,6 +1294,7 @@ mod extended_function_tests {
     }
 
     #[test]
+    #[serial]
     fn test_sample_errors_when_k_exceeds_list_size() {
         // Arrange
         let function = SampleFunction;

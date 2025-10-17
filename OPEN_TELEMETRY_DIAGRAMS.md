@@ -175,3 +175,4 @@ async fn test_something() -> Result<()> {
 4. Implement performance validation
 
 This represents the current state and roadmap for completing the OpenTelemetry integration.
+

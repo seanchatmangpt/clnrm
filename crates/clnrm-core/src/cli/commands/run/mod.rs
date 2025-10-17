@@ -1128,7 +1128,7 @@ mod watch {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_tests_sequential_with_results_empty_paths() -> Result<()> {
         let paths = vec![];
         let config = CliConfig::default();
@@ -1139,7 +1139,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_tests_parallel_with_results_empty_paths() -> Result<()> {
         let paths = vec![];
         let config = CliConfig::default();

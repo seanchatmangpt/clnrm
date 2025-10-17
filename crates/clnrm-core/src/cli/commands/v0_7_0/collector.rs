@@ -492,10 +492,21 @@ mod tests {
 
     #[test]
     fn test_state_file_path() {
-        // Act
-        let path = CollectorState::state_file_path().unwrap();
+        // Arrange - Create temp directory for test
+        use tempfile::TempDir;
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        // Act - Change to temp directory for test
+        let original_dir = std::env::current_dir().expect("Failed to get current dir");
+        std::env::set_current_dir(temp_dir.path()).expect("Failed to set current dir");
+
+        let result = CollectorState::state_file_path();
+
+        // Restore original directory
+        std::env::set_current_dir(original_dir).expect("Failed to restore dir");
 
         // Assert
+        let path = result.expect("Should successfully create state file path");
         assert!(path.to_string_lossy().contains(".clnrm"));
         assert!(path.to_string_lossy().contains("collector-state.json"));
     }

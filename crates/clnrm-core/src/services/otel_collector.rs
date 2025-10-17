@@ -467,7 +467,7 @@ mod tests {
         assert!(config.contains("pipelines:"));
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore] // Requires Docker
     async fn test_otel_collector_start_stop() -> Result<()> {
         // Arrange

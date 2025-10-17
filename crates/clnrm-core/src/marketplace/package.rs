@@ -321,7 +321,7 @@ impl DependencyResolver {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_installer_creation() -> Result<()> {
         let config = MarketplaceConfig::default();
         let installer = PluginInstaller::new(&config)?;
@@ -333,7 +333,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_dependency_resolution() -> Result<()> {
         let config = MarketplaceConfig::default();
         let installer = PluginInstaller::new(&config)?;

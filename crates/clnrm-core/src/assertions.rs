@@ -594,7 +594,7 @@ pub async fn email_service() -> Result<EmailServiceAssertions> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_database_assertions() {
         let assertions = DatabaseAssertions::new("database");
 
@@ -609,7 +609,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_cache_assertions() {
         let assertions = CacheAssertions::new("cache");
 
@@ -625,7 +625,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_email_assertions() {
         let assertions = EmailServiceAssertions::new("email_service");
 
@@ -643,7 +643,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_user_assertions() {
         let user = UserAssertions::new(123, "jane@example.com".to_string());
 
@@ -660,7 +660,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_simple_assertions() -> Result<()> {
         // Test the simplified assertion functions
         let db = database().await?;
@@ -674,7 +674,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_assertion_framework_self_check() {
         // 80/20 test: Focus on core self-check functionality
         let mut context = AssertionContext::new();

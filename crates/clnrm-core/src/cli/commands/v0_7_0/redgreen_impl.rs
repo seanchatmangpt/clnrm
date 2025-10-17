@@ -597,7 +597,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_red_green_validation_with_no_paths_returns_error() {
         let result = run_red_green_validation(&[], None, false, false).await;
         assert!(result.is_err(), "Should fail with no test paths");

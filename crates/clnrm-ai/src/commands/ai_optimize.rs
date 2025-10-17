@@ -384,7 +384,9 @@ async fn analyze_test_file(path: &std::path::PathBuf) -> Result<TestAnalysis> {
     let parallelization_potential = calculate_parallelization_potential(&test_config);
 
     Ok(TestAnalysis {
-        name: test_config.test.metadata.name.clone(),
+        name: test_config.test.as_ref()
+            .map(|t| t.metadata.name.clone())
+            .unwrap_or_else(|| "unknown".to_string()),
         path: path.clone(),
         complexity_score,
         resource_requirements,
@@ -486,9 +488,11 @@ fn estimate_execution_time(test_config: &clnrm_core::config::TestConfig) -> u64 
     }
 
     // Timeout from configuration
-    if let Some(timeout) = &test_config.test.metadata.timeout {
-        if let Ok(parsed_timeout) = parse_duration(timeout) {
-            estimated_time = estimated_time.max(parsed_timeout.as_secs());
+    if let Some(test_section) = &test_config.test {
+        if let Some(timeout) = &test_section.metadata.timeout {
+            if let Ok(parsed_timeout) = parse_duration(timeout) {
+                estimated_time = estimated_time.max(parsed_timeout.as_secs());
+            }
         }
     }
 

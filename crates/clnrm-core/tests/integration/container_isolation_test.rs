@@ -20,7 +20,7 @@ fn get_test_backend() -> Box<dyn Backend> {
 }
 
 /// Test core container isolation functionality (fast version)
-fn test_container_isolation_core(backend: &dyn Backend, test_name: &str) -> Result<()> {
+fn test_container_isolation_core(backend: &dyn Backend, _test_name: &str) -> Result<()> {
     // Test 1: Commands execute inside containers
     let cmd = Cmd::new("uname").arg("-s");
     let result = backend.run_cmd(cmd)?;

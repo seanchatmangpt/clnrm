@@ -177,7 +177,7 @@ fn init_otel_for_self_test(exporter: &str, endpoint: Option<&str>) -> Result<Ote
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_self_tests_succeeds() -> Result<()> {
         // Arrange - Test with no specific suite and no report
         let suite = None;
@@ -197,7 +197,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_self_tests_with_invalid_suite_fails() -> Result<()> {
         // Arrange - Test with invalid suite name
         let suite = Some("invalid_suite".to_string());
@@ -217,7 +217,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_self_tests_with_valid_suite_succeeds() -> Result<()> {
         // Arrange - Test with valid suite name
         let suite = Some("framework".to_string());
@@ -237,7 +237,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[cfg(feature = "otel-stdout")]
     async fn test_run_self_tests_with_stdout_otel() -> Result<()> {
         // Arrange - Test with OTEL stdout export
@@ -258,7 +258,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_self_tests_with_invalid_otel_exporter() -> Result<()> {
         // Arrange - Test with invalid OTEL exporter
         let suite = None;
@@ -287,7 +287,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_self_tests_otlp_http_without_endpoint() -> Result<()> {
         // Arrange - Test with otlp-http but no endpoint
         let suite = None;
@@ -313,7 +313,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_run_self_tests_all_valid_suites() -> Result<()> {
         // Test all valid suite names
         let valid_suites = vec!["framework", "container", "plugin", "cli", "otel"];

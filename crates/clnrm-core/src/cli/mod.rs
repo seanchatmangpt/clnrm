@@ -10,6 +10,7 @@
 pub mod commands;
 pub mod types;
 pub mod utils;
+pub mod telemetry;
 
 use crate::error::Result;
 use clap::Parser;
@@ -381,51 +382,6 @@ pub async fn run_cli() -> Result<()> {
     }
 
     Ok(())
-}
-
-// Command implementations (stubs for missing commands)
-#[allow(dead_code)]
-async fn run_command(
-    _paths: &[std::path::PathBuf],
-    _config: crate::cli::types::CliConfig,
-    _report_junit: Option<&str>,
-) -> Result<()> {
-    unimplemented!("run command: needs proper implementation")
-}
-
-#[allow(dead_code)]
-async fn report_command(_format: String, _output: Option<std::path::PathBuf>) -> Result<()> {
-    unimplemented!("report command: needs proper implementation")
-}
-
-#[allow(dead_code)]
-async fn init_command(_path: Option<std::path::PathBuf>) -> Result<()> {
-    unimplemented!("init command: needs proper implementation")
-}
-
-#[allow(dead_code)]
-async fn list_command(_format: String) -> Result<()> {
-    unimplemented!("list command: needs proper implementation")
-}
-
-#[allow(dead_code)]
-async fn validate_command(_paths: &[std::path::PathBuf]) -> Result<()> {
-    unimplemented!("validate command: needs proper implementation")
-}
-
-#[allow(dead_code)]
-async fn health_command(_verbose: bool) -> Result<()> {
-    unimplemented!("health command: needs proper implementation")
-}
-
-#[allow(dead_code)]
-async fn version_command() -> Result<()> {
-    unimplemented!("version command: needs proper implementation")
-}
-
-#[allow(dead_code)]
-async fn completion_command(_shell: String) -> Result<()> {
-    unimplemented!("completion command: needs proper implementation")
 }
 
 // Re-export all public types and functions for backward compatibility

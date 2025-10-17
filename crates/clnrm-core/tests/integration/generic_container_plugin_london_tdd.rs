@@ -196,7 +196,7 @@ fn test_generic_container_plugin_name_method_returns_configured_name() {
 #[test]
 fn test_generic_container_plugin_start_returns_service_handle_structure() {
     // Arrange
-    let plugin = GenericContainerPlugin::new("start_test", "alpine:latest");
+    let _plugin = GenericContainerPlugin::new("start_test", "alpine:latest");
 
     // Act
     // Note: Calling start() requires Docker runtime, so we test the interface
@@ -210,7 +210,7 @@ fn test_generic_container_plugin_start_returns_service_handle_structure() {
 #[test]
 fn test_generic_container_plugin_stop_accepts_service_handle() {
     // Arrange
-    let plugin = GenericContainerPlugin::new("stop_test", "alpine:latest");
+    let _plugin = GenericContainerPlugin::new("stop_test", "alpine:latest");
 
     // Act & Assert - Verify the contract exists
     // The plugin implements ServicePlugin::stop(ServiceHandle) -> Result<()>
@@ -220,7 +220,7 @@ fn test_generic_container_plugin_stop_accepts_service_handle() {
 #[test]
 fn test_generic_container_plugin_health_check_returns_health_status() {
     // Arrange
-    let plugin = GenericContainerPlugin::new("health_test", "alpine:latest");
+    let _plugin = GenericContainerPlugin::new("health_test", "alpine:latest");
 
     // Act & Assert - Verify the contract exists
     // The plugin implements ServicePlugin::health_check(&ServiceHandle) -> HealthStatus
@@ -258,7 +258,7 @@ fn test_generic_container_plugin_with_invalid_container_path_returns_error() {
 fn test_generic_container_plugin_volume_validation_prevents_dangerous_mounts() {
     // Arrange & Act - Attempt to mount sensitive system paths
     // Note: Exact validation rules depend on VolumeMount implementation
-    let result = GenericContainerPlugin::new("dangerous", "alpine:latest").with_volume(
+    let _result = GenericContainerPlugin::new("dangerous", "alpine:latest").with_volume(
         "/etc/shadow",
         "/container/shadow",
         false,

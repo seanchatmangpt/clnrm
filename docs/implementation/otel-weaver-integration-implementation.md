@@ -492,3 +492,4 @@ mod integration_tests {
 This optional, plugin-based implementation provides a clean path for integrating OTEL Weaver's powerful schema validation and code generation capabilities into Cleanroom while maintaining full backward compatibility and following the framework's core principles of reliability and extensibility.
 
 The implementation follows the 80/20 principle by focusing on the most valuable Weaver features (registry validation and code generation) while keeping the integration lightweight and optional.
+

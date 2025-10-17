@@ -33,7 +33,7 @@ async fn main() -> Result<(), CleanroomError> {
         sample_ratio: 1.0,
         export: Export::Stdout,
         enable_fmt_layer: false, // Disable to avoid test output pollution
-        headers: std::collections::HashMap::new(),
+        headers: Some(std::collections::HashMap::new()),
     };
 
     let _guard = init_otel(config)?;

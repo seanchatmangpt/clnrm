@@ -331,10 +331,52 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_generate_report() -> Result<()> {
-        // Act
-        let result = generate_report(None, None, "html").await;
+        // Arrange - Create temp directory with mock test results
+        let temp_dir = TempDir::new().map_err(|e| {
+            CleanroomError::internal_error("Failed to create temp dir").with_source(e.to_string())
+        })?;
+        let input_file = temp_dir.path().join("test_results.json");
+
+        // Create mock test results
+        let mock_results = FrameworkTestResults {
+            total_tests: 3,
+            passed_tests: 2,
+            failed_tests: 1,
+            total_duration_ms: 1500,
+            test_results: vec![
+                TestResult {
+                    name: "Test 1".to_string(),
+                    passed: true,
+                    duration_ms: 500,
+                    error: None,
+                },
+                TestResult {
+                    name: "Test 2".to_string(),
+                    passed: true,
+                    duration_ms: 600,
+                    error: None,
+                },
+                TestResult {
+                    name: "Test 3".to_string(),
+                    passed: false,
+                    duration_ms: 400,
+                    error: Some("Mock error".to_string()),
+                },
+            ],
+        };
+
+        // Write mock results to file
+        fs::write(
+            &input_file,
+            serde_json::to_string_pretty(&mock_results).unwrap(),
+        ).map_err(|e| {
+            CleanroomError::internal_error("Failed to write mock data").with_source(e.to_string())
+        })?;
+
+        // Act - Generate report from mock data
+        let result = generate_report(Some(&input_file), None, "html").await;
 
         // Assert
         assert!(result.is_ok());
@@ -342,7 +384,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     #[ignore = "Incomplete test data or implementation"]
     async fn test_generate_report_with_input() -> Result<()> {
         // Arrange
@@ -361,14 +403,44 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_generate_report_different_formats() -> Result<()> {
+        // Arrange - Create temp directory with mock test results
+        let temp_dir = TempDir::new().map_err(|e| {
+            CleanroomError::internal_error("Failed to create temp dir").with_source(e.to_string())
+        })?;
+        let input_file = temp_dir.path().join("test_results.json");
+
+        // Create minimal mock test results
+        let mock_results = FrameworkTestResults {
+            total_tests: 1,
+            passed_tests: 1,
+            failed_tests: 0,
+            total_duration_ms: 100,
+            test_results: vec![
+                TestResult {
+                    name: "Mock Test".to_string(),
+                    passed: true,
+                    duration_ms: 100,
+                    error: None,
+                },
+            ],
+        };
+
+        // Write mock results to file
+        fs::write(
+            &input_file,
+            serde_json::to_string_pretty(&mock_results).unwrap(),
+        ).map_err(|e| {
+            CleanroomError::internal_error("Failed to write mock data").with_source(e.to_string())
+        })?;
+
         // Test different report formats
         let formats = vec!["html", "markdown", "json"];
 
         for format in formats {
-            // Act
-            let result = generate_report(None, None, format).await;
+            // Act - Use mock data instead of running actual tests
+            let result = generate_report(Some(&input_file), None, format).await;
 
             // Assert
             assert!(result.is_ok(), "Format '{}' should be handled", format);

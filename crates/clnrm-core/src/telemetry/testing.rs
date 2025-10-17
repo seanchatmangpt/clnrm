@@ -200,8 +200,10 @@ impl MockOtlpCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_tracer_provider_creation() -> crate::error::Result<()> {
         let provider = TestTracerProvider::new();
         let tracer = provider.tracer();
@@ -225,6 +227,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_span_helper_functions() -> crate::error::Result<()> {
         let provider = TestTracerProvider::new();
         let tracer = provider.tracer();

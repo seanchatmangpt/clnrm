@@ -453,7 +453,7 @@ pub async fn ai_manage(
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_show_service_status() -> Result<()> {
         // Act
         let result = show_service_status().await;
@@ -464,7 +464,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_show_service_logs() -> Result<()> {
         // Act
         let result = show_service_logs("test_service", 10).await;
@@ -475,7 +475,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_show_service_logs_with_different_line_counts() -> Result<()> {
         // Test different line count values
         let line_counts = vec![1, 10, 50, 100];
@@ -491,7 +491,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_show_service_logs_empty_service_name() -> Result<()> {
         // Act
         let result = show_service_logs("", 10).await;
@@ -502,7 +502,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restart_service() -> Result<()> {
         // Act
         let result = restart_service("test_service").await;
@@ -513,7 +513,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restart_service_empty_name() -> Result<()> {
         // Act
         let result = restart_service("").await;
@@ -524,7 +524,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restart_service_nonexistent_service() -> Result<()> {
         // Act
         let result = restart_service("nonexistent_service").await;
@@ -535,7 +535,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_service_functions_with_special_characters() -> Result<()> {
         // Test service names with special characters
         let service_names = vec![
@@ -567,7 +567,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_service_functions_with_unicode() -> Result<()> {
         // Test service names with unicode characters
         let service_names = vec![
@@ -598,7 +598,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_show_service_status_creates_environment() -> Result<()> {
         // Act
         let result = show_service_status().await;
@@ -610,7 +610,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_show_service_logs_creates_environment() -> Result<()> {
         // Act
         let result = show_service_logs("test", 10).await;
@@ -622,7 +622,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_restart_service_creates_environment() -> Result<()> {
         // Act
         let result = restart_service("test").await;

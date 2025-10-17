@@ -324,7 +324,7 @@ mod tests {
     use super::*;
     use crate::marketplace::metadata::standard_capabilities;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_security_validation() -> Result<()> {
         let validator = SecurityValidator::new();
 
@@ -343,7 +343,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_security_score() -> Result<()> {
         let validator = SecurityValidator::new();
 
@@ -357,7 +357,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_malicious_pattern_detection() -> Result<()> {
         let validator = SecurityValidator::new();
 

@@ -244,8 +244,10 @@ pub fn init_stdout() -> Result<TelemetryHandle> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_telemetry_handle_disabled() {
         let handle = TelemetryHandle::disabled();
         assert!(!handle.is_enabled());
@@ -253,7 +255,9 @@ mod tests {
         assert_eq!(handle.service_version(), "1.0.0");
     }
 
+    #[cfg(feature = "otel-traces")]
     #[test]
+    #[serial]
     fn test_telemetry_builder_disabled() {
         let config = TelemetryConfig {
             enabled: false,
@@ -263,13 +267,17 @@ mod tests {
         assert!(!handle.is_enabled());
     }
 
+    #[cfg(feature = "otel-traces")]
     #[test]
+    #[serial]
     fn test_init_default() {
         let handle = init_default().unwrap();
         assert!(!handle.is_enabled());
     }
 
+    #[cfg(feature = "otel-traces")]
     #[test]
+    #[serial]
     fn test_init_stdout() {
         let handle = init_stdout().unwrap();
         assert!(handle.is_enabled());

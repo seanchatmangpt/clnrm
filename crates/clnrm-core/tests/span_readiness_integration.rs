@@ -3,10 +3,7 @@
 //! These tests validate that services can wait for specific OTEL spans
 //! before being marked as ready, enabling precise synchronization.
 
-use clnrm_core::{
-    services::readiness::{SpanReadinessConfig, SpanSource},
-    CleanroomError,
-};
+use clnrm_core::services::readiness::{SpanReadinessConfig, SpanSource};
 
 #[tokio::test]
 async fn test_span_readiness_with_stdout_immediate() {

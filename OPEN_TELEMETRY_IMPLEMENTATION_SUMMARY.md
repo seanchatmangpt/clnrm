@@ -167,3 +167,4 @@ pub async fn run_tests() -> Result<TestResults> {
 - **❌ Real Validation**: Validation system uses stubs instead of real telemetry data
 
 The OpenTelemetry foundation is solid and complete, but the integration work is the critical missing piece that will enable the full observability capabilities.
+

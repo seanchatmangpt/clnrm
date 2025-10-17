@@ -214,8 +214,11 @@ async fn analyze_test_file(path: &PathBuf) -> Result<TestFileAnalysis> {
 
     Ok(TestFileAnalysis {
         path: path.clone(),
-        name: test_config.test.metadata.name.clone(),
-        description: test_config.test.metadata.description.clone(),
+        name: test_config.test.as_ref()
+            .map(|t| t.metadata.name.clone())
+            .unwrap_or_else(|| "unknown".to_string()),
+        description: test_config.test.as_ref()
+            .and_then(|t| t.metadata.description.clone()),
         complexity_score,
         resource_requirements,
         execution_time_estimate,
@@ -313,9 +316,11 @@ fn estimate_execution_time(test_config: &clnrm_core::config::TestConfig) -> u64 
     }
 
     // Timeout from configuration
-    if let Some(timeout) = &test_config.test.metadata.timeout {
-        if let Ok(parsed_timeout) = parse_duration(timeout) {
-            estimated_time = estimated_time.max(parsed_timeout.as_secs());
+    if let Some(test_section) = &test_config.test {
+        if let Some(timeout) = &test_section.metadata.timeout {
+            if let Ok(parsed_timeout) = parse_duration(timeout) {
+                estimated_time = estimated_time.max(parsed_timeout.as_secs());
+            }
         }
     }
 

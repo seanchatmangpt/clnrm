@@ -36,7 +36,7 @@ use tokio::sync::RwLock;
 macro_rules! cleanroom_test {
     ($(#[$meta:meta])* $vis:vis async fn $name:ident() $body:block) => {
         $(#[$meta])*
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         $vis async fn $name() -> Result<(), $crate::error::CleanroomError> {
             // Initialize cleanroom environment
             let env = $crate::cleanroom::CleanroomEnvironment::new().await
@@ -476,7 +476,7 @@ pub async fn with_web_server(image: &str) -> Result<()> {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_service_setup_creation() -> Result<()> {
         let env = CleanroomEnvironment::new().await?;
         let setup = ServiceSetup::new(Arc::new(env));
@@ -486,7 +486,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_jane_friendly_functions() {
         // Test the Jane-friendly API functions
         assert!(with_database("postgres:15").await.is_ok());

@@ -86,6 +86,9 @@ tempfile = { workspace = true }
 # Async testing
 tokio = { workspace = true }
 
+# Serial testing for global state
+serial_test = "3.2"
+
 [[bench]]
 name = "hot_reload_critical_path"
 harness = false

@@ -4,7 +4,7 @@
 //! using its own features to validate its own implementation claims.
 //! This is the ultimate "eat your own dog food" demonstration.
 
-use clnrm_core::{CleanroomEnvironment, CleanroomError, Result};
+use clnrm_core::{CleanroomEnvironment, Result};
 use std::time::Instant;
 
 /// Innovative framework self-testing that uses the framework to test itself

@@ -916,7 +916,7 @@ impl ServicePlugin for MockDatabasePlugin {
 mod tests {
     use super::*;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_cleanroom_creation() {
         let result = CleanroomEnvironment::new().await;
         assert!(result.is_ok()); // Should succeed with default implementation
@@ -941,14 +941,14 @@ mod tests {
         tracing::info!("ServicePlugin trait is dyn compatible");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_cleanroom_session_id() -> Result<()> {
         let env = CleanroomEnvironment::new().await?;
         assert!(!env.session_id().is_nil());
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_cleanroom_execute_test() -> Result<()> {
         let env = CleanroomEnvironment::new().await?;
         let result = env
@@ -958,7 +958,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_service_registry() -> Result<()> {
         let env = CleanroomEnvironment::new().await?;
         let services = env.services().await;
@@ -966,7 +966,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_service_plugin_registration() -> Result<()> {
         let env = CleanroomEnvironment::new().await?;
         let plugin = Box::new(MockDatabasePlugin::new());
@@ -974,7 +974,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_service_start_stop() -> Result<()> {
         let env = CleanroomEnvironment::new().await?;
         let plugin = Box::new(MockDatabasePlugin::new());
@@ -987,7 +987,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_register_container() -> Result<()> {
         // Arrange
         let env = CleanroomEnvironment::new().await?;
@@ -1003,7 +1003,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_get_or_create_container() -> Result<()> {
         let env = CleanroomEnvironment::new().await?;
 
@@ -1037,7 +1037,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_check_health_delegates_to_service_registry() -> Result<()> {
         let env = CleanroomEnvironment::new().await?;
         let health_status = env.check_health().await;

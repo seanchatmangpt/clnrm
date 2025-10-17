@@ -67,7 +67,7 @@ async fn main() -> Result<(), CleanroomError> {
     // Reuse the same container 4 more times
     for i in 1..=4 {
         let _container = env
-            .get_or_create_container(&reused_container_name, || {
+            .get_or_create_container(reused_container_name, || {
                 // This factory should NOT be called due to reuse
                 println!(
                     "   ⚠️  Factory called on reuse {} - container not being reused!",
