@@ -92,8 +92,8 @@ fn format_and_write(files: &[PathBuf], verify: bool) -> Result<()> {
                 tracing::debug!("File already formatted: {}", file.display());
             }
             Err(e) => {
+                println!("  ❌ {}: {}", file.display(), e);
                 errors.push((file.clone(), e));
-                println!("  ❌ {}: {}", file.display(), errors.last().unwrap().1);
             }
         }
     }
@@ -125,13 +125,12 @@ fn format_single_file(file: &Path, verify: bool) -> Result<bool> {
     let formatted = format_toml_file(file)?;
 
     // Verify idempotency if requested
-    if verify
-        && !verify_idempotency(&formatted)? {
-            return Err(CleanroomError::validation_error(format!(
-                "Formatting is not idempotent for file: {}",
-                file.display()
-            )));
-        }
+    if verify && !verify_idempotency(&formatted)? {
+        return Err(CleanroomError::validation_error(format!(
+            "Formatting is not idempotent for file: {}",
+            file.display()
+        )));
+    }
 
     // Write the formatted content
     std::fs::write(file, formatted).map_err(|e| {
@@ -198,8 +197,8 @@ exporter="stdout"
         // Assert
         assert!(was_modified);
 
-        let formatted_content = fs::read_to_string(&test_file)
-            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let formatted_content =
+            fs::read_to_string(&test_file).map_err(|e| CleanroomError::io_error(e.to_string()))?;
 
         // Should have proper spacing
         assert!(formatted_content.contains(" = "));

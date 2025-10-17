@@ -386,6 +386,7 @@ impl SpanValidator {
 
                 // Check if any span has the expected attribute
                 let has_attribute = spans.iter().any(|span| {
+                    // SAFE: unwrap_or with safe default (false) - missing attribute means no match
                     span.attributes
                         .get(attribute_key)
                         .and_then(|v| v.as_str())
@@ -448,6 +449,7 @@ impl SpanValidator {
                 }
 
                 // Check if any span has the expected kind
+                // SAFE: unwrap_or with safe default (false) - missing kind means no match
                 let has_kind = spans
                     .iter()
                     .any(|span| span.kind.map(|k| k == *kind).unwrap_or(false));
@@ -473,6 +475,7 @@ impl SpanValidator {
                 // Check if any span has ALL the expected attributes
                 let has_all_attributes = spans.iter().any(|span| {
                     attributes.iter().all(|(key, expected_value)| {
+                        // SAFE: unwrap_or with safe default (false) - missing attribute means no match
                         span.attributes
                             .get(key)
                             .and_then(|v| v.as_str())
@@ -486,6 +489,7 @@ impl SpanValidator {
                         .iter()
                         .filter(|(key, expected_value)| {
                             !spans.iter().any(|span| {
+                                // SAFE: unwrap_or with safe default (false) - missing attribute means no match
                                 span.attributes
                                     .get(*key)
                                     .and_then(|v| v.as_str())
@@ -521,6 +525,7 @@ impl SpanValidator {
                 let has_any_match = spans.iter().any(|span| {
                     attribute_patterns.iter().any(|pattern| {
                         if let Some((key, value)) = pattern.split_once('=') {
+                            // SAFE: unwrap_or with safe default (false) - missing attribute means no match
                             span.attributes
                                 .get(key)
                                 .and_then(|v| v.as_str())

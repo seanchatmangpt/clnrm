@@ -373,12 +373,16 @@ pub enum Commands {
         /// Test files to validate
         paths: Vec<PathBuf>,
 
-        /// Verify that tests fail first (red)
-        #[arg(long)]
+        /// Expected TDD state: red (should fail) or green (should pass)
+        #[arg(long, value_name = "STATE")]
+        expect: Option<TddState>,
+
+        /// Verify that tests fail first (red) - deprecated, use --expect red
+        #[arg(long, conflicts_with = "expect")]
         verify_red: bool,
 
-        /// Verify that tests pass after fix (green)
-        #[arg(long)]
+        /// Verify that tests pass after fix (green) - deprecated, use --expect green
+        #[arg(long, conflicts_with = "expect")]
         verify_green: bool,
     },
 
@@ -585,6 +589,14 @@ pub enum GraphFormat {
     Json,
     /// Mermaid diagram format
     Mermaid,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, ValueEnum)]
+pub enum TddState {
+    /// Red state - tests should fail (feature not implemented)
+    Red,
+    /// Green state - tests should pass (feature implemented)
+    Green,
 }
 
 /// CLI configuration

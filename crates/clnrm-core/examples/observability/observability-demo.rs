@@ -5,7 +5,7 @@
 //!
 //! Users can copy this code to verify observability features work.
 
-use clnrm_core::{cleanroom_test, CleanroomEnvironment, Result};
+use clnrm_core::{CleanroomEnvironment, Result};
 use std::time::{Duration, Instant};
 
 /// Test that demonstrates automatic tracing and metrics collection

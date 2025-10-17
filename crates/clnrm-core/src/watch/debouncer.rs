@@ -137,10 +137,7 @@ impl FileDebouncer {
     /// Clears event count and last event timestamp.
     /// Call this after processing debounced events.
     pub fn reset(&mut self) {
-        debug!(
-            "Debouncer: Reset (processed {} event(s))",
-            self.event_count
-        );
+        debug!("Debouncer: Reset (processed {} event(s))", self.event_count);
         self.last_event = None;
         self.event_count = 0;
     }
@@ -156,7 +153,8 @@ impl FileDebouncer {
     ///
     /// Returns None if no events have been recorded.
     pub fn time_since_last_event(&self) -> Option<Duration> {
-        self.last_event.map(|last| Instant::now().duration_since(last))
+        self.last_event
+            .map(|last| Instant::now().duration_since(last))
     }
 }
 

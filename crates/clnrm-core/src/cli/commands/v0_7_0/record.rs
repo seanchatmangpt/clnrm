@@ -11,10 +11,10 @@
 //! - `redgreen` command (compare two runs)
 //! - Baseline versioning and metadata
 
-use crate::cli::commands::run::{run_tests_sequential_with_results};
+use crate::cli::commands::run::run_tests_sequential_with_results;
 use crate::cli::types::{CliConfig, OutputFormat};
-use crate::error::{CleanroomError, Result};
 use crate::cli::utils::discover_test_files;
+use crate::error::{CleanroomError, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::{info, warn};
@@ -91,12 +91,15 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
 
     if all_test_files.is_empty() {
         return Err(CleanroomError::validation_error(
-            "No test files found to record as baseline"
+            "No test files found to record as baseline",
         ));
     }
 
     info!("Found {} test file(s) to record", all_test_files.len());
-    println!("📹 Recording baseline from {} test file(s)...", all_test_files.len());
+    println!(
+        "📹 Recording baseline from {} test file(s)...",
+        all_test_files.len()
+    );
 
     // Act - Run tests and collect results
     let config = CliConfig {
@@ -176,7 +179,10 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
     println!("   Digest: {}", digest_path.display());
     println!("   SHA-256: {}", digest);
 
-    info!("Baseline recording completed: {} tests recorded", baseline.test_results.len());
+    info!(
+        "Baseline recording completed: {} tests recorded",
+        baseline.test_results.len()
+    );
 
     if failed > 0 {
         warn!("Baseline contains {} failed test(s)", failed);
@@ -199,7 +205,7 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
 /// # Errors
 /// * Returns error if serialization fails
 fn compute_sha256(data: &serde_json::Value) -> Result<String> {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
 
     let json_bytes = serde_json::to_vec(data).map_err(|e| {
         CleanroomError::internal_error(format!("Failed to serialize data for hashing: {}", e))
@@ -309,21 +315,18 @@ mod tests {
         let baseline = BaselineRecord {
             timestamp: "2025-10-16T12:00:00Z".to_string(),
             version: "0.7.0".to_string(),
-            test_results: vec![
-                BaselineTestResult {
-                    name: "test1".to_string(),
-                    passed: true,
-                    duration_ms: 100,
-                    file_path: "test1.toml".to_string(),
-                },
-            ],
+            test_results: vec![BaselineTestResult {
+                name: "test1".to_string(),
+                passed: true,
+                duration_ms: 100,
+                file_path: "test1.toml".to_string(),
+            }],
             digest: "abc123".to_string(),
         };
 
         // Act
-        let json = serde_json::to_string(&baseline).map_err(|e| {
-            CleanroomError::internal_error(format!("Serialization failed: {}", e))
-        })?;
+        let json = serde_json::to_string(&baseline)
+            .map_err(|e| CleanroomError::internal_error(format!("Serialization failed: {}", e)))?;
 
         // Assert
         assert!(json.contains("test1"));

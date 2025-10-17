@@ -4,9 +4,9 @@
 //! including capability discovery, validation, and feature detection.
 
 use crate::error::Result;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use serde::{Deserialize, Serialize};
 
 /// Backend capability registry
 pub struct BackendCapabilityRegistry {
@@ -428,7 +428,7 @@ impl CapabilityDiscoveryService {
                 for capability in capabilities {
                     if let Err(e) = self.registry.register_capability(capability) {
                         // Log error but continue with other capabilities
-                        eprintln!("Failed to register capability: {}", e);
+                        tracing::error!(error = %e, "Failed to register capability");
                     }
                 }
             }

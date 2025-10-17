@@ -6,11 +6,10 @@
 
 use clnrm_core::{CleanroomEnvironment, CleanroomError, Result};
 use std::time::Instant;
-use tracing::{debug, info};
 
 /// Innovative framework self-testing that uses the framework to test itself
 #[tokio::main]
-async fn main() -> Result<(), CleanroomError> {
+async fn main() -> Result<()> {
     println!("🚀 Innovative Framework Self-Testing: Eating Our Own Dog Food");
     println!("============================================================");
     println!();
@@ -189,6 +188,7 @@ async fn main() -> Result<(), CleanroomError> {
 
 /// Framework self-test plugin that implements ServicePlugin trait
 /// This demonstrates the framework using its own plugin system to test itself
+#[derive(Debug)]
 struct FrameworkSelfTestPlugin {
     name: String,
 }
@@ -206,38 +206,34 @@ impl clnrm_core::ServicePlugin for FrameworkSelfTestPlugin {
         &self.name
     }
 
-    fn start(
-        &self,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = Result<clnrm_core::ServiceHandle, CleanroomError>>
-                + Send
-                + '_,
-        >,
-    > {
-        Box::pin(async move {
-            // Simulate startup time without blocking the runtime
-            tokio::task::yield_now().await;
-            Ok(clnrm_core::ServiceHandle {
-                id: format!("framework_test_{}", uuid::Uuid::new_v4()),
-                service_name: "framework_self_test".to_string(),
-                metadata: std::collections::HashMap::from([
-                    ("test_type".to_string(), "framework_self_test".to_string()),
-                    ("status".to_string(), "running".to_string()),
-                    ("innovation".to_string(), "eating_own_dog_food".to_string()),
-                ]),
+    fn start(&self) -> Result<clnrm_core::ServiceHandle> {
+        // Use tokio::task::block_in_place to run async code in sync context
+        tokio::task::block_in_place(|| {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async {
+                // Simulate startup time without blocking the runtime
+                tokio::task::yield_now().await;
+                Ok(clnrm_core::ServiceHandle {
+                    id: format!("framework_test_{}", uuid::Uuid::new_v4()),
+                    service_name: "framework_self_test".to_string(),
+                    metadata: std::collections::HashMap::from([
+                        ("test_type".to_string(), "framework_self_test".to_string()),
+                        ("status".to_string(), "running".to_string()),
+                        ("innovation".to_string(), "eating_own_dog_food".to_string()),
+                    ]),
+                })
             })
         })
     }
 
-    fn stop(
-        &self,
-        _handle: clnrm_core::ServiceHandle,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CleanroomError>> + Send + '_>>
-    {
-        Box::pin(async move {
-            tokio::task::yield_now().await;
-            Ok(())
+    fn stop(&self, _handle: clnrm_core::ServiceHandle) -> Result<()> {
+        // Use tokio::task::block_in_place to run async code in sync context
+        tokio::task::block_in_place(|| {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async {
+                tokio::task::yield_now().await;
+                Ok(())
+            })
         })
     }
 

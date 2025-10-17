@@ -1,0 +1,17 @@
+[test.metadata]
+name = "api_integration_test"
+description = "Integration test for api in staging environment"
+
+[service.api]
+plugin = "generic_container"
+image = "api:latest"
+
+[[scenario]]
+name = "check_health"
+service = "api"
+run = "curl localhost:8080/health"
+expect_success = true
+
+[[expect.span]]
+name = "api.request"
+attrs.all = { "env" = "staging", "service" = "api" }

@@ -71,8 +71,9 @@ command = ["echo", "Hello from hot reload test"]
     let rendered = template_content.to_string();
 
     // Step 3: TOML parsing (CRITICAL - measured here)
-    let _test_config: TestConfig = toml::from_str(&rendered)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(format!("TOML parse: {}", e)))?;
+    let _test_config: TestConfig = toml::from_str(&rendered).map_err(|e| {
+        clnrm_core::error::CleanroomError::config_error(format!("TOML parse: {}", e))
+    })?;
 
     // Step 4: Test execution would happen here
     // For benchmark purposes, we simulate with minimal overhead
@@ -173,9 +174,8 @@ fn bench_hot_reload_complete_path(c: &mut Criterion) {
     group.sample_size(50); // Enough for p95/p99 confidence
 
     group.bench_function("complete_hot_reload", |b| {
-        b.to_async(&runtime).iter(|| async {
-            simulate_hot_reload_path().await.unwrap()
-        });
+        b.to_async(&runtime)
+            .iter(|| async { simulate_hot_reload_path().await.unwrap() });
     });
 
     group.finish();
@@ -192,11 +192,7 @@ fn bench_hot_reload_scalability(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("hot_reload_scalability");
 
-    for (name, services, scenarios) in &[
-        ("simple", 1, 1),
-        ("medium", 3, 5),
-        ("complex", 5, 10),
-    ] {
+    for (name, services, scenarios) in &[("simple", 1, 1), ("medium", 3, 5), ("complex", 5, 10)] {
         let template = generate_template(*services, *scenarios);
 
         group.bench_with_input(

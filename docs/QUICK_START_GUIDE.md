@@ -1,6 +1,6 @@
-# Quick Start Guide - Autonomic Testing in 5 Minutes
+# Quick Start Guide - Cleanroom v0.7.0 in 5 Minutes
 
-Get your autonomic testing platform running in under 5 minutes!
+Get your hermetic integration testing platform running in under 5 minutes with v0.7.0's developer experience features!
 
 ---
 
@@ -9,9 +9,9 @@ Get your autonomic testing platform running in under 5 minutes!
 Before starting, ensure you have:
 
 - [ ] **Rust** installed (`rustc --version`)
-- [ ] **Docker** running (`docker ps`)
-- [ ] **8+ GB RAM** available
-- [ ] **5+ GB disk space** free
+- [ ] **Docker/Podman** running (`docker ps` or `podman ps`)
+- [ ] **4+ GB RAM** available
+- [ ] **2+ GB disk space** free
 
 ---
 
@@ -23,127 +23,187 @@ cargo install clnrm
 
 # Verify installation
 clnrm --version
-# Expected: clnrm 0.4.0
+# Expected: clnrm 0.7.0
 ```
 
 ---
 
-## Step 2: Install Ollama (2 minutes)
-
-### macOS / Linux
+## Step 2: Initialize Your Test Project (30 seconds)
 
 ```bash
-# Install Ollama
-curl -fsSL https://ollama.ai/install.sh | sh
+# Zero-configuration project setup
+clnrm init my-tests
+cd my-tests
 
-# Start Ollama service (runs in background)
-ollama serve &
-
-# Pull recommended model
-ollama pull qwen2.5-coder:7b
-
-# Verify
-ollama list
-curl http://localhost:11434/api/version
+# Generated: tests/basic.clnrm.toml, README.md, scenarios/
 ```
 
-### Windows
+### Verify Project Structure
+```bash
+# List generated files
+ls -la
 
-```powershell
-# Download and install from https://ollama.ai/download
-# Or use winget
-winget install Ollama.Ollama
-
-# Start Ollama
-ollama serve
-
-# Pull model
-ollama pull qwen2.5-coder:7b
+# Check the generated test file
+cat tests/basic.clnrm.toml
 ```
 
 ---
 
-## Step 3: Create Your First Test (1 minute)
+## Step 3: Run Your First Test (30 seconds)
 
-Create `cleanroom.toml`:
+```bash
+# Run the generated test (auto-discovery)
+clnrm run
+
+# Real container execution with output validation
+# ✅ Container commands execute
+# ✅ Regex patterns validate output
+# ✅ Test results are accurate
+```
+
+### Alternative: Generate Custom Templates
+
+```bash
+# Generate OTEL validation template
+clnrm template otel > tests/otel-test.clnrm.toml
+
+# Generate matrix testing template
+clnrm template matrix > tests/matrix-test.clnrm.toml
+
+# Generate macro library
+clnrm template macros > macros.tera
+```
+
+The generated template uses v0.7.0+'s no-prefix variables and looks like:
 
 ```toml
-[framework]
-name = "my-first-test"
-version = "1.0.0"
+[meta]
+name = "{{ svc }}_hello_world"
+version = "0.7.0"
+description = "Basic hello world test"
 
-[ai]
-enabled = true
-provider = "ollama"
-model = "qwen2.5-coder:7b"
+[vars]  # Authoring-only; runtime ignores this table
+svc = "{{ svc }}"
+env = "{{ env }}"
+endpoint = "{{ endpoint }}"
 
-[[scenarios]]
-name = "basic_test"
-description = "My first autonomic test"
+[otel]
+exporter = "{{ exporter }}"
+endpoint = "{{ endpoint }}"
+protocol = "http/protobuf"
+sample_ratio = 1.0
+resources = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
 
-[[scenarios.steps]]
-name = "step_1"
-type = "shell"
-command = "echo 'Hello, Autonomic World!'"
-expected_stdout = "Hello, Autonomic World!"
+[service.clnrm]
+plugin = "generic_container"
+image = "{{ image }}"
+args = ["echo", "Hello from Cleanroom v0.7.0!"]
+env = { "OTEL_TRACES_EXPORTER" = "{{ exporter }}", "OTEL_EXPORTER_OTLP_ENDPOINT" = "{{ endpoint }}" }
+wait_for_span = "clnrm.run"
+
+[[scenario]]
+name = "hello_world"
+service = "clnrm"
+run = "echo 'Hello from Cleanroom v0.7.0!'"
+artifacts.collect = ["spans:default"]
+
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+
+[expect.status]
+all = "OK"
+
+[determinism]
+seed = 42
+freeze_clock = "{{ freeze_clock }}"
+
+[report]
+json = "report.json"
+digest = "trace.sha256"
 ```
 
 ---
 
-## Step 4: Run AI-Powered Test Orchestration (30 seconds)
+## Step 4: Development Workflow (1 minute)
+
+### Hot Reload Development
 
 ```bash
-# Run with AI orchestration and failure prediction
-clnrm ai-orchestrate --predict-failures --auto-optimize
+# Start development mode with hot reload
+clnrm dev --watch
 
-# Expected output:
-# 🤖 Starting AI-powered test orchestration
-# 🔮 Predictive failure analysis: enabled
-# ⚡ Autonomous optimization: enabled
-# ✅ All tests passed!
-# 📊 Performance Score: 1.0/1.0
+# Edit tests files and see results instantly
+# Changes detected and tests rerun in <3s
+```
+
+### Validate Without Running
+
+```bash
+# Fast validation without containers
+clnrm dry-run tests/
+
+# Check formatting
+clnrm fmt --check tests/
+
+# Lint for issues
+clnrm lint tests/
+```
+
+### Advanced Features
+
+```bash
+# Parallel execution with workers
+clnrm run tests/ --workers 4
+
+# Generate comprehensive reports
+clnrm report tests/ --format html > report.html
+
+# Framework self-testing
+clnrm self-test
 ```
 
 ---
 
-## Step 5: Explore AI Features (1 minute)
+## Step 5: You're Done!
 
-### Get Predictive Analytics
+### Hot Reload Development
 
 ```bash
-# Analyze test patterns and predict failures
-clnrm ai-predict --analyze-history --recommendations
+# Start development mode with hot reload
+clnrm dev --watch
 
-# Output includes:
-# - Historical analysis
-# - Failure predictions
-# - Optimization recommendations
-# - Trend analysis
+# Edit test files and see results instantly
+# Changes detected and tests rerun in <3s
 ```
 
-### Generate Optimization Report
+### Validate Without Running
 
 ```bash
-# Get AI-driven optimization strategies
-clnrm ai-optimize --execution-order --resource-allocation
+# Fast validation without containers
+clnrm dry-run tests/
 
-# Output includes:
-# - Execution order optimization (37% improvement)
-# - Resource allocation strategies
-# - Parallel execution plan
-# - Implementation roadmap
+# Check formatting
+clnrm fmt --check tests/
+
+# Lint for issues
+clnrm lint tests/
 ```
 
 ---
 
 ## 🎉 You're Done!
 
-You now have a fully functional autonomic testing platform with:
+You now have a fully functional Cleanroom v0.7.0+ testing platform with:
 
-- ✅ **AI-powered test orchestration**
-- ✅ **Predictive failure analysis**
-- ✅ **Autonomous optimization**
-- ✅ **Real-time performance insights**
+- ✅ **No-prefix variables** - Clean `{{ svc }}`, `{{ endpoint }}` syntax
+- ✅ **Rust variable resolution** - Template vars → ENV → defaults
+- ✅ **Tera templating** - Advanced templates with custom functions and macros
+- ✅ **Hot reload development** - <3s edit→rerun latency with `dev --watch`
+- ✅ **Change-aware execution** - Only rerun changed scenarios (10x faster iteration)
+- ✅ **Multi-format reports** - JSON, JUnit XML, SHA-256 digests
+- ✅ **Advanced validation** - Temporal, structural, cardinality, hermeticity validation
 
 ---
 
@@ -151,154 +211,175 @@ You now have a fully functional autonomic testing platform with:
 
 ### Immediate Actions
 
-1. **Add more tests** to your `cleanroom.toml`
-2. **Run benchmark** to establish baseline: `clnrm ai-orchestrate --benchmark`
-3. **Enable monitoring** (see full deployment guide)
+1. **Add more tests** using `clnrm template otel`
+2. **Set up development workflow** with `clnrm dev --watch`
+3. **Validate configurations** with `clnrm dry-run`
 
 ### Within 24 Hours
 
-1. **Configure services** (SurrealDB for advanced features)
-2. **Tune performance** settings
-3. **Set up CI/CD integration**
+1. **Pull container images** with `clnrm pull`
+2. **Set up CI/CD integration** with `--json` and `--junit` flags
+3. **Configure OTEL collector** with `clnrm up collector`
 
 ### Within 1 Week
 
-1. **Deploy to production**
-2. **Train team** on autonomic features
-3. **Establish metrics** and alerting
+1. **Deploy to production** with proper OTEL configuration
+2. **Train team** on no-prefix variable syntax
+3. **Establish observability** and alerting
 
 ---
 
 ## Common Quick Fixes
 
-### Ollama Not Responding
+### Docker/Podman Issues
 
 ```bash
-# Check if running
-ps aux | grep ollama
+# Check if Docker is running
+docker ps
 
-# Restart service
-killall ollama
-ollama serve &
+# Or check Podman
+podman ps
 
-# Test connection
-curl http://localhost:11434/api/version
+# Pull required images
+clnrm pull
+
+# Start with specific runtime
+clnrm run --runtime docker
 ```
 
-### Model Not Found
+### Template Variable Issues
 
 ```bash
-# List available models
-ollama list
+# Debug variable resolution
+clnrm render --map tests/my-test.clnrm.toml
 
-# Pull missing model
-ollama pull qwen2.5-coder:7b
+# Check environment variables
+env | grep OTEL
 
-# Set in environment
-export OLLAMA_MODEL=qwen2.5-coder:7b
+# Validate template syntax
+clnrm dry-run tests/my-test.clnrm.toml
 ```
 
-### Memory Issues
+### Performance Issues
 
 ```bash
-# Use smaller model
-ollama pull phi-3:mini
-export OLLAMA_MODEL=phi-3:mini
+# Use fewer workers
+clnrm run --workers 2
 
-# Reduce workers
-export CLNRM_PARALLEL_WORKERS=2
+# Check available resources
+docker system df
 
-# Run with limits
-clnrm ai-orchestrate --max-workers 2
+# Enable change-aware execution
+clnrm run  # (enabled by default)
 ```
 
 ---
 
 ## Examples to Try
 
-### Example 1: Database Testing
+### Example 1: Custom Service Testing
 
-```toml
-[[scenarios]]
-name = "database_test"
-description = "Test with PostgreSQL"
-
-[[scenarios.services]]
-type = "postgres"
-version = "16"
-port = 5432
-
-[[scenarios.steps]]
-name = "create_table"
-type = "shell"
-command = "psql -h localhost -U test -c 'CREATE TABLE users (id SERIAL PRIMARY KEY);'"
-```
-
-Run with AI:
+Generate a template for your own service:
 
 ```bash
-clnrm ai-orchestrate --predict-failures
+# Generate template for your service
+clnrm template otel --svc myapp --image myapp:latest > tests/myapp.clnrm.toml
+
+# Edit the generated template
+vim tests/myapp.clnrm.toml
+
+# Run the test
+clnrm run tests/myapp.clnrm.toml
 ```
 
-### Example 2: API Testing
+### Example 2: Multi-Service Testing
 
 ```toml
-[[scenarios]]
-name = "api_test"
-description = "Test REST API"
+# tests/multi-service.clnrm.toml
+[meta]
+name = "{{ svc }}_multi_service_test"
+version = "0.7.0"
 
-[[scenarios.services]]
-type = "redis"
-version = "7"
-port = 6379
+[service.api]
+plugin = "generic_container"
+image = "myapi:latest"
+wait_for_span = "api.ready"
 
-[[scenarios.steps]]
-name = "api_health_check"
-type = "shell"
-command = "curl -f http://localhost:8080/health"
-expected_exit_code = 0
+[service.database]
+plugin = "generic_container"
+image = "postgres:16"
+args = ["postgres", "-c", "log_statement=all"]
+wait_for_span = "postgres.ready"
+env = { "POSTGRES_DB" = "testdb" }
+
+[[scenario]]
+name = "integration_test"
+service = "api"
+run = "curl -f http://api:8080/health"
+artifacts.collect = ["spans:default"]
+
+[[expect.span]]
+name = "api.request"
+kind = "server"
+
+[[expect.span]]
+name = "postgres.query"
+kind = "client"
 ```
 
-Run with optimization:
+### Example 3: Development Workflow
 
 ```bash
-clnrm ai-optimize --auto-apply
+# Start hot reload development
+clnrm dev --watch
+
+# Edit your test files
+# Changes are detected and tests rerun automatically
+
+# Validate without running containers
+clnrm dry-run tests/
+
+# Check formatting
+clnrm fmt --check tests/
 ```
 
 ---
 
 ## Get Help
 
-- **Documentation**: Full deployment guide in `docs/AUTONOMIC_SYSTEM_DEPLOYMENT.md`
-- **Examples**: Check `examples/` directory
+- **Documentation**: Complete v0.7.0+ guides in `docs/`
+- **Examples**: Check `examples/` directory for real-world usage
 - **Issues**: https://github.com/seanchatmangpt/clnrm/issues
-- **Community**: Join Discord for real-time help
+- **Migration Guide**: `docs/MIGRATION_v0.7.0.md` for v0.6.0 → v0.7.0
 
 ---
 
 ## Quick Reference Commands
 
 ```bash
-# AI Commands
-clnrm ai-orchestrate       # Intelligent test orchestration
-clnrm ai-predict           # Predictive failure analysis
-clnrm ai-optimize          # AI-driven optimization
+# Template Generation
+clnrm template otel        # Generate OTEL validation template
 
-# Core Commands
-clnrm validate            # Validate configuration
-clnrm run                 # Run tests manually
-clnrm watch              # Watch mode with auto-reload
+# Development Workflow
+clnrm dev --watch         # Hot reload development mode
+clnrm dry-run             # Fast validation without containers
+clnrm fmt                 # Format TOML files
+
+# Test Execution
+clnrm run                 # Run tests (change-aware by default)
+clnrm run --workers 4     # Parallel execution
+clnrm run --json          # JSON output
 
 # Utilities
 clnrm --help             # Show all commands
-clnrm diagnostics        # Generate diagnostic report
+clnrm --version          # Show version information
 ```
 
 ---
 
-**Ready for more?** Check out the full **[Deployment Guide](./AUTONOMIC_SYSTEM_DEPLOYMENT.md)** for production setup, performance tuning, and advanced features.
+**Ready for more?** Check out the complete **[v0.7.0+ Documentation](docs/)** for CLI reference, TOML configuration, and template guides.
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-10-16
+**Version**: 0.7.0+
+**Last Updated**: 2025-10-17

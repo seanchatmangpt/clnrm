@@ -317,7 +317,12 @@ impl TestcontainerBackend {
             .read_to_string(&mut stderr)
             .map_err(|e| BackendError::Runtime(format!("Failed to read stderr: {}", e)))?;
 
-        let exit_code = exec_result.exit_code().unwrap_or(Some(-1)).unwrap_or(-1) as i32;
+        // Extract exit code with proper error handling
+        // testcontainers may return None if exit code is unavailable
+        let exit_code = exec_result
+            .exit_code()
+            .map_err(|e| BackendError::Runtime(format!("Failed to get exit code: {}", e)))?
+            .unwrap_or(-1) as i32;
 
         Ok(RunResult {
             exit_code,

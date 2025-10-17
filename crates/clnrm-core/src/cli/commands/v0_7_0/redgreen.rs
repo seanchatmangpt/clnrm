@@ -3,7 +3,6 @@
 //! Implements PRD v1.0 `clnrm redgreen` command for TDD validation.
 
 use crate::error::{CleanroomError, Result};
-use std::path::Path;
 
 /// Run red/green TDD workflow validation
 ///

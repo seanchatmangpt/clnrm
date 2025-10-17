@@ -55,7 +55,7 @@
 //!
 //! // Validate policy configuration
 //! if let Err(e) = policy.validate() {
-//!     eprintln!("Policy validation failed: {}", e);
+//!     tracing::error!(error = %e, "Policy validation failed");
 //!     // Handle validation errors
 //! }
 //! ```

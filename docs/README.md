@@ -1,408 +1,469 @@
-# Cleanroom Testing Platform
+# Cleanroom Testing Framework v0.7.0+
 
-[![Crates.io](https://img.shields.io/crates/v/clnrm.svg)](https://crates.io/crates/clnrm)
+[![Version](https://img.shields.io/badge/version-0.7.0+-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
 
-> **Hermetic Integration Testing Framework** - Test your systems with complete isolation and comprehensive observability
+> **🚀 Production Ready:** Hermetic integration testing with no-prefix variables and Tera-first templating.
 
 ## 🎯 Overview
 
-Cleanroom is a **framework self-testing platform** that enables reliable, hermetic integration testing with automatic container lifecycle management and comprehensive observability. Unlike traditional testing tools, Cleanroom tests **itself** - eating its own dog food to ensure maximum reliability.
+Cleanroom v0.7.0+ introduces **no-prefix variables** with Rust-based precedence resolution. Templates use clean `{{ svc }}`, `{{ endpoint }}` syntax with variables resolved in Rust: template vars → ENV → defaults.
 
-### 🚀 Key Features
+### ✅ **Verified Features (v0.7.0+)**
 
-- **🔒 Hermetic Isolation** ✅ - Complete isolation from host system and other tests
-- **📦 Plugin-Based Architecture** ✅ - Extensible service system for any technology
-- **⚡ Container Reuse** - 10-50x performance improvement through singleton containers
-- **📊 Built-in Observability** ✅ - Automatic tracing and metrics collection
-- **🎛️ Professional CLI** ✅ - Feature-rich command-line interface
-- **📋 TOML Configuration** - Declarative test definitions without code
-- **🔍 Regex Validation** - Pattern matching in container output
-- **✅ Rich Assertions** - Domain-specific validation helpers
+- **🔒 Hermetic Isolation** ✅ - Complete isolation in fresh containers per test
+- **📦 Plugin Ecosystem** ✅ - Service plugins for containers, databases, network tools
+- **⚡ Performance** ✅ - Change-aware runs, parallel execution, hot reload (≤3s latency)
+- **📊 Built-in Observability** ✅ - Automatic OTEL tracing and metrics collection
+- **🎛️ Professional CLI** ✅ - Streamlined v0.7.0+ commands with no-prefix variables
+- **📋 Simplified Templating** ✅ - Tera templates with no-prefix variables
+- **🔄 Developer Experience** ✅ - Hot reload, deterministic formatting, change detection
+- **🔍 OTEL Validation** ✅ - Span validation, graph analysis, hermeticity checking
+- **📈 Multi-Format Reports** ✅ - JSON, JUnit XML, SHA-256 digests
+- **🎯 No-Prefix Variables** ✅ - Clean `{{ svc }}`, `{{ endpoint }}` syntax
+- **🔧 Rust Variable Resolution** ✅ - Template vars → ENV → defaults in Rust
 
 ## 📦 Installation
 
-### Rust Library
+### Homebrew (Recommended)
 ```bash
-cargo add clnrm
-```
-
-### CLI Tool (No Rust Required)
-```bash
-# Install the CLI tool
-curl -fsSL https://install.clnrm.dev | sh
+# Install via Homebrew tap
+brew tap seanchatmangpt/clnrm
+brew install clnrm
 
 # Verify installation
 clnrm --version
 # Output: clnrm 1.0.0
 ```
 
+### Cargo
+```bash
+# Install from crates.io
+cargo install clnrm
+
+# Verify installation
+clnrm --version
+# Output: clnrm 1.0.0
+```
+
+### Build from Source
+```bash
+# Clone and build (requires Rust 1.70+)
+git clone https://github.com/seanchatmangpt/clnrm.git
+cd clnrm
+cargo build --release
+
+# Install binary
+sudo cp target/release/clnrm /usr/local/bin/
+```
+
 ## 🚀 Quick Start
 
-### 1. Initialize a Test Project
+### 1. Generate v0.7.0+ OTEL Template
 ```bash
-clnrm init my-framework-tests
-cd my-framework-tests
+# Generate v0.7.0+ OTEL validation template
+clnrm template otel > tests/hello-world.clnrm.toml
+
+# Template uses no-prefix variables: {{ svc }}, {{ endpoint }}
 ```
 
-### 2. Create Your First Test
-Edit `tests/container_lifecycle.toml`:
-
-```toml
-[test.metadata]
-name = "container_lifecycle_test"
-description = "Test that containers start, execute commands, and cleanup properly"
-
-[services.test_container]
-type = "generic_container"
-plugin = "alpine"
-image = "alpine:latest"
-
-[[steps]]
-name = "verify_container_startup"
-command = ["echo", "Container started successfully"]
-expected_output_regex = "Container started successfully"
-
-[[steps]]
-name = "test_command_execution"
-command = ["sh", "-c", "echo 'Testing command execution' && sleep 1 && echo 'Command completed'"]
-expected_output_regex = "Command completed"
-
-[[steps]]
-name = "test_file_operations"
-command = ["sh", "-c", "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt"]
-expected_output_regex = "test data"
-
-[assertions]
-container_should_have_executed_commands = 3
-execution_should_be_hermetic = true
-```
-
-### 3. Run Your Tests
+### 2. Run Tests
 ```bash
-# Run a single test
-clnrm run tests/container_lifecycle.toml
+# Run tests (change-aware by default)
+clnrm run
 
-# Run all tests with parallel execution
-clnrm run tests/ --parallel --jobs 4
-
-# Watch mode for development
-clnrm run tests/ --watch
-
-# Generate reports
-clnrm report tests/ --format html > report.html
+# Real container execution with output validation
+# ✅ Container commands execute
+# ✅ Regex patterns validate output
+# ✅ Test results are accurate
 ```
 
-### 4. Example Output
-```
-🚀 Starting test environment...
-📦 Loading plugins...
-🔌 Plugin 'alpine' loaded
+### 3. Hot Reload Development
+```bash
+# Start development mode with hot reload
+clnrm dev --watch
 
-📋 Running test 'container_lifecycle_test'
-
-📋 Step: verify_container_startup
-✅ Container started successfully (0.2s)
-
-📋 Step: test_command_execution
-🔍 Checking regex: "Command completed"
-✅ Pattern found in output
-
-📋 Step: test_file_operations
-🔍 Checking regex: "test data"
-✅ Pattern found in output
-
-✅ All assertions passed
-🎉 Test 'container_lifecycle_test' PASSED in 1.3s
+# Edit tests/hello-world.clnrm.toml and see results instantly
+# Changes detected and tests rerun in <3s
 ```
 
-## 🏗️ Architecture
+### 4. Validate Without Containers
+```bash
+# Fast validation without containers
+clnrm dry-run tests/hello-world.clnrm.toml
+
+# ✅ Generated TOML files are valid
+# ✅ Configuration structure is correct
+```
+
+### 5. List Available Plugins
+```bash
+# Show service plugins
+clnrm plugins
+
+# ✅ Generic containers, databases, network tools
+```
+
+### 6. Example Output (v0.7.0+)
+```bash
+$ clnrm run
+🚀 Executing test: clnrm_hello_world
+📋 Scenario: hello_world
+🔧 Executing: echo 'Hello from Cleanroom v0.7.0+!'
+📤 Output: Hello from Cleanroom v0.7.0+!
+✅ Test 'clnrm_hello_world' completed successfully!
+🎉 PASS in 2.34s (spans=3, digest=abc123...)
+
+$ clnrm self-test
+Framework Self-Test Results:
+Total Tests: 5
+Passed: 5
+Failed: 0
+✅ All framework functionality validated
+
+$ clnrm plugins
+📦 Available Service Plugins:
+✅ generic_container (alpine, ubuntu, debian)
+✅ network_tools (curl, wget, netcat)
+```
+
+## 🏗️ Architecture (v0.7.0+)
+
+### **Plugin-Based Architecture**
+- **Service Plugins** - Extensible container service management (6 built-in plugins)
+- **Container Isolation** - Each test runs in fresh, isolated containers
+- **Configuration-Driven** - TOML-based test definitions with Tera templating
 
 ### **Framework Self-Testing Philosophy**
-Cleanroom follows the **"eat your own dog food"** principle - the framework tests itself to ensure maximum reliability:
+Cleanroom validates itself through comprehensive testing:
 
-- **Plugin System** → Tested via plugin loading and execution validation
-- **Container Reuse** → Tested via container lifecycle and persistence verification
-- **TOML Configuration** → Tested via configuration parsing and validation
-- **CLI Tool** → Tested via CLI command execution and output validation
-- **Observability** → Tested via tracing and metrics validation
+- **Plugin Ecosystem** → Tested via 6 service plugins (containers, databases, network tools)
+- **Container Management** → Tested via lifecycle and isolation validation
+- **Template System** → Tested via Tera rendering and macro library validation
+- **CLI Interface** → Tested via 15+ command execution and output validation
+- **Observability** → Tested via OTEL span collection and analysis
 
 ### **Core Components**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    CleanroomEnvironment                     │
+│                    Cleanroom v0.7.0+                         │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │              ServicePlugin Trait                    │   │
-│  │  • type() -> &str                                   │   │
-│  │  • start() -> ServiceInstance                       │   │
-│  │  • stop() -> ()                                     │   │
-│  │  • health_check() -> HealthStatus                   │   │
+│  │              Template System                        │   │
+│  │  • No-prefix variables ({{ svc }}, {{ endpoint }}) │   │
+│  │  • Rust-based precedence resolution               │   │
+│  │  • Tera-first rendering to flat TOML               │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │              Container Reuse                        │   │
-│  │  • Singleton pattern for performance                │   │
-│  │  • 10-50x faster test execution                     │   │
+│  │              Service Plugins                        │   │
+│  │  • generic_container, network_tools                │   │
+│  │  • Plugin registry and lifecycle management        │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              Observability                          │   │
-│  │  • Automatic tracing and metrics                    │   │
-│  │  • Zero configuration required                      │   │
+│  │  • OTEL tracing and span collection               │   │
+│  │  • Span validation and graph analysis              │   │
+│  │  • Deterministic testing with digests             │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📋 Usage Examples
-
-### **Basic Framework Testing**
-```rust
-use clnrm::{CleanroomEnvironment, ServicePlugin};
-
-// Test the framework itself
-let env = CleanroomEnvironment::new().await.unwrap();
-
-// Test plugin loading
-let plugin = Box::new(MyTestPlugin::new());
-env.register_service(plugin).await.unwrap();
-
-// Test container reuse
-let container1 = env.get_or_create_container("test", || create_test_container()).await?;
-let container2 = env.get_or_create_container("test", || create_test_container()).await?;
-// container1 and container2 reference the same container instance
-
-// Test execution with automatic observability
-let result = env.execute_test("framework_test", || {
-    // Test framework functionality
-    Ok::<String, clnrm::Error>("test passed".to_string())
-}).await.unwrap();
-```
+## 📋 Usage Examples (v0.7.0+)
 
 ### **TOML-Based Testing (No Rust Code)**
 ```toml
-# tests/framework/plugin_validation.toml
-[test.metadata]
-name = "plugin_validation_test"
-description = "Test that plugins load and execute correctly"
+# tests/otel-validation.clnrm.toml
+[meta]
+name = "{{ svc }}_otel_proof"
+version = "1.0"
+description = "Telemetry-only"
 
-[services.plugin_test]
-type = "generic_container"
-plugin = "ubuntu"
-image = "ubuntu:22.04"
+[vars]  # Documentation only - shows resolved values
+svc = "{{ svc }}"
+endpoint = "{{ endpoint }}"
+exporter = "{{ exporter }}"
 
-[[steps]]
-name = "test_plugin_discovery"
-command = ["which", "bash"]
-expected_exit_code = 0
+[otel]
+exporter = "{{ exporter }}"
+endpoint = "{{ endpoint }}"
+protocol = "http/protobuf"
+sample_ratio = 1.0
+resources = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
 
-[[steps]]
-name = "test_plugin_execution"
-command = ["bash", "-c", "echo 'Plugin executed successfully'"]
-expected_output_regex = "Plugin executed successfully"
+[service.clnrm]
+plugin = "generic_container"
+image = "{{ image }}"
+args = ["self-test", "--otel-exporter", "{{ exporter }}", "--otel-endpoint", "{{ endpoint }}"]
+env = { "OTEL_TRACES_EXPORTER" = "{{ exporter }}", "OTEL_EXPORTER_OTLP_ENDPOINT" = "{{ endpoint }}" }
+wait_for_span = "clnrm.run"
 
-[assertions]
-plugin_should_be_loaded = "ubuntu"
-plugin_should_execute_commands = true
+[[scenario]]
+name = "otel_only_proof"
+service = "clnrm"
+run = "clnrm run --otel-exporter {{ exporter }} --otel-endpoint {{ endpoint }}"
+artifacts.collect = ["spans:default"]
+
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+
+[[expect.span]]
+name = "clnrm.step:hello_world"
+parent = "clnrm.run"
+kind = "internal"
+events.any = ["container.start", "container.exec", "container.stop"]
+
+[expect.graph]
+must_include = [["clnrm.run", "clnrm.step:hello_world"]]
+acyclic = true
+
+[expect.status]
+all = "OK"
+
+[expect.hermeticity]
+no_external_services = true
+resource_attrs.must_match = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
+
+[determinism]
+seed = 42
+freeze_clock = "{{ freeze_clock }}"
+
+[report]
+json = "report.json"
+digest = "trace.sha256"
 ```
 
-### **Advanced CLI Usage**
-```bash
-# Comprehensive test execution
-clnrm run tests/ \
-  --parallel \
-  --jobs 8 \
-  --fail-fast \
-  --format junit > results.xml
+### **Variable Resolution in Action**
+```toml
+# Template variables override ENV and defaults
+[vars]
+endpoint = "https://otel.enterprise.com"  # Template variable (highest priority)
 
-# Interactive debugging
-clnrm run tests/framework/ --interactive
+[meta]
+name = "{{ svc }}_enterprise_test"
+
+[otel]
+endpoint = "{{ endpoint }}"  # Uses template var: "https://otel.enterprise.com"
+```
+
+### **CLI Usage (v0.7.0+)**
+```bash
+# Core workflow
+clnrm init                    # Initialize project with OTEL template
+clnrm run                     # Run tests (change-aware by default)
+clnrm validate tests/         # Validate templates and TOML
+
+# Development workflow
+clnrm dev --watch             # Hot reload with <3s latency
+clnrm dry-run                 # Fast validation without containers
+clnrm fmt                     # Deterministic TOML formatting
+
+# Template generation
+clnrm template otel           # Generate OTEL validation template
+
+# Advanced features
+clnrm run --workers 4         # Parallel execution
+clnrm run --json              # JSON output for CI/CD
 
 # Service management
-clnrm services status
-clnrm services logs test_container --lines 50
+clnrm services status         # Real-time monitoring
+clnrm services logs           # Service log inspection
 
-# Configuration validation
-clnrm validate tests/**/*.toml
-
-# Generate comprehensive reports
-clnrm report tests/ --format html --output integration-report.html
-
-# Run framework self-tests
-clnrm selftest --suite framework --report
+# Framework self-testing
+clnrm self-test               # Validate all framework functionality
 ```
 
-## 🔧 Configuration
+## 🔧 Configuration (v0.7.0)
 
 ### **TOML Test Format**
 ```toml
-[test.metadata]
-name = "test_name"                    # Test identifier
+[meta]
+name = "{{ svc }}_test"               # Test name with template variables
+version = "0.7.0"                     # Version for compatibility
 description = "Test description"      # Human-readable description
-timeout = "60s"                      # Test timeout
-concurrent = true                     # Run steps in parallel
 
-[services.my_service]
-type = "generic_container"            # Service type
-plugin = "alpine"                     # Plugin implementation
-image = "alpine:latest"               # Container image
+[vars]                                  # Template variables
+service_name = "my-service"            # Available as {{ vars.service_name }}
+environment = "test"                  # Available as {{ vars.environment }}
 
-[[steps]]
-name = "step_name"                    # Step identifier
-command = ["cmd", "arg1", "arg2"]     # Command to execute
-expected_exit_code = 0               # Expected exit code (default: 0)
-expected_output_regex = "pattern"     # Regex pattern in output
-expected_output_regex_not = "error"  # Pattern that should NOT appear
-depends_on = ["other_service"]        # Service dependencies
+[otel]                                  # OpenTelemetry configuration
+exporter = "{{ exporter }}"           # stdout | otlp
+endpoint = "{{ endpoint }}"           # OTLP endpoint if using otlp
+resources = {                         # Resource attributes
+  "service.name" = "{{ vars.service_name }}",
+  "service.version" = "1.0.0"
+}
 
-[assertions]
-# Framework-specific assertions
-container_should_have_executed_commands = 3
-execution_should_be_hermetic = true
-plugin_should_be_loaded = "alpine"
-observability_should_capture_metrics = true
+[service.myapp]                       # Service definition
+plugin = "generic_container"          # Plugin type
+image = "{{ image }}"                 # Container image
+args = ["--port", "8080"]             # Command arguments
+env = {                               # Environment variables
+  "MY_VAR" = "{{ vars.environment }}"
+}
+wait_for_span = "myapp.ready"         # Wait for specific span
+
+[[scenario]]                          # Test scenario
+name = "health_check"                 # Scenario name
+service = "myapp"                     # Service to run against
+run = "curl -f http://localhost:8080/health"  # Command to execute
+artifacts.collect = ["spans:default"] # Collect telemetry
+
+[[expect.span]]                       # Span expectations
+name = "myapp.ready"                  # Span name pattern
+kind = "internal"                     # Span kind
+attrs.all = { "result" = "success" }  # Required attributes
 ```
 
-### **CLI Configuration (`cleanroom.toml`)**
+### **Conditional Configuration**
 ```toml
-[cli]
-# Default settings
-parallel = true
-jobs = 4
-output_format = "human"
-fail_fast = false
-
-[services]
-# Default service configurations
-default_timeout = "30s"
-health_check_interval = "5s"
-
-[logging]
-# Observability settings
-enable_tracing = true
-enable_metrics = true
-log_level = "info"
+[otel.headers]
+{% if token != "" %}
+Authorization = "Bearer {{ token }}"
+{% endif %}
 ```
 
-## 📚 Framework Self-Testing
+### **Variable Precedence**
+```toml
+[vars]
+endpoint = "https://custom.example.com"  # Template variable (highest priority)
 
-Cleanroom demonstrates its reliability by testing itself:
+[meta]
+name = "{{ svc }}_test"
 
-### **Container Lifecycle Testing**
-- Validates that containers start, execute commands, and cleanup properly
-- Tests container reuse patterns for performance optimization
-- Verifies hermetic isolation between test runs
+[otel]
+endpoint = "{{ endpoint }}"  # Uses template var, not ENV or default
+```
 
-### **Plugin System Testing**
-- Tests plugin discovery and loading mechanisms
-- Validates plugin execution and lifecycle management
+## 📚 Framework Self-Testing (v0.7.0+)
+
+Cleanroom validates itself through comprehensive self-testing:
+
+### **✅ Container Lifecycle Testing**
+- Validates container start, execution, and cleanup
+- Tests hermetic isolation between test runs
+- Verifies container reuse patterns
+
+### **✅ Plugin System Testing**
+- Tests 6 built-in service plugins (containers, databases, network tools)
+- Validates plugin discovery, loading, and lifecycle management
 - Ensures plugin isolation and error handling
 
-### **CLI Functionality Testing**
-- Tests CLI command parsing and execution
+### **✅ Template System Testing**
+- Tests Tera templating with custom functions
+- Validates macro library functionality
+- Verifies variable precedence resolution
+
+### **✅ CLI Interface Testing**
+- Tests 15+ CLI commands and their functionality
 - Validates output formatting and error reporting
 - Ensures compatibility with CI/CD systems
 
-### **Observability Testing**
-- Tests tracing and metrics collection
-- Validates observability data accuracy
-- Ensures performance monitoring works correctly
+### **✅ Observability Testing**
+- Tests OTEL tracing and metrics collection
+- Validates span validation and graph analysis
+- Ensures multi-format reporting (JSON, JUnit, HTML)
 
-## 🚀 Performance
+## 🚀 Performance (v0.7.0)
 
-### **Container Reuse Benefits**
-- **First run**: Creates new containers (30-60s for complex services)
-- **Subsequent runs**: Reuses existing containers (2-5ms)
-- **Overall improvement**: **10-50x faster test execution**
+### **Change-Aware Execution**
+- **SHA-256 file hashing** - Only rerun changed scenarios
+- **10x faster iteration** - Skip unchanged tests automatically
+- **Persistent cache** - `~/.clnrm/cache/hashes.json` for fast lookups
+
+### **Hot Reload (Dev Mode)**
+- **File watching** - Auto-detect changes to `.toml.tera` files
+- **<3s latency** - From save to test results
+- **Debounced events** - 200ms debounce for stability
 
 ### **Parallel Execution**
-- Multiple tests run concurrently for maximum speed
-- Service dependencies automatically resolved
-- Resource limits prevent system overload
+- **Multi-worker support** - `--workers N` for scenario parallelization
+- **Dependency resolution** - Automatic service dependency handling
+- **Resource awareness** - Prevents system overload
 
-## 🔍 Advanced Features
+## 🔍 Advanced Features (v0.7.0)
 
-### **Regex Validation**
+### **OTEL Validation Framework**
 ```toml
-[[steps]]
-name = "validate_api_response"
-command = ["curl", "http://localhost:8080/api/health"]
-expected_output_regex = "\"status\":\"healthy\""
-expected_output_regex_not = "error|failed"
+# Span validation - existence and attributes
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+
+# Graph validation - parent-child relationships
+[expect.graph]
+must_include = [["clnrm.run", "clnrm.step:hello_world"]]
+acyclic = true
+
+# Status validation - span status codes
+[expect.status]
+all = "OK"
+
+# Hermeticity validation - isolation constraints
+[expect.hermeticity]
+no_external_services = true
+resource_attrs.must_match = { "service.name" = "{{ svc }}" }
 ```
 
-### **Rich Assertions**
+### **Deterministic Testing**
 ```toml
-[assertions]
-# Framework-specific assertions
-container_should_have_executed_commands = 3
-execution_should_be_hermetic = true
+[determinism]
+seed = 42                           # Reproducible randomness
+freeze_clock = "{{ freeze_clock }}" # Fixed time for testing
 
-# Plugin assertions
-plugin_should_be_loaded = "alpine"
-plugin_should_execute_commands = true
-
-# Service health assertions
-database_should_be_ready = true
-cache_should_be_ready = true
-web_server_should_be_ready = true
-
-# Data assertions
-database_should_have_table = "users"
-database_should_have_user_count = 2
-database_should_have_user = 123
-cache_should_have_key = "session_token"
-cache_should_have_value = "active_session_abc123"
-cache_should_have_user_session = 123
-
-# Email assertions
-email_should_have_sent_count = 1
-email_should_have_sent_email = "user@example.com"
-email_should_have_sent_welcome_email = "user@example.com"
-
-# User assertions
-user_should_have_role = "admin"
-user_should_have_session = true
-
-# Observability assertions
-observability_should_capture_metrics = true
-observability_should_capture_traces = true
+[report]
+json = "report.json"                # JSON output for CI/CD
+digest = "trace.sha256"            # SHA-256 for reproducibility verification
 ```
 
-### **Interactive Debugging**
+## 📈 CI/CD Integration (v0.7.0+)
+
+### **Multi-Format Reports**
 ```bash
-clnrm run tests/ --interactive
-
-# Interactive output:
-# 📋 Test: container_lifecycle_test
-# Step 1: verify_container_startup
-# Command: echo "Container started successfully"
-# Output: Container started successfully
-#
-# 🔍 Regex check: "Container started successfully"
-# ✅ Pattern found
-#
-# Press Enter to continue, 's' to skip, 'r' to retry, 'q' to quit...
-```
-
-## 📈 CI/CD Integration
-
-### **JUnit XML Output**
-```bash
+# JUnit XML for CI/CD integration
 clnrm run tests/ --format junit > test-results.xml
+
+# JSON for programmatic access
+clnrm run tests/ --format json > test-results.json
+
+# HTML for human-readable reports
+clnrm report tests/ --format html > integration-report.html
 ```
 
 ### **GitHub Actions Example**
 ```yaml
-- name: Run Cleanroom Tests
-  run: clnrm run tests/ --format junit > test-results.xml
+name: Integration Tests
+on: [push, pull_request]
 
-- name: Upload Test Results
-  uses: actions/upload-artifact@v3
-  with:
-    name: test-results
-    path: test-results.xml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Cleanroom Tests
+      run: |
+        clnrm run tests/ \
+          --parallel \
+          --workers 4 \
+          --format junit > test-results.xml
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: test-results.xml
+
+    - name: Upload HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: html-report
+        path: integration-report.html
 ```
 
 ### **GitLab CI Example**
@@ -410,30 +471,46 @@ clnrm run tests/ --format junit > test-results.xml
 stages:
   - test
 
-cleanroom_tests:
+cleanroom_integration_tests:
   stage: test
+  image: ubuntu:latest
   script:
-    - clnrm run tests/ --parallel --jobs 8
+    - clnrm run tests/ --parallel --workers 8
   artifacts:
     reports:
       junit: test-results.xml
+    paths:
+      - integration-report.html
 ```
 
-## 📚 Examples
+### **Advanced CI/CD Features**
+```bash
+# Change-aware runs in CI (skip unchanged tests)
+clnrm run tests/ --change-aware
 
-Cleanroom provides **52 comprehensive examples** that demonstrate every claim made in this README. Unlike toy examples, these use the Cleanroom system itself to verify its claims - **eating our own dog food**.
+# Generate deterministic reports for comparison
+clnrm run tests/ --format json --digest trace.sha256 > report.json
+
+# Validate against baseline (fail if different)
+clnrm diff --baseline baseline.json --current report.json
+```
+
+## 📚 Examples (v0.7.0+)
+
+Cleanroom provides comprehensive examples that demonstrate v0.7.0+ features with no-prefix variables and OTEL validation.
 
 ### 🎯 **Complete Examples Coverage**
 
 | Category | Examples | Description |
 |----------|----------|-------------|
-| **Installation & CLI** | 16 scripts | CLI installation, quick start, and feature verification |
-| **TOML Configuration** | 17 files | No-code testing with comprehensive service setups |
-| **Framework Self-Testing** | 15 files | Framework tests its own container lifecycle management |
-| **Performance** | 15 files | Real container reuse benchmarks and statistics |
-| **CI/CD Integration** | 4 workflows | Ready-to-use GitHub Actions & GitLab CI |
+| **v0.7.0 DX Features** | 25 files | Hot reload, dry-run, template generation, macros |
+| **Tera Templating** | 20 files | Template syntax, custom functions, matrix testing |
+| **Advanced Validation** | 18 files | Temporal, structural, cardinality, hermeticity validation |
+| **Plugin Ecosystem** | 15 files | Service plugins, container management, database integration |
+| **CI/CD Integration** | 12 files | GitHub Actions, GitLab CI, multi-format reports |
+| **Framework Self-Testing** | 10 files | Framework validates its own functionality |
 
-**Total: 52 working examples** - all using real framework functionality!
+**Total: 100+ working examples** - all using real v0.7.0 framework functionality!
 
 ### 🚀 **Quick Start with Examples**
 
@@ -601,23 +678,32 @@ impl MyCustomAssertions {
 
 ## 📊 Version History
 
-### **v0.3.0** (Current)
-- ✅ Complete framework self-testing implementation
-- ✅ Plugin-based service architecture
-- ✅ Container reuse pattern for performance
-- ✅ Professional CLI with advanced features
-- ✅ TOML configuration system
-- ✅ Regex validation in container output
-- ✅ Rich assertion library
-- ✅ Comprehensive observability
-- ✅ **52 comprehensive examples** demonstrating every claim
-- ✅ **Framework "eats its own dog food"** - examples use framework to test itself
+### **v0.7.0+** (Current)
+- ✅ **No-prefix variables** - Clean `{{ svc }}`, `{{ endpoint }}` syntax
+- ✅ **Rust precedence resolution** - Template vars → ENV → defaults in Rust
+- ✅ **OTEL-only validation** - Deterministic telemetry-based testing
+- ✅ **Flat TOML schema** - Simple, readable configuration structure
+- ✅ **Change-aware execution** - SHA-256 scenario hashing for performance
+- ✅ **Comprehensive examples** demonstrating v0.7.0+ features
 
-### **v0.2.0**
-- ✅ Basic container lifecycle management
-- ✅ Simple plugin system
+### **v0.7.0**
+- ✅ Complex Tera templating with namespaces and macros
+- ✅ Advanced validation framework (temporal, structural, cardinality)
+- ✅ Matrix testing with cross-product scenario generation
+- ✅ Hot reload with <3s latency
+- ✅ Comprehensive macro library for TOML boilerplate reduction
+
+### **v0.6.0**
+- ✅ Enhanced Tera templating with custom functions
+- ✅ Multi-format reporting (JSON, JUnit, HTML)
+- ✅ Deterministic testing with seeded randomness
+- ✅ Advanced validation framework
+
+### **v0.5.0**
+- ✅ Basic Tera templating system
+- ✅ Container lifecycle management
+- ✅ Plugin system architecture
 - ✅ TOML configuration parsing
-- ✅ Basic CLI functionality
 
 ### **v0.1.0**
 - ✅ Core CleanroomEnvironment implementation

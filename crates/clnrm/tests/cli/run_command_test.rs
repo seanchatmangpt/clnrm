@@ -160,11 +160,7 @@ fn test_run_command_with_force_flag_bypasses_cache() {
     let test_file = create_minimal_test(temp_dir.path(), "cached.clnrm.toml");
 
     // Act - Run once to potentially cache
-    clnrm_cmd()
-        .arg("run")
-        .arg(&test_file)
-        .assert()
-        .success();
+    clnrm_cmd().arg("run").arg(&test_file).assert().success();
 
     // Act & Assert - Run with --force should bypass cache
     clnrm_cmd()
@@ -231,12 +227,15 @@ fn test_run_command_handles_nonexistent_test_file() {
     let nonexistent = temp_dir.path().join("nonexistent.toml");
 
     // Act & Assert
+    // Error may appear in stdout due to structured logging
     clnrm_cmd()
         .arg("run")
         .arg(&nonexistent)
         .assert()
         .failure()
-        .stderr(predicate::str::contains("not found"));
+        .stdout(predicate::str::contains(
+            "Path is neither a file nor a directory",
+        ));
 }
 
 #[test]
@@ -249,11 +248,7 @@ fn test_run_command_executes_directory_of_tests() {
     create_minimal_test(&tests_dir, "test2.clnrm.toml");
 
     // Act & Assert
-    clnrm_cmd()
-        .arg("run")
-        .arg(&tests_dir)
-        .assert()
-        .success();
+    clnrm_cmd().arg("run").arg(&tests_dir).assert().success();
 }
 
 #[test]
@@ -268,11 +263,7 @@ fn test_run_command_respects_test_ordering() {
     create_minimal_test(&tests_dir, "02_second.clnrm.toml");
 
     // Act & Assert - Sequential execution should maintain order
-    clnrm_cmd()
-        .arg("run")
-        .arg(&tests_dir)
-        .assert()
-        .success();
+    clnrm_cmd().arg("run").arg(&tests_dir).assert().success();
 }
 
 #[test]

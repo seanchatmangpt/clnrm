@@ -40,7 +40,9 @@ impl TemplateRenderer {
 
         // Add macro library template
         tera.add_raw_template("_macros.toml.tera", MACRO_LIBRARY)
-            .map_err(|e| CleanroomError::template_error(format!("Failed to load macro library: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::template_error(format!("Failed to load macro library: {}", e))
+            })?;
 
         Ok(Self {
             tera,
@@ -60,7 +62,9 @@ impl TemplateRenderer {
 
         // Add macro library template
         tera.add_raw_template("_macros.toml.tera", MACRO_LIBRARY)
-            .map_err(|e| CleanroomError::template_error(format!("Failed to load macro library: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::template_error(format!("Failed to load macro library: {}", e))
+            })?;
 
         Ok(Self {
             tera,
@@ -77,7 +81,10 @@ impl TemplateRenderer {
     /// Merge user-provided variables into context (respects precedence)
     ///
     /// User variables take highest priority in the precedence chain
-    pub fn merge_user_vars(&mut self, user_vars: std::collections::HashMap<String, serde_json::Value>) {
+    pub fn merge_user_vars(
+        &mut self,
+        user_vars: std::collections::HashMap<String, serde_json::Value>,
+    ) {
         self.context.merge_user_vars(user_vars);
     }
 
@@ -86,7 +93,15 @@ impl TemplateRenderer {
         let template_str = std::fs::read_to_string(path)
             .map_err(|e| CleanroomError::config_error(format!("Failed to read template: {}", e)))?;
 
-        self.render_str(&template_str, path.to_str().unwrap_or("unknown"))
+        // Convert path to string with proper error handling
+        let path_str = path.to_str().ok_or_else(|| {
+            CleanroomError::validation_error(format!(
+                "Template path contains invalid UTF-8 characters: {}",
+                path.display()
+            ))
+        })?;
+
+        self.render_str(&template_str, path_str)
     }
 
     /// Render template string to TOML
@@ -108,8 +123,11 @@ impl TemplateRenderer {
     /// Useful for rendering multiple templates with shared context
     pub fn render_from_glob(&mut self, glob_pattern: &str, template_name: &str) -> Result<String> {
         // Add templates matching glob pattern
-        self.tera.add_template_files(vec![(glob_pattern, Some(template_name))])
-            .map_err(|e| CleanroomError::template_error(format!("Failed to add template files: {}", e)))?;
+        self.tera
+            .add_template_files(vec![(glob_pattern, Some(template_name))])
+            .map_err(|e| {
+                CleanroomError::template_error(format!("Failed to add template files: {}", e))
+            })?;
 
         // Build Tera context
         let tera_ctx = self.context.to_tera_context()?;
@@ -124,11 +142,8 @@ impl TemplateRenderer {
     }
 }
 
-impl Default for TemplateRenderer {
-    fn default() -> Self {
-        Self::new().expect("Failed to create default TemplateRenderer")
-    }
-}
+// Note: Default implementation removed to avoid panic risk.
+// Use TemplateRenderer::new() instead, which returns Result for proper error handling.
 
 /// Render template with user variables and PRD v1.0 defaults
 ///
@@ -191,8 +206,9 @@ pub fn render_template_file(
     user_vars: std::collections::HashMap<String, serde_json::Value>,
 ) -> Result<String> {
     // Read template file
-    let template_content = std::fs::read_to_string(template_path)
-        .map_err(|e| CleanroomError::config_error(format!("Failed to read template file: {}", e)))?;
+    let template_content = std::fs::read_to_string(template_path).map_err(|e| {
+        CleanroomError::config_error(format!("Failed to read template file: {}", e))
+    })?;
 
     // Render with user vars
     render_template(&template_content, user_vars)
@@ -272,7 +288,10 @@ mod tests {
         let renderer = TemplateRenderer::new().unwrap();
 
         // Assert - macro library should be available
-        assert!(renderer.tera.get_template_names().any(|n| n == "_macros.toml.tera"));
+        assert!(renderer
+            .tera
+            .get_template_names()
+            .any(|n| n == "_macros.toml.tera"));
     }
 
     #[test]

@@ -203,15 +203,13 @@ impl NotifyWatcher {
             }
 
             info!("Watching path: {}", path.display());
-            watcher
-                .watch(path, RecursiveMode::Recursive)
-                .map_err(|e| {
-                    CleanroomError::internal_error(format!(
-                        "Failed to watch path {}: {}",
-                        path.display(),
-                        e
-                    ))
-                })?;
+            watcher.watch(path, RecursiveMode::Recursive).map_err(|e| {
+                CleanroomError::internal_error(format!(
+                    "Failed to watch path {}: {}",
+                    path.display(),
+                    e
+                ))
+            })?;
         }
 
         // Spawn background task to bridge std::mpsc to tokio::mpsc
@@ -294,8 +292,7 @@ mod tests {
         }
 
         fn was_started(&self) -> bool {
-            self.start_called
-                .load(std::sync::atomic::Ordering::SeqCst)
+            self.start_called.load(std::sync::atomic::Ordering::SeqCst)
         }
 
         fn was_stopped(&self) -> bool {
@@ -376,13 +373,15 @@ mod tests {
     #[test]
     fn test_watch_config_with_cli_config() {
         // Arrange
-        let mut cli_config = CliConfig::default();
-        cli_config.parallel = true;
-        cli_config.jobs = 4;
+        let cli_config = CliConfig {
+            parallel: true,
+            jobs: 4,
+            ..Default::default()
+        };
 
         // Act
-        let config = WatchConfig::new(vec![PathBuf::from("tests/")], 300, false)
-            .with_cli_config(cli_config);
+        let config =
+            WatchConfig::new(vec![PathBuf::from("tests/")], 300, false).with_cli_config(cli_config);
 
         // Assert
         assert!(config.cli_config.parallel);
@@ -439,8 +438,9 @@ mod tests {
     #[tokio::test]
     async fn test_notify_watcher_creates_successfully_with_valid_path() -> Result<()> {
         // Arrange
-        let temp_dir = tempfile::tempdir()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
+        let temp_dir = tempfile::tempdir().map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
+        })?;
         let (tx, _rx) = mpsc::channel(100);
 
         // Act
@@ -454,8 +454,9 @@ mod tests {
     #[tokio::test]
     async fn test_notify_watcher_detects_file_creation() -> Result<()> {
         // Arrange
-        let temp_dir = tempfile::tempdir()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
+        let temp_dir = tempfile::tempdir().map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
+        })?;
         let (tx, mut rx) = mpsc::channel(100);
 
         let _watcher = NotifyWatcher::new(vec![temp_dir.path().to_path_buf()], tx)?;
@@ -480,18 +481,16 @@ mod tests {
             }
         }
 
-        assert!(
-            received_event,
-            "Should have received file creation event"
-        );
+        assert!(received_event, "Should have received file creation event");
         Ok(())
     }
 
     #[tokio::test]
     async fn test_notify_watcher_detects_file_modification() -> Result<()> {
         // Arrange
-        let temp_dir = tempfile::tempdir()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
+        let temp_dir = tempfile::tempdir().map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
+        })?;
         let test_file = temp_dir.path().join("test.toml.tera");
 
         // Create file before starting watcher
@@ -530,10 +529,12 @@ mod tests {
     #[tokio::test]
     async fn test_notify_watcher_watches_multiple_paths() -> Result<()> {
         // Arrange
-        let temp_dir1 = tempfile::tempdir()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
-        let temp_dir2 = tempfile::tempdir()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
+        let temp_dir1 = tempfile::tempdir().map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
+        })?;
+        let temp_dir2 = tempfile::tempdir().map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
+        })?;
 
         let (tx, mut rx) = mpsc::channel(100);
         let _watcher = NotifyWatcher::new(

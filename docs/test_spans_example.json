@@ -1,0 +1,42 @@
+{
+  "spans": [
+    {
+      "name": "http.request",
+      "service_name": "myapp",
+      "duration_ns": 1200000000,
+      "status": "ok",
+      "attributes": {
+        "http.method": "GET",
+        "http.url": "/api/users"
+      },
+      "events": [
+        {
+          "name": "request.started",
+          "timestamp": 1634567890000000000,
+          "attributes": {}
+        }
+      ]
+    },
+    {
+      "name": "db.query",
+      "service_name": "myapp",
+      "duration_ns": 800000000,
+      "status": "ok",
+      "attributes": {
+        "db.system": "postgresql",
+        "db.statement": "SELECT * FROM users"
+      },
+      "events": []
+    },
+    {
+      "name": "cache.lookup",
+      "service_name": "myapp",
+      "duration_ns": 100000000,
+      "status": "error",
+      "attributes": {
+        "cache.key": "user:123"
+      },
+      "events": []
+    }
+  ]
+}

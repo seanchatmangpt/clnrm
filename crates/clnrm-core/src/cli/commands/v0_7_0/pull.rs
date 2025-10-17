@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Pre-pull Docker images from test configurations
 pub async fn pull_images(
@@ -134,8 +134,18 @@ fn extract_images_from_test_files(test_files: &[PathBuf]) -> Result<Vec<String>>
             ))
         })?;
 
-        // Extract images from service configurations
+        // Extract images from service configurations (services section)
         if let Some(services) = &config.services {
+            for (service_name, service_config) in services {
+                if let Some(image) = &service_config.image {
+                    debug!("Found image '{}' in service '{}'", image, service_name);
+                    images.insert(image.clone());
+                }
+            }
+        }
+
+        // Extract images from service configurations (service section - v0.6.0 format)
+        if let Some(services) = &config.service {
             for (service_name, service_config) in services {
                 if let Some(image) = &service_config.image {
                     debug!("Found image '{}' in service '{}'", image, service_name);

@@ -186,7 +186,9 @@ mod tests {
 
         // Assert
         assert!(output.contains(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
-        assert!(output.contains(r#"<testsuite name="empty_suite" tests="0" failures="0" skipped="0""#));
+        assert!(
+            output.contains(r#"<testsuite name="empty_suite" tests="0" failures="0" skipped="0""#)
+        );
         assert!(output.contains("</testsuite>"));
 
         Ok(())

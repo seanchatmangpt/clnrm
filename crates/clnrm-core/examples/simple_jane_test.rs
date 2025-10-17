@@ -4,8 +4,7 @@
 //! with the new Jane-friendly API.
 
 use clnrm_core::{
-    cache, cleanroom_test, database, email_service, with_cache, with_database, CleanroomError,
-    Result, UserAssertions,
+    cache, database, email_service, with_cache, with_database, Result, UserAssertions,
 };
 
 /// Jane's simple user registration test
@@ -43,7 +42,10 @@ async fn test_user_registration() -> Result<()> {
 }
 
 /// Mock user registration function (Jane's business logic)
-async fn register_user(email: &str, _password: &str) -> Result<i64, Box<dyn std::error::Error>> {
+async fn register_user(
+    email: &str,
+    _password: &str,
+) -> std::result::Result<i64, Box<dyn std::error::Error>> {
     println!("📝 Registering user: {}", email);
 
     // Simulate user registration
@@ -54,7 +56,7 @@ async fn register_user(email: &str, _password: &str) -> Result<i64, Box<dyn std:
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Running Jane-friendly cleanroom test...");
 
     // This would normally be run with: cargo test test_user_registration

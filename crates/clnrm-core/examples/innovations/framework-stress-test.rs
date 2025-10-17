@@ -351,7 +351,7 @@ async fn main() -> Result<()> {
 }
 
 /// Memory stress test - creates and destroys many objects
-async fn run_memory_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomError> {
+async fn run_memory_stress_test(env: CleanroomEnvironment) -> Result<()> {
     for i in 0..20 {
         let container = env
             .get_or_create_container(&format!("memory-test-{}", i), || {
@@ -373,7 +373,7 @@ async fn run_memory_stress_test(env: CleanroomEnvironment) -> Result<(), Cleanro
 }
 
 /// CPU stress test - performs computational work
-async fn run_cpu_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomError> {
+async fn run_cpu_stress_test(env: CleanroomEnvironment) -> Result<()> {
     for i in 0..10 {
         let _ = env
             .execute_test("cpu_stress", || {
@@ -392,7 +392,7 @@ async fn run_cpu_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomE
 }
 
 /// I/O stress test - performs file operations
-async fn run_io_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomError> {
+async fn run_io_stress_test(env: CleanroomEnvironment) -> Result<()> {
     for i in 0..15 {
         let _ = env
             .execute_test("io_stress", || {
@@ -407,7 +407,7 @@ async fn run_io_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomEr
 }
 
 /// Network stress test - simulates network operations
-async fn run_network_stress_test(env: CleanroomEnvironment) -> Result<(), CleanroomError> {
+async fn run_network_stress_test(env: CleanroomEnvironment) -> Result<()> {
     for i in 0..5 {
         let _ = env
             .execute_test("network_stress", || {

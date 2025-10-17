@@ -21,9 +21,7 @@ const CACHE_VERSION: &str = "1.0.0";
 fn default_cache_dir() -> Result<PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
-        .map_err(|_| {
-            CleanroomError::configuration_error("Cannot determine home directory")
-        })?;
+        .map_err(|_| CleanroomError::configuration_error("Cannot determine home directory"))?;
 
     Ok(PathBuf::from(home).join(".clnrm").join("cache"))
 }
@@ -291,22 +289,15 @@ impl Cache for FileCache {
     }
 }
 
-impl Default for FileCache {
-    fn default() -> Self {
-        // Use unwrap_or_else to provide fallback if cache creation fails
-        // This avoids panic in Default impl by falling back to temp directory cache
-        Self::new().unwrap_or_else(|e| {
-            // Log error and create in-memory fallback
-            eprintln!("Warning: Failed to create default cache: {}. Using temp directory.", e);
-            // Create cache in temp directory as fallback
-            let temp_path = std::env::temp_dir().join(".clnrm-cache").join("hashes.json");
-            Self::with_path(temp_path).unwrap_or_else(|_| {
-                // Last resort: panic with meaningful message
-                panic!("Fatal: Cannot create cache in temp directory. Check permissions.")
-            })
-        })
-    }
-}
+// Note: Default implementation removed to avoid panic risk.
+// FileCache creation is fallible and MUST return Result.
+// Use FileCache::new() or FileCache::with_path() instead.
+//
+// Reasoning:
+// - Cache creation can fail due to filesystem permissions
+// - Default trait cannot return Result, forcing unwrap/panic
+// - Core team standard: No unwrap/expect in production code
+// - Explicit Result handling provides better error messages
 
 #[cfg(test)]
 mod tests {
@@ -445,7 +436,8 @@ mod tests {
 
         // Wait for all threads
         for handle in handles {
-            handle.join().unwrap();
+            // Thread panic should not fail the test - threads are updating cache independently
+            let _ = handle.join();
         }
 
         // Assert

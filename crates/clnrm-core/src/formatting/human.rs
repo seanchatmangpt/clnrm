@@ -28,8 +28,8 @@ impl HumanFormatter {
     /// Format a status indicator
     fn format_status(&self, status: &TestStatus) -> String {
         let (symbol, color) = match status {
-            TestStatus::Passed => ("✓", "\x1b[32m"), // Green
-            TestStatus::Failed => ("✗", "\x1b[31m"), // Red
+            TestStatus::Passed => ("✓", "\x1b[32m"),  // Green
+            TestStatus::Failed => ("✗", "\x1b[31m"),  // Red
             TestStatus::Skipped => ("⊘", "\x1b[33m"), // Yellow
             TestStatus::Unknown => ("?", "\x1b[90m"), // Gray
         };
@@ -223,7 +223,10 @@ mod tests {
         let formatter = HumanFormatter::with_colors(false);
         let suite = TestSuite::new("failing_suite")
             .add_result(TestResult::passed("test1"))
-            .add_result(TestResult::failed("test2", "assertion failed: expected 2, got 1"));
+            .add_result(TestResult::failed(
+                "test2",
+                "assertion failed: expected 2, got 1",
+            ));
 
         // Act
         let output = formatter.format(&suite)?;
@@ -266,12 +269,8 @@ mod tests {
         // Arrange
         let formatter = HumanFormatter::with_colors(false);
         let suite = TestSuite::new("suite_with_duration")
-            .add_result(
-                TestResult::passed("fast_test").with_duration(Duration::from_millis(50)),
-            )
-            .add_result(
-                TestResult::passed("slow_test").with_duration(Duration::from_millis(1500)),
-            );
+            .add_result(TestResult::passed("fast_test").with_duration(Duration::from_millis(50)))
+            .add_result(TestResult::passed("slow_test").with_duration(Duration::from_millis(1500)));
 
         // Act
         let output = formatter.format(&suite)?;

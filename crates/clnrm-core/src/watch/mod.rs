@@ -174,9 +174,9 @@ async fn run_tests(config: &WatchConfig) -> Result<()> {
     // Use the CLI configuration to run tests
     // This integrates with the existing test runner
 
-    debug!("Executing tests with config: parallel={}, jobs={}",
-        config.cli_config.parallel,
-        config.cli_config.jobs
+    debug!(
+        "Executing tests with config: parallel={}, jobs={}",
+        config.cli_config.parallel, config.cli_config.jobs
     );
 
     // Determine test paths to run
@@ -247,7 +247,8 @@ fn is_relevant_file(path: &std::path::Path) -> bool {
         .and_then(|ext| ext.to_str())
         .map(|ext| ext == "tera")
         .unwrap_or(false)
-        && path.file_name()
+        && path
+            .file_name()
             .and_then(|name| name.to_str())
             .map(|name| name.contains(".toml"))
             .unwrap_or(false)
@@ -312,8 +313,9 @@ mod tests {
     #[test]
     fn test_determine_test_paths_with_file() -> Result<()> {
         // Arrange
-        let temp_dir = tempfile::tempdir()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
+        let temp_dir = tempfile::tempdir().map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
+        })?;
         let test_file = temp_dir.path().join("test.toml.tera");
         std::fs::write(&test_file, "# test")
             .map_err(|e| CleanroomError::internal_error(format!("Failed to write file: {}", e)))?;
@@ -330,8 +332,9 @@ mod tests {
     #[test]
     fn test_determine_test_paths_with_directory() -> Result<()> {
         // Arrange
-        let temp_dir = tempfile::tempdir()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
+        let temp_dir = tempfile::tempdir().map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
+        })?;
 
         let test_file1 = temp_dir.path().join("test1.toml.tera");
         let test_file2 = temp_dir.path().join("test2.toml.tera");
@@ -357,8 +360,9 @@ mod tests {
     #[test]
     fn test_determine_test_paths_empty_directory() -> Result<()> {
         // Arrange
-        let temp_dir = tempfile::tempdir()
-            .map_err(|e| CleanroomError::internal_error(format!("Failed to create temp dir: {}", e)))?;
+        let temp_dir = tempfile::tempdir().map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to create temp dir: {}", e))
+        })?;
 
         // Act
         let result = determine_test_paths(&[temp_dir.path().to_path_buf()])?;

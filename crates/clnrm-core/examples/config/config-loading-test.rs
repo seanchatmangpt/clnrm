@@ -4,7 +4,6 @@
 //! by testing that configuration is loaded and applied correctly.
 
 use clnrm_core::config::{load_cleanroom_config, load_cleanroom_config_from_file};
-use clnrm_core::{cleanroom_test, CleanroomConfig, CleanroomEnvironment};
 
 /// Test that cleanroom.toml configuration loading works
 #[tokio::main]

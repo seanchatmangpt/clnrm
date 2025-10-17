@@ -28,7 +28,10 @@ impl TapFormatter {
     }
 
     /// Generate TAP test line
-    fn generate_test_line(index: usize, result: &crate::formatting::test_result::TestResult) -> Vec<String> {
+    fn generate_test_line(
+        index: usize,
+        result: &crate::formatting::test_result::TestResult,
+    ) -> Vec<String> {
         let mut output = Vec::new();
 
         let status = match result.status {
@@ -181,7 +184,10 @@ mod tests {
         let formatter = TapFormatter::new();
         let suite = TestSuite::new("failing_suite")
             .add_result(TestResult::passed("test1"))
-            .add_result(TestResult::failed("test2", "assertion failed: expected 2, got 1"));
+            .add_result(TestResult::failed(
+                "test2",
+                "assertion failed: expected 2, got 1",
+            ));
 
         // Act
         let output = formatter.format(&suite)?;

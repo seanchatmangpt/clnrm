@@ -176,9 +176,8 @@ mod tests {
         let mut temp_file = NamedTempFile::new().map_err(|e| {
             CleanroomError::internal_error(format!("Failed to create temp file: {}", e))
         })?;
-        writeln!(temp_file, "test file content").map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write temp file: {}", e))
-        })?;
+        writeln!(temp_file, "test file content")
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write temp file: {}", e)))?;
 
         // Act
         let hash = hash_file(temp_file.path())?;
@@ -201,7 +200,10 @@ mod tests {
         let combined_hash = hash_content(combined)?;
 
         // Assert
-        assert_eq!(parts_hash, combined_hash, "Parts hash should match combined hash");
+        assert_eq!(
+            parts_hash, combined_hash,
+            "Parts hash should match combined hash"
+        );
 
         Ok(())
     }
@@ -216,7 +218,10 @@ mod tests {
         let is_valid = verify_hash(content, &expected_hash)?;
 
         // Assert
-        assert!(is_valid, "Hash verification should succeed for matching content");
+        assert!(
+            is_valid,
+            "Hash verification should succeed for matching content"
+        );
 
         Ok(())
     }

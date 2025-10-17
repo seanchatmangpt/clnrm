@@ -1,0 +1,60 @@
+{
+  "spans": [
+    {
+      "name": "Test Execution",
+      "span_id": "root-001",
+      "parent_span_id": null,
+      "trace_id": "trace-abc123",
+      "kind": "SERVER"
+    },
+    {
+      "name": "Setup Cleanroom Environment",
+      "span_id": "span-002",
+      "parent_span_id": "root-001",
+      "trace_id": "trace-abc123",
+      "kind": "INTERNAL"
+    },
+    {
+      "name": "Start SurrealDB Container",
+      "span_id": "span-003",
+      "parent_span_id": "span-002",
+      "trace_id": "trace-abc123",
+      "kind": "CLIENT"
+    },
+    {
+      "name": "Wait for Service Ready",
+      "span_id": "span-004",
+      "parent_span_id": "span-003",
+      "trace_id": "trace-abc123",
+      "kind": "CLIENT"
+    },
+    {
+      "name": "Execute Test Steps",
+      "span_id": "span-005",
+      "parent_span_id": "root-001",
+      "trace_id": "trace-abc123",
+      "kind": "INTERNAL"
+    },
+    {
+      "name": "Database Query",
+      "span_id": "span-006",
+      "parent_span_id": "span-005",
+      "trace_id": "trace-abc123",
+      "kind": "CLIENT"
+    },
+    {
+      "name": "Cache Lookup",
+      "span_id": "span-007",
+      "parent_span_id": "span-005",
+      "trace_id": "trace-abc123",
+      "kind": "CLIENT"
+    },
+    {
+      "name": "Cleanup Environment",
+      "span_id": "span-008",
+      "parent_span_id": "root-001",
+      "trace_id": "trace-abc123",
+      "kind": "INTERNAL"
+    }
+  ]
+}

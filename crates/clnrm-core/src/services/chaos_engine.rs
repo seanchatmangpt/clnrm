@@ -153,9 +153,9 @@ impl ChaosEnginePlugin {
             metrics.failures_injected += 1;
             metrics.affected_services.push(service_name.to_string());
 
-            println!(
-                "💥 Chaos Engine: Injecting failure in service '{}'",
-                service_name
+            tracing::info!(
+                service = %service_name,
+                "Chaos engine injecting failure"
             );
             Ok(true)
         } else {
@@ -175,9 +175,10 @@ impl ChaosEnginePlugin {
             let mut metrics = self.metrics.write().await;
             metrics.latency_injected_ms += latency;
 
-            println!(
-                "⏱️  Chaos Engine: Injecting {}ms latency in service '{}'",
-                latency, service_name
+            tracing::info!(
+                service = %service_name,
+                latency_ms = latency,
+                "Chaos engine injecting latency"
             );
 
             // Simulate latency
@@ -194,9 +195,9 @@ impl ChaosEnginePlugin {
             metrics.network_partitions += 1;
             metrics.affected_services.extend(services.iter().cloned());
 
-            println!(
-                "🌐 Chaos Engine: Creating network partition affecting services: {:?}",
-                services
+            tracing::info!(
+                services = ?services,
+                "Chaos engine creating network partition"
             );
         }
         Ok(())
@@ -216,10 +217,10 @@ impl ChaosEnginePlugin {
                 duration_secs,
                 failure_rate,
             } => {
-                println!(
-                    "🎲 Chaos Engine: Running random failures for {}s (rate: {:.1}%)",
+                tracing::info!(
                     duration_secs,
-                    failure_rate * 100.0
+                    failure_rate_percent = failure_rate * 100.0,
+                    "Chaos engine running random failures scenario"
                 );
 
                 // Simulate random failures over duration
@@ -234,9 +235,10 @@ impl ChaosEnginePlugin {
                 duration_secs,
                 max_latency_ms,
             } => {
-                println!(
-                    "⚡ Chaos Engine: Running latency spikes for {}s (max: {}ms)",
-                    duration_secs, max_latency_ms
+                tracing::info!(
+                    duration_secs,
+                    max_latency_ms,
+                    "Chaos engine running latency spikes scenario"
                 );
 
                 // Simulate latency spikes
@@ -253,9 +255,10 @@ impl ChaosEnginePlugin {
                 duration_secs,
                 target_mb,
             } => {
-                println!(
-                    "🧠 Chaos Engine: Running memory exhaustion for {}s (target: {}MB)",
-                    duration_secs, target_mb
+                tracing::info!(
+                    duration_secs,
+                    target_mb,
+                    "Chaos engine running memory exhaustion scenario"
                 );
 
                 // Simulate memory pressure
@@ -266,9 +269,10 @@ impl ChaosEnginePlugin {
                 duration_secs,
                 target_percent,
             } => {
-                println!(
-                    "🔥 Chaos Engine: Running CPU saturation for {}s (target: {}%)",
-                    duration_secs, target_percent
+                tracing::info!(
+                    duration_secs,
+                    target_percent,
+                    "Chaos engine running CPU saturation scenario"
                 );
 
                 // Simulate CPU stress
@@ -285,9 +289,10 @@ impl ChaosEnginePlugin {
                 duration_secs,
                 affected_services,
             } => {
-                println!(
-                    "🌐 Chaos Engine: Running network partition for {}s affecting: {:?}",
-                    duration_secs, affected_services
+                tracing::info!(
+                    duration_secs,
+                    affected_services = ?affected_services,
+                    "Chaos engine running network partition scenario"
                 );
 
                 metrics.network_partitions += 1;
@@ -300,9 +305,10 @@ impl ChaosEnginePlugin {
                 trigger_service,
                 propagation_delay_ms,
             } => {
-                println!(
-                    "💥 Chaos Engine: Running cascading failures triggered by '{}' (delay: {}ms)",
-                    trigger_service, propagation_delay_ms
+                tracing::info!(
+                    trigger_service = %trigger_service,
+                    propagation_delay_ms,
+                    "Chaos engine running cascading failures scenario"
                 );
 
                 // Simulate cascading failure
@@ -338,12 +344,12 @@ impl ServicePlugin for ChaosEnginePlugin {
         // Use tokio::task::block_in_place for async operations
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                println!("🎭 Chaos Engine: Starting chaos testing service");
+                tracing::info!("Chaos engine starting");
 
                 // Run initial chaos scenarios
                 for scenario in &self.config.scenarios {
                     if let Err(e) = self.run_scenario(scenario).await {
-                        eprintln!("⚠️  Chaos scenario failed: {}", e);
+                        tracing::warn!(error = %e, "Chaos scenario failed");
                     }
                 }
 
@@ -374,7 +380,7 @@ impl ServicePlugin for ChaosEnginePlugin {
         // Use tokio::task::block_in_place for async operations
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                println!("🎭 Chaos Engine: Stopping chaos testing service");
+                tracing::info!("Chaos engine stopping");
 
                 // Stop all active scenarios
                 let mut active = self.active_scenarios.write().await;

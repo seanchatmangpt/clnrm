@@ -20,7 +20,7 @@
 
 #![allow(clippy::unwrap_used)] // Test code only
 
-use clnrm_core::cleanroom::{HealthStatus, ServicePlugin};
+use clnrm_core::cleanroom::ServicePlugin;
 use clnrm_core::error::Result;
 use clnrm_core::services::generic::GenericContainerPlugin;
 
@@ -87,8 +87,11 @@ fn test_generic_container_plugin_with_port_mapping_succeeds() {
 #[test]
 fn test_generic_container_plugin_with_volume_mount_succeeds() -> Result<()> {
     // Arrange & Act
-    let plugin = GenericContainerPlugin::new("data_service", "alpine:latest")
-        .with_volume("/tmp/host", "/data/container", false)?;
+    let plugin = GenericContainerPlugin::new("data_service", "alpine:latest").with_volume(
+        "/tmp/host",
+        "/data/container",
+        false,
+    )?;
 
     // Assert
     assert_eq!(plugin.name(), "data_service");
@@ -164,9 +167,8 @@ fn test_generic_container_plugin_builder_pattern_is_fluent() -> Result<()> {
 #[test]
 fn test_generic_container_plugin_implements_service_plugin_trait() {
     // Arrange
-    let plugin: Box<dyn ServicePlugin> = Box::new(
-        GenericContainerPlugin::new("trait_test", "alpine:latest")
-    );
+    let plugin: Box<dyn ServicePlugin> =
+        Box::new(GenericContainerPlugin::new("trait_test", "alpine:latest"));
 
     // Act & Assert - Verify trait implementation
     assert_eq!(plugin.name(), "trait_test");
@@ -232,8 +234,11 @@ fn test_generic_container_plugin_health_check_returns_health_status() {
 #[test]
 fn test_generic_container_plugin_with_invalid_volume_path_returns_error() {
     // Arrange & Act
-    let result = GenericContainerPlugin::new("invalid_volume", "alpine:latest")
-        .with_volume("", "/container/path", false);
+    let result = GenericContainerPlugin::new("invalid_volume", "alpine:latest").with_volume(
+        "",
+        "/container/path",
+        false,
+    );
 
     // Assert
     assert!(result.is_err(), "Should fail with empty host path");
@@ -253,8 +258,11 @@ fn test_generic_container_plugin_with_invalid_container_path_returns_error() {
 fn test_generic_container_plugin_volume_validation_prevents_dangerous_mounts() {
     // Arrange & Act - Attempt to mount sensitive system paths
     // Note: Exact validation rules depend on VolumeMount implementation
-    let result = GenericContainerPlugin::new("dangerous", "alpine:latest")
-        .with_volume("/etc/shadow", "/container/shadow", false);
+    let result = GenericContainerPlugin::new("dangerous", "alpine:latest").with_volume(
+        "/etc/shadow",
+        "/container/shadow",
+        false,
+    );
 
     // Assert - Volume validation should prevent dangerous mounts
     // (Actual behavior depends on VolumeMount security rules)
@@ -268,9 +276,10 @@ fn test_generic_container_plugin_volume_validation_prevents_dangerous_mounts() {
 #[test]
 fn test_generic_container_plugin_can_be_stored_in_registry() {
     // Arrange
-    let plugin: Box<dyn ServicePlugin> = Box::new(
-        GenericContainerPlugin::new("registry_test", "alpine:latest")
-    );
+    let plugin: Box<dyn ServicePlugin> = Box::new(GenericContainerPlugin::new(
+        "registry_test",
+        "alpine:latest",
+    ));
 
     // Act - Simulate registry storage
     let plugins: Vec<Box<dyn ServicePlugin>> = vec![plugin];
@@ -430,9 +439,7 @@ fn test_generic_container_plugin_is_send_sync() {
 #[test]
 fn test_generic_container_plugin_can_be_shared_across_threads() {
     // Arrange
-    let plugin = std::sync::Arc::new(
-        GenericContainerPlugin::new("shared", "alpine:latest")
-    );
+    let plugin = std::sync::Arc::new(GenericContainerPlugin::new("shared", "alpine:latest"));
 
     // Act - Clone Arc for multiple threads
     let plugin_clone1 = std::sync::Arc::clone(&plugin);

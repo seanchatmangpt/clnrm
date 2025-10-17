@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use tracing::{info, warn};
 
 /// Re-export DevConfig and DevWatcher from watch module for backward compatibility
-pub use crate::watch::{WatchConfig as DevConfig};
+pub use crate::watch::WatchConfig as DevConfig;
 
 /// Re-export for compatibility
 pub struct DevWatcher;
@@ -112,8 +112,8 @@ pub async fn run_dev_mode(
     }
 
     // Create watch configuration
-    let watch_config = WatchConfig::new(watch_paths, debounce_ms, clear_screen)
-        .with_cli_config(cli_config);
+    let watch_config =
+        WatchConfig::new(watch_paths, debounce_ms, clear_screen).with_cli_config(cli_config);
 
     // Start watching
     info!("📁 Watching for .toml.tera file changes...");
@@ -180,7 +180,7 @@ mod tests {
         // This test verifies the configuration validation logic
         // We can't easily test the actual watch loop without integration tests
 
-        let paths = vec![PathBuf::from(".")];
+        let paths = [PathBuf::from(".")];
         assert!(!paths.is_empty());
 
         let debounce_ms = 300u64;

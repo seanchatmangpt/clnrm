@@ -15,7 +15,7 @@ name = "clnrm"
 path = "src/main.rs"
 
 [dependencies]
-clnrm-core = { path = "../clnrm-core", version = "0.7.0", features = ["otel"] }
+clnrm-core = { path = "../clnrm-core", version = "1.0.0", features = ["otel"] }
 tokio = { workspace = true }
 clap = { workspace = true }
 env_logger = { workspace = true }

@@ -9,11 +9,11 @@ pub mod toml_fmt;
 
 // Test output formatting submodules
 pub mod formatter;
-pub mod test_result;
 pub mod human;
 pub mod json;
 pub mod junit;
 pub mod tap;
+pub mod test_result;
 
 use crate::error::Result;
 
@@ -22,11 +22,11 @@ pub use toml_fmt::{format_toml_content, format_toml_file, needs_formatting, veri
 
 // Re-export test output formatting
 pub use formatter::{Formatter, FormatterType};
-pub use test_result::{TestResult, TestStatus, TestSuite};
 pub use human::HumanFormatter;
 pub use json::JsonFormatter;
 pub use junit::JunitFormatter;
 pub use tap::TapFormatter;
+pub use test_result::{TestResult, TestStatus, TestSuite};
 
 /// Format test results using the specified formatter
 ///

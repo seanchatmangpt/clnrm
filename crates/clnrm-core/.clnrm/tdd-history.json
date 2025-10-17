@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "records": [
+    {
+      "timestamp": "2025-10-17T05:41:35.376186+00:00",
+      "file_path": "test.clnrm.toml",
+      "test_name": "test.clnrm.toml",
+      "state": "red",
+      "passed": false,
+      "duration_ms": 5,
+      "error": "ValidationError: Unknown service plugin: generic"
+    },
+    {
+      "timestamp": "2025-10-17T05:42:06.706906+00:00",
+      "file_path": "test.clnrm.toml",
+      "test_name": "test.clnrm.toml",
+      "state": "red",
+      "passed": false,
+      "duration_ms": 3,
+      "error": "ValidationError: Unknown service plugin: generic"
+    },
+    {
+      "timestamp": "2025-10-17T05:42:32.796648+00:00",
+      "file_path": "test.clnrm.toml",
+      "test_name": "test.clnrm.toml",
+      "state": "red",
+      "passed": false,
+      "duration_ms": 3,
+      "error": "ValidationError: Unknown service plugin: generic"
+    },
+    {
+      "timestamp": "2025-10-17T05:43:08.567679+00:00",
+      "file_path": "test.clnrm.toml",
+      "test_name": "test.clnrm.toml",
+      "state": "red",
+      "passed": false,
+      "duration_ms": 3,
+      "error": "ValidationError: Unknown service plugin: generic"
+    }
+  ]
+}

@@ -96,7 +96,8 @@ json = "{{ dir }}/report.json"
 junit = "{{ dir }}/junit.xml"
 digest = "{{ dir }}/digest.sha256"
 {% endmacro %}
-"#.to_string())
+"#
+    .to_string())
 }
 
 /// Generate a matrix testing template
@@ -149,7 +150,8 @@ spans_total = { gte = {{ vars.test_count }} }
 [report]
 json = "reports/{{ matrix.os }}_{{ matrix.version }}.json"
 digest = "reports/{{ matrix.os }}_{{ matrix.version }}.sha256"
-"#.to_string())
+"#
+    .to_string())
 }
 
 /// Generate comprehensive validation template showcasing all validators
@@ -305,7 +307,8 @@ memory_mb = 512
 json = "reports/{{ vars.test_name }}_{{ now_rfc3339() | replace(from=":", to="-") }}.json"
 junit = "reports/junit_{{ sha256(s=vars.test_name) | truncate(length=8, end="") }}.xml"
 digest = "reports/digest_{{ vars.test_name }}.sha256"
-"#.to_string())
+"#
+    .to_string())
 }
 
 /// Generate a lifecycle matcher template
@@ -370,7 +373,8 @@ digest = "reports/deterministic_{{ sha256(s=vars.test_name) }}.sha256"
 json = "reports/deterministic_{{ vars.test_name }}.json"
 
 # The digest should be IDENTICAL across multiple runs with same seed and freeze_clock
-"#.to_string())
+"#
+    .to_string())
 }
 
 /// Generate project from template

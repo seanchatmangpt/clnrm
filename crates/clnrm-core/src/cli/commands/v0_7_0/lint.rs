@@ -33,9 +33,15 @@ pub fn lint_files(files: Vec<&Path>, format: &str, deny_warnings: bool) -> Resul
                     "warnings": result.warnings,
                     "errors": result.errors,
                 });
-                println!("{}", serde_json::to_string_pretty(&json).map_err(|e| {
-                    CleanroomError::serialization_error(format!("Failed to serialize JSON: {}", e))
-                })?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&json).map_err(|e| {
+                        CleanroomError::serialization_error(format!(
+                            "Failed to serialize JSON: {}",
+                            e
+                        ))
+                    })?
+                );
             }
             _ => {
                 // Human-readable format
@@ -81,9 +87,8 @@ fn lint_single_file(file: &Path) -> Result<LintResult> {
     })?;
 
     // Parse as TestConfig
-    let config: crate::config::TestConfig = toml::from_str(&content).map_err(|e| {
-        CleanroomError::config_error(format!("Failed to parse TOML: {}", e))
-    })?;
+    let config: crate::config::TestConfig = toml::from_str(&content)
+        .map_err(|e| CleanroomError::config_error(format!("Failed to parse TOML: {}", e)))?;
 
     // Check for common issues
     if config.meta.is_none() && config.test.is_none() {
@@ -107,7 +112,11 @@ fn lint_single_file(file: &Path) -> Result<LintResult> {
 
     // Check scenario naming conventions
     for scenario in &config.scenario {
-        if !scenario.name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+        if !scenario
+            .name
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+        {
             warnings.push(format!(
                 "Scenario '{}' contains special characters (prefer alphanumeric + _-)",
                 scenario.name
@@ -131,9 +140,8 @@ mod tests {
     #[test]
     fn test_lint_valid_file() -> Result<()> {
         // Arrange
-        let temp_dir = TempDir::new().map_err(|e| {
-            CleanroomError::io_error(format!("Failed to create temp dir: {}", e))
-        })?;
+        let temp_dir = TempDir::new()
+            .map_err(|e| CleanroomError::io_error(format!("Failed to create temp dir: {}", e)))?;
         let test_file = temp_dir.path().join("test.toml");
 
         let content = r#"
@@ -150,9 +158,8 @@ name = "test_step"
 command = ["echo", "test"]
 "#;
 
-        fs::write(&test_file, content).map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write file: {}", e))
-        })?;
+        fs::write(&test_file, content)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
 
         // Act
         let result = lint_single_file(test_file.as_path())?;
@@ -166,9 +173,8 @@ command = ["echo", "test"]
     #[test]
     fn test_lint_detects_missing_meta() -> Result<()> {
         // Arrange
-        let temp_dir = TempDir::new().map_err(|e| {
-            CleanroomError::io_error(format!("Failed to create temp dir: {}", e))
-        })?;
+        let temp_dir = TempDir::new()
+            .map_err(|e| CleanroomError::io_error(format!("Failed to create temp dir: {}", e)))?;
         let test_file = temp_dir.path().join("test.toml");
 
         let content = r#"
@@ -180,19 +186,15 @@ name = "test_step"
 command = ["echo", "test"]
 "#;
 
-        fs::write(&test_file, content).map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write file: {}", e))
-        })?;
+        fs::write(&test_file, content)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
 
         // Act
         let result = lint_single_file(test_file.as_path())?;
 
         // Assert
-        assert!(result.errors.len() > 0);
-        assert!(result
-            .errors
-            .iter()
-            .any(|e| e.contains("Missing [meta]")));
+        assert!(!result.errors.is_empty());
+        assert!(result.errors.iter().any(|e| e.contains("Missing [meta]")));
 
         Ok(())
     }

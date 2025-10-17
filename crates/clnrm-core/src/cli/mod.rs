@@ -297,21 +297,21 @@ pub async fn run_cli() -> Result<()> {
         }
 
         Commands::Graph { trace, format, highlight_missing, filter } => {
-            let format_str = match format {
-                crate::cli::types::GraphFormat::Ascii => "ascii",
-                crate::cli::types::GraphFormat::Dot => "dot",
-                crate::cli::types::GraphFormat::Json => "json",
-                crate::cli::types::GraphFormat::Mermaid => "mermaid",
-            };
-            visualize_graph(&trace, format_str, highlight_missing, filter.as_deref())
+            visualize_graph(&trace, &format, highlight_missing, filter.as_deref())
         }
 
         Commands::Repro { baseline, verify_digest, output } => {
             reproduce_baseline(&baseline, verify_digest, output.as_ref()).await
         }
 
-        Commands::RedGreen { paths, verify_red, verify_green } => {
-            run_red_green_validation(&paths, verify_red, verify_green).await
+        Commands::RedGreen { paths, expect, verify_red, verify_green } => {
+            // Handle new --expect flag or fall back to deprecated flags
+            let (should_verify_red, should_verify_green) = match expect {
+                Some(crate::cli::types::TddState::Red) => (true, false),
+                Some(crate::cli::types::TddState::Green) => (false, true),
+                None => (verify_red, verify_green),
+            };
+            run_red_green_validation(&paths, should_verify_red, should_verify_green).await
         }
 
         Commands::Render { template, map, output, show_vars } => {

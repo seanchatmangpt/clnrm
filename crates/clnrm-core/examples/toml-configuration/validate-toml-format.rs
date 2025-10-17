@@ -104,11 +104,15 @@ plugin_should_be_loaded = "alpine"
     match validate_toml_file(&Path::new(test_toml_path)) {
         Ok(config) => {
             println!("✅ Comprehensive TOML parsed successfully");
-            println!("   Test name: {}", config.test.metadata.name);
+            if let Some(metadata) = &config.test {
+                println!("   Test name: {}", metadata.metadata.name);
+            }
             println!("   Steps: {}", config.steps.len());
 
             // Verify all features are parsed correctly
-            assert_eq!(config.test.metadata.name, "comprehensive_toml_test");
+            if let Some(metadata) = &config.test {
+                assert_eq!(metadata.metadata.name, "comprehensive_toml_test");
+            }
             assert!(!config.steps.is_empty());
 
             println!("✅ All TOML features validated");

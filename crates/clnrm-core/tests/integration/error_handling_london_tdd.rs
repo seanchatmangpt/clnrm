@@ -30,10 +30,7 @@ use clnrm_core::error::{CleanroomError, ErrorKind, Result};
 #[test]
 fn test_cleanroom_error_with_new_creates_basic_error() {
     // Arrange & Act
-    let error = CleanroomError::new(
-        ErrorKind::ContainerError,
-        "Container failed to start",
-    );
+    let error = CleanroomError::new(ErrorKind::ContainerError, "Container failed to start");
 
     // Assert
     assert_eq!(error.kind, ErrorKind::ContainerError);
@@ -67,10 +64,7 @@ fn test_cleanroom_error_with_source_chains_error_information() {
     // Act & Assert
     assert_eq!(error.kind, ErrorKind::IoError);
     assert_eq!(error.message, "Failed to read file");
-    assert_eq!(
-        error.source,
-        Some("No such file or directory".to_string())
-    );
+    assert_eq!(error.source, Some("No such file or directory".to_string()));
 }
 
 #[test]
@@ -113,7 +107,7 @@ fn test_cleanroom_error_network_error_creates_correct_kind() {
 #[test]
 fn test_cleanroom_error_timeout_creates_correct_kind() {
     // Arrange & Act
-    let error = CleanroomError::timeout("Operation timed out after 30s");
+    let error = CleanroomError::timeout_error("Operation timed out after 30s");
 
     // Assert
     assert_eq!(error.kind, ErrorKind::Timeout);
@@ -133,7 +127,7 @@ fn test_cleanroom_error_config_error_creates_correct_kind() {
 #[test]
 fn test_cleanroom_error_policy_violation_creates_correct_kind() {
     // Arrange & Act
-    let error = CleanroomError::policy_violation("Network access not allowed");
+    let error = CleanroomError::policy_violation_error("Network access not allowed");
 
     // Assert
     assert_eq!(error.kind, ErrorKind::PolicyViolation);
@@ -278,8 +272,7 @@ fn test_cleanroom_error_implements_debug() {
 #[test]
 fn test_cleanroom_error_display_includes_context_when_present() {
     // Arrange
-    let error = CleanroomError::config_error("Invalid value")
-        .with_context("Field: max_retries");
+    let error = CleanroomError::config_error("Invalid value").with_context("Field: max_retries");
 
     // Act
     let display_str = format!("{}", error);
@@ -292,8 +285,7 @@ fn test_cleanroom_error_display_includes_context_when_present() {
 #[test]
 fn test_cleanroom_error_display_includes_source_when_present() {
     // Arrange
-    let error = CleanroomError::io_error("Read failed")
-        .with_source("Permission denied");
+    let error = CleanroomError::io_error("Read failed").with_source("Permission denied");
 
     // Act
     let display_str = format!("{}", error);
@@ -310,8 +302,7 @@ fn test_cleanroom_error_display_includes_source_when_present() {
 #[test]
 fn test_cleanroom_error_serializes_to_json() {
     // Arrange
-    let error = CleanroomError::validation_error("Invalid input")
-        .with_context("Test context");
+    let error = CleanroomError::validation_error("Invalid input").with_context("Test context");
 
     // Act
     let json = serde_json::to_string(&error);
@@ -336,7 +327,7 @@ fn test_cleanroom_error_deserializes_from_json() {
     }"#;
 
     // Act
-    let result: Result<CleanroomError, _> = serde_json::from_str(json);
+    let result: Result<CleanroomError> = serde_json::from_str(json).map_err(|e| CleanroomError::internal_error(format!("Deserialization failed: {}", e)));
 
     // Assert
     assert!(result.is_ok(), "Should deserialize from JSON");
@@ -431,16 +422,16 @@ fn test_cleanroom_error_messages_are_descriptive_and_actionable() {
     // Arrange - Create errors with good messages
     let errors = vec![
         CleanroomError::container_error(
-            "Container failed to start. Check Docker daemon is running."
+            "Container failed to start. Check Docker daemon is running.",
         ),
         CleanroomError::config_error(
-            "Missing required field 'image' in service configuration. Add image: 'name:tag'."
+            "Missing required field 'image' in service configuration. Add image: 'name:tag'.",
         ),
-        CleanroomError::timeout(
-            "Operation timed out after 30 seconds. Consider increasing timeout_seconds."
+        CleanroomError::timeout_error(
+            "Operation timed out after 30 seconds. Consider increasing timeout_seconds.",
         ),
-        CleanroomError::policy_violation(
-            "Network access denied by policy. Enable network: true in configuration."
+        CleanroomError::policy_violation_error(
+            "Network access denied by policy. Enable network: true in configuration.",
         ),
     ];
 
@@ -458,12 +449,11 @@ fn test_cleanroom_error_messages_are_descriptive_and_actionable() {
 fn test_cleanroom_error_avoids_technical_jargon_in_user_facing_messages() {
     // Arrange
     let good_error = CleanroomError::service_error(
-        "Service health check failed. The service may not be ready yet."
+        "Service health check failed. The service may not be ready yet.",
     );
 
-    let bad_error = CleanroomError::internal_error(
-        "Mutex<ServiceRegistry> poisoned due to panic in thread"
-    );
+    let bad_error =
+        CleanroomError::internal_error("Mutex<ServiceRegistry> poisoned due to panic in thread");
 
     // Act & Assert
     // User-facing errors should be clear
@@ -507,10 +497,8 @@ fn test_cleanroom_error_context_chaining_builds_error_trace() {
 #[test]
 fn test_cleanroom_error_source_chaining_preserves_original_error() {
     // Arrange
-    let original_err = std::io::Error::new(
-        std::io::ErrorKind::NotFound,
-        "No such file or directory",
-    );
+    let original_err =
+        std::io::Error::new(std::io::ErrorKind::NotFound, "No such file or directory");
 
     // Act
     let wrapped_error = CleanroomError::io_error("Failed to open config file")
@@ -528,8 +516,8 @@ fn test_cleanroom_error_source_chaining_preserves_original_error() {
 #[test]
 fn test_cleanroom_error_implements_clone() {
     // Arrange
-    let error1 = CleanroomError::network_error("Connection reset")
-        .with_context("Endpoint: /api/v1");
+    let error1 =
+        CleanroomError::network_error("Connection reset").with_context("Endpoint: /api/v1");
 
     // Act
     let error2 = error1.clone();
@@ -596,11 +584,9 @@ fn test_cleanroom_error_timestamp_does_not_change_on_clone() {
 #[test]
 fn test_cleanroom_error_typical_container_startup_failure() {
     // Arrange - Simulate real container startup error
-    let error = CleanroomError::container_error(
-        "Failed to pull image 'nonexistent/image:latest'"
-    )
-    .with_context("Starting service 'api_service'")
-    .with_source("HTTP 404: Not Found");
+    let error = CleanroomError::container_error("Failed to pull image 'nonexistent/image:latest'")
+        .with_context("Starting service 'api_service'")
+        .with_source("HTTP 404: Not Found");
 
     // Act
     let display = format!("{}", error);
@@ -614,11 +600,9 @@ fn test_cleanroom_error_typical_container_startup_failure() {
 #[test]
 fn test_cleanroom_error_typical_configuration_parse_failure() {
     // Arrange
-    let error = CleanroomError::config_error(
-        "Expected table for 'services', found string"
-    )
-    .with_context("Parsing file: /tests/invalid.clnrm.toml")
-    .with_source("TOML parse error at line 15, column 3");
+    let error = CleanroomError::config_error("Expected table for 'services', found string")
+        .with_context("Parsing file: /tests/invalid.clnrm.toml")
+        .with_source("TOML parse error at line 15, column 3");
 
     // Act
     let json = serde_json::to_string(&error).unwrap();
@@ -631,10 +615,9 @@ fn test_cleanroom_error_typical_configuration_parse_failure() {
 #[test]
 fn test_cleanroom_error_typical_timeout_scenario() {
     // Arrange
-    let error = CleanroomError::timeout(
-        "Container health check did not complete within 60 seconds"
-    )
-    .with_context("Service: database, Image: postgres:15");
+    let error =
+        CleanroomError::timeout_error("Container health check did not complete within 60 seconds")
+            .with_context("Service: database, Image: postgres:15");
 
     // Act & Assert
     assert_eq!(error.kind, ErrorKind::Timeout);

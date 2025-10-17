@@ -5,14 +5,11 @@
 //!
 //! Users can copy this code to see how to create custom plugins.
 
-use clnrm_core::{
-    CleanroomEnvironment, CleanroomError, HealthStatus, ServiceHandle, ServicePlugin,
-};
+use clnrm_core::{CleanroomEnvironment, HealthStatus, Result, ServiceHandle, ServicePlugin};
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 
 /// Custom Database Plugin (demonstrates plugin system)
+#[derive(Debug)]
 pub struct PostgresPlugin {
     connection_string: String,
 }
@@ -28,39 +25,42 @@ impl ServicePlugin for PostgresPlugin {
         "postgres"
     }
 
-    fn start(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
-        Box::pin(async move {
-            println!("🚀 Starting PostgreSQL plugin...");
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place to run async code in sync context
+        tokio::task::block_in_place(|| {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async {
+                println!("🚀 Starting PostgreSQL plugin...");
 
-            // Simulate database startup
-            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                // Simulate database startup
+                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-            Ok(ServiceHandle {
-                id: "postgres-123".to_string(),
-                service_name: "postgres".to_string(),
-                metadata: {
-                    let mut map = HashMap::new();
-                    map.insert(
-                        "connection_string".to_string(),
-                        self.connection_string.clone(),
-                    );
-                    map.insert("status".to_string(), "running".to_string());
-                    map
-                },
+                Ok(ServiceHandle {
+                    id: "postgres-123".to_string(),
+                    service_name: "postgres".to_string(),
+                    metadata: {
+                        let mut map = HashMap::new();
+                        map.insert(
+                            "connection_string".to_string(),
+                            self.connection_string.clone(),
+                        );
+                        map.insert("status".to_string(), "running".to_string());
+                        map
+                    },
+                })
             })
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
-        Box::pin(async move {
-            println!("⏹️  Stopping PostgreSQL plugin...");
-            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-            Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        // Use tokio::task::block_in_place to run async code in sync context
+        tokio::task::block_in_place(|| {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async {
+                println!("⏹️  Stopping PostgreSQL plugin...");
+                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                Ok(())
+            })
         })
     }
 
@@ -71,6 +71,7 @@ impl ServicePlugin for PostgresPlugin {
 }
 
 /// Custom Cache Plugin (demonstrates plugin system)
+#[derive(Debug)]
 pub struct RedisPlugin {
     host: String,
     port: u16,
@@ -87,37 +88,40 @@ impl ServicePlugin for RedisPlugin {
         "redis"
     }
 
-    fn start(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
-        Box::pin(async move {
-            println!("🚀 Starting Redis plugin...");
+    fn start(&self) -> Result<ServiceHandle> {
+        // Use tokio::task::block_in_place to run async code in sync context
+        tokio::task::block_in_place(|| {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async {
+                println!("🚀 Starting Redis plugin...");
 
-            // Simulate Redis startup
-            tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+                // Simulate Redis startup
+                tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
 
-            Ok(ServiceHandle {
-                id: "redis-456".to_string(),
-                service_name: "redis".to_string(),
-                metadata: {
-                    let mut map = HashMap::new();
-                    map.insert("host".to_string(), self.host.clone());
-                    map.insert("port".to_string(), self.port.to_string());
-                    map.insert("status".to_string(), "running".to_string());
-                    map
-                },
+                Ok(ServiceHandle {
+                    id: "redis-456".to_string(),
+                    service_name: "redis".to_string(),
+                    metadata: {
+                        let mut map = HashMap::new();
+                        map.insert("host".to_string(), self.host.clone());
+                        map.insert("port".to_string(), self.port.to_string());
+                        map.insert("status".to_string(), "running".to_string());
+                        map
+                    },
+                })
             })
         })
     }
 
-    fn stop(
-        &self,
-        _handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
-        Box::pin(async move {
-            println!("⏹️  Stopping Redis plugin...");
-            tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
-            Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        // Use tokio::task::block_in_place to run async code in sync context
+        tokio::task::block_in_place(|| {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async {
+                println!("⏹️  Stopping Redis plugin...");
+                tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+                Ok(())
+            })
         })
     }
 
@@ -129,7 +133,7 @@ impl ServicePlugin for RedisPlugin {
 
 /// Test plugin system functionality
 #[tokio::main]
-async fn main() -> Result<(), CleanroomError> {
+async fn main() -> Result<()> {
     println!("🚀 Custom Plugin Development Demo");
     println!("=================================");
     println!("");

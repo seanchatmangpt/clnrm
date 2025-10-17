@@ -56,15 +56,18 @@ macro_rules! cleanroom_test {
             // Handle test result with clear error messages
             match result {
                 Ok(_) => {
-                    println!("✅ Test '{}' passed", stringify!($name));
+                    tracing::info!(test_name = stringify!($name), "Test passed");
                     Ok(())
                 }
                 Err(e) => {
-                    eprintln!("❌ Test '{}' failed: {}", stringify!($name), e);
-                    eprintln!("💡 Debug info:");
-                    eprintln!("   - Check if required Docker images are available");
-                    eprintln!("   - Verify services are running correctly");
-                    eprintln!("   - Check container logs for more details");
+                    tracing::error!(
+                        test_name = stringify!($name),
+                        error = %e,
+                        "Test failed"
+                    );
+                    tracing::debug!("Debug info: Check if required Docker images are available");
+                    tracing::debug!("Debug info: Verify services are running correctly");
+                    tracing::debug!("Debug info: Check container logs for more details");
                     Err(e)
                 }
             }
@@ -137,7 +140,11 @@ impl ServiceSetup {
         image: &str,
         plugin: Box<dyn ServicePlugin>,
     ) -> Result<()> {
-        println!("🚀 Starting {} service with image: {}", service_type, image);
+        tracing::info!(
+            service_type = %service_type,
+            image = %image,
+            "Starting service"
+        );
 
         // Register the service plugin
         self.env.register_service(plugin).await?;
@@ -149,7 +156,10 @@ impl ServiceSetup {
         let mut services = self.services.write().await;
         services.insert(service_type.to_string(), handle);
 
-        println!("✅ {} service started successfully", service_type);
+        tracing::info!(
+            service_type = %service_type,
+            "Service started successfully"
+        );
         Ok(())
     }
 
@@ -394,29 +404,29 @@ impl ServicePlugin for WebServerServicePlugin {
 pub async fn with_database(image: &str) -> Result<()> {
     // This would be called from within the cleanroom_test macro
     // For now, we'll provide a placeholder implementation
-    println!("🚀 Setting up database with image: {}", image);
-    println!("✅ Database service configured");
+    tracing::info!(image = %image, "Setting up database");
+    tracing::info!("Database service configured");
     Ok(())
 }
 
 /// Set up a cache service with the specified image
 pub async fn with_cache(image: &str) -> Result<()> {
-    println!("🚀 Setting up cache with image: {}", image);
-    println!("✅ Cache service configured");
+    tracing::info!(image = %image, "Setting up cache");
+    tracing::info!("Cache service configured");
     Ok(())
 }
 
 /// Set up a message queue service with the specified image
 pub async fn with_message_queue(image: &str) -> Result<()> {
-    println!("🚀 Setting up message queue with image: {}", image);
-    println!("✅ Message queue service configured");
+    tracing::info!(image = %image, "Setting up message queue");
+    tracing::info!("Message queue service configured");
     Ok(())
 }
 
 /// Set up a web server service with the specified image
 pub async fn with_web_server(image: &str) -> Result<()> {
-    println!("🚀 Setting up web server with image: {}", image);
-    println!("✅ Web server service configured");
+    tracing::info!(image = %image, "Setting up web server");
+    tracing::info!("Web server service configured");
     Ok(())
 }
 

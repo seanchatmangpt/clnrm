@@ -86,7 +86,8 @@ impl TemplateContext {
         }
 
         // Use default (lowest priority)
-        self.vars.insert(key.to_string(), Value::String(default.to_string()));
+        self.vars
+            .insert(key.to_string(), Value::String(default.to_string()));
     }
 
     /// Set user-defined variables

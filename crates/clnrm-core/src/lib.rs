@@ -38,6 +38,7 @@ pub use scenario::scenario;
 pub use telemetry::{Export, OtelConfig, OtelGuard};
 
 pub use assertions::{cache, database, email_service, UserAssertions};
+pub use cache::{Cache, CacheManager, CacheStats, FileCache, MemoryCache};
 pub use cleanroom::{
     CleanroomEnvironment, ExecutionResult, HealthStatus, ServiceHandle, ServicePlugin,
     ServiceRegistry,
@@ -46,6 +47,11 @@ pub use config::{
     load_cleanroom_config, load_cleanroom_config_from_file, load_config_from_file,
     parse_toml_config, CleanroomConfig, ScenarioConfig, StepConfig, TestConfig,
 };
+pub use formatting::{
+    format_test_results, format_toml_content, format_toml_file, needs_formatting, Formatter,
+    FormatterType, HumanFormatter, JsonFormatter, JunitFormatter, TapFormatter, TestResult,
+    TestStatus, TestSuite,
+};
 pub use macros::{with_cache, with_database, with_message_queue, with_web_server};
 pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporter, ReportConfig};
 pub use services::generic::GenericContainerPlugin;
@@ -53,14 +59,7 @@ pub use services::surrealdb::SurrealDbPlugin;
 pub use template::{DeterminismConfig, TemplateContext, TemplateRenderer};
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
 pub use validation::{PrdExpectations, ShapeValidator, ValidationReport};
-pub use watch::{WatchConfig, debouncer::FileDebouncer};
-pub use cache::{Cache, CacheManager, CacheStats, FileCache, MemoryCache};
-pub use formatting::{
-    format_toml_content, format_toml_file, needs_formatting,
-    format_test_results, Formatter, FormatterType,
-    HumanFormatter, JsonFormatter, JunitFormatter, TapFormatter,
-    TestResult, TestStatus, TestSuite,
-};
+pub use watch::{debouncer::FileDebouncer, WatchConfig};
 
 // The cleanroom_test macro is already exported via #[macro_export] in macros.rs
 

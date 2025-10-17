@@ -16,14 +16,13 @@
 
 #![cfg(test)]
 
+use clnrm_core::config::parse_toml_config;
 use clnrm_core::error::Result;
 use clnrm_core::template::{TemplateContext, TemplateRenderer};
-use clnrm_core::config::parse_toml_config;
 use clnrm_core::validation::shape::ShapeValidator;
 use serde_json::Value as JsonValue;
-use std::collections::HashMap;
-use std::fs;
 use std::env;
+use std::fs;
 use tempfile::TempDir;
 
 // ============================================================================
@@ -50,10 +49,20 @@ sample_ratio = 1.0
 "#;
 
     let mut context = TemplateContext::new();
-    context.vars.insert("svc".to_string(), JsonValue::String("clnrm".to_string()));
-    context.vars.insert("env".to_string(), JsonValue::String("test".to_string()));
-    context.vars.insert("exporter".to_string(), JsonValue::String("otlp".to_string()));
-    context.vars.insert("endpoint".to_string(), JsonValue::String("http://localhost:4318".to_string()));
+    context
+        .vars
+        .insert("svc".to_string(), JsonValue::String("clnrm".to_string()));
+    context
+        .vars
+        .insert("env".to_string(), JsonValue::String("test".to_string()));
+    context.vars.insert(
+        "exporter".to_string(),
+        JsonValue::String("otlp".to_string()),
+    );
+    context.vars.insert(
+        "endpoint".to_string(),
+        JsonValue::String("http://localhost:4318".to_string()),
+    );
 
     let mut renderer = TemplateRenderer::new()?.with_context(context);
 
@@ -160,14 +169,19 @@ fn test_tera_template_conditional_rendering() -> Result<()> {
 
     // Act & Assert - With token
     let mut context_with_token = TemplateContext::new();
-    context_with_token.vars.insert("token".to_string(), JsonValue::String("secret123".to_string()));
+    context_with_token.vars.insert(
+        "token".to_string(),
+        JsonValue::String("secret123".to_string()),
+    );
     let mut renderer = TemplateRenderer::new()?.with_context(context_with_token);
     let rendered_with_token = renderer.render_str(template_content, "with_token")?;
     assert!(rendered_with_token.contains("Authorization = \"Bearer secret123\""));
 
     // Act & Assert - Without token
     let mut context_without_token = TemplateContext::new();
-    context_without_token.vars.insert("token".to_string(), JsonValue::String("".to_string()));
+    context_without_token
+        .vars
+        .insert("token".to_string(), JsonValue::String("".to_string()));
     let mut renderer2 = TemplateRenderer::new()?.with_context(context_without_token);
     let rendered_without_token = renderer2.render_str(template_content, "without_token")?;
     assert!(!rendered_without_token.contains("Authorization"));
@@ -194,7 +208,9 @@ run = "echo hello"
 "#;
 
     let mut context = TemplateContext::new();
-    context.vars.insert("svc".to_string(), JsonValue::String("clnrm".to_string()));
+    context
+        .vars
+        .insert("svc".to_string(), JsonValue::String("clnrm".to_string()));
     let mut renderer = TemplateRenderer::new()?.with_context(context);
     let rendered_toml = renderer.render_str(template_content, "parse_test")?;
 
@@ -327,7 +343,9 @@ run = "echo test"
     assert!(!result.errors.is_empty());
 
     // Verify error mentions missing meta section
-    let has_meta_error = result.errors.iter()
+    let has_meta_error = result
+        .errors
+        .iter()
         .any(|e| e.message.to_lowercase().contains("meta"));
     assert!(has_meta_error, "Should report missing meta section");
 
@@ -360,9 +378,9 @@ run = "echo test"
     // Assert - Should detect orphan reference
     assert!(!result.passed);
 
-    let has_orphan_error = result.errors.iter()
-        .any(|e| e.message.contains("nonexistent_service") ||
-                 e.message.to_lowercase().contains("service"));
+    let has_orphan_error = result.errors.iter().any(|e| {
+        e.message.contains("nonexistent_service") || e.message.to_lowercase().contains("service")
+    });
     assert!(has_orphan_error, "Should report orphan service reference");
 
     Ok(())
@@ -399,9 +417,10 @@ run = "echo test"
     // NOTE: Current implementation may not enforce enum validation
     // This test documents expected behavior per PRD
     if !result.passed {
-        let has_enum_error = result.errors.iter()
-            .any(|e| e.message.to_lowercase().contains("exporter") ||
-                     e.message.to_lowercase().contains("enum"));
+        let has_enum_error = result.errors.iter().any(|e| {
+            e.message.to_lowercase().contains("exporter")
+                || e.message.to_lowercase().contains("enum")
+        });
         if has_enum_error {
             // Good - enum validation working
             assert!(true);
@@ -463,10 +482,20 @@ freeze_clock = "2025-01-01T00:00:00Z"
 
     // Step 1: Resolve inputs (template vars → defaults)
     let mut context = TemplateContext::new();
-    context.vars.insert("svc".to_string(), JsonValue::String("clnrm".to_string()));
-    context.vars.insert("env".to_string(), JsonValue::String("test".to_string()));
-    context.vars.insert("endpoint".to_string(), JsonValue::String("http://localhost:4318".to_string()));
-    context.vars.insert("exporter".to_string(), JsonValue::String("otlp".to_string()));
+    context
+        .vars
+        .insert("svc".to_string(), JsonValue::String("clnrm".to_string()));
+    context
+        .vars
+        .insert("env".to_string(), JsonValue::String("test".to_string()));
+    context.vars.insert(
+        "endpoint".to_string(),
+        JsonValue::String("http://localhost:4318".to_string()),
+    );
+    context.vars.insert(
+        "exporter".to_string(),
+        JsonValue::String("otlp".to_string()),
+    );
 
     // Step 2: Render Tera template
     let mut renderer = TemplateRenderer::new()?.with_context(context);
@@ -484,7 +513,11 @@ freeze_clock = "2025-01-01T00:00:00Z"
     let validation_result = validator.validate_file(&config_path)?;
 
     // Assert - Complete workflow succeeds
-    assert!(validation_result.passed, "Shape validation should pass: {:?}", validation_result.errors);
+    assert!(
+        validation_result.passed,
+        "Shape validation should pass: {:?}",
+        validation_result.errors
+    );
     assert!(config.meta.is_some());
     assert!(config.otel.is_some());
     assert!(config.service.is_some());
@@ -558,9 +591,11 @@ version = "1.0"
     // Assert - Should return error, not panic
     assert!(result.is_err());
     let error = result.unwrap_err();
-    assert!(error.message.contains("undefined_var") ||
-            error.message.to_lowercase().contains("variable") ||
-            error.message.to_lowercase().contains("template"));
+    assert!(
+        error.message.contains("undefined_var")
+            || error.message.to_lowercase().contains("variable")
+            || error.message.to_lowercase().contains("template")
+    );
 }
 
 #[test]
@@ -597,8 +632,13 @@ run = "date"
 "#;
 
     let mut context = TemplateContext::new();
-    context.vars.insert("seed".to_string(), JsonValue::Number(42.into()));
-    context.vars.insert("freeze_clock".to_string(), JsonValue::String("2025-01-01T00:00:00Z".to_string()));
+    context
+        .vars
+        .insert("seed".to_string(), JsonValue::Number(42.into()));
+    context.vars.insert(
+        "freeze_clock".to_string(),
+        JsonValue::String("2025-01-01T00:00:00Z".to_string()),
+    );
 
     // Act
     let mut renderer = TemplateRenderer::new()?.with_context(context);

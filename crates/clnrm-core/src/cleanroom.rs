@@ -837,7 +837,7 @@ mod tests {
             assert_eq!(plugin.name(), "mock_database");
         }
 
-        println!("✅ ServicePlugin trait is dyn compatible!");
+        tracing::info!("ServicePlugin trait is dyn compatible");
     }
 
     #[tokio::test]

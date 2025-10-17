@@ -30,18 +30,17 @@ pub fn diff_traces(
     only_changes: bool,
 ) -> Result<DiffResult> {
     // Read baseline and current traces
-    let baseline_content = std::fs::read_to_string(baseline).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read baseline: {}", e))
-    })?;
+    let baseline_content = std::fs::read_to_string(baseline)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read baseline: {}", e)))?;
 
-    let current_content = std::fs::read_to_string(current).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read current: {}", e))
-    })?;
+    let current_content = std::fs::read_to_string(current)
+        .map_err(|e| CleanroomError::io_error(format!("Failed to read current: {}", e)))?;
 
     // Parse JSON traces
-    let baseline_json: serde_json::Value = serde_json::from_str(&baseline_content).map_err(|e| {
-        CleanroomError::serialization_error(format!("Failed to parse baseline JSON: {}", e))
-    })?;
+    let baseline_json: serde_json::Value =
+        serde_json::from_str(&baseline_content).map_err(|e| {
+            CleanroomError::serialization_error(format!("Failed to parse baseline JSON: {}", e))
+        })?;
 
     let current_json: serde_json::Value = serde_json::from_str(&current_content).map_err(|e| {
         CleanroomError::serialization_error(format!("Failed to parse current JSON: {}", e))
@@ -117,7 +116,9 @@ pub fn diff_traces(
                 }
             }
 
-            if !only_changes || result.added_count + result.removed_count + result.modified_count == 0 {
+            if !only_changes
+                || result.added_count + result.removed_count + result.modified_count == 0
+            {
                 println!(
                     "\nSummary: {} added, {} removed, {} modified",
                     result.added_count, result.removed_count, result.modified_count
@@ -162,9 +163,8 @@ mod tests {
     #[test]
     fn test_diff_identical_traces() -> Result<()> {
         // Arrange
-        let temp_dir = TempDir::new().map_err(|e| {
-            CleanroomError::io_error(format!("Failed to create temp dir: {}", e))
-        })?;
+        let temp_dir = TempDir::new()
+            .map_err(|e| CleanroomError::io_error(format!("Failed to create temp dir: {}", e)))?;
 
         let baseline_file = temp_dir.path().join("baseline.json");
         let current_file = temp_dir.path().join("current.json");
@@ -174,12 +174,10 @@ mod tests {
             {"name": "span2"}
         ]"#;
 
-        fs::write(&baseline_file, trace_json).map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write file: {}", e))
-        })?;
-        fs::write(&current_file, trace_json).map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write file: {}", e))
-        })?;
+        fs::write(&baseline_file, trace_json)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
+        fs::write(&current_file, trace_json)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
 
         // Act
         let result = diff_traces(
@@ -200,19 +198,16 @@ mod tests {
     #[test]
     fn test_diff_detects_added_span() -> Result<()> {
         // Arrange
-        let temp_dir = TempDir::new().map_err(|e| {
-            CleanroomError::io_error(format!("Failed to create temp dir: {}", e))
-        })?;
+        let temp_dir = TempDir::new()
+            .map_err(|e| CleanroomError::io_error(format!("Failed to create temp dir: {}", e)))?;
 
         let baseline_file = temp_dir.path().join("baseline.json");
         let current_file = temp_dir.path().join("current.json");
 
-        fs::write(&baseline_file, r#"[{"name": "span1"}]"#).map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write file: {}", e))
-        })?;
-        fs::write(&current_file, r#"[{"name": "span1"}, {"name": "span2"}]"#).map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write file: {}", e))
-        })?;
+        fs::write(&baseline_file, r#"[{"name": "span1"}]"#)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
+        fs::write(&current_file, r#"[{"name": "span1"}, {"name": "span2"}]"#)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write file: {}", e)))?;
 
         // Act
         let result = diff_traces(

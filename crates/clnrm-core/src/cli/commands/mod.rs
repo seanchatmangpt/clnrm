@@ -15,9 +15,8 @@ pub mod validate;
 
 // Re-export all public functions for easy access
 pub use run::{
-    run_single_test, run_tests, run_tests_parallel, run_tests_parallel_with_results,
-    run_tests_sequential, run_tests_sequential_with_results, validate_test_assertions,
-    watch_and_run,
+    run_tests, run_tests_parallel, run_tests_parallel_with_results,
+    run_tests_sequential, run_tests_sequential_with_results,
 };
 
 pub use init::init_project;
@@ -44,6 +43,7 @@ pub use v0_7_0::dev::run_dev_mode;
 pub use v0_7_0::diff::diff_traces;
 pub use v0_7_0::dry_run::{dry_run_validate, ValidationResult as DryRunValidationResult};
 pub use v0_7_0::fmt::format_files;
+pub use v0_7_0::graph::visualize_graph;
 pub use v0_7_0::lint::lint_files;
 pub use v0_7_0::record::run_record;
 
@@ -51,5 +51,5 @@ pub use v0_7_0::record::run_record;
 pub use v0_7_0::prd_commands::{
     filter_spans, pull_images, render_template_with_vars, reproduce_baseline,
     run_red_green_validation, show_collector_logs, show_collector_status, start_collector,
-    stop_collector, visualize_graph,
+    stop_collector,
 };

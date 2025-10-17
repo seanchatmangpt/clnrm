@@ -4,7 +4,7 @@
 //! Performs fast, static validation of configuration shape and relationships.
 
 use crate::config::{
-    ExpectationsConfig, OtelConfig, OrderExpectationConfig, ScenarioConfig, ServiceConfig,
+    ExpectationsConfig, OrderExpectationConfig, OtelConfig, ScenarioConfig, ServiceConfig,
     SpanExpectationConfig, TestConfig, VolumeConfig, WindowExpectationConfig,
 };
 use crate::error::{CleanroomError, Result};
@@ -80,9 +80,7 @@ pub struct ShapeValidator {
 impl ShapeValidator {
     /// Create new shape validator
     pub fn new() -> Self {
-        Self {
-            errors: Vec::new(),
-        }
+        Self { errors: Vec::new() }
     }
 
     /// Validate a configuration file
@@ -100,7 +98,8 @@ impl ShapeValidator {
         let toml_content = if crate::template::is_template(&content) {
             // Render as Tera template
             let mut renderer = crate::template::TemplateRenderer::new()?;
-            let path_str = path.to_str()
+            let path_str = path
+                .to_str()
                 .ok_or_else(|| CleanroomError::validation_error("Invalid file path encoding"))?;
             renderer.render_str(&content, path_str)?
         } else {
@@ -108,9 +107,8 @@ impl ShapeValidator {
         };
 
         // Parse TOML
-        let config = toml::from_str::<TestConfig>(&toml_content).map_err(|e| {
-            CleanroomError::config_error(format!("TOML parse error: {}", e))
-        })?;
+        let config = toml::from_str::<TestConfig>(&toml_content)
+            .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
 
         // Validate shape
         self.validate_config(&config)?;
@@ -217,7 +215,14 @@ impl ShapeValidator {
 
     /// Validate OTEL exporter configuration
     fn validate_otel_exporter(&mut self, otel: &OtelConfig) {
-        let valid_exporters = ["jaeger", "otlp", "otlp-http", "otlp-grpc", "datadog", "newrelic"];
+        let valid_exporters = [
+            "jaeger",
+            "otlp",
+            "otlp-http",
+            "otlp-grpc",
+            "datadog",
+            "newrelic",
+        ];
 
         if !valid_exporters.contains(&otel.exporter.as_str()) {
             self.errors.push(ShapeValidationError::new(
@@ -235,7 +240,10 @@ impl ShapeValidator {
             if !(0.0..=1.0).contains(&ratio) {
                 self.errors.push(ShapeValidationError::new(
                     ErrorCategory::OtelError,
-                    format!("OTEL sample_ratio must be between 0.0 and 1.0, got {}", ratio),
+                    format!(
+                        "OTEL sample_ratio must be between 0.0 and 1.0, got {}",
+                        ratio
+                    ),
                 ));
             }
         }
@@ -389,20 +397,14 @@ impl ShapeValidator {
         // Add must_precede edges (A -> B means A must come before B)
         if let Some(ref must_precede) = order.must_precede {
             for (first, second) in must_precede {
-                graph
-                    .entry(first.clone())
-                    .or_default()
-                    .push(second.clone());
+                graph.entry(first.clone()).or_default().push(second.clone());
             }
         }
 
         // Add must_follow edges (A follows B means B -> A)
         if let Some(ref must_follow) = order.must_follow {
             for (first, second) in must_follow {
-                graph
-                    .entry(second.clone())
-                    .or_default()
-                    .push(first.clone());
+                graph.entry(second.clone()).or_default().push(first.clone());
             }
         }
 
@@ -412,13 +414,17 @@ impl ShapeValidator {
 
         for node in graph.keys() {
             if !visited.contains(node)
-                && Self::has_cycle_dfs(node, &graph, &mut visited, &mut rec_stack) {
-                    self.errors.push(ShapeValidationError::new(
-                        ErrorCategory::CircularOrdering,
-                        format!("Circular temporal ordering detected involving span '{}'", node),
-                    ));
-                    break;
-                }
+                && Self::has_cycle_dfs(node, &graph, &mut visited, &mut rec_stack)
+            {
+                self.errors.push(ShapeValidationError::new(
+                    ErrorCategory::CircularOrdering,
+                    format!(
+                        "Circular temporal ordering detected involving span '{}'",
+                        node
+                    ),
+                ));
+                break;
+            }
         }
     }
 
@@ -476,7 +482,10 @@ impl ShapeValidator {
             if let Err(e) = self.validate_glob_pattern(&span.name) {
                 self.errors.push(ShapeValidationError::new(
                     ErrorCategory::InvalidGlob,
-                    format!("Invalid glob pattern in span expectation '{}': {}", span.name, e),
+                    format!(
+                        "Invalid glob pattern in span expectation '{}': {}",
+                        span.name, e
+                    ),
                 ));
             }
         }
@@ -484,8 +493,9 @@ impl ShapeValidator {
 
     /// Validate a single glob pattern
     fn validate_glob_pattern(&self, pattern: &str) -> Result<()> {
-        GlobBuilder::new(pattern)
-            .map_err(|e| CleanroomError::validation_error(format!("Invalid pattern '{}': {}", pattern, e)))?;
+        GlobBuilder::new(pattern).map_err(|e| {
+            CleanroomError::validation_error(format!("Invalid pattern '{}': {}", pattern, e))
+        })?;
         Ok(())
     }
 
@@ -661,14 +671,27 @@ impl ShapeValidator {
 
         // Warn about dangerous system paths
         let dangerous_paths = [
-            "/etc", "/var", "/proc", "/sys", "/dev", "/boot", "/root", "/bin", "/sbin",
-            "/lib", "/lib64", "/usr/bin", "/usr/sbin",
+            "/etc",
+            "/var",
+            "/proc",
+            "/sys",
+            "/dev",
+            "/boot",
+            "/root",
+            "/bin",
+            "/sbin",
+            "/lib",
+            "/lib64",
+            "/usr/bin",
+            "/usr/sbin",
         ];
 
         for dangerous in &dangerous_paths {
             if volume.container_path.starts_with(dangerous)
                 && (volume.container_path == *dangerous
-                    || volume.container_path.starts_with(&format!("{}/", dangerous)))
+                    || volume
+                        .container_path
+                        .starts_with(&format!("{}/", dangerous)))
             {
                 self.errors.push(ShapeValidationError::new(
                     ErrorCategory::InvalidStructure,
@@ -756,12 +779,22 @@ impl ShapeValidator {
 
         // Warn about potential hardcoded secrets
         let sensitive_keys = [
-            "API_KEY", "PASSWORD", "SECRET", "TOKEN", "PRIVATE_KEY", "CREDENTIALS",
-            "AUTH_TOKEN", "ACCESS_KEY", "SECRET_KEY",
+            "API_KEY",
+            "PASSWORD",
+            "SECRET",
+            "TOKEN",
+            "PRIVATE_KEY",
+            "CREDENTIALS",
+            "AUTH_TOKEN",
+            "ACCESS_KEY",
+            "SECRET_KEY",
         ];
 
         for sensitive in &sensitive_keys {
-            if key.to_uppercase().contains(sensitive) && !value.is_empty() && !value.starts_with('$') {
+            if key.to_uppercase().contains(sensitive)
+                && !value.is_empty()
+                && !value.starts_with('$')
+            {
                 self.errors.push(ShapeValidationError::new(
                     ErrorCategory::InvalidStructure,
                     format!(
@@ -856,7 +889,10 @@ impl ShapeValidator {
     }
 
     /// Collect all services from config (both [services] and [service] tables)
-    fn collect_all_services<'a>(&self, config: &'a TestConfig) -> HashMap<String, &'a ServiceConfig> {
+    fn collect_all_services<'a>(
+        &self,
+        config: &'a TestConfig,
+    ) -> HashMap<String, &'a ServiceConfig> {
         let mut all_services = HashMap::new();
 
         if let Some(ref services) = config.services {

@@ -84,13 +84,13 @@ impl VariableResolver {
     pub fn resolve(&self) -> Result<HashMap<String, String>> {
         let mut resolved = HashMap::new();
 
-        // Resolve each variable using pick()
+        // Resolve each variable using pick() with fallback defaults
         resolved.insert(
             "svc".to_string(),
             self.pick(
                 "svc",
                 "SERVICE_NAME",
-                &self.defaults.get("svc").cloned().unwrap_or_else(|| "clnrm".to_string()),
+                self.defaults.get("svc").map(|s| s.as_str()).unwrap_or("clnrm"),
             ),
         );
 
@@ -99,7 +99,7 @@ impl VariableResolver {
             self.pick(
                 "env",
                 "ENV",
-                &self.defaults.get("env").cloned().unwrap_or_else(|| "ci".to_string()),
+                self.defaults.get("env").map(|s| s.as_str()).unwrap_or("ci"),
             ),
         );
 
@@ -108,7 +108,7 @@ impl VariableResolver {
             self.pick(
                 "endpoint",
                 "OTEL_ENDPOINT",
-                &self.defaults.get("endpoint").cloned().unwrap_or_else(|| "http://localhost:4318".to_string()),
+                self.defaults.get("endpoint").map(|s| s.as_str()).unwrap_or("http://localhost:4318"),
             ),
         );
 
@@ -117,7 +117,7 @@ impl VariableResolver {
             self.pick(
                 "exporter",
                 "OTEL_TRACES_EXPORTER",
-                &self.defaults.get("exporter").cloned().unwrap_or_else(|| "otlp".to_string()),
+                self.defaults.get("exporter").map(|s| s.as_str()).unwrap_or("otlp"),
             ),
         );
 
@@ -126,7 +126,7 @@ impl VariableResolver {
             self.pick(
                 "image",
                 "CLNRM_IMAGE",
-                &self.defaults.get("image").cloned().unwrap_or_else(|| "registry/clnrm:1.0.0".to_string()),
+                self.defaults.get("image").map(|s| s.as_str()).unwrap_or("registry/clnrm:1.0.0"),
             ),
         );
 
@@ -135,7 +135,7 @@ impl VariableResolver {
             self.pick(
                 "freeze_clock",
                 "FREEZE_CLOCK",
-                &self.defaults.get("freeze_clock").cloned().unwrap_or_else(|| "2025-01-01T00:00:00Z".to_string()),
+                self.defaults.get("freeze_clock").map(|s| s.as_str()).unwrap_or("2025-01-01T00:00:00Z"),
             ),
         );
 
@@ -144,7 +144,7 @@ impl VariableResolver {
             self.pick(
                 "token",
                 "OTEL_TOKEN",
-                &self.defaults.get("token").cloned().unwrap_or_default(),
+                self.defaults.get("token").map(|s| s.as_str()).unwrap_or(""),
             ),
         );
 

@@ -23,7 +23,7 @@ struct Span {
     kind: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct TraceData {
     #[serde(default)]
     spans: Vec<Span>,
@@ -170,7 +170,7 @@ fn generate_dot_graph(spans: &[Span]) -> Result<String> {
         output.push_str(&format!("  \"{}\" [label=\"{}\"];\n", span.span_id, label));
     }
 
-    output.push_str("\n");
+    output.push('\n');
 
     // Add edges
     for span in spans {
@@ -268,17 +268,253 @@ fn sanitize_mermaid_id(id: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::NamedTempFile;
+
+    fn create_sample_trace_data() -> TraceData {
+        TraceData {
+            spans: vec![
+                Span {
+                    name: "Root Operation".to_string(),
+                    span_id: "span-001".to_string(),
+                    parent_span_id: None,
+                    trace_id: "trace-123".to_string(),
+                    kind: "SERVER".to_string(),
+                },
+                Span {
+                    name: "HTTP Request".to_string(),
+                    span_id: "span-002".to_string(),
+                    parent_span_id: Some("span-001".to_string()),
+                    trace_id: "trace-123".to_string(),
+                    kind: "CLIENT".to_string(),
+                },
+                Span {
+                    name: "Database Query".to_string(),
+                    span_id: "span-003".to_string(),
+                    parent_span_id: Some("span-002".to_string()),
+                    trace_id: "trace-123".to_string(),
+                    kind: "CLIENT".to_string(),
+                },
+                Span {
+                    name: "Cache Lookup".to_string(),
+                    span_id: "span-004".to_string(),
+                    parent_span_id: Some("span-002".to_string()),
+                    trace_id: "trace-123".to_string(),
+                    kind: "CLIENT".to_string(),
+                },
+            ],
+        }
+    }
 
     #[test]
     fn test_sanitize_mermaid_id() {
         assert_eq!(sanitize_mermaid_id("abc-123"), "abc_123");
         assert_eq!(sanitize_mermaid_id("span.id.123"), "span_id_123");
+        assert_eq!(sanitize_mermaid_id("test@span#id"), "test_span_id");
     }
 
     #[test]
-    fn test_generate_ascii_tree_empty() {
+    fn test_generate_ascii_tree_empty() -> Result<()> {
+        // Arrange
         let spans = vec![];
-        let result = generate_ascii_tree(&spans, false);
+
+        // Act
+        let result = generate_ascii_tree(&spans, false)?;
+
+        // Assert
+        assert!(result.contains("(no spans to display)"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_ascii_tree_with_spans() -> Result<()> {
+        // Arrange
+        let trace_data = create_sample_trace_data();
+
+        // Act
+        let result = generate_ascii_tree(&trace_data.spans, false)?;
+
+        // Assert
+        assert!(result.contains("Root Operation"));
+        assert!(result.contains("HTTP Request"));
+        assert!(result.contains("Database Query"));
+        assert!(result.contains("Cache Lookup"));
+        assert!(result.contains("SERVER"));
+        assert!(result.contains("CLIENT"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_dot_graph() -> Result<()> {
+        // Arrange
+        let trace_data = create_sample_trace_data();
+
+        // Act
+        let result = generate_dot_graph(&trace_data.spans)?;
+
+        // Assert
+        assert!(result.contains("digraph trace"));
+        assert!(result.contains("rankdir=TB"));
+        assert!(result.contains("span-001"));
+        assert!(result.contains("span-002"));
+        assert!(result.contains("Root Operation"));
+        assert!(result.contains("HTTP Request"));
+        assert!(result.contains("->"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_json_graph() -> Result<()> {
+        // Arrange
+        let trace_data = create_sample_trace_data();
+
+        // Act
+        let result = generate_json_graph(&trace_data.spans)?;
+
+        // Assert
+        let parsed: serde_json::Value = serde_json::from_str(&result)
+            .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
+
+        assert!(parsed["nodes"].is_array());
+        assert!(parsed["edges"].is_array());
+        assert_eq!(parsed["nodes"].as_array().unwrap().len(), 4);
+        assert_eq!(parsed["edges"].as_array().unwrap().len(), 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_mermaid_diagram() -> Result<()> {
+        // Arrange
+        let trace_data = create_sample_trace_data();
+
+        // Act
+        let result = generate_mermaid_diagram(&trace_data.spans)?;
+
+        // Assert
+        assert!(result.contains("```mermaid"));
+        assert!(result.contains("graph TD"));
+        assert!(result.contains("span_001"));
+        assert!(result.contains("Root Operation"));
+        assert!(result.contains("-->"));
+        assert!(result.contains("```"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_trace_data_with_invalid_json() -> Result<()> {
+        // Arrange
+        let temp_file = NamedTempFile::new()
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        fs::write(temp_file.path(), "invalid json")
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+
+        // Act
+        let result = load_trace_data(temp_file.path());
+
+        // Assert
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("Failed to parse trace JSON"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_trace_data_with_valid_json() -> Result<()> {
+        // Arrange
+        let temp_file = NamedTempFile::new()
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let trace_data = create_sample_trace_data();
+        let json = serde_json::to_string(&trace_data)
+            .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
+        fs::write(temp_file.path(), json)
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+
+        // Act
+        let result = load_trace_data(temp_file.path())?;
+
+        // Assert
+        assert_eq!(result.spans.len(), 4);
+        assert_eq!(result.spans[0].name, "Root Operation");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_visualize_graph_ascii_format() -> Result<()> {
+        // Arrange
+        let temp_file = NamedTempFile::new()
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let trace_data = create_sample_trace_data();
+        let json = serde_json::to_string(&trace_data)
+            .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
+        fs::write(temp_file.path(), json)
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+
+        // Act
+        let result = visualize_graph(temp_file.path(), &GraphFormat::Ascii, false, None);
+
+        // Assert
         assert!(result.is_ok());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_visualize_graph_with_filter() -> Result<()> {
+        // Arrange
+        let temp_file = NamedTempFile::new()
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let trace_data = create_sample_trace_data();
+        let json = serde_json::to_string(&trace_data)
+            .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
+        fs::write(temp_file.path(), json)
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+
+        // Act
+        let result = visualize_graph(temp_file.path(), &GraphFormat::Json, false, Some("Database"));
+
+        // Assert
+        assert!(result.is_ok());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_visualize_graph_with_nonexistent_file() -> Result<()> {
+        // Arrange
+        let nonexistent_path = std::path::PathBuf::from("/nonexistent/trace.json");
+
+        // Act
+        let result = visualize_graph(&nonexistent_path, &GraphFormat::Ascii, false, None);
+
+        // Assert
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("Failed to read trace file"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_all_output_formats() -> Result<()> {
+        // Arrange
+        let temp_file = NamedTempFile::new()
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+        let trace_data = create_sample_trace_data();
+        let json = serde_json::to_string(&trace_data)
+            .map_err(|e| CleanroomError::serialization_error(e.to_string()))?;
+        fs::write(temp_file.path(), json)
+            .map_err(|e| CleanroomError::io_error(e.to_string()))?;
+
+        // Act & Assert - Test all formats
+        assert!(visualize_graph(temp_file.path(), &GraphFormat::Ascii, false, None).is_ok());
+        assert!(visualize_graph(temp_file.path(), &GraphFormat::Dot, false, None).is_ok());
+        assert!(visualize_graph(temp_file.path(), &GraphFormat::Json, false, None).is_ok());
+        assert!(visualize_graph(temp_file.path(), &GraphFormat::Mermaid, false, None).is_ok());
+
+        Ok(())
     }
 }

@@ -196,6 +196,7 @@ impl CountExpectation {
         spans
             .iter()
             .map(|span| {
+                // SAFE: unwrap_or with safe default (0) - spans without event.count are treated as having 0 events
                 span.attributes
                     .get("event.count")
                     .and_then(|v| v.as_u64())
@@ -210,11 +211,13 @@ impl CountExpectation {
             .iter()
             .filter(|span| {
                 // Check for error status in attributes
+                // SAFE: unwrap_or with safe default (false) - missing status_code means no error
                 span.attributes
                     .get("otel.status_code")
                     .and_then(|v| v.as_str())
                     .map(|s| s == "ERROR")
                     .unwrap_or(false)
+                    // SAFE: unwrap_or with safe default (false) - missing error attribute means no error
                     || span
                         .attributes
                         .get("error")

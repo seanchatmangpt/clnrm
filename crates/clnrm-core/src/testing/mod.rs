@@ -101,11 +101,34 @@ pub async fn run_framework_tests() -> Result<FrameworkTestResults> {
 }
 
 async fn test_container_execution() -> Result<()> {
-    // Basic container test - simplified for compilation
-    Ok(())
+    // TODO: Implement actual container execution test
+    // This should:
+    // 1. Create a CleanroomEnvironment instance
+    // 2. Register a GenericContainerPlugin with a simple image (e.g., alpine:latest)
+    // 3. Start the service
+    // 4. Execute a command (e.g., echo "test")
+    // 5. Verify the command output
+    // 6. Stop and cleanup the service
+    //
+    // See: https://github.com/seanchatmangpt/clnrm/issues/XXX
+    unimplemented!(
+        "test_container_execution: Needs actual container execution via CleanroomEnvironment. \
+         Should create environment, start service, execute command, and verify output."
+    )
 }
 
 async fn test_plugin_system() -> Result<()> {
-    // Basic plugin test - simplified for compilation
-    Ok(())
+    // TODO: Implement actual plugin system test
+    // This should:
+    // 1. Create a CleanroomEnvironment instance
+    // 2. Register multiple plugins (e.g., GenericContainerPlugin, mock plugins)
+    // 3. Verify plugin registration and lifecycle
+    // 4. Test plugin communication and coordination
+    // 5. Verify plugin cleanup on environment drop
+    //
+    // See: https://github.com/seanchatmangpt/clnrm/issues/XXX
+    unimplemented!(
+        "test_plugin_system: Needs actual plugin system validation. \
+         Should register multiple plugins, test lifecycle, and verify coordination."
+    )
 }

@@ -98,7 +98,9 @@ impl Formatter for JsonFormatter {
         } else {
             serde_json::to_string(&json_suite)
         }
-        .map_err(|e| CleanroomError::serialization_error(format!("JSON serialization failed: {}", e)))?;
+        .map_err(|e| {
+            CleanroomError::serialization_error(format!("JSON serialization failed: {}", e))
+        })?;
 
         Ok(json_str)
     }
@@ -128,8 +130,9 @@ mod tests {
         let output = formatter.format(&suite)?;
 
         // Assert
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .map_err(|e| CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e)))?;
+        let parsed: serde_json::Value = serde_json::from_str(&output).map_err(|e| {
+            CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e))
+        })?;
 
         assert_eq!(parsed["name"], "empty_suite");
         assert_eq!(parsed["total"], 0);
@@ -151,8 +154,9 @@ mod tests {
         let output = formatter.format(&suite)?;
 
         // Assert
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .map_err(|e| CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e)))?;
+        let parsed: serde_json::Value = serde_json::from_str(&output).map_err(|e| {
+            CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e))
+        })?;
 
         assert_eq!(parsed["name"], "passing_suite");
         assert_eq!(parsed["success"], true);
@@ -160,7 +164,8 @@ mod tests {
         assert_eq!(parsed["passed"], 2);
         assert_eq!(parsed["failed"], 0);
 
-        let results = parsed["results"].as_array().unwrap();
+        let results = parsed["results"].as_array()
+            .ok_or_else(|| CleanroomError::internal_error("Expected 'results' to be an array"))?;
         assert_eq!(results.len(), 2);
         assert_eq!(results[0]["name"], "test1");
         assert_eq!(results[0]["status"], "passed");
@@ -180,13 +185,15 @@ mod tests {
         let output = formatter.format(&suite)?;
 
         // Assert
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .map_err(|e| CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e)))?;
+        let parsed: serde_json::Value = serde_json::from_str(&output).map_err(|e| {
+            CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e))
+        })?;
 
         assert_eq!(parsed["success"], false);
         assert_eq!(parsed["failed"], 1);
 
-        let results = parsed["results"].as_array().unwrap();
+        let results = parsed["results"].as_array()
+            .ok_or_else(|| CleanroomError::internal_error("Expected 'results' to be an array"))?;
         assert_eq!(results[1]["status"], "failed");
         assert_eq!(results[1]["error"], "error message");
 
@@ -205,12 +212,14 @@ mod tests {
         let output = formatter.format(&suite)?;
 
         // Assert
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .map_err(|e| CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e)))?;
+        let parsed: serde_json::Value = serde_json::from_str(&output).map_err(|e| {
+            CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e))
+        })?;
 
         assert_eq!(parsed["duration_ms"], 500.0);
 
-        let results = parsed["results"].as_array().unwrap();
+        let results = parsed["results"].as_array()
+            .ok_or_else(|| CleanroomError::internal_error("Expected 'results' to be an array"))?;
         assert_eq!(results[0]["duration_ms"], 100.0);
 
         Ok(())
@@ -230,10 +239,12 @@ mod tests {
         let output = formatter.format(&suite)?;
 
         // Assert
-        let parsed: serde_json::Value = serde_json::from_str(&output)
-            .map_err(|e| CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e)))?;
+        let parsed: serde_json::Value = serde_json::from_str(&output).map_err(|e| {
+            CleanroomError::serialization_error(format!("Failed to parse JSON: {}", e))
+        })?;
 
-        let results = parsed["results"].as_array().unwrap();
+        let results = parsed["results"].as_array()
+            .ok_or_else(|| CleanroomError::internal_error("Expected 'results' to be an array"))?;
         assert_eq!(results[0]["stdout"], "stdout output");
         assert_eq!(results[0]["stderr"], "stderr output");
 
