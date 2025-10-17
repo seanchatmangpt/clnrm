@@ -369,7 +369,7 @@ brew tap seanchatmangpt/clnrm
 brew install clnrm
 
 # Verify installation
-clnrm --version  # Should show: clnrm 0.5.0
+clnrm --version  # Should show: clnrm 0.6.0
 ```
 
 #### Via Cargo
@@ -439,6 +439,28 @@ clnrm plugins
 ```
 
 ## 📋 **Changelog**
+
+### **Version 0.6.0** *(2025-10-16)*
+**Major Release: Enhanced Templating & Validation**
+
+#### **🚀 New Features**
+- **Enhanced Tera Templating** - Dynamic test configuration with Jinja2-like templates
+- **Temporal Validation** - Nanosecond-precision span ordering validation
+- **Multi-Format Reporting** - JSON, JUnit XML, and SHA-256 digests
+- **Deterministic Testing** - Reproducible results with seeded randomness
+
+#### **🔧 Improvements**
+- Improved template rendering performance
+- Enhanced error messages and debugging
+- Better integration with CI/CD pipelines
+- Extended documentation and examples
+
+#### **📚 Documentation**
+- Updated README with 0.6.0 features
+- Enhanced template examples
+- Improved validation guides
+
+**Breaking Changes:** None - all existing `.toml` files work unchanged.
 
 ### **Version 0.5.0** *(2025-10-16)*
 **Major Release: Tera Templating & OTEL Validation**
