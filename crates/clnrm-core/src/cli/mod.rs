@@ -8,6 +8,7 @@
 #![allow(hidden_glob_reexports)]
 
 pub mod commands;
+pub mod noun_verb_integration;
 pub mod telemetry;
 pub mod types;
 pub mod utils;

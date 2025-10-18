@@ -335,7 +335,7 @@ pub fn render_template_with_vars(
     }
 
     // Use existing template renderer
-    let rendered = crate::template::render_template_file(template, vars)?;
+    let rendered = crate::render_template_file(template, vars)?;
 
     // Write output or print to stdout
     if let Some(out) = output {

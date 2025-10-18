@@ -1,0 +1,59 @@
+[package]
+name = "clnrm-template"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Cleanroom Testing Framework - Template Engine"
+readme = "../../README.md"
+keywords = ["testing", "template", "tera", "rendering"]
+categories = ["development-tools"]
+
+[lib]
+name = "clnrm_template"
+path = "src/lib.rs"
+
+[dependencies]
+# Core dependencies
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+
+# Async support (optional)
+tokio = { version = "1.0", features = ["rt", "macros"], optional = true }
+
+# Template rendering
+tera = "1.19"
+sha2 = "0.10"
+globset = "0.4.17"
+Inflector = "0.11.4"
+fake = { version = "2.9", features = [
+  "derive",
+  "chrono",
+  "http",
+  "uuid",
+  "random_color",
+] }
+
+# Utility dependencies
+uuid = { workspace = true }
+chrono = { workspace = true }
+rand = "0.8"
+
+# Template discovery and debugging
+walkdir = "2.5"
+toml = "0.9"
+toml_edit = "0.22"
+
+# Validation
+serde_yaml = "0.9"
+regex = "1.0"
+
+[features]
+default = ["async"]
+async = ["dep:tokio"]
+
+[dev-dependencies]
+# Testing
+tokio = { workspace = true }

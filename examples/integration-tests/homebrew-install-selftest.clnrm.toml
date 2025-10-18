@@ -35,13 +35,9 @@ tags = ["integration", "homebrew", "otel", "validation"]
 
 # Service configuration - Homebrew container
 [services.brew]
-type = "generic_container"
 image = "homebrew/brew:latest"
 wait_for_ready = true
-env = [
-    "HOMEBREW_NO_AUTO_UPDATE=1",
-    "HOMEBREW_NO_INSTALL_CLEANUP=1",
-]
+env = { "HOMEBREW_NO_AUTO_UPDATE" = "1", "HOMEBREW_NO_INSTALL_CLEANUP" = "1" }
 
 # Step 1: Update Homebrew
 [[steps]]
@@ -79,9 +75,12 @@ name = "run_selftest_with_otel"
 command = [
     "clnrm",
     "self-test",
-    "--otel-exporter", "stdout",
-    "--otel-service-name", "clnrm-homebrew-validation",
-    "--otel-sample-ratio", "1.0",
+    "--otel-exporter",
+    "stdout",
+    "--otel-service-name",
+    "clnrm-homebrew-validation",
+    "--otel-sample-ratio",
+    "1.0",
 ]
 service = "brew"
 capture_stdout = true
@@ -94,29 +93,13 @@ container_should_have_executed_commands = 5
 execution_should_be_hermetic = true
 
 # Expect: Span validation
-[expect.span]
-# Validate specific spans exist with required attributes
-spans = [
-    {
-        name = "clnrm.run",
-        attributes = {
-            "clnrm.version" = { exists = true },
-            "test.config" = { exists = true },
-            "test.count" = { gte = 1 },
-            "otel.kind" = "internal",
-            "component" = "runner",
-        }
-    },
-    {
-        name = "clnrm.test",
-        attributes = {
-            "test.name" = { exists = true },
-            "test.hermetic" = true,
-            "otel.kind" = "internal",
-            "component" = "test_executor",
-        }
-    },
-]
+[[expect.span]]
+name = "clnrm.run"
+attributes = { "clnrm.version" = { exists = true }, "test.config" = { exists = true }, "test.count" = { gte = 1 }, "otel.kind" = "internal", "component" = "runner" }
+
+[[expect.span]]
+name = "clnrm.test"
+attributes = { "test.name" = { exists = true }, "test.hermetic" = true, "otel.kind" = "internal", "component" = "test_executor" }
 
 # Expect: Graph structure validation
 [expect.graph]
@@ -159,4 +142,4 @@ include_metrics = true
 [output.digest]
 algorithm = "sha256"
 file = "brew-selftest.trace.sha256"
-include_timestamps = false  # For deterministic digests
+include_timestamps = false          # For deterministic digests

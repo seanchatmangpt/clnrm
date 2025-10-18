@@ -10,6 +10,10 @@ readme = "../../README.md"
 keywords = ["testing", "integration", "containers", "hermetic", "ai"]
 categories = ["development-tools"]
 
+[[bin]]
+name = "test_noun_verb"
+path = "src/bin/test_noun_verb.rs"
+
 [lib]
 name = "clnrm_core"
 path = "src/lib.rs"
@@ -31,6 +35,7 @@ surrealdb = { workspace = true }
 
 # CLI dependencies
 clap = { workspace = true }
+clap-noun-verb = { path = "../clap-noun-verb" }
 env_logger = { workspace = true }
 log = { workspace = true }
 toml = { workspace = true }
@@ -64,18 +69,9 @@ semver = "1.0"
 glob = "0.3"
 url = "2.5"
 
-# Template rendering
-tera = "1.19"
-sha2 = "0.10"
-globset = "0.4.17"
-Inflector = "0.11.4"
-fake = { version = "2.9", features = [
-  "derive",
-  "chrono",
-  "http",
-  "uuid",
-  "random_color",
-] }
+# Template rendering (moved to clnrm-template)
+clnrm-template = { path = "../clnrm-template" }
+sha2 = "0.10"                                   # Still needed for other modules
 
 [dev-dependencies]
 # Property-based testing

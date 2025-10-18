@@ -1,0 +1,108 @@
+# Multi-Service Orchestration Example
+# 
+# This example demonstrates orchestrating multiple services with dependency management
+# and health checks, following clnrm v1.0.1 patterns.
+
+[test.metadata]
+name = "multi_service_orchestration"
+description = "Orchestrate API, database, and cache services"
+version = "1.0.1"
+
+# Service definitions
+[services.api]
+type = "generic_container"
+image = "nginx:alpine"
+ports = [80]
+env_vars = { "NGINX_HOST" = "localhost", "NGINX_PORT" = "80" }
+
+[services.database]
+env_vars = { 
+    "POSTGRES_DB" = "testdb",
+"POSTGRES_USER" = "testuser", 
+}
+
+type = "generic_container"
+image = "postgres:15-alpine"
+ports = [5432]
+"POSTGRES_PASSWORD" = "testpass"
+[services.cache]
+type = "generic_container"
+image = "redis:7-alpine"
+ports = [6379]
+
+# Test steps with service dependencies
+[[steps]]
+name = "start_services"
+description = "Start all services in dependency order"
+command = ["echo", "Starting services in order: database, cache, api"]
+
+[[steps]]
+name = "verify_database"
+description = "Verify database is ready"
+command = ["echo", "Database health check"]
+service = "database"
+expected_output_regex = ".*"
+
+[[steps]]
+name = "verify_cache"
+description = "Verify cache is ready"
+command = ["echo", "Cache health check"]
+service = "cache"
+expected_output_regex = ".*"
+
+[[steps]]
+name = "verify_api"
+description = "Verify API is ready"
+command = ["echo", "API health check"]
+service = "api"
+expected_output_regex = ".*"
+
+[[steps]]
+name = "integration_test"
+description = "Run integration test across all services"
+command = ["echo", "Integration test: API -> Database -> Cache"]
+expected_output_regex = "Integration test.*"
+
+# Expected spans for OTEL validation
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
+
+[[expect.span]]
+name = "database.start"
+kind = "internal"
+
+[[expect.span]]
+name = "cache.start"
+kind = "internal"
+
+[[expect.span]]
+name = "api.start"
+kind = "internal"
+
+# Span ordering constraints
+[expect.order]
+must_precede = [
+  [
+    "database.start",
+    "cache.start",
+  ],
+  [
+    "cache.start",
+    "api.start",
+  ],
+  [
+    "api.start",
+    "clnrm.run",
+  ],
+]
+
+# Count validation
+[expect.count]
+by_kind.internal = { min = 4, max = 4 }
+
+# Hermeticity validation
+[expect.hermeticity]
+no_external_services = true
+resource_attrs.must_match = { "service.name" = "clnrm", "env" = "test" }

@@ -24,6 +24,7 @@ pub use orchestrator::{PrdExpectations, ValidationReport};
 pub use order_validator::OrderExpectation;
 pub use otel::{
     OtelValidationConfig, OtelValidator, SpanAssertion as OtelSpanAssertion, TraceAssertion,
+    ValidationSpanProcessor, SpanValidationResult, TraceValidationResult,
 };
 pub use shape::{ErrorCategory, ShapeValidationError, ShapeValidationResult, ShapeValidator};
 pub use span_validator::{

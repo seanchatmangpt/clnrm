@@ -2,6 +2,7 @@
 //!
 //! Exports all CLI command implementations with their associated functionality.
 
+pub mod collector_noun_verb;
 pub mod health;
 pub mod init;
 pub mod plugins;
@@ -9,6 +10,7 @@ pub mod report;
 pub mod run;
 pub mod self_test;
 pub mod services;
+pub mod services_noun_verb;
 pub mod template;
 pub mod v0_7_0;
 pub mod validate;

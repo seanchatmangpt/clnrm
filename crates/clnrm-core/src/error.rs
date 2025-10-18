@@ -226,6 +226,17 @@ impl From<std::io::Error> for CleanroomError {
     }
 }
 
+impl From<clnrm_template::TemplateError> for CleanroomError {
+    fn from(err: clnrm_template::TemplateError) -> Self {
+        match err {
+            clnrm_template::TemplateError::RenderError(msg) => CleanroomError::template_error(msg),
+            clnrm_template::TemplateError::ConfigError(msg) => CleanroomError::config_error(msg),
+            clnrm_template::TemplateError::IoError(msg) => CleanroomError::io_error(msg),
+            clnrm_template::TemplateError::ValidationError(msg) => CleanroomError::validation_error(msg),
+        }
+    }
+}
+
 impl From<serde_json::Error> for CleanroomError {
     fn from(err: serde_json::Error) -> Self {
         CleanroomError::serialization_error(err.to_string())

@@ -24,7 +24,6 @@ pub mod reporting;
 pub mod scenario;
 pub mod services;
 pub mod telemetry;
-pub mod template;
 pub mod utils;
 pub mod validation;
 pub mod watch;
@@ -61,7 +60,13 @@ pub use macros::{with_cache, with_database, with_message_queue, with_web_server}
 pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporter, ReportConfig};
 pub use services::generic::GenericContainerPlugin;
 pub use services::surrealdb::SurrealDbPlugin;
-pub use template::{TemplateContext, TemplateRenderer};
+
+// Re-export template functionality from clnrm-template
+pub use clnrm_template::{
+    TemplateRenderer, TemplateContext, DeterminismConfig as TemplateDeterminismConfig, TemplateError,
+    render_template, render_template_file, is_template, get_cached_template_renderer,
+};
+
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
 pub use validation::{PrdExpectations, ShapeValidator, ValidationReport};
 pub use watch::{debouncer::FileDebouncer, WatchConfig};

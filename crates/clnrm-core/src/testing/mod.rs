@@ -470,7 +470,7 @@ command = ["echo"]
 }
 
 async fn test_template_rendering() -> Result<()> {
-    use crate::template::{TemplateContext, TemplateRenderer};
+    use crate::{TemplateContext, TemplateRenderer};
 
     let mut renderer = TemplateRenderer::new()?;
     let mut context = TemplateContext::new();

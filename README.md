@@ -368,6 +368,7 @@ Report results
 
 ## 📚 Documentation
 
+- **[Advanced Users Guide](book/)** - Comprehensive guide for advanced clnrm users (mdbook)
 - **[CLAUDE.md](CLAUDE.md)** - Development guidelines and architecture
 - **[TOML Reference](docs/TOML_REFERENCE.md)** - Configuration format (describes planned features)
 - **[Codebase Quality Analysis](CODEBASE_QUALITY_ANALYSIS.md)** - Current code status
@@ -375,6 +376,18 @@ Report results
 - **[False README](docs/FALSE_README.md)** - Archived version with false claims
 
 **Note:** Some documentation describes planned features not yet implemented. Check this README's feature matrix for actual status.
+
+### Advanced Users Guide
+
+The **[Advanced Users Guide](book/)** is a comprehensive mdbook covering:
+
+- **Plugin Development** - Create custom service plugins and extend clnrm
+- **Advanced Testing Patterns** - Multi-service orchestration, chaos engineering, OTEL validation
+- **Template System Mastery** - Tera templates, macro libraries, variable resolution
+- **Production Deployment** - CI/CD integration, performance tuning, enterprise patterns
+- **Reference Documentation** - CLI reference, TOML schema, error handling
+
+All examples in the guide are validated and runnable with clnrm v1.0.1.
 
 ---
 

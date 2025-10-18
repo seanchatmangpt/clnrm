@@ -95,9 +95,9 @@ impl ShapeValidator {
         })?;
 
         // Check if template rendering is needed
-        let toml_content = if crate::template::is_template(&content) {
+        let toml_content = if crate::is_template(&content) {
             // Render as Tera template
-            let mut renderer = crate::template::TemplateRenderer::new()?;
+            let mut renderer = crate::TemplateRenderer::new()?;
             let path_str = path
                 .to_str()
                 .ok_or_else(|| CleanroomError::validation_error("Invalid file path encoding"))?;
@@ -527,7 +527,7 @@ impl ShapeValidator {
 
         for (service_name, service) in services {
             // Skip network services that don't require images
-            if service.r#type == "network_service" || service.r#type == "ollama" {
+            if service.plugin == "network_service" || service.plugin == "ollama" {
                 continue;
             }
 

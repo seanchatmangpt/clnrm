@@ -4,12 +4,16 @@ use crate::error::{CleanroomError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Default plugin value for services
+fn default_plugin() -> String {
+    "generic_container".to_string()
+}
+
 /// Service configuration
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServiceConfig {
-    /// Service type (generic_container, database, ollama, etc.)
-    pub r#type: String,
-    /// Service plugin
+    /// Service plugin (generic_container, surrealdb, ollama, etc.)
+    #[serde(default = "default_plugin")]
     pub plugin: String,
     /// Service image (optional for network services)
     pub image: Option<String>,
@@ -122,12 +126,6 @@ pub struct HealthCheckConfig {
 impl ServiceConfig {
     /// Validate the service configuration
     pub fn validate(&self) -> Result<()> {
-        if self.r#type.trim().is_empty() {
-            return Err(CleanroomError::validation_error(
-                "Service type cannot be empty",
-            ));
-        }
-
         if self.plugin.trim().is_empty() {
             return Err(CleanroomError::validation_error(
                 "Service plugin cannot be empty",
@@ -140,7 +138,7 @@ impl ServiceConfig {
                     "Service image cannot be empty",
                 ));
             }
-        } else if self.r#type != "network_service" && self.r#type != "ollama" {
+        } else if self.plugin != "network_service" && self.plugin != "ollama" {
             // For container-based services, image is required
             return Err(CleanroomError::validation_error(
                 "Service image is required for container-based services",

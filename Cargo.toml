@@ -1,10 +1,22 @@
 [workspace]
 resolver = "2"
 
-members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared"]
+members = [
+  "crates/clnrm",
+  "crates/clnrm-core",
+  "crates/clnrm-shared",
+  "crates/clnrm-template",
+  "crates/clap-noun-verb",
+]
 
 # Default members for core functionality
-default-members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared"]
+default-members = [
+  "crates/clnrm",
+  "crates/clnrm-core",
+  "crates/clnrm-shared",
+  "crates/clnrm-template",
+  "crates/clap-noun-verb",
+]
 
 [workspace.package]
 version = "1.0.1"

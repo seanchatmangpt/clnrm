@@ -1,0 +1,57 @@
+{# _macros.toml.tera - Cleanroom v0.7.0 Comprehensive Macro Library
+
+   Complete macro library for advanced test authoring (Issue #7).
+   Import with: {% import "_macros.toml.tera" as m %}
+
+   This library includes:
+
+   BASIC MACROS (MVP):
+   1. span() - OTEL span expectations (most used)
+   2. service() - Service definitions (required for every test)
+   3. scenario() - Test scenarios (required for execution)
+
+   ADVANCED MACROS (Issue #7):
+   4. span_exists() - Simple span existence validation
+   5. graph_relationship() - Parent-child span relationships
+   6. temporal_ordering() - Span temporal ordering
+   7. error_propagation() - Error propagation patterns
+   8. service_interaction() - Service-to-service interactions
+   9. attribute_validation() - Attribute key-value validation
+   10. resource_check() - Resource existence validation
+   11. batch_validation() - Batch span validation with conditions
+#}
+
+{# ============================================================================
+   MACRO: span(name, parent="", attrs)
+
+   Generate [[expect.span]] block for OpenTelemetry span validation.
+   This is the MOST CRITICAL macro - 80%+ of templates use span validation.
+
+   Parameters:
+     - name (string): Span name to match
+     - parent (string): Optional parent span name for hierarchy
+     - attrs (object): Optional attribute key-value pairs
+
+   Examples:
+     {{ m::span("http.request") }}
+     {{ m::span("db.query", parent="http.request") }}
+     {{ m::span("api.call", attrs={"http.method": "GET", "http.status": "200"}) }}
+     {{ m::span("transaction", parent="root", attrs={"tx.id": "123"}) }}
+
+   Produces:
+     [[expect.span]]
+     name = "http.request"
+
+     [[expect.span]]
+     name = "db.query"
+     parent = "http.request"
+
+     [[expect.span]]
+     name = "api.call"
+     attrs.all = { "http.method" = "GET", "http.status" = "200" }
+
+     [[expect.span]]
+     name = "transaction"
+     parent = "root"
+     attrs.all = { "tx.id" = "123" }
+============================================================================ #}

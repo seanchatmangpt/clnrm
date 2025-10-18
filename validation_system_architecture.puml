@@ -1,0 +1,156 @@
+@startuml Cleanroom Validation System Architecture
+
+!define AWSPUML https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v17.0/dist
+!include AWSPUML/AWSCommon.puml
+!include AWSPUML/InternetOfThings/IoTCore.puml
+!include AWSPUML/ApplicationIntegration/EventBridge.puml
+!include AWSPUML/Database/DynamoDB.puml
+
+' Define custom colors
+skinparam backgroundColor #f8f9fa
+skinparam component {
+    BackgroundColor #ffffff
+    BorderColor #333333
+    BorderThickness 2
+    FontSize 11
+    FontColor #333333
+}
+
+' Define component styles
+skinparam package {
+    BackgroundColor #e3f2fd
+    BorderColor #1976d2
+    BorderThickness 2
+}
+
+skinparam note {
+    BackgroundColor #fff3e0
+    BorderColor #f57c00
+}
+
+' Title
+title "Cleanroom Validation System Architecture\n(Detecting Fake-Green Tests via OpenTelemetry)"
+
+' Main packages
+package "🔧 CLI Layer" as CLI {
+    component [run/scenario.rs] as ScenarioRunner
+    component [commands/run/] as RunCommands
+}
+
+package "📊 Validation Layer" as Validation {
+    package "**ACTIVE: /validation/**" as ActiveValidators {
+        component [span_validator.rs] as SpanValidator
+        component [count_validator.rs] as CountValidator
+        component [graph_validator.rs] as GraphValidator
+        component [hermeticity_validator.rs] as HermeticityValidator
+        component [order_validator.rs] as OrderValidator
+        component [window_validator.rs] as WindowValidator
+        component [status_validator.rs] as StatusValidator
+        component [shape.rs] as ShapeValidator
+        component [orchestrator.rs] as Orchestrator
+
+        note right of Orchestrator : **PrdExpectations**\nCoordinates all validators\nUsed in production
+    }
+
+    package "**LEGACY: /otel/validators/**" as LegacyValidators {
+        component [span.rs] as LegacySpan
+        component [counts.rs] as LegacyCounts
+        component [graph.rs] as LegacyGraph
+        component [hermeticity.rs] as LegacyHermeticity
+        component [order.rs] as LegacyOrder
+        component [window.rs] as LegacyWindow
+        component [status.rs] as LegacyStatus
+
+        note right of LegacySpan : **DUPLICATE CODE**\nUnused legacy validators\nShould be removed
+    }
+}
+
+package "🔍 OTEL Layer" as OTEL {
+    component [otel/validators/mod.rs] as OTELValidators
+    component [stdout_parser.rs] as StdoutParser
+
+    package "otel/" as OTELSubmodule {
+        component [assertions.rs] as Assertions
+        component [config.rs] as Config
+        component [results.rs] as Results
+        component [span_processor.rs] as SpanProcessor
+        component [validator.rs] as Validator
+        component [tests.rs] as Tests
+    }
+}
+
+package "📈 Reporting Layer" as Reporting {
+    component [reporting/junit.rs] as JUnit
+    component [reporting/json.rs] as JSONReport
+    component [reporting/mod.rs] as ReportGen
+}
+
+package "⚙️ Configuration" as Config {
+    component [TestConfig.expect] as TestConfig
+    component [ScenarioConfig] as ScenarioConfig
+}
+
+' Data flow
+ScenarioRunner -> StdoutParser : Parse OTEL spans from stdout
+StdoutParser -> Orchestrator : Pass collected spans
+Orchestrator -> SpanValidator : Validate span expectations
+Orchestrator -> CountValidator : Validate count bounds
+Orchestrator -> GraphValidator : Validate graph topology
+Orchestrator -> HermeticityValidator : Validate hermetic execution
+Orchestrator -> OrderValidator : Validate temporal order
+Orchestrator -> WindowValidator : Validate temporal windows
+Orchestrator -> StatusValidator : Validate status codes
+
+' Legacy unused flow (dotted lines)
+ScenarioRunner -.-> LegacySpan : NOT USED (legacy)
+LegacySpan -.-> LegacyCounts : NOT USED (legacy)
+LegacyCounts -.-> LegacyGraph : NOT USED (legacy)
+
+' Configuration flow
+TestConfig -> Orchestrator : Build PrdExpectations
+ScenarioConfig -> ScenarioRunner : Define test scenarios
+
+' Reporting flow
+Orchestrator -> ReportGen : Validation results
+ReportGen -> JUnit : Generate JUnit XML
+ReportGen -> JSONReport : Generate JSON report
+
+' OTEL integration (active)
+OTELSubmodule -> SpanValidator : Use span validation logic
+OTELSubmodule -> StdoutParser : Parse spans from output
+
+' Legacy OTEL integration (unused)
+OTELValidators -.-> LegacySpan : NOT USED
+
+' Notes and warnings
+note as N1
+    **CRITICAL ISSUE:**
+    Duplicate validator implementations in:
+    - /validation/ (ACTIVE - 1,127+ lines)
+    - /otel/validators/ (LEGACY - unused)
+
+    **Recommendation:**
+    Remove /otel/validators/ directory
+    Consolidate any unique logic back to /validation/
+end note
+
+note as N2
+    **Validation Flow:**
+    1. Scenario execution captures stdout
+    2. StdoutParser extracts OTEL spans
+    3. Orchestrator runs PrdExpectations
+    4. All validators run in parallel
+    5. Results aggregated and reported
+end note
+
+' Legend
+legend right
+    |= Component Type |= Description |
+    | **Solid arrows** | Active data flow |
+    | **Dotted arrows** | Unused/legacy paths |
+    | **ACTIVE** | Production-used code |
+    | **LEGACY** | Duplicate/unused code |
+    | **PrdExpectations** | Main validation orchestrator |
+endlegend
+
+@enduml

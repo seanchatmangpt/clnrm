@@ -470,15 +470,14 @@ pub fn load_cleanroom_config() -> Result<CleanroomConfig> {
     }
 
     // Priority 2: Project cleanroom.toml (./cleanroom.toml)
-    if let Err(e) = load_cleanroom_config_from_file("cleanroom.toml") {
-        eprintln!("DEBUG: Failed to load project cleanroom.toml: {}", e);
-    } else {
-        let project_config = load_cleanroom_config_from_file("cleanroom.toml").unwrap();
-        eprintln!(
-            "DEBUG: Loaded project cleanroom.toml with default_image: {}",
+    if let Ok(project_config) = load_cleanroom_config_from_file("cleanroom.toml") {
+        tracing::debug!(
+            "Loaded project cleanroom.toml with default_image: {}",
             project_config.containers.default_image
         );
         config = merge_configs(config, project_config);
+    } else {
+        tracing::debug!("Failed to load project cleanroom.toml");
     }
 
     // Priority 3 (highest): Environment variables (CLEANROOM_*)

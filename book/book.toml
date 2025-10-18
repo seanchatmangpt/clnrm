@@ -1,0 +1,35 @@
+[book]
+title = "Cleanroom Testing Framework - Advanced Users Guide"
+description = "Comprehensive guide for advanced clnrm users covering plugin development, advanced testing patterns, template mastery, and production deployment"
+authors = ["Cleanroom Core Team"]
+language = "en"
+multilingual = false
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/seanchatmangpt/clnrm"
+git-repository-icon = "fa fa-github"
+edit-url-template = "https://github.com/seanchatmangpt/clnrm/edit/master/book/src/{path}"
+additional-css = ["custom.css"]
+
+[output.html.search]
+enable = true
+limit-results = 30
+teaser-word-count = 30
+use-boost = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3
+copyable = false
+
+[preprocessor.links]
+
+[preprocessor.index]

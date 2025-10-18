@@ -1,0 +1,63 @@
+# Template System Example
+# 
+# This example demonstrates Tera template usage with variable resolution
+# and macro composition, following clnrm v1.0.1 patterns.
+
+{% import "_macros.toml.tera" as m %}
+
+[test.metadata]
+name = "{{ svc }}_template_example"
+description = "Template system demonstration with {{ env }} environment"
+version = "0.7.0"
+
+# Service using template variables
+[services.{{ svc }}]
+type = "generic_container"
+image = "{{ image }}"
+ports = [{{ port }}]
+env_vars = { 
+    "SERVICE_NAME" = "{{ svc }}",
+    "ENVIRONMENT" = "{{ env }}",
+    "VERSION" = "{{ version }}"
+}
+
+# Template with conditional logic
+{% if otel_enabled %}
+[otel]
+exporter = "{{ exporter }}"
+endpoint = "{{ endpoint }}"
+protocol = "http/protobuf"
+sample_ratio = 1.0
+resources = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
+{% endif %}
+
+# Macro usage for span validation
+{{ m::span("clnrm.run", kind="internal", attrs={"result":"pass"}) }}
+
+{{ m::span("{{ svc }}.start", kind="internal", attrs={"service":"{{ svc }}"}) }}
+
+{{ m::span("{{ svc }}.exec", kind="internal", attrs={"command":"test"}) }}
+
+{{ m::span("{{ svc }}.stop", kind="internal") }}
+
+# Service lifecycle using macro
+{{ m::lifecycle("{{ svc }}") }}
+
+# Count validation using macro
+{{ m::count("internal", 4, 4) }}
+
+# Test steps
+[[steps]]
+name = "template_test"
+command = ["echo", "Template test for {{ svc }} in {{ env }}"]
+expected_output_regex = "Template test.*"
+
+# Determinism configuration
+[determinism]
+seed = 42
+freeze_clock = "{{ freeze_clock }}"
+
+# Report configuration
+[report]
+json = "{{ svc }}_report.json"
+digest = "{{ svc }}_trace.sha256"

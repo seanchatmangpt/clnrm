@@ -17,7 +17,8 @@ pub fn parse_toml_config(content: &str) -> Result<TestConfig> {
 /// 1. First pass: render without determinism to parse config and extract [determinism] section
 /// 2. Second pass: if determinism is configured, re-render with DeterminismEngine
 pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
-    use crate::template::{is_template, TemplateRenderer};
+    use crate::{is_template, TemplateRenderer};
+    use clnrm_template::functions::TimestampProvider;
 
     // Read file content
     let content = std::fs::read_to_string(path)
@@ -34,8 +35,10 @@ pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
     }
 
     // First pass: render template without determinism to get config structure
-    let mut renderer = TemplateRenderer::new()?;
-    let first_pass_toml = renderer.render_str(&content, path.to_str().unwrap_or("config"))?;
+    let mut renderer = TemplateRenderer::new()
+        .map_err(|e| CleanroomError::template_error(format!("Failed to create template renderer: {}", e)))?;
+    let first_pass_toml = renderer.render_str(&content, path.to_str().unwrap_or("config"))
+        .map_err(|e| CleanroomError::template_error(format!("Template rendering failed: {}", e)))?;
 
     // Parse to extract determinism config
     let first_pass_config = parse_toml_config(&first_pass_toml)?;
@@ -48,8 +51,20 @@ pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
             let engine = crate::determinism::DeterminismEngine::new(det_config.clone())?;
 
             // Re-render with determinism
-            let mut renderer_with_det = TemplateRenderer::new()?.with_determinism(engine)?;
-            renderer_with_det.render_str(&content, path.to_str().unwrap_or("config"))?
+            // Create adapter for DeterminismEngine to TimestampProvider
+            struct DeterminismAdapter(crate::determinism::DeterminismEngine);
+            impl TimestampProvider for DeterminismAdapter {
+                fn get_timestamp_rfc3339(&self) -> String {
+                    self.0.get_timestamp_rfc3339()
+                }
+            }
+            
+            let adapter = std::sync::Arc::new(DeterminismAdapter(engine));
+            let mut renderer_with_det = TemplateRenderer::new()
+                .map_err(|e| CleanroomError::template_error(format!("Failed to create template renderer: {}", e)))?
+                .with_determinism(adapter);
+            renderer_with_det.render_str(&content, path.to_str().unwrap_or("config"))
+                .map_err(|e| CleanroomError::template_error(format!("Template rendering failed: {}", e)))?
         } else {
             // Determinism section exists but is empty - use first pass
             first_pass_toml

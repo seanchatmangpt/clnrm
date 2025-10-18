@@ -731,10 +731,14 @@ pub struct TestMetadata {
 /// Service configuration from TOML - matches the existing config module
 #[derive(Debug, Deserialize)]
 pub struct ServiceConfig {
-    #[serde(rename = "type")]
-    pub service_type: String,
+    #[serde(default = "default_service_plugin")]
     pub plugin: String,
     pub image: String,
+}
+
+/// Default plugin value for CLI service config
+fn default_service_plugin() -> String {
+    "generic_container".to_string()
 }
 
 /// Test step from TOML

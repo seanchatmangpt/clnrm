@@ -14,17 +14,16 @@
 //! - Reports wrong status codes
 //! - Violates hermetic execution
 //!
-//! ## Validators
+//! ## OpenTelemetry Integration
 //!
-//! This module provides 7 production-ready validators:
+//! This module provides OpenTelemetry integration for fake-green detection,
+//! focusing on span parsing and processing capabilities.
 //!
-//! 1. **span** - Individual span validation (name, parent, kind, attrs, events, duration)
-//! 2. **graph** - Graph structure validation (must_include, must_not_cross, acyclic)
-//! 3. **counts** - Cardinality validation (spans_total, events_total, errors_total, by_name)
-//! 4. **window** - Temporal containment validation (outer contains inner)
-//! 5. **order** - Temporal ordering validation (must_precede, must_follow)
-//! 6. **status** - Status code validation (all, by_name)
-//! 7. **hermeticity** - Hermetic execution validation (no external services)
+//! ## Core Functionality
+//!
+//! - **Span Parsing**: Extract OTEL spans from container stdout
+//! - **Validation Integration**: Works with the main validation system in `/validation/`
+//! - **Fake-Green Detection**: Identifies tests that report success without actual execution
 //!
 //! ## Usage Example
 //!
@@ -48,53 +47,35 @@
 //! assert_eq!(spans[0].name, "clnrm.run");
 //! ```
 //!
-//! ### Validating Spans for Fake-Green Detection
+//! ### Integration with Validation System
+//!
+//! The OTEL module integrates with the main validation system:
 //!
 //! ```rust
-//! use clnrm_core::otel::validators;
-//! use clnrm_core::validation::span_validator::SpanValidator;
+//! use clnrm_core::otel::StdoutSpanParser;
+//! use clnrm_core::validation::{PrdExpectations, ValidationReport};
 //!
-//! // Load spans from OTEL collector export
-//! let validator = SpanValidator::from_file("spans.json")?;
-//! let spans = validator.spans();
+//! // Parse spans from container output
+//! let spans = StdoutSpanParser::parse(&container_stdout)?;
 //!
-//! // Validate span creation
-//! let span_expectation = validators::SpanExpectation::new("container.start");
-//! let result = span_expectation.validate(spans, &span_by_id)?;
-//! assert!(result.passed, "Fake-green detected: container never started");
+//! // Use main validation system
+//! let expectations = PrdExpectations::new();
+//! let report = expectations.validate_all(&spans)?;
 //!
-//! // Validate graph structure
-//! let graph_expectation = validators::GraphExpectation::new(vec![
-//!     ("container.start".into(), "container.exec".into()),
-//! ]);
-//! let result = graph_expectation.validate(spans)?;
-//! assert!(result.passed, "Fake-green detected: exec never ran as child of start");
-//!
-//! // Validate counts
-//! let count_expectation = validators::CountExpectation::new()
-//!     .with_spans_total(validators::CountBound::gte(3));
-//! let result = count_expectation.validate(spans)?;
-//! assert!(result.passed, "Fake-green detected: insufficient spans created");
+//! if report.is_success() {
+//!     println!("✅ All validations passed");
+//! }
 //! ```
 //!
-//! ## Core Team Standards
+//! ## Architecture
 //!
-//! All validators follow FAANG-level standards:
-//! - NO .unwrap() or .expect() in production code
-//! - Return Result<ValidationResult, CleanroomError>
-//! - Sync functions (dyn compatible)
-//! - Comprehensive unit tests (AAA pattern)
-//! - Descriptive error messages
+//! The OTEL module provides span parsing capabilities that feed into the main
+//! validation system located in `/validation/`. This separation ensures:
+//! - Clean separation of concerns
+//! - Reusable span parsing logic
+//! - Integration with the comprehensive validation framework
 
 pub mod stdout_parser;
-pub mod validators;
-
-// Re-export validators for convenience
-pub use validators::{
-    counts, graph, hermeticity, order, span, status, window, CountBound, CountExpectation,
-    GraphExpectation, HermeticityExpectation, OrderExpectation, SpanExpectation, StatusCode,
-    StatusExpectation, ViolationType, WindowExpectation,
-};
 
 // Re-export stdout parser for convenience
 pub use stdout_parser::StdoutSpanParser;
