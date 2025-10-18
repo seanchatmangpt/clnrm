@@ -21,7 +21,9 @@ async fn test_container_execution_hermetic() -> Result<()> {
     let env = CleanroomEnvironment::new().await?;
 
     // Act
-    let result = env.execute_in_container("test", &["echo".to_string(), "hello".to_string()]).await?;
+    let result = env
+        .execute_in_container("test", &["echo".to_string(), "hello".to_string()])
+        .await?;
 
     // Assert - proves hermetic isolation works
     assert_eq!(result.exit_code, 0);
@@ -54,14 +56,18 @@ async fn test_container_reuse_tracking() -> Result<()> {
     let env = CleanroomEnvironment::new().await?;
 
     // Act - First call creates container
-    let container1 = env.get_or_create_container("test-container", || {
-        Ok::<String, CleanroomError>("instance-1".to_string())
-    }).await?;
+    let container1 = env
+        .get_or_create_container("test-container", || {
+            Ok::<String, CleanroomError>("instance-1".to_string())
+        })
+        .await?;
 
     // Act - Second call reuses container
-    let container2 = env.get_or_create_container("test-container", || {
-        Ok::<String, CleanroomError>("instance-2".to_string())
-    }).await?;
+    let container2 = env
+        .get_or_create_container("test-container", || {
+            Ok::<String, CleanroomError>("instance-2".to_string())
+        })
+        .await?;
 
     // Assert - Same instance returned (true reuse)
     assert_eq!(container1, container2);
@@ -81,7 +87,9 @@ async fn test_metrics_tracking() -> Result<()> {
     let env = CleanroomEnvironment::new().await?;
 
     // Act
-    let _result = env.execute_test("test_metrics", || Ok::<(), CleanroomError>(())).await?;
+    let _result = env
+        .execute_test("test_metrics", || Ok::<(), CleanroomError>(()))
+        .await?;
 
     // Assert
     let metrics = env.get_metrics().await?;
@@ -105,7 +113,10 @@ async fn test_health_check_all_services() -> Result<()> {
 
     // Assert
     assert_eq!(health_status.len(), 1);
-    assert_eq!(health_status.get(&handle.id), Some(&cleanroom::HealthStatus::Healthy));
+    assert_eq!(
+        health_status.get(&handle.id),
+        Some(&cleanroom::HealthStatus::Healthy)
+    );
 
     Ok(())
 }
@@ -116,9 +127,11 @@ async fn test_error_propagation() -> Result<()> {
     let env = CleanroomEnvironment::new().await?;
 
     // Act
-    let result = env.execute_test("failing_test", || {
-        Err::<(), CleanroomError>(CleanroomError::validation_error("Expected failure"))
-    }).await;
+    let result = env
+        .execute_test("failing_test", || {
+            Err::<(), CleanroomError>(CleanroomError::validation_error("Expected failure"))
+        })
+        .await;
 
     // Assert
     assert!(result.is_err());

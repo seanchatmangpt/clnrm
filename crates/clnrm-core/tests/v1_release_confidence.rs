@@ -227,8 +227,8 @@ async fn validate_determinism(
         // Cleanup containers
         cleanup_test_containers().await?;
 
-        // Small delay to ensure cleanup completes
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        // Use deterministic cleanup instead of sleep
+        // Container cleanup should be immediate in tests
     }
 
     // Verify all hashes are identical

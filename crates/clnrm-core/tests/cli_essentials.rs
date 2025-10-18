@@ -19,10 +19,10 @@
 
 #![allow(clippy::unwrap_used)] // Test code only
 
-use clnrm_core::validation::shape::{ErrorCategory, ShapeValidator};
-use clnrm_core::error::Result;
 use clnrm_core::cli::types::{CliTestResult, CliTestResults};
 use clnrm_core::cli::utils::generate_junit_xml;
+use clnrm_core::error::Result;
+use clnrm_core::validation::shape::{ErrorCategory, ShapeValidator};
 use std::fs;
 use tempfile::TempDir;
 
@@ -85,7 +85,10 @@ command = ["echo", "hello"]
 
     // Assert
     assert!(!result.passed);
-    assert!(result.errors.iter().any(|e| e.category == ErrorCategory::MissingRequired));
+    assert!(result
+        .errors
+        .iter()
+        .any(|e| e.category == ErrorCategory::MissingRequired));
 
     Ok(())
 }
@@ -118,8 +121,14 @@ service = "nonexistent_service"
 
     // Assert
     assert!(!result.passed);
-    assert!(result.errors.iter().any(|e| e.category == ErrorCategory::OrphanReference));
-    assert!(result.errors.iter().any(|e| e.message.contains("nonexistent_service")));
+    assert!(result
+        .errors
+        .iter()
+        .any(|e| e.category == ErrorCategory::OrphanReference));
+    assert!(result
+        .errors
+        .iter()
+        .any(|e| e.message.contains("nonexistent_service")));
 
     Ok(())
 }
@@ -154,7 +163,10 @@ command = ["echo", "hello"]
 
     // Assert
     assert!(!result.passed);
-    assert!(result.errors.iter().any(|e| e.category == ErrorCategory::OtelError));
+    assert!(result
+        .errors
+        .iter()
+        .any(|e| e.category == ErrorCategory::OtelError));
 
     Ok(())
 }
@@ -242,8 +254,14 @@ service = "missing"
     assert!(result.errors.len() >= 4); // Multiple errors detected
 
     // Verify different error categories are present (manually check without Hash)
-    let has_missing_required = result.errors.iter().any(|e| matches!(e.category, ErrorCategory::MissingRequired));
-    let has_otel_error = result.errors.iter().any(|e| matches!(e.category, ErrorCategory::OtelError));
+    let has_missing_required = result
+        .errors
+        .iter()
+        .any(|e| matches!(e.category, ErrorCategory::MissingRequired));
+    let has_otel_error = result
+        .errors
+        .iter()
+        .any(|e| matches!(e.category, ErrorCategory::OtelError));
     assert!(has_missing_required || has_otel_error); // Different error types detected
 
     Ok(())
@@ -509,8 +527,7 @@ command = ["echo"]
         assert!(
             result.passed,
             "Exporter {} should be valid. Errors: {:?}",
-            exporter,
-            result.errors
+            exporter, result.errors
         );
     }
 
@@ -561,8 +578,9 @@ key without value
 #[test]
 fn test_junit_xml_file_writing() -> Result<()> {
     // Arrange
-    let temp_dir = TempDir::new()
-        .map_err(|e| clnrm_core::error::CleanroomError::io_error(format!("TempDir failed: {}", e)))?;
+    let temp_dir = TempDir::new().map_err(|e| {
+        clnrm_core::error::CleanroomError::io_error(format!("TempDir failed: {}", e))
+    })?;
     let junit_path = temp_dir.path().join("junit.xml");
 
     let results = CliTestResults {

@@ -72,7 +72,10 @@ async fn test_junit_xml_generation_produces_valid_xml() -> Result<()> {
 
     let mut validation_report = ValidationReport::new();
     validation_report.add_pass("test_integration_success");
-    validation_report.add_fail("test_integration_failure", "Expected value not found".to_string());
+    validation_report.add_fail(
+        "test_integration_failure",
+        "Expected value not found".to_string(),
+    );
 
     // Act
     JunitReporter::write(Path::new(&junit_path), &validation_report)?;
@@ -117,7 +120,11 @@ async fn test_sha256_digest_generation_for_spans() -> Result<()> {
 
     let digest = digest_content.trim();
 
-    assert_eq!(digest.len(), 64, "SHA-256 hex digest should be 64 characters");
+    assert_eq!(
+        digest.len(),
+        64,
+        "SHA-256 hex digest should be 64 characters"
+    );
     assert!(digest.chars().all(|c| c.is_ascii_hexdigit()));
 
     Ok(())
@@ -267,7 +274,10 @@ async fn test_junit_xml_with_special_characters_in_test_names() -> Result<()> {
     let junit_path = temp_dir.path().join("junit.xml");
 
     let mut validation_report = ValidationReport::new();
-    validation_report.add_fail("test_with_<special>_&_chars", "Error: \"quoted\" value".to_string());
+    validation_report.add_fail(
+        "test_with_<special>_&_chars",
+        "Error: \"quoted\" value".to_string(),
+    );
 
     // Act
     JunitReporter::write(Path::new(&junit_path), &validation_report)?;
@@ -277,7 +287,11 @@ async fn test_junit_xml_with_special_characters_in_test_names() -> Result<()> {
         .map_err(|e| CleanroomError::io_error(format!("Failed to read XML: {}", e)))?;
 
     // XML should escape special characters
-    assert!(xml_content.contains("&lt;") || xml_content.contains("&gt;") || xml_content.contains("&quot;"));
+    assert!(
+        xml_content.contains("&lt;")
+            || xml_content.contains("&gt;")
+            || xml_content.contains("&quot;")
+    );
 
     Ok(())
 }

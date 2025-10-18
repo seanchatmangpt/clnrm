@@ -1,4 +1,0 @@
-error: failed to parse manifest at `/Users/sac/clnrm/Cargo.toml`
-
-Caused by:
-  this virtual manifest specifies a `bench` section, which is not allowed

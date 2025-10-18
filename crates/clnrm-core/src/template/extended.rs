@@ -401,15 +401,18 @@ impl Function for SampleFunction {
 struct SlugFunction;
 impl Function for SlugFunction {
     fn call(&self, args: &HashMap<String, Value>) -> tera::Result<Value> {
+        use inflector::cases::kebabcase::to_kebab_case;
+
         let s = args
             .get("s")
             .and_then(|v| v.as_str())
             .ok_or_else(|| tera::Error::msg("slug() requires 's' string parameter"))?;
 
-        let slug = s
-            .to_lowercase()
+        // Use kebab-case but remove non-alphanumeric (except hyphens)
+        let kebab = to_kebab_case(s);
+        let slug = kebab
             .chars()
-            .map(|c| if c.is_alphanumeric() { c } else { '-' })
+            .filter(|c| c.is_alphanumeric() || *c == '-')
             .collect::<String>()
             .split('-')
             .filter(|s| !s.is_empty())
@@ -424,24 +427,14 @@ impl Function for SlugFunction {
 struct KebabFunction;
 impl Function for KebabFunction {
     fn call(&self, args: &HashMap<String, Value>) -> tera::Result<Value> {
+        use inflector::cases::kebabcase::to_kebab_case;
+
         let s = args
             .get("s")
             .and_then(|v| v.as_str())
             .ok_or_else(|| tera::Error::msg("kebab() requires 's' string parameter"))?;
 
-        let kebab = s
-            .chars()
-            .enumerate()
-            .map(|(i, c)| {
-                if c.is_uppercase() && i > 0 {
-                    format!("-{}", c.to_lowercase())
-                } else {
-                    c.to_lowercase().to_string()
-                }
-            })
-            .collect::<String>();
-
-        Ok(Value::String(kebab))
+        Ok(Value::String(to_kebab_case(s)))
     }
 }
 
@@ -449,26 +442,14 @@ impl Function for KebabFunction {
 struct SnakeFunction;
 impl Function for SnakeFunction {
     fn call(&self, args: &HashMap<String, Value>) -> tera::Result<Value> {
+        use inflector::cases::snakecase::to_snake_case;
+
         let s = args
             .get("s")
             .and_then(|v| v.as_str())
             .ok_or_else(|| tera::Error::msg("snake() requires 's' string parameter"))?;
 
-        let snake = s
-            .chars()
-            .enumerate()
-            .map(|(i, c)| {
-                if c.is_uppercase() && i > 0 {
-                    format!("_{}", c.to_lowercase())
-                } else if c == ' ' || c == '-' {
-                    "_".to_string()
-                } else {
-                    c.to_lowercase().to_string()
-                }
-            })
-            .collect::<String>();
-
-        Ok(Value::String(snake))
+        Ok(Value::String(to_snake_case(s)))
     }
 }
 

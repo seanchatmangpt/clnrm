@@ -19,7 +19,7 @@
 
 #![allow(clippy::unwrap_used)] // Test code only
 
-use clnrm_core::cleanroom::{ServicePlugin, ServiceRegistry, HealthStatus};
+use clnrm_core::cleanroom::{HealthStatus, ServicePlugin, ServiceRegistry};
 use clnrm_core::error::Result;
 use clnrm_core::services::generic::GenericContainerPlugin;
 
@@ -61,8 +61,11 @@ fn test_generic_container_plugin_with_port_mapping_succeeds() {
 #[test]
 fn test_generic_container_plugin_with_volume_mount_succeeds() -> Result<()> {
     // Arrange & Act
-    let plugin = GenericContainerPlugin::new("data_service", "alpine:latest")
-        .with_volume("/tmp/host", "/data/container", false)?;
+    let plugin = GenericContainerPlugin::new("data_service", "alpine:latest").with_volume(
+        "/tmp/host",
+        "/data/container",
+        false,
+    )?;
 
     // Assert
     assert_eq!(plugin.name(), "data_service");
@@ -72,8 +75,11 @@ fn test_generic_container_plugin_with_volume_mount_succeeds() -> Result<()> {
 #[test]
 fn test_generic_container_plugin_with_invalid_volume_path_returns_error() {
     // Arrange & Act
-    let result = GenericContainerPlugin::new("invalid_volume", "alpine:latest")
-        .with_volume("", "/container/path", false);
+    let result = GenericContainerPlugin::new("invalid_volume", "alpine:latest").with_volume(
+        "",
+        "/container/path",
+        false,
+    );
 
     // Assert
     assert!(result.is_err(), "Should fail with empty host path");
@@ -82,7 +88,8 @@ fn test_generic_container_plugin_with_invalid_volume_path_returns_error() {
 #[test]
 fn test_generic_container_plugin_implements_service_plugin_trait() {
     // Arrange
-    let plugin: Box<dyn ServicePlugin> = Box::new(GenericContainerPlugin::new("trait_test", "alpine:latest"));
+    let plugin: Box<dyn ServicePlugin> =
+        Box::new(GenericContainerPlugin::new("trait_test", "alpine:latest"));
 
     // Act & Assert
     assert_eq!(plugin.name(), "trait_test");
@@ -157,9 +164,10 @@ impl ServicePlugin for MockServicePlugin {
 
     fn start(&self) -> Result<clnrm_core::cleanroom::ServiceHandle> {
         if self.should_fail_start {
-            return Err(clnrm_core::error::CleanroomError::service_error(
-                format!("Mock start failure for service '{}'", self.name)
-            ));
+            return Err(clnrm_core::error::CleanroomError::service_error(format!(
+                "Mock start failure for service '{}'",
+                self.name
+            )));
         }
 
         Ok(clnrm_core::cleanroom::ServiceHandle {

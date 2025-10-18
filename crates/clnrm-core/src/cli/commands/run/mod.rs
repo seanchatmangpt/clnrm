@@ -657,11 +657,10 @@ mod single {
             }
 
             // Render command templates with vars context
-            let rendered_command: Vec<String> = step.command
+            let rendered_command: Vec<String> = step
+                .command
                 .iter()
-                .map(|arg| {
-                    template_renderer.render_str(arg, &format!("step_{}_arg", step.name))
-                })
+                .map(|arg| template_renderer.render_str(arg, &format!("step_{}_arg", step.name)))
                 .collect::<Result<Vec<String>>>()?;
 
             info!("🔧 Executing: {}", rendered_command.join(" "));
@@ -722,9 +721,7 @@ mod single {
                 if !re.is_match(trimmed_output) {
                     return Err(CleanroomError::validation_error(format!(
                         "Step '{}' output did not match expected regex '{}'. Output: {}",
-                        step.name,
-                        regex,
-                        trimmed_output
+                        step.name, regex, trimmed_output
                     )));
                 }
                 info!("✅ Output matches expected regex");

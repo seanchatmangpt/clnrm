@@ -117,8 +117,7 @@ fn test_cleanroom_error_implements_display() {
 #[test]
 fn test_cleanroom_error_display_includes_context_when_present() {
     // Arrange
-    let error = CleanroomError::config_error("Invalid value")
-        .with_context("Field: max_retries");
+    let error = CleanroomError::config_error("Invalid value").with_context("Field: max_retries");
 
     // Act
     let display_str = format!("{}", error);
@@ -131,8 +130,7 @@ fn test_cleanroom_error_display_includes_context_when_present() {
 #[test]
 fn test_cleanroom_error_display_includes_source_when_present() {
     // Arrange
-    let error = CleanroomError::io_error("Read failed")
-        .with_source("Permission denied");
+    let error = CleanroomError::io_error("Read failed").with_source("Permission denied");
 
     // Act
     let display_str = format!("{}", error);
@@ -149,8 +147,7 @@ fn test_cleanroom_error_display_includes_source_when_present() {
 #[test]
 fn test_cleanroom_error_serializes_to_json() {
     // Arrange
-    let error = CleanroomError::validation_error("Invalid input")
-        .with_context("Test context");
+    let error = CleanroomError::validation_error("Invalid input").with_context("Test context");
 
     // Act
     let json = serde_json::to_string(&error);
@@ -325,8 +322,9 @@ fn test_cleanroom_error_typical_configuration_parse_failure() {
 #[test]
 fn test_cleanroom_error_typical_timeout_scenario() {
     // Arrange
-    let error = CleanroomError::timeout_error("Container health check did not complete within 60 seconds")
-        .with_context("Service: database, Image: postgres:15");
+    let error =
+        CleanroomError::timeout_error("Container health check did not complete within 60 seconds")
+            .with_context("Service: database, Image: postgres:15");
 
     // Act & Assert
     assert_eq!(error.kind, ErrorKind::Timeout);

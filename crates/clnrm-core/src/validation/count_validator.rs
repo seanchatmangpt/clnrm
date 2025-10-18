@@ -287,7 +287,11 @@ mod tests {
         assert!(CountBound::range(10, 5).is_err());
 
         // Test eq precedence over gte/lte
-        let combined = CountBound { gte: Some(1), lte: Some(10), eq: Some(5) };
+        let combined = CountBound {
+            gte: Some(1),
+            lte: Some(10),
+            eq: Some(5),
+        };
         assert!(combined.validate(5, "Test").is_ok());
         assert!(combined.validate(7, "Test").is_err());
     }
@@ -301,8 +305,14 @@ mod tests {
             create_test_span("span2", false),
             create_test_span("span3", false),
         ];
-        assert!(CountExpectation::new().with_spans_total(CountBound::eq(3)).validate(&spans).is_ok());
-        assert!(CountExpectation::new().with_spans_total(CountBound::eq(2)).validate(&spans).is_err());
+        assert!(CountExpectation::new()
+            .with_spans_total(CountBound::eq(3))
+            .validate(&spans)
+            .is_ok());
+        assert!(CountExpectation::new()
+            .with_spans_total(CountBound::eq(2))
+            .validate(&spans)
+            .is_err());
 
         // Test errors_total validation (both status and attribute)
         let error_spans = vec![
@@ -310,13 +320,24 @@ mod tests {
             create_test_span("span2", true),
             create_test_span("span3", true),
         ];
-        assert!(CountExpectation::new().with_errors_total(CountBound::eq(2)).validate(&error_spans).is_ok());
-        assert!(CountExpectation::new().with_errors_total(CountBound::eq(0)).validate(&error_spans).is_err());
+        assert!(CountExpectation::new()
+            .with_errors_total(CountBound::eq(2))
+            .validate(&error_spans)
+            .is_ok());
+        assert!(CountExpectation::new()
+            .with_errors_total(CountBound::eq(0))
+            .validate(&error_spans)
+            .is_err());
 
         // Test error detection via error attribute
         let mut attr_error_span = create_test_span("span1", false);
-        attr_error_span.attributes.insert("error".to_string(), json!(true));
-        assert!(CountExpectation::new().with_errors_total(CountBound::eq(1)).validate(&vec![attr_error_span]).is_ok());
+        attr_error_span
+            .attributes
+            .insert("error".to_string(), json!(true));
+        assert!(CountExpectation::new()
+            .with_errors_total(CountBound::eq(1))
+            .validate(&vec![attr_error_span])
+            .is_ok());
 
         // Test by_name count validation
         let named_spans = vec![
@@ -345,7 +366,10 @@ mod tests {
 
         // Test empty spans
         let empty: Vec<SpanData> = vec![];
-        assert!(CountExpectation::new().with_spans_total(CountBound::eq(0)).validate(&empty).is_ok());
+        assert!(CountExpectation::new()
+            .with_spans_total(CountBound::eq(0))
+            .validate(&empty)
+            .is_ok());
 
         // Test no constraints (always passes)
         assert!(CountExpectation::new().validate(&spans).is_ok());

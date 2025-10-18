@@ -68,7 +68,8 @@ pub async fn run_cli() -> Result<()> {
                 vec![PathBuf::from(".")]
             };
 
-            run_tests_with_shard_and_report(&paths_to_run, &config, shard, report_junit.as_deref()).await
+            run_tests_with_shard_and_report(&paths_to_run, &config, shard, report_junit.as_deref())
+                .await
         }
 
         Commands::Validate { files } => {
@@ -83,15 +84,29 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::Template { template, name, output } => {
+        Commands::Template {
+            template,
+            name,
+            output,
+        } => {
             // Handle template types that generate TOML files (v0.6.0 Tera templates)
             let template_result = match template.as_str() {
                 "otel" => Some((generate_otel_template()?, "OTEL validation template")),
                 "matrix" => Some((generate_matrix_template()?, "Matrix testing template")),
-                "macros" | "macro-library" => Some((generate_macro_library()?, "Tera macro library")),
-                "full-validation" | "validation" => Some((generate_full_validation_template()?, "Full validation template")),
-                "deterministic" => Some((generate_deterministic_template()?, "Deterministic testing template")),
-                "lifecycle-matcher" => Some((generate_lifecycle_matcher()?, "Lifecycle matcher template")),
+                "macros" | "macro-library" => {
+                    Some((generate_macro_library()?, "Tera macro library"))
+                }
+                "full-validation" | "validation" => Some((
+                    generate_full_validation_template()?,
+                    "Full validation template",
+                )),
+                "deterministic" => Some((
+                    generate_deterministic_template()?,
+                    "Deterministic testing template",
+                )),
+                "lifecycle-matcher" => {
+                    Some((generate_lifecycle_matcher()?, "Lifecycle matcher template"))
+                }
                 _ => None,
             };
 
@@ -142,12 +157,9 @@ pub async fn run_cli() -> Result<()> {
                 optimize_resources: _,
                 horizon_minutes: _,
                 service: _,
-            } => {
-                Err(crate::error::CleanroomError::validation_error(
-                    "AI service management is an experimental feature in the clnrm-ai crate.\n\
-                     To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
-                ))
-            }
+            } => Err(crate::error::CleanroomError::validation_error(
+                "AI service management is not available in this version.",
+            )),
         },
 
         Commands::Report {
@@ -165,7 +177,12 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::SelfTest { suite, report, otel_exporter, otel_endpoint } => {
+        Commands::SelfTest {
+            suite,
+            report,
+            otel_exporter,
+            otel_endpoint,
+        } => {
             run_self_tests(suite, report, otel_exporter, otel_endpoint).await?;
             Ok(())
         }
@@ -177,12 +194,9 @@ pub async fn run_cli() -> Result<()> {
             auto_optimize: _,
             confidence_threshold: _,
             max_workers: _,
-        } => {
-            Err(crate::error::CleanroomError::validation_error(
-                "AI orchestration is an experimental feature in the clnrm-ai crate.\n\
-                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
-            ))
-        }
+        } => Err(crate::error::CleanroomError::validation_error(
+            "AI orchestration is not available in this version.",
+        )),
 
         #[cfg(feature = "ai")]
         Commands::AiPredict {
@@ -190,12 +204,9 @@ pub async fn run_cli() -> Result<()> {
             predict_failures: _,
             recommendations: _,
             format: _,
-        } => {
-            Err(crate::error::CleanroomError::validation_error(
-                "AI predictive analytics is an experimental feature in the clnrm-ai crate.\n\
-                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
-            ))
-        }
+        } => Err(crate::error::CleanroomError::validation_error(
+            "AI predictive analytics is not available in this version.",
+        )),
 
         #[cfg(feature = "ai")]
         Commands::AiOptimize {
@@ -203,24 +214,22 @@ pub async fn run_cli() -> Result<()> {
             resource_allocation: _,
             parallel_execution: _,
             auto_apply: _,
-        } => {
-            Err(crate::error::CleanroomError::validation_error(
-                "AI test optimization is an experimental feature in the clnrm-ai crate.\n\
-                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
-            ))
-        }
+        } => Err(crate::error::CleanroomError::validation_error(
+            "AI test optimization is not available in this version.",
+        )),
 
         #[cfg(feature = "ai")]
-        Commands::AiReal { analyze: _ } => {
-            Err(crate::error::CleanroomError::validation_error(
-                "AI real-time analysis is an experimental feature in the clnrm-ai crate.\n\
-                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
-            ))
-        }
+        Commands::AiReal { analyze: _ } => Err(crate::error::CleanroomError::validation_error(
+            "AI real-time analysis is not available in this version.",
+        )),
 
         Commands::Health { verbose } => system_health_check(verbose).await,
 
-        Commands::Fmt { files, check, verify } => {
+        Commands::Fmt {
+            files,
+            check,
+            verify,
+        } => {
             format_files(&files, check, verify)?;
             Ok(())
         }
@@ -244,7 +253,13 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::Dev { paths, debounce_ms, clear, only, timebox } => {
+        Commands::Dev {
+            paths,
+            debounce_ms,
+            clear,
+            only,
+            timebox,
+        } => {
             let config = crate::cli::types::CliConfig {
                 format: cli.format.clone(),
                 verbose: cli.verbose,
@@ -254,7 +269,11 @@ pub async fn run_cli() -> Result<()> {
             run_dev_mode_with_filters(paths, debounce_ms, clear, only, timebox, config).await
         }
 
-        Commands::Lint { files, format, deny_warnings } => {
+        Commands::Lint {
+            files,
+            format,
+            deny_warnings,
+        } => {
             let file_refs: Vec<_> = files.iter().map(|p| p.as_path()).collect();
 
             // Convert format enum to string
@@ -270,7 +289,12 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::Diff { baseline, current, format, only_changes } => {
+        Commands::Diff {
+            baseline,
+            current,
+            format,
+            only_changes,
+        } => {
             // Convert format enum to string
             let format_str = match format {
                 crate::cli::types::DiffFormat::Tree => "tree",
@@ -288,9 +312,7 @@ pub async fn run_cli() -> Result<()> {
             Ok(())
         }
 
-        Commands::Record { paths, output } => {
-            run_record(paths, output).await
-        }
+        Commands::Record { paths, output } => run_record(paths, output).await,
 
         #[cfg(feature = "ai")]
         Commands::AiMonitor {
@@ -300,27 +322,36 @@ pub async fn run_cli() -> Result<()> {
             anomaly_detection: _,
             proactive_healing: _,
             webhook_url: _,
-        } => {
-            Err(crate::error::CleanroomError::validation_error(
-                "AI monitoring is an experimental feature in the clnrm-ai crate.\n\
-                 To use this feature, enable the 'ai' feature flag or use the clnrm-ai crate directly."
-            ))
-        }
+        } => Err(crate::error::CleanroomError::validation_error(
+            "AI monitoring is not available in this version.",
+        )),
 
         // PRD v1.0 additional commands
-        Commands::Pull { paths, parallel, jobs } => {
-            pull_images(paths, parallel, jobs).await
-        }
+        Commands::Pull {
+            paths,
+            parallel,
+            jobs,
+        } => pull_images(paths, parallel, jobs).await,
 
-        Commands::Graph { trace, format, highlight_missing, filter } => {
-            visualize_graph(&trace, &format, highlight_missing, filter.as_deref())
-        }
+        Commands::Graph {
+            trace,
+            format,
+            highlight_missing,
+            filter,
+        } => visualize_graph(&trace, &format, highlight_missing, filter.as_deref()),
 
-        Commands::Repro { baseline, verify_digest, output } => {
-            reproduce_baseline(&baseline, verify_digest, output.as_ref()).await
-        }
+        Commands::Repro {
+            baseline,
+            verify_digest,
+            output,
+        } => reproduce_baseline(&baseline, verify_digest, output.as_ref()).await,
 
-        Commands::RedGreen { paths, expect, verify_red, verify_green } => {
+        Commands::RedGreen {
+            paths,
+            expect,
+            verify_red,
+            verify_green,
+        } => {
             // Handle new --expect flag or fall back to deprecated flags
             let (should_verify_red, should_verify_green) = match expect {
                 Some(crate::cli::types::TddState::Red) => (true, false),
@@ -330,30 +361,34 @@ pub async fn run_cli() -> Result<()> {
             run_red_green_validation(&paths, should_verify_red, should_verify_green).await
         }
 
-        Commands::Render { template, map, output, show_vars } => {
-            render_template_with_vars(&template, &map, output.as_ref(), show_vars)
-        }
+        Commands::Render {
+            template,
+            map,
+            output,
+            show_vars,
+        } => render_template_with_vars(&template, &map, output.as_ref(), show_vars),
 
-        Commands::Spans { trace, grep, format, show_attrs, show_events } => {
-            filter_spans(&trace, grep.as_deref(), &format, show_attrs, show_events)
-        }
+        Commands::Spans {
+            trace,
+            grep,
+            format,
+            show_attrs,
+            show_events,
+        } => filter_spans(&trace, grep.as_deref(), &format, show_attrs, show_events),
 
-        Commands::Collector { command } => {
-            match command {
-                crate::cli::types::CollectorCommands::Up { image, http_port, grpc_port, detach } => {
-                    start_collector(&image, http_port, grpc_port, detach).await
-                }
-                crate::cli::types::CollectorCommands::Down { volumes } => {
-                    stop_collector(volumes).await
-                }
-                crate::cli::types::CollectorCommands::Status => {
-                    show_collector_status().await
-                }
-                crate::cli::types::CollectorCommands::Logs { lines, follow } => {
-                    show_collector_logs(lines, follow).await
-                }
+        Commands::Collector { command } => match command {
+            crate::cli::types::CollectorCommands::Up {
+                image,
+                http_port,
+                grpc_port,
+                detach,
+            } => start_collector(&image, http_port, grpc_port, detach).await,
+            crate::cli::types::CollectorCommands::Down { volumes } => stop_collector(volumes).await,
+            crate::cli::types::CollectorCommands::Status => show_collector_status().await,
+            crate::cli::types::CollectorCommands::Logs { lines, follow } => {
+                show_collector_logs(lines, follow).await
             }
-        }
+        },
 
         Commands::Analyze { test_file, traces } => {
             use crate::cli::commands::v0_7_0::analyze::analyze_traces;

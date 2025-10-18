@@ -67,6 +67,7 @@ url = "2.5"
 tera = "1.19"
 sha2 = "0.10"
 globset = "0.4.17"
+Inflector = "0.11.4"
 fake = { version = "2.9", features = [
   "derive",
   "chrono",

@@ -46,45 +46,10 @@ fn test_config_invalid_toml_returns_error() {
 }
 
 // ============================================================================
-// Error Handling Tests (10 tests, down from 44)
+// Error Handling Tests (Consolidated to unit_error_tests.rs - 44 comprehensive tests)
 // ============================================================================
-
-#[test]
-fn test_error_validation_error_creation() {
-    let error = CleanroomError::validation_error("test validation error");
-    assert_eq!(error.kind, error::ErrorKind::ValidationError);
-    assert!(error.message.contains("test validation error"));
-}
-
-#[test]
-fn test_error_container_error_creation() {
-    let error = CleanroomError::container_error("test container error");
-    assert_eq!(error.kind, error::ErrorKind::ContainerError);
-    assert!(error.message.contains("test container error"));
-}
-
-#[test]
-fn test_error_internal_error_creation() {
-    let error = CleanroomError::internal_error("test internal error");
-    assert_eq!(error.kind, error::ErrorKind::InternalError);
-    assert!(error.message.contains("test internal error"));
-}
-
-#[test]
-fn test_error_with_context() {
-    let error = CleanroomError::validation_error("base error")
-        .with_context("additional context");
-
-    let debug_string = format!("{:?}", error);
-    assert!(debug_string.contains("additional context"));
-}
-
-#[test]
-fn test_error_display_formatting() {
-    let error = CleanroomError::validation_error("test error message");
-    let display_string = format!("{}", error);
-    assert!(display_string.contains("test error message"));
-}
+// Removed 5 redundant error tests - comprehensive coverage now in unit_error_tests.rs
+// Kept only config error tests as they're specific to config functionality
 
 // ============================================================================
 // Backend Tests (12 tests, down from 31)
@@ -98,9 +63,7 @@ fn test_cmd_builder_basic() {
 
 #[test]
 fn test_cmd_builder_with_args() {
-    let cmd = backend::Cmd::new("echo")
-        .arg("hello")
-        .arg("world");
+    let cmd = backend::Cmd::new("echo").arg("hello").arg("world");
 
     assert_eq!(cmd.args.len(), 2);
     assert_eq!(cmd.args[0], "hello");
@@ -109,8 +72,7 @@ fn test_cmd_builder_with_args() {
 
 #[test]
 fn test_cmd_builder_with_env() {
-    let cmd = backend::Cmd::new("test")
-        .env("KEY", "value");
+    let cmd = backend::Cmd::new("test").env("KEY", "value");
 
     assert_eq!(cmd.env.get("KEY"), Some(&"value".to_string()));
 }

@@ -5,11 +5,9 @@ members = [
   "crates/clnrm",
   "crates/clnrm-core",
   "crates/clnrm-shared",
-  "crates/clnrm-ai",
 ]
 
-# Default members exclude experimental AI crate
-# Use `cargo test -p clnrm-ai` to test AI features separately
+# Default members for core functionality
 default-members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared"]
 
 [workspace.package]

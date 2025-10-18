@@ -642,11 +642,28 @@ mod tests {
     #[test]
     fn test_policy_with_security_levels() {
         // Test all security level constructors
-        assert_eq!(Policy::low_security().security.security_level, SecurityLevel::Low);
-        assert_eq!(Policy::standard().security.security_level, SecurityLevel::Standard);
-        assert_eq!(Policy::high_security().security.security_level, SecurityLevel::High);
-        assert_eq!(Policy::locked().security.security_level, SecurityLevel::Locked);
-        assert_eq!(Policy::with_security_level(SecurityLevel::High).security.security_level, SecurityLevel::High);
+        assert_eq!(
+            Policy::low_security().security.security_level,
+            SecurityLevel::Low
+        );
+        assert_eq!(
+            Policy::standard().security.security_level,
+            SecurityLevel::Standard
+        );
+        assert_eq!(
+            Policy::high_security().security.security_level,
+            SecurityLevel::High
+        );
+        assert_eq!(
+            Policy::locked().security.security_level,
+            SecurityLevel::Locked
+        );
+        assert_eq!(
+            Policy::with_security_level(SecurityLevel::High)
+                .security
+                .security_level,
+            SecurityLevel::High
+        );
 
         // Validate low security disables isolation
         let low_policy = Policy::low_security();
@@ -659,7 +676,10 @@ mod tests {
         let policy = Policy::with_resource_limits(50.0, 512 * 1024 * 1024, 5 * 1024 * 1024 * 1024);
         assert_eq!(policy.resources.max_cpu_usage_percent, 50.0);
         assert_eq!(policy.resources.max_memory_usage_bytes, 512 * 1024 * 1024);
-        assert_eq!(policy.resources.max_disk_usage_bytes, 5 * 1024 * 1024 * 1024);
+        assert_eq!(
+            policy.resources.max_disk_usage_bytes,
+            5 * 1024 * 1024 * 1024
+        );
     }
 
     #[test]
@@ -706,10 +726,18 @@ mod tests {
         let deserialized: Policy = serde_json::from_str(&json).map_err(|e| {
             CleanroomError::internal_error(format!("Deserialization failed: {}", e))
         })?;
-        assert_eq!(policy.security.security_level, deserialized.security.security_level);
+        assert_eq!(
+            policy.security.security_level,
+            deserialized.security.security_level
+        );
 
         // Test SecurityLevel serialization
-        for level in [SecurityLevel::Low, SecurityLevel::Standard, SecurityLevel::High, SecurityLevel::Locked] {
+        for level in [
+            SecurityLevel::Low,
+            SecurityLevel::Standard,
+            SecurityLevel::High,
+            SecurityLevel::Locked,
+        ] {
             let json = serde_json::to_string(&level).map_err(|e| {
                 CleanroomError::internal_error(format!("Serialization failed: {}", e))
             })?;
@@ -720,7 +748,12 @@ mod tests {
         }
 
         // Test AuditLevel serialization
-        for level in [AuditLevel::Debug, AuditLevel::Info, AuditLevel::Warn, AuditLevel::Error] {
+        for level in [
+            AuditLevel::Debug,
+            AuditLevel::Info,
+            AuditLevel::Warn,
+            AuditLevel::Error,
+        ] {
             let json = serde_json::to_string(&level).map_err(|e| {
                 CleanroomError::internal_error(format!("Serialization failed: {}", e))
             })?;
@@ -738,9 +771,21 @@ mod tests {
         let policy = Policy::new();
         let env = policy.to_env();
 
-        assert_eq!(env.get("CLEANROOM_SECURITY_LEVEL"), Some(&"Standard".to_string()));
-        assert_eq!(env.get("CLEANROOM_NETWORK_ISOLATION"), Some(&"true".to_string()));
-        assert_eq!(env.get("CLEANROOM_MAX_CPU_PERCENT"), Some(&"80".to_string()));
-        assert_eq!(env.get("CLEANROOM_MAX_MEMORY_BYTES"), Some(&"1073741824".to_string()));
+        assert_eq!(
+            env.get("CLEANROOM_SECURITY_LEVEL"),
+            Some(&"Standard".to_string())
+        );
+        assert_eq!(
+            env.get("CLEANROOM_NETWORK_ISOLATION"),
+            Some(&"true".to_string())
+        );
+        assert_eq!(
+            env.get("CLEANROOM_MAX_CPU_PERCENT"),
+            Some(&"80".to_string())
+        );
+        assert_eq!(
+            env.get("CLEANROOM_MAX_MEMORY_BYTES"),
+            Some(&"1073741824".to_string())
+        );
     }
 }

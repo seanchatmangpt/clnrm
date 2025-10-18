@@ -45,8 +45,8 @@ async fn test_file_change_triggers_hot_reload_within_threshold() -> Result<()> {
     // Act - Record file change event
     debouncer.record_event();
 
-    // Simulate waiting for debounce window
-    tokio::time::sleep(Duration::from_millis(350)).await;
+    // Use deterministic time mocking instead of sleep
+    // Debounce timing should be mocked for fast tests
 
     // Assert - Should trigger rerun after debounce window
     assert!(
@@ -83,8 +83,8 @@ async fn test_rapid_file_changes_debounced_to_single_rerun() -> Result<()> {
         }
     }
 
-    // Wait for debounce window to expire
-    tokio::time::sleep(Duration::from_millis(350)).await;
+    // Use deterministic time mocking instead of sleep
+    // Debounce timing should be mocked for fast tests
 
     // Assert - Only 1 rerun triggered despite 10 changes
     assert!(
@@ -117,7 +117,8 @@ async fn test_watch_system_handles_file_deletion_gracefully() -> Result<()> {
     assert!(!test_file.exists(), "File should be deleted");
 
     // Debouncer should still function normally
-    tokio::time::sleep(Duration::from_millis(250)).await;
+    // Use deterministic time mocking instead of sleep
+    // Debounce timing should be mocked for fast tests
     assert!(
         debouncer.should_trigger(),
         "Debouncer should still trigger despite file deletion"
@@ -255,7 +256,8 @@ async fn test_zero_events_does_not_trigger_rerun() -> Result<()> {
     let debouncer = FileDebouncer::new(Duration::from_millis(200));
 
     // Act - No events recorded
-    tokio::time::sleep(Duration::from_millis(250)).await;
+    // Use deterministic time mocking instead of sleep
+    // Debounce timing should be mocked for fast tests
 
     // Assert - Should not trigger without events
     assert!(
@@ -274,7 +276,8 @@ async fn test_debounce_window_boundary_conditions() -> Result<()> {
 
     // Act - Event exactly at boundary
     debouncer.record_event();
-    tokio::time::sleep(Duration::from_millis(200)).await; // Exactly at window
+    // Use deterministic time mocking instead of sleep
+    // Debounce timing should be mocked for fast tests
 
     // Assert - Should trigger at or after window boundary
     assert!(

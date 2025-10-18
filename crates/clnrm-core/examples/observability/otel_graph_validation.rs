@@ -143,10 +143,7 @@ impl GraphValidator {
         let spans = self.processor.get_spans()?;
 
         // Find parent and child spans
-        let parent_spans: Vec<_> = spans
-            .iter()
-            .filter(|s| s.name == parent_name)
-            .collect();
+        let parent_spans: Vec<_> = spans.iter().filter(|s| s.name == parent_name).collect();
 
         let child_spans: Vec<_> = spans.iter().filter(|s| s.name == child_name).collect();
 
@@ -242,12 +239,9 @@ impl GraphValidator {
         let spans = self.processor.get_spans()?;
 
         // Find root span
-        let root_span = spans
-            .iter()
-            .find(|s| s.name == root_name)
-            .ok_or_else(|| {
-                CleanroomError::validation_error(format!("Root span '{}' not found", root_name))
-            })?;
+        let root_span = spans.iter().find(|s| s.name == root_name).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Root span '{}' not found", root_name))
+        })?;
 
         let root_id = root_span.span_context.span_id();
 
@@ -393,10 +387,7 @@ impl GraphValidator {
         }
 
         // Collect all span IDs
-        let span_ids: HashSet<SpanId> = spans
-            .iter()
-            .map(|s| s.span_context.span_id())
-            .collect();
+        let span_ids: HashSet<SpanId> = spans.iter().map(|s| s.span_context.span_id()).collect();
 
         // Check that each span with a parent has a valid parent in the trace
         for span in &spans {
@@ -549,7 +540,11 @@ async fn test_graph_edge_validation() -> Result<()> {
     let result = validator.validate(&assertions)?;
 
     // Assert: All validations should pass
-    assert!(result.passed, "Graph validation failed: {:?}", result.errors);
+    assert!(
+        result.passed,
+        "Graph validation failed: {:?}",
+        result.errors
+    );
     assert_eq!(result.passed_assertions, assertions.len());
 
     Ok(())
@@ -626,11 +621,7 @@ async fn test_graph_cycle_detection() -> Result<()> {
     let result = validator.validate(&assertions)?;
 
     // Assert: Should pass (no cycles)
-    assert!(
-        result.passed,
-        "Cycle detection failed: {:?}",
-        result.errors
-    );
+    assert!(result.passed, "Cycle detection failed: {:?}", result.errors);
 
     Ok(())
 }
@@ -807,7 +798,10 @@ async fn main() -> Result<()> {
     match validator.validate(&edge_assertions) {
         Ok(result) if result.passed => {
             println!("✅ All expected edges validated successfully");
-            println!("   Passed: {}/{}\n", result.passed_assertions, result.total_assertions);
+            println!(
+                "   Passed: {}/{}\n",
+                result.passed_assertions, result.total_assertions
+            );
         }
         Ok(result) => {
             println!("❌ Edge validation failed");
