@@ -40,10 +40,13 @@ pub fn register_extended_functions(tera: &mut Tera) {
     tera.register_function("shuffle", ShuffleFunction);
     tera.register_function("sample", SampleFunction);
 
-    // String transforms
+    // String transforms (keep functions for backward compatibility)
     tera.register_function("slug", SlugFunction);
     tera.register_function("kebab", KebabFunction);
     tera.register_function("snake", SnakeFunction);
+
+    // String transforms as filters (ggen-style filter syntax)
+    register_string_filters(tera);
 
     // Time helpers
     tera.register_function("now_unix", NowUnixFunction);
@@ -60,6 +63,53 @@ pub fn register_extended_functions(tera: &mut Tera) {
     // Unified fake interface
     tera.register_function("fake", UnifiedFakeFunction);
     tera.register_function("fake_kinds", FakeKindsFunction);
+}
+
+/// Register string transformation filters (ggen-style)
+/// Usage: {{ 'Hello World' | kebab }} instead of {{ kebab(s='Hello World') }}
+fn register_string_filters(tera: &mut Tera) {
+    use inflector::cases::{camelcase, kebabcase, pascalcase, snakecase};
+
+    // Core Inflector filters
+    reg_str_filter(tera, "camel", camelcase::to_camel_case);
+    reg_str_filter(tera, "pascal", pascalcase::to_pascal_case);
+    reg_str_filter(tera, "snake", snakecase::to_snake_case);
+    reg_str_filter(tera, "kebab", kebabcase::to_kebab_case);
+
+    // Slug filter (kebab-case with alphanumeric filtering)
+    reg_str_filter(tera, "slug", |s: &str| {
+        let kebab = kebabcase::to_kebab_case(s);
+        kebab
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '-')
+            .collect::<String>()
+            .split('-')
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<&str>>()
+            .join("-")
+    });
+
+    // Additional useful filters
+    reg_str_filter(tera, "upper", |s: &str| s.to_uppercase());
+    reg_str_filter(tera, "lower", |s: &str| s.to_lowercase());
+}
+
+/// Helper to register string transformation filters
+/// Pattern from ggen: https://github.com/seanchatmangpt/ggen
+fn reg_str_filter<F>(tera: &mut Tera, name: &str, f: F)
+where
+    F: Fn(&str) -> String + Send + Sync + 'static,
+{
+    tera.register_filter(
+        name,
+        move |v: &Value, _args: &HashMap<String, Value>| -> tera::Result<Value> {
+            let input_str = match v.as_str() {
+                Some(s) => s,
+                None => &v.to_string(),
+            };
+            Ok(Value::String(f(input_str)))
+        },
+    );
 }
 
 // ========================================

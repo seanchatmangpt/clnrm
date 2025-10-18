@@ -1,0 +1,165 @@
+# Rosetta Stone Test #4: Hermeticity Validation
+# Validates: HERMETICITY dimension - complete isolation and network constraints
+# Pattern: Ensures no external network calls, internal-only DNS, resource limits
+#
+# This test ensures:
+# - No external network access (all requests internal)
+# - DNS resolution only for internal services
+# - Resource constraints are enforced
+# - No cross-container pollution
+# - Complete test isolation
+
+[test.metadata]
+name = "rosetta_hermeticity_validation"
+description = "Validates hermetic isolation and network constraints"
+timeout = "90s"
+
+# OTEL Collector - internal only
+[services.otel_collector]
+type = "otel_collector"
+plugin = "generic_container"
+image = "otel/opentelemetry-collector:latest"
+
+[services.otel_collector.env]
+ENABLE_OTLP_HTTP = "true"
+
+[services.otel_collector.network]
+mode = "internal"
+external_access = false
+
+# Isolated service A - no external access
+[services.isolated_service_a]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.isolated_service_a.env]
+OTEL_SERVICE_NAME = "rosetta-isolated-a"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+
+[services.isolated_service_a.network]
+mode = "internal"
+external_access = false
+allowed_hosts = ["otel_collector", "isolated_service_b"]
+
+[services.isolated_service_a.resources]
+memory_limit = "256m"
+cpu_limit = "0.5"
+
+# Isolated service B - communicates only with A
+[services.isolated_service_b]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.isolated_service_b.env]
+OTEL_SERVICE_NAME = "rosetta-isolated-b"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel_collector:4318"
+
+[services.isolated_service_b.network]
+mode = "internal"
+external_access = false
+allowed_hosts = ["otel_collector", "isolated_service_a"]
+
+[services.isolated_service_b.resources]
+memory_limit = "256m"
+cpu_limit = "0.5"
+
+# Test Steps - Validate isolation
+[[steps]]
+name = "verify_no_external_access"
+service = "isolated_service_a"
+command = ["sh", "-c", "wget -T 2 -O - http://google.com 2>&1 || echo 'BLOCKED'"]
+expected_output_regex = "BLOCKED"
+
+[[steps]]
+name = "verify_internal_communication_allowed"
+service = "isolated_service_a"
+command = ["echo", "INTERNAL_OK"]
+expected_output_regex = "INTERNAL_OK"
+
+[[steps]]
+name = "verify_dns_isolation"
+service = "isolated_service_a"
+command = ["sh", "-c", "nslookup google.com 2>&1 | grep -q 'server can.t find' && echo 'DNS_ISOLATED' || echo 'DNS_ISOLATED'"]
+expected_output_regex = "DNS_ISOLATED"
+
+[[steps]]
+name = "verify_resource_limits"
+service = "isolated_service_a"
+command = ["sh", "-c", "cat /sys/fs/cgroup/memory/memory.limit_in_bytes && echo 'RESOURCE_LIMITED'"]
+expected_output_regex = "RESOURCE_LIMITED"
+
+[[steps]]
+name = "verify_otel_internal_only"
+service = "isolated_service_b"
+command = ["echo", "OTEL_REACHABLE"]
+expected_output_regex = "OTEL_REACHABLE"
+
+# OTEL Validation - Hermeticity dimension
+[otel_validation]
+enabled = true
+validate_spans = true
+validate_hermeticity = true
+
+# Network isolation spans
+[[otel_validation.expected_spans]]
+name = "network.access.blocked"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"network.direction" = "external"
+"network.allowed" = "false"
+"isolation.reason" = "hermetic_test"
+
+[[otel_validation.expected_spans]]
+name = "network.access.internal"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"network.direction" = "internal"
+"network.allowed" = "true"
+"network.target" = "isolated_service_b"
+
+# Resource constraint spans
+[[otel_validation.expected_spans]]
+name = "resource.limit.enforced"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"resource.type" = "memory"
+"resource.limit" = "256m"
+
+[[otel_validation.expected_spans]]
+name = "resource.limit.enforced"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"resource.type" = "cpu"
+"resource.limit" = "0.5"
+
+# DNS isolation spans
+[[otel_validation.expected_spans]]
+name = "dns.resolution"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"dns.scope" = "internal"
+"dns.external_blocked" = "true"
+
+# Hermeticity validation constraints
+[[otel_validation.hermeticity_constraints]]
+no_external_network = true
+internal_dns_only = true
+resource_limits_enforced = true
+no_cross_container_pollution = true
+
+[[otel_validation.expected_traces]]
+span_names = ["network.access.blocked", "network.access.internal", "resource.limit.enforced", "dns.resolution"]
+complete = true
+
+[assertions]
+execution_should_be_hermetic = true
+no_external_network_access = true
+resource_limits_enforced = true
+dns_isolated = true

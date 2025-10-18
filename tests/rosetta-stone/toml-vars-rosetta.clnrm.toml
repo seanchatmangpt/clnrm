@@ -1,0 +1,272 @@
+# =============================================================================
+# TOML Variable Resolution Rosetta Stone Test
+# =============================================================================
+# Purpose: Validate TOML variable interpolation and resolution capabilities
+# Test Count: 6 comprehensive scenarios
+# Lines: ~165 lines of TOML configuration
+# Container: Alpine Linux (POSIX-compliant commands)
+# =============================================================================
+
+[test.metadata]
+name = "toml_vars_rosetta"
+description = "Comprehensive validation of TOML variable interpolation, nested access, precedence, and edge cases"
+version = "1.0.0"
+author = "Cleanroom Testing Framework"
+tags = ["rosetta-stone", "variables", "toml", "interpolation", "configuration"]
+
+# =============================================================================
+# VARIABLE DEFINITIONS
+# =============================================================================
+# Test various variable types: simple strings, numbers, nested objects
+# These variables will be referenced throughout the test using {{ vars.name }}
+# =============================================================================
+
+[vars]
+# Simple string variables
+service_name = "test-service"
+environment = "development"
+app_version = "1.2.3"
+log_level = "INFO"
+
+# Numeric variables
+port = 8080
+timeout_seconds = 30
+max_retries = 3
+thread_count = 4
+
+# Boolean-like values (represented as strings in TOML)
+debug_enabled = "true"
+cache_enabled = "false"
+
+# Path-like variables
+data_dir = "/var/data"
+config_path = "/etc/app/config.toml"
+log_file = "/var/log/app.log"
+
+# [vars.database] - Nested configuration object
+[vars.database]
+host = "localhost"
+port = 5432
+name = "cleanroom_db"
+user = "test_user"
+max_connections = 100
+ssl_mode = "require"
+
+# [vars.cache] - Nested cache configuration
+[vars.cache]
+provider = "redis"
+host = "cache.local"
+port = 6379
+ttl_seconds = 3600
+max_memory = "256mb"
+
+# [vars.api] - Nested API configuration
+[vars.api]
+base_url = "https://api.example.com"
+version = "v2"
+timeout_ms = 5000
+rate_limit = 1000
+
+# [vars.features] - Feature flags
+[vars.features]
+analytics_enabled = "true"
+beta_features = "false"
+experimental_mode = "false"
+
+# =============================================================================
+# SERVICE DEFINITIONS
+# =============================================================================
+
+[services.test_container]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+description = "Alpine Linux container for POSIX-compliant variable testing"
+
+# =============================================================================
+# TEST SCENARIOS
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Scenario 1: Simple Variable Interpolation
+# -----------------------------------------------------------------------------
+# Test basic variable substitution with string, numeric, and path variables
+# Expected: Variables resolve to their defined values correctly
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_simple_string_var"
+service = "test_container"
+command = ["sh", "-c", "echo 'Service: {{ vars.service_name }}'"]
+expected_output_regex = "Service: test-service"
+description = "Verify simple string variable interpolation"
+
+[[steps]]
+name = "test_numeric_var_as_string"
+service = "test_container"
+command = ["sh", "-c", "echo 'Port: {{ vars.port }}'"]
+expected_output_regex = "Port: 8080"
+description = "Verify numeric variable interpolation (rendered as string)"
+
+[[steps]]
+name = "test_multiple_vars_single_command"
+service = "test_container"
+command = ["sh", "-c", "echo 'App {{ vars.app_version }} on port {{ vars.port }}'"]
+expected_output_regex = "App 1\\.2\\.3 on port 8080"
+description = "Verify multiple variable interpolations in single command"
+
+[[steps]]
+name = "test_path_variable"
+service = "test_container"
+command = ["sh", "-c", "echo 'Config: {{ vars.config_path }}'"]
+expected_output_regex = "Config: /etc/app/config\\.toml"
+description = "Verify path-like variable interpolation"
+
+# -----------------------------------------------------------------------------
+# Scenario 2: Nested Variable Access (vars.config.nested)
+# -----------------------------------------------------------------------------
+# Test accessing nested configuration objects using dot notation
+# Expected: Nested properties resolve correctly via vars.database.host syntax
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_nested_database_host"
+service = "test_container"
+command = ["sh", "-c", "echo 'DB Host: {{ vars.database.host }}'"]
+expected_output_regex = "DB Host: localhost"
+description = "Verify nested variable access: vars.database.host"
+
+[[steps]]
+name = "test_nested_database_port"
+service = "test_container"
+command = ["sh", "-c", "echo 'DB Port: {{ vars.database.port }}'"]
+expected_output_regex = "DB Port: 5432"
+description = "Verify nested numeric variable access: vars.database.port"
+
+[[steps]]
+name = "test_nested_cache_config"
+service = "test_container"
+command = ["sh", "-c", "echo 'Cache: {{ vars.cache.provider }} at {{ vars.cache.host }}:{{ vars.cache.port }}'"]
+expected_output_regex = "Cache: redis at cache\\.local:6379"
+description = "Verify multiple nested variable interpolations"
+
+[[steps]]
+name = "test_deep_nested_access"
+service = "test_container"
+command = ["sh", "-c", "echo 'API: {{ vars.api.base_url }}/{{ vars.api.version }}'"]
+expected_output_regex = "API: https://api\\.example\\.com/v2"
+description = "Verify complex nested path construction"
+
+# -----------------------------------------------------------------------------
+# Scenario 3: Variable Precedence and Overrides
+# -----------------------------------------------------------------------------
+# Test variable resolution order and precedence rules
+# Expected: Variables follow proper precedence hierarchy
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_explicit_vs_default"
+service = "test_container"
+command = ["sh", "-c", "echo 'Env: {{ vars.environment }} Debug: {{ vars.debug_enabled }}'"]
+expected_output_regex = "Env: development Debug: true"
+description = "Verify explicitly defined variables take precedence"
+
+[[steps]]
+name = "test_nested_overrides_simple"
+service = "test_container"
+command = ["sh", "-c", "echo 'DB: {{ vars.database.name }} User: {{ vars.database.user }}'"]
+expected_output_regex = "DB: cleanroom_db User: test_user"
+description = "Verify nested object doesn't override simple variables"
+
+# -----------------------------------------------------------------------------
+# Scenario 4: Edge Cases and Special Characters
+# -----------------------------------------------------------------------------
+# Test variables with special characters, empty values, and edge cases
+# Expected: Framework handles edge cases gracefully
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_variable_with_numbers"
+service = "test_container"
+command = ["sh", "-c", "echo 'Retries: {{ vars.max_retries }} Threads: {{ vars.thread_count }}'"]
+expected_output_regex = "Retries: 3 Threads: 4"
+description = "Verify numeric variable values"
+
+[[steps]]
+name = "test_variable_in_conditional"
+service = "test_container"
+command = ["sh", "-c", "if [ '{{ vars.debug_enabled }}' = 'true' ]; then echo 'DEBUG_ON'; else echo 'DEBUG_OFF'; fi"]
+expected_output_regex = "DEBUG_ON"
+description = "Verify variables work in shell conditionals"
+
+[[steps]]
+name = "test_variable_concatenation"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ vars.data_dir }}/{{ vars.service_name }}/logs'"]
+expected_output_regex = "/var/data/test-service/logs"
+description = "Verify variable concatenation for path construction"
+
+# -----------------------------------------------------------------------------
+# Scenario 5: Variable Usage in Different Contexts
+# -----------------------------------------------------------------------------
+# Test variables in command arguments, environment setup, and assertions
+# Expected: Variables work consistently across all contexts
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_variable_as_file_path"
+service = "test_container"
+command = ["sh", "-c", "mkdir -p {{ vars.data_dir }} && echo 'Created: {{ vars.data_dir }}'"]
+expected_output_regex = "Created: /var/data"
+description = "Verify variables in file system operations"
+
+[[steps]]
+name = "test_variable_in_grep_pattern"
+service = "test_container"
+command = ["sh", "-c", "echo 'Service: {{ vars.service_name }}' | grep '{{ vars.service_name }}'"]
+expected_output_regex = "Service: test-service"
+description = "Verify variables in pattern matching"
+
+[[steps]]
+name = "test_variable_in_arithmetic"
+service = "test_container"
+command = ["sh", "-c", "expr {{ vars.port }} + 1"]
+expected_output_regex = "8081"
+description = "Verify numeric variables in arithmetic operations"
+
+# -----------------------------------------------------------------------------
+# Scenario 6: Complex Variable Composition
+# -----------------------------------------------------------------------------
+# Test complex scenarios combining multiple variable features
+# Expected: All variable resolution features work together seamlessly
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_connection_string_composition"
+service = "test_container"
+command = ["sh", "-c", "echo 'postgres://{{ vars.database.user }}@{{ vars.database.host }}:{{ vars.database.port }}/{{ vars.database.name }}'"]
+expected_output_regex = "postgres://test_user@localhost:5432/cleanroom_db"
+description = "Verify complex connection string from multiple nested variables"
+
+[[steps]]
+name = "test_configuration_dump"
+service = "test_container"
+command = ["sh", "-c", "echo 'Service={{ vars.service_name }} Version={{ vars.app_version }} Port={{ vars.port }} LogLevel={{ vars.log_level }}'"]
+expected_output_regex = "Service=test-service Version=1\\.2\\.3 Port=8080 LogLevel=INFO"
+description = "Verify multiple variable types in configuration output"
+
+[[steps]]
+name = "test_nested_config_validation"
+service = "test_container"
+command = ["sh", "-c", "echo 'Cache: {{ vars.cache.provider }}://{{ vars.cache.host }}:{{ vars.cache.port }}?ttl={{ vars.cache.ttl_seconds }}'"]
+expected_output_regex = "Cache: redis://cache\\.local:6379\\?ttl=3600"
+description = "Verify URL-like construction from nested variables"
+
+# =============================================================================
+# ASSERTIONS
+# =============================================================================
+
+[assertions]
+all_steps_should_succeed = true
+variable_interpolation_should_work = true
+nested_variable_access_should_work = true

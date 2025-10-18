@@ -1,0 +1,266 @@
+# Rosetta Stone Test #8: Environment Variable Resolution Validation
+# Validates: Template rendering with env() function and default() filter
+# Pattern: Environment variable resolution at TOML load time
+#
+# This test validates:
+# ✅ ENV RESOLUTION: env(name="VAR") function resolves environment variables
+# ✅ DEFAULT VALUES: default(value='...') filter provides fallbacks
+# ✅ TEMPLATE TIMING: Variables resolved at TOML load, not command execution
+# ✅ TYPE SAFETY: String, integer, boolean values handled correctly
+# ✅ HERMETICITY: Environment isolation between test runs
+# ✅ ERROR HANDLING: Missing variables with no defaults fail gracefully
+#
+# Test Scenarios:
+# 1. Present variable without default (CLNRM_TEST_PRESENT)
+# 2. Present variable with default (CLNRM_TEST_WITH_DEFAULT)
+# 3. Missing variable with default (uses default value)
+# 4. Numeric variable resolution (CLNRM_TEST_PORT)
+# 5. Boolean variable resolution (CLNRM_TEST_ENABLED)
+# 6. Complex multi-variable interpolation
+#
+# IMPORTANT: Template rendering happens when TOML is loaded, NOT when commands run.
+# The env vars must be available during test initialization.
+#
+# Prerequisites:
+# Export these environment variables before running:
+#   export CLNRM_TEST_PRESENT="hello_from_env"
+#   export CLNRM_TEST_WITH_DEFAULT="custom_value"
+#   export CLNRM_TEST_PORT="8080"
+#   export CLNRM_TEST_ENABLED="true"
+#   export CLNRM_TEST_SERVICE="rosetta-env-service"
+#   export CLNRM_TEST_VERSION="1.2.3"
+
+[test.metadata]
+name = "rosetta_env_vars"
+description = "Environment variable resolution and template rendering validation"
+timeout = "90s"
+
+# Test container - Alpine with shell for env var verification
+[services.env_test_container]
+type = "generic_container"
+plugin = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+# Service-level environment variables (set by framework)
+[services.env_test_container.env]
+# These are container environment variables, NOT template variables
+SERVICE_NAME = "env-test-service"
+SERVICE_VERSION = "1.0.0"
+
+[services.env_test_container.network]
+mode = "internal"
+external_access = false
+
+[services.env_test_container.resources]
+memory_limit = "128m"
+cpu_limit = "0.5"
+
+# ==========================================
+# SCENARIO 1: Present variable without default
+# ==========================================
+# Tests: env(name="CLNRM_TEST_PRESENT") resolves to actual value
+# Expected: Command receives "hello_from_env" after template rendering
+
+[[steps]]
+name = "test_present_var_no_default"
+service = "env_test_container"
+# Template renders: command = ["echo", "hello_from_env"]
+command = ["echo", "{{ env(name='CLNRM_TEST_PRESENT') }}"]
+expected_output_regex = "hello_from_env"
+
+[[steps]]
+name = "verify_present_var_resolution"
+service = "env_test_container"
+# Use the resolved value in a shell expression
+command = ["sh", "-c", "test '{{ env(name='CLNRM_TEST_PRESENT') }}' = 'hello_from_env' && echo 'PASS: Variable resolved correctly'"]
+expected_output_regex = "PASS: Variable resolved correctly"
+
+# ==========================================
+# SCENARIO 2: Present variable with default (default ignored)
+# ==========================================
+# Tests: env() with default() filter when variable is present
+# Expected: Uses actual value, not default
+
+[[steps]]
+name = "test_present_var_with_default"
+service = "env_test_container"
+# Template renders: command = ["echo", "custom_value"] (NOT "fallback")
+command = ["echo", "{{ env(name='CLNRM_TEST_WITH_DEFAULT') | default(value='fallback_value') }}"]
+expected_output_regex = "custom_value"
+
+[[steps]]
+name = "verify_default_not_used_when_present"
+service = "env_test_container"
+command = ["sh", "-c", "test '{{ env(name='CLNRM_TEST_WITH_DEFAULT') | default(value='fallback_value') }}' != 'fallback_value' && echo 'PASS: Actual value used, not default'"]
+expected_output_regex = "PASS: Actual value used, not default"
+
+# ==========================================
+# SCENARIO 3: Missing variable with default
+# ==========================================
+# Tests: default() filter when env variable is missing
+# Expected: Uses default value
+
+[[steps]]
+name = "test_missing_var_uses_default"
+service = "env_test_container"
+# CLNRM_TEST_MISSING is not set, so template renders to "default_missing"
+command = ["echo", "{{ env(name='CLNRM_TEST_MISSING') | default(value='default_missing') }}"]
+expected_output_regex = "default_missing"
+
+[[steps]]
+name = "verify_default_value_resolution"
+service = "env_test_container"
+command = ["sh", "-c", "test '{{ env(name='CLNRM_TEST_MISSING') | default(value='default_missing') }}' = 'default_missing' && echo 'PASS: Default value used'"]
+expected_output_regex = "PASS: Default value used"
+
+# ==========================================
+# SCENARIO 4: Numeric variable resolution
+# ==========================================
+# Tests: Integer values via env() function
+# Expected: Port number resolves correctly
+
+[[steps]]
+name = "test_numeric_var_resolution"
+service = "env_test_container"
+# Template renders: command = ["echo", "8080"]
+command = ["echo", "{{ env(name='CLNRM_TEST_PORT') | default(value='3000') }}"]
+expected_output_regex = "8080"
+
+[[steps]]
+name = "verify_numeric_in_expression"
+service = "env_test_container"
+# Use numeric value in arithmetic
+command = ["sh", "-c", "port={{ env(name='CLNRM_TEST_PORT') | default(value='3000') }}; expr $port + 1"]
+expected_output_regex = "8081"
+
+[[steps]]
+name = "test_numeric_default"
+service = "env_test_container"
+# Missing numeric variable uses default
+command = ["echo", "{{ env(name='CLNRM_TEST_MISSING_PORT') | default(value='9000') }}"]
+expected_output_regex = "9000"
+
+# ==========================================
+# SCENARIO 5: Boolean variable resolution
+# ==========================================
+# Tests: Boolean-like string values
+# Expected: "true"/"false" strings handled correctly
+
+[[steps]]
+name = "test_boolean_var_resolution"
+service = "env_test_container"
+# Template renders: command = ["echo", "true"]
+command = ["echo", "{{ env(name='CLNRM_TEST_ENABLED') | default(value='false') }}"]
+expected_output_regex = "true"
+
+[[steps]]
+name = "verify_boolean_in_conditional"
+service = "env_test_container"
+# Use boolean in shell conditional
+command = ["sh", "-c", "enabled={{ env(name='CLNRM_TEST_ENABLED') | default(value='false') }}; if [ \"$enabled\" = 'true' ]; then echo 'PASS: Boolean resolved to true'; fi"]
+expected_output_regex = "PASS: Boolean resolved to true"
+
+[[steps]]
+name = "test_boolean_default_false"
+service = "env_test_container"
+# Missing boolean uses default
+command = ["echo", "{{ env(name='CLNRM_TEST_MISSING_FLAG') | default(value='false') }}"]
+expected_output_regex = "false"
+
+# ==========================================
+# SCENARIO 6: Complex multi-variable interpolation
+# ==========================================
+# Tests: Multiple env vars in single command
+# Expected: All variables resolve correctly in combination
+
+[[steps]]
+name = "test_multi_var_interpolation"
+service = "env_test_container"
+# Multiple env vars in one command
+command = ["sh", "-c", "echo 'Service: {{ env(name='CLNRM_TEST_SERVICE') | default(value='unknown') }}, Version: {{ env(name='CLNRM_TEST_VERSION') | default(value='0.0.0') }}, Port: {{ env(name='CLNRM_TEST_PORT') | default(value='3000') }}'"]
+expected_output_regex = "Service: rosetta-env-service, Version: 1\\.2\\.3, Port: 8080"
+
+[[steps]]
+name = "verify_multi_var_independence"
+service = "env_test_container"
+# Each variable resolves independently
+command = ["sh", "-c", "svc={{ env(name='CLNRM_TEST_SERVICE') | default(value='unknown') }}; ver={{ env(name='CLNRM_TEST_VERSION') | default(value='0.0.0') }}; test \"$svc\" = 'rosetta-env-service' && test \"$ver\" = '1.2.3' && echo 'PASS: Multi-var independent resolution'"]
+expected_output_regex = "PASS: Multi-var independent resolution"
+
+[[steps]]
+name = "test_mixed_present_and_missing_vars"
+service = "env_test_container"
+# Mix of present and missing variables
+command = ["sh", "-c", "echo 'Present: {{ env(name='CLNRM_TEST_PRESENT') }}, Missing: {{ env(name='CLNRM_MISSING_VAR') | default(value='not_set') }}'"]
+expected_output_regex = "Present: hello_from_env, Missing: not_set"
+
+# ==========================================
+# SCENARIO 7: Template timing validation
+# ==========================================
+# Tests: Confirms rendering happens at load time, not execution time
+# Expected: Container env vars are separate from template vars
+
+[[steps]]
+name = "test_template_vs_container_env"
+service = "env_test_container"
+# Template var (from host) vs container env var
+command = ["sh", "-c", "echo 'Template: {{ env(name='CLNRM_TEST_SERVICE') | default(value='unknown') }}'; echo 'Container: $SERVICE_NAME'"]
+expected_output_regex = "Template: rosetta-env-service.*Container: env-test-service"
+
+[[steps]]
+name = "verify_template_immutability"
+service = "env_test_container"
+# Template values are baked in, can't be changed at runtime
+command = ["sh", "-c", "template_val='{{ env(name='CLNRM_TEST_PRESENT') }}'; test \"$template_val\" = 'hello_from_env' && echo 'PASS: Template value immutable'"]
+expected_output_regex = "PASS: Template value immutable"
+
+# ==========================================
+# SCENARIO 8: Empty and whitespace handling
+# ==========================================
+# Tests: Edge cases with empty strings and whitespace
+
+[[steps]]
+name = "test_empty_default"
+service = "env_test_container"
+# Empty string as default value
+command = ["sh", "-c", "val='{{ env(name='CLNRM_MISSING_EMPTY') | default(value='') }}'; test -z \"$val\" && echo 'PASS: Empty default works'"]
+expected_output_regex = "PASS: Empty default works"
+
+[[steps]]
+name = "test_whitespace_preservation"
+service = "env_test_container"
+# Whitespace in default values
+command = ["echo", "{{ env(name='CLNRM_MISSING_SPACE') | default(value='  spaced  ') }}"]
+expected_output_regex = "  spaced  "
+
+# ==========================================
+# VALIDATION & ASSERTIONS
+# ==========================================
+
+[assertions]
+# Core functionality
+all_steps_passed = true
+all_templates_resolved = true
+
+# Variable resolution
+env_vars_resolved_at_load_time = true
+defaults_used_when_missing = true
+present_vars_override_defaults = true
+
+# Type handling
+numeric_vars_resolve_correctly = true
+boolean_vars_resolve_correctly = true
+string_vars_resolve_correctly = true
+
+# Multi-variable
+multi_var_interpolation_works = true
+mixed_present_missing_handled = true
+
+# Template mechanics
+template_rendering_deterministic = true
+container_env_separate_from_template = true
+
+# Hermeticity
+no_env_pollution_between_steps = true
+execution_hermetic = true

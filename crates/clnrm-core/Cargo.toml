@@ -202,6 +202,10 @@ path = "tests/integration/artifacts_collection_test.rs"
 name = "container_isolation_test"
 path = "tests/integration/container_isolation_test.rs"
 
+[[test]]
+name = "determinism_validation"
+path = "tests/determinism_validation.rs"
+
 [[example]]
 name = "framework-stress-test"
 path = "examples/innovations/framework-stress-test.rs"
