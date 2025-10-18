@@ -195,7 +195,7 @@ impl MetaTestingFramework {
             score -= 2.0;
         }
 
-        Ok((score as f32).min(10.0).max(0.0))
+        Ok((score as f32).min(10.0).max(0.0) as f64)
     }
 
     async fn test_framework_execution(
@@ -229,7 +229,7 @@ impl MetaTestingFramework {
             score += 2.0;
         }
 
-        Ok((score as f32).min(10.0).max(0.0))
+        Ok((score as f32).min(10.0).max(0.0) as f64)
     }
 
     async fn test_framework_observability(
@@ -258,7 +258,7 @@ impl MetaTestingFramework {
         }
         // Cleanroom has excellent observability, so we can detect this
 
-        Ok((score as f32).min(10.0).max(0.0))
+        Ok((score as f32).min(10.0).max(0.0) as f64)
     }
 
     async fn test_framework_isolation(
@@ -292,7 +292,7 @@ impl MetaTestingFramework {
             score -= 1.0;
         }
 
-        Ok((score as f32).min(10.0).max(0.0))
+        Ok((score as f32).min(10.0).max(0.0) as f64)
     }
 
     async fn test_framework_performance(
@@ -320,7 +320,7 @@ impl MetaTestingFramework {
             score -= 1.0;
         }
 
-        Ok((score as f32).min(10.0).max(0.0))
+        Ok((score as f32).min(10.0).max(0.0) as f64)
     }
 
     fn generate_comparative_report(&self) -> String {

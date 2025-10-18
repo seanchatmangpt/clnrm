@@ -1,0 +1,326 @@
+# Proposed Cargo.toml Test Configuration
+# For clnrm-core/Cargo.toml
+
+# This file shows the PROPOSED test configuration after migration.
+# DO NOT apply directly - this is a design document.
+
+# ============================================================================
+# CRITICAL PATH TESTS (Run on every PR - <30 seconds total)
+# ============================================================================
+
+[[test]]
+name = "critical_integration"
+path = "tests/critical/integration.rs"
+required-features = []
+
+[[test]]
+name = "core_unit"
+path = "tests/critical/unit.rs"
+required-features = []
+
+[[test]]
+name = "v1_release_confidence"
+path = "tests/critical/release_confidence.rs"
+required-features = []
+
+# ============================================================================
+# COMPLIANCE TESTS (Pre-release validation)
+# ============================================================================
+
+[[test]]
+name = "v1_features_compliance"
+path = "tests/compliance/v1_features.rs"
+required-features = []
+
+[[test]]
+name = "core_team_standards"
+path = "tests/compliance/standards.rs"
+required-features = []
+
+# ============================================================================
+# OTEL TESTS (OpenTelemetry validation - require otel feature)
+# ============================================================================
+
+[[test]]
+name = "otel_validation_integration"
+path = "tests/otel/validation_integration.rs"
+required-features = ["otel"]
+
+[[test]]
+name = "otel_span_readiness"
+path = "tests/otel/span_readiness.rs"
+required-features = ["otel"]
+
+[[test]]
+name = "otel_temporal_validation"
+path = "tests/otel/temporal_validation.rs"
+required-features = ["otel"]
+
+# ============================================================================
+# DETERMINISM TESTS (Hermetic isolation validation)
+# ============================================================================
+
+[[test]]
+name = "determinism_container_isolation"
+path = "tests/determinism/container_isolation.rs"
+required-features = []
+
+[[test]]
+name = "determinism_config_stability"
+path = "tests/determinism/config_stability.rs"
+required-features = []
+
+# ============================================================================
+# INTEGRATION TESTS - PLUGINS
+# ============================================================================
+
+[[test]]
+name = "integration_plugins_generic_container"
+path = "tests/integration/plugins/generic_container.rs"
+required-features = []
+
+[[test]]
+name = "integration_plugins_service_registry"
+path = "tests/integration/plugins/service_registry.rs"
+required-features = []
+
+[[test]]
+name = "integration_plugins_error_handling"
+path = "tests/integration/plugins/error_handling.rs"
+required-features = []
+
+# ============================================================================
+# INTEGRATION TESTS - CLI
+# ============================================================================
+
+[[test]]
+name = "integration_cli_fmt"
+path = "tests/integration/cli/fmt.rs"
+required-features = []
+
+[[test]]
+name = "integration_cli_validation"
+path = "tests/integration/cli/validation.rs"
+required-features = []
+
+[[test]]
+name = "integration_cli_hot_reload"
+path = "tests/integration/cli/hot_reload.rs"
+required-features = []
+
+[[test]]
+name = "integration_cli_report_formats"
+path = "tests/integration/cli/report_formats.rs"
+required-features = []
+
+# ============================================================================
+# INTEGRATION TESTS - TEMPLATE
+# ============================================================================
+
+[[test]]
+name = "integration_template_workflow"
+path = "tests/integration/template/workflow.rs"
+required-features = []
+
+[[test]]
+name = "integration_template_change_detection"
+path = "tests/integration/template/change_detection.rs"
+required-features = []
+
+[[test]]
+name = "integration_template_macro_library"
+path = "tests/integration/template/macro_library.rs"
+required-features = []
+
+# ============================================================================
+# INTEGRATION TESTS - ADVANCED
+# ============================================================================
+
+[[test]]
+name = "integration_advanced_fake_green_detection"
+path = "tests/integration/advanced/fake_green_detection.rs"
+required-features = []
+
+[[test]]
+name = "integration_advanced_artifacts_collection"
+path = "tests/integration/advanced/artifacts_collection.rs"
+required-features = []
+
+[[test]]
+name = "integration_advanced_cache_runner"
+path = "tests/integration/advanced/cache_runner.rs"
+required-features = []
+
+[[test]]
+name = "integration_advanced_github_issue_validation"
+path = "tests/integration/advanced/github_issue_validation.rs"
+required-features = []
+
+[[test]]
+name = "integration_advanced_container_isolation"
+path = "tests/integration/advanced/container_isolation.rs"
+required-features = []
+
+# ============================================================================
+# CHAOS TESTS (Resilience & failure scenarios)
+# ============================================================================
+
+[[test]]
+name = "chaos_network_failures"
+path = "tests/chaos/network_failures.rs"
+required-features = []
+
+[[test]]
+name = "chaos_resource_exhaustion"
+path = "tests/chaos/resource_exhaustion.rs"
+required-features = []
+
+[[test]]
+name = "chaos_process_crashes"
+path = "tests/chaos/process_crashes.rs"
+required-features = []
+
+[[test]]
+name = "chaos_recovery_validation"
+path = "tests/chaos/recovery_validation.rs"
+required-features = []
+
+# ============================================================================
+# FUZZ TESTS (Property-based testing)
+# ============================================================================
+
+[[test]]
+name = "fuzz_toml_parser"
+path = "tests/fuzz/targets/toml_parser.rs"
+required-features = ["proptest"]
+
+[[test]]
+name = "fuzz_cli_args"
+path = "tests/fuzz/targets/cli_args.rs"
+required-features = ["proptest"]
+
+[[test]]
+name = "fuzz_regex_patterns"
+path = "tests/fuzz/targets/regex_patterns.rs"
+required-features = ["proptest"]
+
+# ============================================================================
+# PERFORMANCE TESTS (Benchmarks)
+# ============================================================================
+
+[[bench]]
+name = "container_reuse"
+path = "tests/performance/container_reuse.rs"
+harness = false
+
+[[bench]]
+name = "hot_reload_critical_path"
+path = "tests/performance/hot_reload_critical_path.rs"
+harness = false
+
+# ============================================================================
+# CONTRACT TESTS (API contract validation)
+# ============================================================================
+
+[[test]]
+name = "contracts_api"
+path = "tests/contracts/api_contracts.rs"
+required-features = []
+
+[[test]]
+name = "contracts_service"
+path = "tests/contracts/service_contracts.rs"
+required-features = []
+
+[[test]]
+name = "contracts_event"
+path = "tests/contracts/event_contracts.rs"
+required-features = []
+
+# ============================================================================
+# SNAPSHOT TESTS (Snapshot-based validation)
+# ============================================================================
+
+[[test]]
+name = "snapshots_cli_output"
+path = "tests/snapshots/cli_output.rs"
+required-features = []
+
+[[test]]
+name = "snapshots_data_structures"
+path = "tests/snapshots/data_structures.rs"
+required-features = []
+
+# ============================================================================
+# TEST EXECUTION PROFILES
+# ============================================================================
+
+# Usage Examples:
+#
+# Fast CI check (critical tests only):
+#   cargo test --test critical_integration --test core_unit --test v1_release_confidence
+#
+# Compliance validation:
+#   cargo test v1_features_compliance core_team_standards
+#
+# OTEL validation:
+#   cargo test --features otel otel_
+#
+# Full integration suite:
+#   cargo test integration_
+#
+# Category-specific:
+#   cargo test integration_plugins_
+#   cargo test integration_cli_
+#   cargo test integration_template_
+#   cargo test integration_advanced_
+#
+# Chaos engineering:
+#   cargo test chaos_
+#
+# Performance benchmarks:
+#   cargo bench
+#
+# All tests:
+#   cargo test --all-features
+
+# ============================================================================
+# MIGRATION NOTES
+# ============================================================================
+
+# 1. Phase 1: Add critical test paths (tests/critical/)
+# 2. Phase 2: Add compliance test paths (tests/compliance/)
+# 3. Phase 3: Add OTEL test paths (tests/otel/)
+# 4. Phase 4: Add determinism test paths (tests/determinism/)
+# 5. Phase 5: Add integration test paths (tests/integration/)
+# 6. Phase 6: Remove old test paths from Cargo.toml
+# 7. Phase 7: Verify all tests pass with new paths
+
+# ============================================================================
+# RECOMMENDED CI/CD COMMANDS
+# ============================================================================
+
+# PR Fast Check (every PR):
+#   cargo test --test critical_integration --test core_unit --test v1_release_confidence
+#   Timeout: 5 minutes
+#
+# Nightly Build (daily):
+#   cargo test --all-features
+#   Timeout: 30 minutes
+#
+# Release Validation (pre-release):
+#   cargo test v1_features_compliance core_team_standards
+#   cargo test --features otel otel_
+#   cargo test determinism_
+#   Timeout: 15 minutes
+
+# ============================================================================
+# BENEFITS OF NEW STRUCTURE
+# ============================================================================
+
+# 1. Clear categorization: Tests grouped by purpose
+# 2. Fast feedback: Critical tests run in <30 seconds
+# 3. Selective execution: Run only relevant test categories
+# 4. Easy discovery: Test names indicate category and feature
+# 5. Maintainability: Single file per feature area
+# 6. CI efficiency: Parallel execution by category

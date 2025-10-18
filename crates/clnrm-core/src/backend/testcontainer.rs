@@ -11,7 +11,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use testcontainers::{core::ExecCommand, runners::SyncRunner, GenericImage, ImageExt};
 
-#[cfg(feature = "otel-traces")]
 use tracing::{info, instrument, warn};
 
 /// Testcontainers backend for containerized execution
@@ -170,7 +169,6 @@ impl TestcontainerBackend {
     /// - No .unwrap() or .expect()
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
-    #[cfg(feature = "otel-traces")]
     pub fn validate_otel_instrumentation(&self) -> Result<bool> {
         // Check if OTel is initialized
         use crate::telemetry::validation::is_otel_initialized;
@@ -187,22 +185,15 @@ impl TestcontainerBackend {
     }
 
     /// Get OpenTelemetry validation status
-    #[cfg(feature = "otel-traces")]
     pub fn otel_validation_enabled(&self) -> bool {
         true
     }
 
-    #[cfg(not(feature = "otel-traces"))]
-    pub fn otel_validation_enabled(&self) -> bool {
-        false
-    }
-
     /// Execute command in container
-    #[cfg_attr(feature = "otel-traces", instrument(name = "clnrm.container.exec", skip(self, cmd), fields(container.image = %self.image_name, container.tag = %self.image_tag, component = "container_backend")))]
+    #[instrument(name = "clnrm.container.exec", skip(self, cmd), fields(container.image = %self.image_name, container.tag = %self.image_tag, component = "container_backend"))]
     fn execute_in_container(&self, cmd: &Cmd) -> Result<RunResult> {
         let start_time = Instant::now();
 
-        #[cfg(feature = "otel-traces")]
         info!(
             "Starting container with image {}:{}",
             self.image_name, self.image_tag
@@ -212,7 +203,6 @@ impl TestcontainerBackend {
         #[allow(unused_variables)]
         let container_id = uuid::Uuid::new_v4().to_string();
 
-        #[cfg(feature = "otel-traces")]
         {
             use crate::telemetry::events;
             use opentelemetry::global;
@@ -293,7 +283,6 @@ impl TestcontainerBackend {
             .map_err(|e| {
                 let elapsed = container_start_time.elapsed();
                 if elapsed > Duration::from_secs(10) {
-                    #[cfg(feature = "otel-traces")]
                     warn!("Container startup took {}s, which is longer than expected. First pull of image may take time.", elapsed.as_secs());
                 }
 
@@ -309,7 +298,6 @@ impl TestcontainerBackend {
                 ))
             })?;
 
-        #[cfg(feature = "otel-traces")]
         info!("Container started successfully, executing command");
 
         // Execute command - testcontainers expects Vec<&str> for exec
@@ -327,7 +315,6 @@ impl TestcontainerBackend {
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
 
-        #[cfg(feature = "otel-traces")]
         info!("Command completed in {}ms", duration_ms);
 
         // Extract output - SyncExecResult provides stdout() and stderr() as streams
@@ -353,12 +340,10 @@ impl TestcontainerBackend {
             .unwrap_or_else(|| {
                 // Exit code unavailable - this can happen with certain container states
                 // Return -1 to indicate unknown/error state (POSIX convention for signal termination)
-                #[cfg(feature = "otel-traces")]
                 warn!("Exit code unavailable from container, defaulting to -1");
                 -1
             }) as i32;
 
-        #[cfg(feature = "otel-traces")]
         {
             use crate::telemetry::events;
             use opentelemetry::global;

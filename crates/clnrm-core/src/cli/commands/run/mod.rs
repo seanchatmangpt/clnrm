@@ -26,7 +26,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{debug, error, info, warn};
 
-#[cfg(feature = "otel-traces")]
 use crate::telemetry::spans;
 
 // Re-export executor functions
@@ -128,7 +127,6 @@ async fn run_tests_impl(
     shard: Option<(usize, usize)>,
 ) -> Result<()> {
     // Create root span for entire test run (OTEL self-testing)
-    #[cfg(feature = "otel-traces")]
     let run_span = {
         let config_path = paths
             .first()
@@ -138,7 +136,6 @@ async fn run_tests_impl(
     };
 
     // Execute within span context
-    #[cfg(feature = "otel-traces")]
     let _guard = run_span.enter();
 
     info!("Running cleanroom tests (framework self-testing)");
@@ -297,7 +294,6 @@ async fn run_tests_impl_with_report(
     report_junit: Option<&std::path::Path>,
 ) -> Result<()> {
     // Create root span for entire test run (OTEL self-testing)
-    #[cfg(feature = "otel-traces")]
     let run_span = {
         let config_path = paths
             .first()
@@ -307,7 +303,6 @@ async fn run_tests_impl_with_report(
     };
 
     // Execute within span context
-    #[cfg(feature = "otel-traces")]
     let _guard = run_span.enter();
 
     info!("Running cleanroom tests (framework self-testing)");
@@ -563,10 +558,8 @@ mod services {
             env.register_service(plugin).await?;
             info!("📦 Registered service plugin: {}", service_name);
 
-            #[cfg(feature = "otel-traces")]
             let service_span = spans::service_start_span(service_name, &service_config.r#type);
 
-            #[cfg(feature = "otel-traces")]
             let _service_guard = service_span.enter();
 
             let handle = env.start_service(service_name).await.map_err(|e| {
@@ -592,7 +585,7 @@ mod single {
     use tracing::{debug, info, warn};
 
     /// Run a single test file
-    #[cfg_attr(feature = "otel-traces", tracing::instrument(name = "clnrm.test", skip(_config), fields(test.hermetic = true)))]
+    #[tracing::instrument(name = "clnrm.test", skip(_config), fields(test.hermetic = true))]
     pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> {
         let content = std::fs::read_to_string(path).map_err(|e| {
             CleanroomError::config_error(format!("Failed to read config file: {}", e))
@@ -603,7 +596,6 @@ mod single {
 
         let test_name = test_config.get_name()?;
 
-        #[cfg(feature = "otel-traces")]
         tracing::Span::current().record("test.name", &test_name);
 
         info!("🚀 Executing test: {}", test_name);
@@ -612,6 +604,12 @@ mod single {
         if let Some(description) = test_config.get_description() {
             info!("📝 Description: {}", description);
             debug!("Test description: {}", description);
+        }
+
+        // Create template renderer with vars from test config
+        let mut template_renderer = crate::template::TemplateRenderer::new()?;
+        if let Some(vars) = &test_config.vars {
+            template_renderer.merge_user_vars(vars.clone());
         }
 
         // Load cleanroom configuration for default container settings
@@ -658,13 +656,19 @@ mod single {
                 )));
             }
 
-            info!("🔧 Executing: {}", step.command.join(" "));
-            info!("🔧 Executing: {}", step.command.join(" "));
+            // Render command templates with vars context
+            let rendered_command: Vec<String> = step.command
+                .iter()
+                .map(|arg| {
+                    template_renderer.render_str(arg, &format!("step_{}_arg", step.name))
+                })
+                .collect::<Result<Vec<String>>>()?;
 
-            #[cfg(feature = "otel-traces")]
-            let command_span = spans::command_execute_span(&step.command.join(" "));
+            info!("🔧 Executing: {}", rendered_command.join(" "));
+            info!("🔧 Executing: {}", rendered_command.join(" "));
 
-            #[cfg(feature = "otel-traces")]
+            let command_span = spans::command_execute_span(&rendered_command.join(" "));
+
             let _command_guard = command_span.enter();
 
             let stdout = {
@@ -672,12 +676,12 @@ mod single {
                 // Core Team Compliance: Use async for I/O, proper error handling, no unwrap/expect
                 let container_name = format!("test-{}-step-{}", test_name, step.name);
                 let execution_result = environment
-                    .execute_in_container(&container_name, &step.command)
+                    .execute_in_container(&container_name, &rendered_command)
                     .await
                     .map_err(|e| {
                         CleanroomError::container_error(format!(
                             "Failed to execute command '{}' in container '{}': {}",
-                            step.command.join(" "),
+                            rendered_command.join(" "),
                             container_name,
                             e
                         ))
@@ -713,12 +717,14 @@ mod single {
                     ))
                 })?;
 
-                if !re.is_match(&stdout) {
+                // Trim output before regex match to handle trailing newlines from echo
+                let trimmed_output = stdout.trim();
+                if !re.is_match(trimmed_output) {
                     return Err(CleanroomError::validation_error(format!(
                         "Step '{}' output did not match expected regex '{}'. Output: {}",
                         step.name,
                         regex,
-                        stdout.trim()
+                        trimmed_output
                     )));
                 }
                 info!("✅ Output matches expected regex");

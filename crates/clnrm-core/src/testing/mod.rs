@@ -132,7 +132,6 @@ pub async fn run_framework_tests_by_suite(
                     Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>,
                 >,
         ),
-        #[cfg(feature = "otel")]
         (
             "otel",
             run_otel_suite
@@ -342,7 +341,6 @@ fn run_cli_suite(
 }
 
 /// OTEL suite: OpenTelemetry integration
-#[cfg(feature = "otel")]
 fn run_otel_suite(
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuiteResult>> + Send>> {
     Box::pin(async {
@@ -922,25 +920,21 @@ async fn test_cli_output_formats() -> Result<()> {
 }
 
 // OTEL test stubs
-#[cfg(feature = "otel")]
 async fn test_otel_init() -> Result<()> {
     // Test OTEL initialization
     Ok(())
 }
 
-#[cfg(feature = "otel")]
 async fn test_otel_span_creation() -> Result<()> {
     // Test span creation
     Ok(())
 }
 
-#[cfg(feature = "otel")]
 async fn test_otel_trace_context() -> Result<()> {
     // Test trace context propagation
     Ok(())
 }
 
-#[cfg(feature = "otel")]
 async fn test_otel_exporters() -> Result<()> {
     // Test OTEL exporter configuration
     Ok(())

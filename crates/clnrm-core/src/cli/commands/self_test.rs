@@ -5,7 +5,6 @@
 use crate::error::{CleanroomError, Result};
 use tracing::{info, span, Level};
 
-#[cfg(feature = "otel-traces")]
 use crate::telemetry::{init_otel, Export, OtelConfig, OtelGuard};
 
 /// Run framework self-tests with optional OTEL export
@@ -22,7 +21,6 @@ pub async fn run_self_tests(
     _otel_endpoint: Option<String>,
 ) -> Result<()> {
     // Initialize OTEL if requested
-    #[cfg(feature = "otel-traces")]
     let _guard = if otel_exporter != "none" {
         Some(init_otel_for_self_test(
             &otel_exporter,
@@ -32,18 +30,10 @@ pub async fn run_self_tests(
         None
     };
 
-    #[cfg(not(feature = "otel-traces"))]
-    if otel_exporter != "none" {
-        return Err(CleanroomError::validation_error(
-            "OTEL export requires the 'otel-traces' feature. Build with --features otel-traces",
-        ));
-    }
-
     // Use tracing instead of println for internal operations
     info!("Starting framework self-tests");
 
-    #[cfg(feature = "otel-traces")]
-    let root_span = if otel_exporter != "none" {
+    let _root_span = if otel_exporter != "none" {
         span!(
             Level::INFO,
             "clnrm.self_test",
@@ -55,19 +45,15 @@ pub async fn run_self_tests(
         span!(Level::INFO, "clnrm.self_test")
     };
 
-    #[cfg(not(feature = "otel-traces"))]
-    let root_span = span!(Level::INFO, "clnrm.self_test");
-
-    let _enter = root_span.enter();
+    let _enter = _root_span.enter();
 
     // Validate suite parameter if provided
     if let Some(ref suite_name) = suite {
         const VALID_SUITES: &[&str] = &["framework", "container", "plugin", "cli", "otel"];
         if !VALID_SUITES.contains(&suite_name.as_str()) {
-            #[cfg(feature = "otel-traces")]
             {
-                root_span.record("result", "error");
-                root_span.record("error.type", "validation_error");
+                _root_span.record("result", "error");
+                _root_span.record("error.type", "validation_error");
             }
 
             return Err(CleanroomError::validation_error(format!(
@@ -105,15 +91,14 @@ pub async fn run_self_tests(
             })?;
     }
 
-    #[cfg(feature = "otel-traces")]
     {
         if test_results.failed_tests > 0 {
-            root_span.record("result", "fail");
-            root_span.record("failed_tests", test_results.failed_tests);
+            _root_span.record("result", "fail");
+            _root_span.record("failed_tests", test_results.failed_tests);
         } else {
-            root_span.record("result", "pass");
+            _root_span.record("result", "pass");
         }
-        root_span.record("total_tests", test_results.total_tests);
+        _root_span.record("total_tests", test_results.total_tests);
     }
 
     // Return proper error with context
@@ -129,7 +114,6 @@ pub async fn run_self_tests(
 }
 
 /// Initialize OTEL for self-test with proper error handling
-#[cfg(feature = "otel-traces")]
 fn init_otel_for_self_test(exporter: &str, endpoint: Option<&str>) -> Result<OtelGuard> {
     let export = match exporter {
         "stdout" => Export::Stdout,
@@ -238,7 +222,6 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    #[cfg(feature = "otel-stdout")]
     async fn test_run_self_tests_with_stdout_otel() -> Result<()> {
         // Arrange - Test with OTEL stdout export
         let suite = None;
@@ -270,18 +253,12 @@ mod tests {
         let result = run_self_tests(suite, report, otel_exporter, otel_endpoint).await;
 
         // Assert - Should fail with validation error
-        #[cfg(feature = "otel-traces")]
         {
             assert!(result.is_err(), "Invalid OTEL exporter should fail");
             assert!(result
                 .unwrap_err()
                 .message
                 .contains("Invalid OTEL exporter"));
-        }
-
-        #[cfg(not(feature = "otel-traces"))]
-        {
-            assert!(result.is_err(), "OTEL without feature should fail");
         }
 
         Ok(())
@@ -299,15 +276,9 @@ mod tests {
         let result = run_self_tests(suite, report, otel_exporter, otel_endpoint).await;
 
         // Assert - Should fail with validation error
-        #[cfg(feature = "otel-traces")]
         {
             assert!(result.is_err(), "OTLP-HTTP without endpoint should fail");
             assert!(result.unwrap_err().message.contains("endpoint required"));
-        }
-
-        #[cfg(not(feature = "otel-traces"))]
-        {
-            assert!(result.is_err(), "OTEL without feature should fail");
         }
 
         Ok(())

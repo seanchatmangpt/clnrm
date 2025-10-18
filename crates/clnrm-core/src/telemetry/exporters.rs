@@ -17,7 +17,6 @@ use std::collections::HashMap;
 #[allow(clippy::large_enum_variant)] // OTLP exporter is large but necessary for functionality
 pub enum SpanExporterType {
     Otlp(opentelemetry_otlp::SpanExporter),
-    #[cfg(feature = "otel-stdout")]
     Stdout(opentelemetry_stdout::SpanExporter),
     NdjsonStdout(crate::telemetry::json_exporter::NdjsonStdoutExporter),
 }
@@ -32,7 +31,6 @@ impl opentelemetry_sdk::trace::SpanExporter for SpanExporterType {
     > {
         match self {
             SpanExporterType::Otlp(exporter) => Box::pin(exporter.export(batch)),
-            #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(exporter) => Box::pin(exporter.export(batch)),
             SpanExporterType::NdjsonStdout(exporter) => Box::pin(exporter.export(batch)),
         }
@@ -41,7 +39,6 @@ impl opentelemetry_sdk::trace::SpanExporter for SpanExporterType {
     fn shutdown(&mut self) -> opentelemetry_sdk::error::OTelSdkResult {
         match self {
             SpanExporterType::Otlp(exporter) => exporter.shutdown(),
-            #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(exporter) => exporter.shutdown(),
             SpanExporterType::NdjsonStdout(exporter) => exporter.shutdown(),
         }
@@ -217,21 +214,12 @@ fn create_zipkin_exporter(_endpoint: &str) -> Result<SpanExporterType> {
 /// # Returns
 /// * `Result<SpanExporterType>` - The stdout exporter or error
 fn create_stdout_exporter(_pretty_print: bool) -> Result<SpanExporterType> {
-    #[cfg(feature = "otel-stdout")]
-    {
-        // Create stdout exporter using the correct API for opentelemetry-stdout 0.31.0
-        use opentelemetry_stdout::SpanExporter;
+    // Create stdout exporter using the correct API for opentelemetry-stdout 0.31.0
+    use opentelemetry_stdout::SpanExporter;
 
-        let exporter = SpanExporter::default();
+    let exporter = SpanExporter::default();
 
-        Ok(SpanExporterType::Stdout(exporter))
-    }
-    #[cfg(not(feature = "otel-stdout"))]
-    {
-        // Fallback to NDJSON stdout exporter
-        let exporter = crate::telemetry::json_exporter::NdjsonStdoutExporter::new();
-        Ok(SpanExporterType::NdjsonStdout(exporter))
-    }
+    Ok(SpanExporterType::Stdout(exporter))
 }
 
 /// Validate exporter configuration
@@ -367,7 +355,6 @@ mod tests {
 
         let exporter = create_span_exporter(&config)?;
         match exporter {
-            #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(_) => Ok(()),
             SpanExporterType::NdjsonStdout(_) => Ok(()),
             _ => Err(CleanroomError::internal_error("Expected stdout exporter")),

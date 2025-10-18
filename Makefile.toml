@@ -40,7 +40,10 @@ dependencies = ["fmt", "clippy-fix"]
 
 [tasks.watch]
 description = "👀 Watch mode: continuous testing"
-install_crate = { crate_name = "cargo-watch", binary = "cargo", test_arg = ["watch", "--help"] }
+install_crate = { crate_name = "cargo-watch", binary = "cargo", test_arg = [
+    "watch",
+    "--help",
+] }
 command = "cargo"
 args = ["watch", "-x", "check", "-x", "test"]
 
@@ -269,25 +272,31 @@ args = ["publish", "-p", "clnrm-core"]
 
 [tasks.audit]
 description = "🔒 Security audit"
-install_crate = { crate_name = "cargo-audit", binary = "cargo", test_arg = ["audit", "--help"] }
+install_crate = { crate_name = "cargo-audit", binary = "cargo", test_arg = [
+    "audit",
+    "--help",
+] }
 command = "cargo"
 args = ["audit"]
 
 [tasks.outdated]
 description = "📦 Check for outdated dependencies"
-install_crate = { crate_name = "cargo-outdated", binary = "cargo", test_arg = ["outdated", "--help"] }
+install_crate = { crate_name = "cargo-outdated", binary = "cargo", test_arg = [
+    "outdated",
+    "--help",
+] }
 command = "cargo"
 args = ["outdated"]
 
 [tasks.build-otel]
 description = "🔨 Build with OpenTelemetry features"
 command = "cargo"
-args = ["build", "--release", "--features", "otel"]
+args = ["build", "--release"]
 
 [tasks.test-otel]
 description = "🧪 Test OpenTelemetry features"
 command = "cargo"
-args = ["test", "--features", "otel"]
+args = ["test"]
 
 [tasks.cleanroom-validate]
 description = "✅ Validate cleanroom test framework"

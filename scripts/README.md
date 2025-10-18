@@ -2,22 +2,55 @@
 
 ## Overview
 
-This directory contains utility scripts for the Cleanroom Testing Framework (clnrm).
+This directory contains utility scripts for the Cleanroom Testing Framework (clnrm). All scripts follow Rust core team best practices and the 80/20 principle, focusing on essential functionality for daily development workflow.
+
+## Script Categories
+
+### 🔍 Quality Assurance Scripts
+Scripts for ensuring code quality, detecting anti-patterns, and enforcing best practices.
+
+### 📊 Testing & Coverage Scripts
+Scripts for running tests, generating coverage reports, and validating test suites.
+
+### 🌐 Observability Scripts
+Scripts for telemetry, logging, and OpenTelemetry integration validation.
+
+### 🤖 AI & Development Tools
+Scripts for AI-assisted development and coding assistance.
+
+### 📚 Libraries & Examples
+Reusable libraries and demonstration examples.
+
+---
 
 ## Available Scripts
 
-### Core Quality Scripts
-
 #### `scan-fakes.sh`
-**Purpose**: Detects fake implementations, stub code, and anti-patterns in production code.
+**Purpose**: Advanced fake implementation scanner that detects production code anti-patterns and enforces cleanroom testing principles.
+
+**Core Functionality**:
+- **Anti-pattern Detection**: Identifies `unimplemented!()`, `todo!()`, `panic!()` macros in production code
+- **Fake Implementation Detection**: Finds dummy, stub, placeholder, and mock return values
+- **Production Logging Issues**: Detects `println!` usage in production (should use `tracing`)
+- **Error Handling Violations**: Identifies `.unwrap()` and `.expect()` in production code
+- **CLNRM-Specific Checks**: Validates proper ServiceHandle implementations and `Ok(())` stubs
+
+**Architecture**:
+- **Safe Pattern Matching**: Uses ripgrep with timeouts and retry logic
+- **Input Validation**: Sanitizes paths and prevents directory traversal
+- **Structured Output**: Consistent error reporting with file locations
+- **Performance Optimized**: Fast scanning with proper exclusions
 
 **Usage**:
 ```bash
-# Scan entire project
+# Scan entire project (recommended for CI)
 bash scripts/scan-fakes.sh
 
 # Scan specific directory
 bash scripts/scan-fakes.sh crates/clnrm-core/src
+
+# Scan with custom timeout (for large projects)
+TIMEOUT=30s bash scripts/scan-fakes.sh
 ```
 
 **What it detects**:
@@ -26,41 +59,88 @@ bash scripts/scan-fakes.sh crates/clnrm-core/src
 - Hardcoded/canned responses
 - `.unwrap()` and `.expect()` in production code
 - `println!` in production code (should use `tracing`)
-- Fake `ServiceHandle` implementations
+- Fake ServiceHandle implementations
 - Empty `Ok(())` stub implementations
 
 **Exit codes**:
-- `0` = Clean (no issues)
-- `1` = Issues found
+- `0` = Clean (no issues found)
+- `1` = Issues found (blocking)
 
-#### `validate-best-practices.sh`
-**Purpose**: Runs comprehensive quality checks following Core Team Standards.
+**Performance**: ~1-3 seconds for full clnrm codebase
+
+#### `check-best-practices.sh`
+**Purpose**: Comprehensive best practices validation enforcing FAANG-level code standards.
+
+**Core Functionality**:
+- **Error Handling**: No `unwrap/expect` in production code (src/ only)
+- **Trait Compatibility**: No async trait methods (maintains dyn compatibility)
+- **Linting**: Zero clippy warnings with strict rules (-D warnings)
+- **Test Patterns**: AAA (Arrange, Act, Assert) test compliance
+- **Implementation Honesty**: No false green `Ok(())` stubs
+- **Error Types**: Proper `Result<T, CleanroomError>` usage
+- **Formatting**: Code formatting compliance
+
+**Architecture**:
+- **Modular Design**: Separate check functions for each validation
+- **CI Integration**: Dedicated CI mode with strict error handling
+- **Auto-fix Support**: Can automatically fix formatting and some clippy issues
+- **Detailed Reporting**: Structured output with violation counts and locations
 
 **Usage**:
 ```bash
-bash scripts/validate-best-practices.sh
+# Run all checks (recommended for development)
+bash scripts/check-best-practices.sh
+
+# Auto-fix formatting and clippy issues
+bash scripts/check-best-practices.sh --fix
+
+# CI mode (strict, no colors, fail on warnings)
+bash scripts/check-best-practices.sh --ci
+
+# Verbose output for debugging
+bash scripts/check-best-practices.sh --verbose
 ```
 
-**Checks performed**:
-1. Fake implementation scanner
-2. Format check (`cargo fmt`)
-3. Clippy with strict warnings
-4. OTEL features build
+**Exit codes**:
+- `0` = All checks passed
+- `1` = Critical violations found
+- `2` = Warning violations found (CI mode only)
+
+**Performance**: ~30-60 seconds (includes clippy compilation)
 
 #### `test-fake-scanner.sh`
-**Purpose**: Tests the fake scanner with known test cases.
+**Purpose**: Unit tests for the fake scanner to ensure it correctly identifies anti-patterns.
+
+**Core Functionality**:
+- **Test Case Generation**: Creates temporary Rust projects with known anti-patterns
+- **Validation Testing**: Verifies scanner correctly detects each pattern type
+- **Regression Testing**: Ensures clean code passes validation
+- **Test Isolation**: Proper cleanup of temporary test files
+
+**Architecture**:
+- **Isolated Testing**: Creates temporary directory structure for each test
+- **Pattern Verification**: Tests each anti-pattern detection individually
+- **Clean Code Validation**: Ensures legitimate code passes without false positives
+- **Test File Handling**: Verifies test files are properly excluded from scanning
 
 **Usage**:
 ```bash
+# Run all scanner tests
 bash scripts/test-fake-scanner.sh
 ```
 
 **Test cases**:
-1. Detects `unimplemented!()` macros
-2. Detects fake return values
+1. Detects `unimplemented!()` macros in production code
+2. Detects fake return values (`fake_handle()`, etc.)
 3. Detects `println!` in production code
-4. Passes clean code
-5. Ignores test files appropriately
+4. Passes clean code implementations
+5. Ignores patterns in test files appropriately
+
+**Exit codes**:
+- `0` = All tests passed
+- `1` = Some tests failed
+
+**Performance**: ~5-10 seconds
 
 ## CI Integration
 
@@ -104,7 +184,7 @@ Failures upload artifacts for debugging.
 Run before committing changes:
 
 ```bash
-bash scripts/validate-best-practices.sh
+bash scripts/check-best-practices.sh
 ```
 
 ### Adding New Checks
@@ -171,7 +251,7 @@ exclude_args+=(
 ## Performance
 
 - **scan-fakes.sh**: ~1-3 seconds for full clnrm codebase
-- **validate-best-practices.sh**: ~30-60 seconds (includes clippy)
+- **check-best-practices.sh**: ~30-60 seconds (includes clippy)
 - **test-fake-scanner.sh**: ~5-10 seconds
 
 ## Support

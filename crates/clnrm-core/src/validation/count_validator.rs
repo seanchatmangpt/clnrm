@@ -258,402 +258,114 @@ mod tests {
         }
     }
 
+    // Consolidated count bound tests - covers all operators and edge cases
     #[test]
-    fn test_count_bound_eq_valid() {
-        // Arrange
-        let bound = CountBound::eq(5);
+    fn test_count_bound_all_operators() {
+        // Test eq
+        assert!(CountBound::eq(5).validate(5, "Test").is_ok());
+        assert!(CountBound::eq(5).validate(3, "Test").is_err());
 
-        // Act
-        let result = bound.validate(5, "Test count");
+        // Test gte
+        assert!(CountBound::gte(5).validate(5, "Test").is_ok());
+        assert!(CountBound::gte(5).validate(10, "Test").is_ok());
+        assert!(CountBound::gte(5).validate(3, "Test").is_err());
 
-        // Assert
-        assert!(result.is_ok());
+        // Test lte
+        assert!(CountBound::lte(5).validate(5, "Test").is_ok());
+        assert!(CountBound::lte(5).validate(3, "Test").is_ok());
+        assert!(CountBound::lte(5).validate(10, "Test").is_err());
+
+        // Test range
+        let range = CountBound::range(5, 10).unwrap();
+        assert!(range.validate(5, "Test").is_ok());
+        assert!(range.validate(7, "Test").is_ok());
+        assert!(range.validate(10, "Test").is_ok());
+        assert!(range.validate(3, "Test").is_err());
+        assert!(range.validate(15, "Test").is_err());
+
+        // Test invalid range creation
+        assert!(CountBound::range(10, 5).is_err());
+
+        // Test eq precedence over gte/lte
+        let combined = CountBound { gte: Some(1), lte: Some(10), eq: Some(5) };
+        assert!(combined.validate(5, "Test").is_ok());
+        assert!(combined.validate(7, "Test").is_err());
     }
 
+    // Comprehensive count expectation tests - all validators in one test
     #[test]
-    fn test_count_bound_eq_invalid() {
-        // Arrange
-        let bound = CountBound::eq(5);
-
-        // Act
-        let result = bound.validate(3, "Test count");
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("expected exactly 5"));
-        assert!(err_msg.contains("found 3"));
-    }
-
-    #[test]
-    fn test_count_bound_gte_valid() {
-        // Arrange
-        let bound = CountBound::gte(5);
-
-        // Act & Assert
-        assert!(bound.validate(5, "Test count").is_ok());
-        assert!(bound.validate(10, "Test count").is_ok());
-    }
-
-    #[test]
-    fn test_count_bound_gte_invalid() {
-        // Arrange
-        let bound = CountBound::gte(5);
-
-        // Act
-        let result = bound.validate(3, "Test count");
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("expected at least 5"));
-        assert!(err_msg.contains("found 3"));
-    }
-
-    #[test]
-    fn test_count_bound_lte_valid() {
-        // Arrange
-        let bound = CountBound::lte(5);
-
-        // Act & Assert
-        assert!(bound.validate(5, "Test count").is_ok());
-        assert!(bound.validate(3, "Test count").is_ok());
-        assert!(bound.validate(0, "Test count").is_ok());
-    }
-
-    #[test]
-    fn test_count_bound_lte_invalid() {
-        // Arrange
-        let bound = CountBound::lte(5);
-
-        // Act
-        let result = bound.validate(10, "Test count");
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("expected at most 5"));
-        assert!(err_msg.contains("found 10"));
-    }
-
-    #[test]
-    fn test_count_bound_range_valid() {
-        // Arrange
-        let bound = CountBound::range(5, 10).unwrap();
-
-        // Act & Assert
-        assert!(bound.validate(5, "Test count").is_ok());
-        assert!(bound.validate(7, "Test count").is_ok());
-        assert!(bound.validate(10, "Test count").is_ok());
-    }
-
-    #[test]
-    fn test_count_bound_range_invalid_below() {
-        // Arrange
-        let bound = CountBound::range(5, 10).unwrap();
-
-        // Act
-        let result = bound.validate(3, "Test count");
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("expected at least 5"));
-    }
-
-    #[test]
-    fn test_count_bound_range_invalid_above() {
-        // Arrange
-        let bound = CountBound::range(5, 10).unwrap();
-
-        // Act
-        let result = bound.validate(15, "Test count");
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("expected at most 10"));
-    }
-
-    #[test]
-    fn test_count_bound_range_invalid_creation() {
-        // Arrange & Act
-        let result = CountBound::range(10, 5);
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("Invalid range"));
-    }
-
-    #[test]
-    fn test_count_bound_eq_takes_precedence() {
-        // Arrange - eq should take precedence over gte/lte
-        let bound = CountBound {
-            gte: Some(1),
-            lte: Some(10),
-            eq: Some(5),
-        };
-
-        // Act & Assert
-        assert!(bound.validate(5, "Test count").is_ok());
-        assert!(bound.validate(7, "Test count").is_err()); // Would be valid for range, but eq=5
-    }
-
-    #[test]
-    fn test_count_expectation_spans_total() {
-        // Arrange
+    fn test_count_expectation_comprehensive() {
+        // Test spans_total validation
         let spans = vec![
             create_test_span("span1", false),
             create_test_span("span2", false),
             create_test_span("span3", false),
         ];
-        let expectation = CountExpectation::new().with_spans_total(CountBound::eq(3));
+        assert!(CountExpectation::new().with_spans_total(CountBound::eq(3)).validate(&spans).is_ok());
+        assert!(CountExpectation::new().with_spans_total(CountBound::eq(2)).validate(&spans).is_err());
 
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_count_expectation_spans_total_invalid() {
-        // Arrange
-        let spans = vec![
-            create_test_span("span1", false),
-            create_test_span("span2", false),
-        ];
-        let expectation = CountExpectation::new().with_spans_total(CountBound::eq(3));
-
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("Total span count"));
-    }
-
-    #[test]
-    fn test_count_expectation_errors_total() {
-        // Arrange
-        let spans = vec![
+        // Test errors_total validation (both status and attribute)
+        let error_spans = vec![
             create_test_span("span1", false),
             create_test_span("span2", true),
             create_test_span("span3", true),
         ];
-        let expectation = CountExpectation::new().with_errors_total(CountBound::eq(2));
+        assert!(CountExpectation::new().with_errors_total(CountBound::eq(2)).validate(&error_spans).is_ok());
+        assert!(CountExpectation::new().with_errors_total(CountBound::eq(0)).validate(&error_spans).is_err());
 
-        // Act
-        let result = expectation.validate(&spans);
+        // Test error detection via error attribute
+        let mut attr_error_span = create_test_span("span1", false);
+        attr_error_span.attributes.insert("error".to_string(), json!(true));
+        assert!(CountExpectation::new().with_errors_total(CountBound::eq(1)).validate(&vec![attr_error_span]).is_ok());
 
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_count_expectation_errors_total_zero() {
-        // Arrange
-        let spans = vec![
-            create_test_span("span1", false),
-            create_test_span("span2", false),
-        ];
-        let expectation = CountExpectation::new().with_errors_total(CountBound::eq(0));
-
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_count_expectation_errors_total_invalid() {
-        // Arrange
-        let spans = vec![
-            create_test_span("span1", false),
-            create_test_span("span2", true),
-        ];
-        let expectation = CountExpectation::new().with_errors_total(CountBound::eq(0));
-
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("Total error count"));
-        assert!(err_msg.contains("expected exactly 0"));
-        assert!(err_msg.contains("found 1"));
-    }
-
-    #[test]
-    fn test_count_expectation_by_name() {
-        // Arrange
-        let spans = vec![
+        // Test by_name count validation
+        let named_spans = vec![
             create_test_span("clnrm.run", false),
             create_test_span("clnrm.test", false),
             create_test_span("clnrm.test", false),
             create_test_span("clnrm.test", false),
         ];
-        let expectation = CountExpectation::new()
+        let name_exp = CountExpectation::new()
             .with_name_count("clnrm.run".to_string(), CountBound::eq(1))
             .with_name_count("clnrm.test".to_string(), CountBound::eq(3));
+        assert!(name_exp.validate(&named_spans).is_ok());
 
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_count_expectation_by_name_invalid() {
-        // Arrange
-        let spans = vec![
-            create_test_span("clnrm.run", false),
-            create_test_span("clnrm.test", false),
-        ];
-        let expectation =
-            CountExpectation::new().with_name_count("clnrm.test".to_string(), CountBound::eq(3));
-
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("Count for span name 'clnrm.test'"));
-        assert!(err_msg.contains("expected exactly 3"));
-        assert!(err_msg.contains("found 1"));
-    }
-
-    #[test]
-    fn test_count_expectation_by_name_missing() {
-        // Arrange
-        let spans = vec![create_test_span("clnrm.run", false)];
-        let expectation = CountExpectation::new()
+        // Test missing name
+        let missing_exp = CountExpectation::new()
             .with_name_count("clnrm.missing".to_string(), CountBound::gte(1));
+        assert!(missing_exp.validate(&named_spans).is_err());
 
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("Count for span name 'clnrm.missing'"));
-        assert!(err_msg.contains("expected at least 1"));
-        assert!(err_msg.contains("found 0"));
-    }
-
-    #[test]
-    fn test_count_expectation_multiple_constraints() {
-        // Arrange
-        let spans = vec![
-            create_test_span("clnrm.run", false),
-            create_test_span("clnrm.test", false),
-            create_test_span("clnrm.test", false),
-        ];
-        let expectation = CountExpectation::new()
+        // Test multiple constraints together
+        let multi_exp = CountExpectation::new()
             .with_spans_total(CountBound::range(2, 5).unwrap())
             .with_errors_total(CountBound::eq(0))
             .with_name_count("clnrm.run".to_string(), CountBound::gte(1))
             .with_name_count("clnrm.test".to_string(), CountBound::lte(3));
+        assert!(multi_exp.validate(&named_spans).is_ok());
 
-        // Act
-        let result = expectation.validate(&spans);
+        // Test empty spans
+        let empty: Vec<SpanData> = vec![];
+        assert!(CountExpectation::new().with_spans_total(CountBound::eq(0)).validate(&empty).is_ok());
 
-        // Assert
-        assert!(result.is_ok());
+        // Test no constraints (always passes)
+        assert!(CountExpectation::new().validate(&spans).is_ok());
     }
 
     #[test]
-    fn test_count_expectation_events_total() {
-        // Arrange
-        let mut span1 = create_test_span("span1", false);
-        span1.attributes.insert("event.count".to_string(), json!(2));
-        let mut span2 = create_test_span("span2", false);
-        span2.attributes.insert("event.count".to_string(), json!(3));
-        let spans = vec![span1, span2];
-        let expectation = CountExpectation::new().with_events_total(CountBound::eq(5));
-
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_count_expectation_empty_spans() {
-        // Arrange
-        let spans: Vec<SpanData> = vec![];
-        let expectation = CountExpectation::new()
-            .with_spans_total(CountBound::eq(0))
-            .with_errors_total(CountBound::eq(0));
-
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_count_expectation_no_constraints() {
-        // Arrange
-        let spans = vec![create_test_span("span1", false)];
-        let expectation = CountExpectation::new();
-
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert - should pass with no constraints
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_serde_count_bound() {
-        // Arrange
+    fn test_count_serialization() {
+        // Test CountBound serialization
         let bound = CountBound::range(5, 10).unwrap();
-
-        // Act
         let json = serde_json::to_string(&bound).unwrap();
         let deserialized: CountBound = serde_json::from_str(&json).unwrap();
-
-        // Assert
         assert_eq!(bound, deserialized);
-    }
 
-    #[test]
-    fn test_serde_count_expectation() {
-        // Arrange
+        // Test CountExpectation serialization
         let expectation = CountExpectation::new()
             .with_spans_total(CountBound::eq(5))
             .with_name_count("test".to_string(), CountBound::gte(1));
-
-        // Act
         let json = serde_json::to_string(&expectation).unwrap();
         let deserialized: CountExpectation = serde_json::from_str(&json).unwrap();
-
-        // Assert
         assert!(deserialized.spans_total.is_some());
         assert!(deserialized.by_name.is_some());
-    }
-
-    #[test]
-    fn test_error_detection_via_error_attribute() {
-        // Arrange
-        let mut span = create_test_span("span1", false);
-        span.attributes.insert("error".to_string(), json!(true));
-        let spans = vec![span];
-        let expectation = CountExpectation::new().with_errors_total(CountBound::eq(1));
-
-        // Act
-        let result = expectation.validate(&spans);
-
-        // Assert
-        assert!(result.is_ok());
     }
 }

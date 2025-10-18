@@ -320,7 +320,6 @@ fn test_otel_validation_error_handling() -> Result<()> {
 /// - Proper error handling with Result<T, CleanroomError>
 /// - No unwrap() or expect() in production code paths
 /// - Tests actual OTEL export functionality
-#[cfg(feature = "otel")]
 #[tokio::test]
 #[ignore] // Only run when OTEL collector is available (in CI)
 async fn test_otel_traces_are_emitted_to_collector() -> Result<()> {
@@ -353,7 +352,9 @@ async fn test_otel_traces_are_emitted_to_collector() -> Result<()> {
     span.end();
 
     // Force flush to ensure spans are exported
-    opentelemetry::global::force_flush_tracer_provider();
+    // Note: force_flush_tracer_provider() removed in OpenTelemetry 0.31.0
+    // Relying on sleep to allow span export
+    // opentelemetry::global::force_flush_tracer_provider();
 
     // Give collector time to receive and process spans
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -406,7 +407,6 @@ async fn test_otel_metrics_are_recorded_and_exported() -> Result<()> {
     let telemetry_handle = clnrm_core::telemetry::init::TelemetryBuilder::new(config).init()?;
 
     // Act: Record test metrics
-    #[cfg(feature = "otel-metrics")]
     {
         use clnrm_core::telemetry::metrics;
 
@@ -442,7 +442,6 @@ async fn test_otel_metrics_are_recorded_and_exported() -> Result<()> {
 /// Following core team standards:
 /// - Async test function for integration testing
 /// - Tests real OTEL functionality with external collector
-#[cfg(feature = "otel")]
 #[tokio::test]
 #[ignore] // Only run when OTEL collector is available (in CI)
 async fn test_span_relationships_preserved_in_export() -> Result<()> {
@@ -481,7 +480,8 @@ async fn test_span_relationships_preserved_in_export() -> Result<()> {
     child_span.end();
 
     // Force flush to export spans
-    opentelemetry::global::force_flush_tracer_provider();
+    // Note: force_flush_tracer_provider() removed in OpenTelemetry 0.31.0
+    // opentelemetry::global::force_flush_tracer_provider();
 
     // Give collector time to receive spans
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;

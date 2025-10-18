@@ -1,10 +1,8 @@
 //! Minimal, happy-path OpenTelemetry bootstrap for clnrm.
-//! Enable with `--features otel-traces` (logs/metrics are optional).
+//! OpenTelemetry is always enabled and compiled into the framework.
 
-#[cfg(feature = "otel-traces")]
 use crate::CleanroomError;
 
-#[cfg(feature = "otel-traces")]
 pub mod json_exporter;
 
 // New telemetry modules
@@ -13,7 +11,6 @@ pub mod exporters;
 pub mod init;
 pub mod testing;
 
-#[cfg(feature = "otel-traces")]
 use {
     opentelemetry::{
         global, propagation::TextMapCompositePropagator, trace::TracerProvider, KeyValue,
@@ -27,10 +24,8 @@ use {
     tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry},
 };
 
-#[cfg(feature = "otel-metrics")]
 use opentelemetry_sdk::metrics::SdkMeterProvider;
 
-#[cfg(feature = "otel-traces")]
 use tracing_opentelemetry::OpenTelemetryLayer;
 
 /// Export mechanism.
@@ -47,16 +42,13 @@ pub enum Export {
 }
 
 /// Enum to handle different span exporter types
-#[cfg(feature = "otel-traces")]
 #[derive(Debug)]
 enum SpanExporterType {
     Otlp(Box<opentelemetry_otlp::SpanExporter>),
-    #[cfg(feature = "otel-stdout")]
     Stdout(opentelemetry_stdout::SpanExporter),
     NdjsonStdout(json_exporter::NdjsonStdoutExporter),
 }
 
-#[cfg(feature = "otel-traces")]
 #[allow(refining_impl_trait)]
 impl SpanExporter for SpanExporterType {
     fn export(
@@ -65,7 +57,6 @@ impl SpanExporter for SpanExporterType {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = OTelSdkResult> + Send + '_>> {
         match self {
             SpanExporterType::Otlp(exporter) => Box::pin(exporter.as_ref().export(batch)),
-            #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(exporter) => Box::pin(exporter.export(batch)),
             SpanExporterType::NdjsonStdout(exporter) => Box::pin(exporter.export(batch)),
         }
@@ -74,7 +65,6 @@ impl SpanExporter for SpanExporterType {
     fn shutdown(&mut self) -> OTelSdkResult {
         match self {
             SpanExporterType::Otlp(exporter) => exporter.as_mut().shutdown(),
-            #[cfg(feature = "otel-stdout")]
             SpanExporterType::Stdout(exporter) => exporter.shutdown(),
             SpanExporterType::NdjsonStdout(exporter) => exporter.shutdown(),
         }
@@ -94,37 +84,24 @@ pub struct OtelConfig {
 
 /// Guard flushes providers on drop (happy path).
 pub struct OtelGuard {
-    #[cfg(feature = "otel-traces")]
     tracer_provider: SdkTracerProvider,
-    #[cfg(feature = "otel-metrics")]
     meter_provider: Option<SdkMeterProvider>,
-    #[cfg(feature = "otel-logs")]
     logger_provider: Option<opentelemetry_sdk::logs::SdkLoggerProvider>,
 }
 
 impl Drop for OtelGuard {
     fn drop(&mut self) {
-        #[cfg(feature = "otel-traces")]
-        {
-            let _ = self.tracer_provider.shutdown();
+        let _ = self.tracer_provider.shutdown();
+        if let Some(mp) = self.meter_provider.take() {
+            let _ = mp.shutdown();
         }
-        #[cfg(feature = "otel-metrics")]
-        {
-            if let Some(mp) = self.meter_provider.take() {
-                let _ = mp.shutdown();
-            }
-        }
-        #[cfg(feature = "otel-logs")]
-        {
-            if let Some(lp) = self.logger_provider.take() {
-                let _ = lp.shutdown();
-            }
+        if let Some(lp) = self.logger_provider.take() {
+            let _ = lp.shutdown();
         }
     }
 }
 
 /// Install OTel + tracing-subscriber. Call once at process start.
-#[cfg(feature = "otel-traces")]
 pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     // Propagators: W3C tracecontext + baggage.
     global::set_text_map_propagator(TextMapCompositePropagator::new(vec![
@@ -195,14 +172,7 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
                 })?;
             SpanExporterType::Otlp(Box::new(exporter))
         }
-        #[cfg(feature = "otel-stdout")]
         Export::Stdout => SpanExporterType::Stdout(opentelemetry_stdout::SpanExporter::default()),
-        #[cfg(not(feature = "otel-stdout"))]
-        Export::Stdout => {
-            return Err(CleanroomError::internal_error(
-                "Stdout export requires 'otel-stdout' feature",
-            ));
-        }
         Export::StdoutNdjson => {
             SpanExporterType::NdjsonStdout(json_exporter::NdjsonStdoutExporter::new())
         }
@@ -233,7 +203,6 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     tracing::subscriber::set_global_default(subscriber).ok();
 
     // Initialize metrics provider if enabled
-    #[cfg(feature = "otel-metrics")]
     let meter_provider = {
         use opentelemetry_sdk::metrics::SdkMeterProvider;
         // Basic metrics provider - stdout only for now
@@ -245,7 +214,6 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     };
 
     // Initialize logs provider if enabled
-    #[cfg(feature = "otel-logs")]
     let logger_provider = {
         use opentelemetry_sdk::logs::SdkLoggerProvider;
         // Basic logs provider - will use tracing integration
@@ -257,7 +225,6 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     };
 
     // Set global meter provider if metrics are enabled
-    #[cfg(feature = "otel-metrics")]
     if let Some(ref mp) = meter_provider {
         global::set_meter_provider(mp.clone());
     }
@@ -267,15 +234,12 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
 
     Ok(OtelGuard {
         tracer_provider: tp,
-        #[cfg(feature = "otel-metrics")]
         meter_provider,
-        #[cfg(feature = "otel-logs")]
         logger_provider,
     })
 }
 
 /// Validation utilities for OpenTelemetry testing
-#[cfg(feature = "otel-traces")]
 pub mod validation {
     use crate::error::{CleanroomError, Result};
 
@@ -328,7 +292,6 @@ pub mod validation {
 }
 
 /// Helper functions for metrics following core team best practices
-#[cfg(feature = "otel-metrics")]
 pub mod metrics {
     use opentelemetry::{global, KeyValue};
 
@@ -397,7 +360,6 @@ pub mod metrics {
 }
 
 /// Add OTel logs layer for tracing events -> OTel LogRecords
-#[cfg(feature = "otel-logs")]
 pub fn add_otel_logs_layer() {
     // Convert `tracing` events into OTel LogRecords; exporter controlled by env/collector.
     // Note: This is a simplified example - in practice you'd need a proper logger provider
@@ -407,7 +369,6 @@ pub fn add_otel_logs_layer() {
 
 /// Span creation helpers for clnrm self-testing
 /// These spans enable validation of clnrm functionality via OTEL traces
-#[cfg(feature = "otel-traces")]
 pub mod spans {
     use tracing::{span, Level};
 
@@ -541,7 +502,6 @@ pub mod spans {
 
 /// Span event helpers for recording lifecycle events
 /// Following OpenTelemetry specification for span events
-#[cfg(feature = "otel-traces")]
 pub mod events {
     use opentelemetry::trace::{Span, Status};
     use opentelemetry::KeyValue;
@@ -666,7 +626,6 @@ mod tests {
         assert!(config.enable_fmt_layer);
     }
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     fn test_otel_initialization_with_stdout() {
         use opentelemetry::trace::{Span, Tracer};
@@ -692,7 +651,6 @@ mod tests {
         span.end();
     }
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     fn test_otel_initialization_with_http_fallback() {
         let config = OtelConfig {
@@ -713,7 +671,6 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     fn test_otel_initialization_with_grpc_fallback() {
         // Skip actual initialization in test to avoid tokio runtime issues
@@ -748,17 +705,8 @@ mod tests {
             headers: None,
         };
 
-        #[cfg(feature = "otel-traces")]
-        {
-            let guard = init_otel(config)?;
-            drop(guard); // Should not panic
-        }
-
-        #[cfg(not(feature = "otel-traces"))]
-        {
-            // Test passes if we can create the config without the feature
-            assert_eq!(config.service_name, "test-service");
-        }
+        let guard = init_otel(config)?;
+        drop(guard); // Should not panic
 
         Ok(())
     }
@@ -785,7 +733,6 @@ mod tests {
     // due to version conflicts between tracing-opentelemetry and opentelemetry crates.
     // The telemetry functionality is verified through manual testing.
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     fn test_sample_ratios() {
         let ratios = vec![0.0, 0.1, 0.5, 1.0];
@@ -816,7 +763,6 @@ mod tests {
         assert!(debug_str.contains("4318"));
     }
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     fn test_deployment_environments() {
         let envs = vec!["dev", "staging", "prod"];
@@ -869,7 +815,6 @@ mod tests {
         assert!(debug_str.contains("0.75"));
     }
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     fn test_otel_config_with_different_exports() {
         let http_config = OtelConfig {

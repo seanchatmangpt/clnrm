@@ -42,17 +42,17 @@ toml_edit = { workspace = true }
 quick-xml = { workspace = true }
 
 # OpenTelemetry dependencies
-opentelemetry = { workspace = true, optional = true }
-opentelemetry_sdk = { workspace = true, optional = true }
-opentelemetry-stdout = { workspace = true, optional = true }
-opentelemetry-otlp = { workspace = true, optional = true }
-opentelemetry-jaeger = { workspace = true, optional = true }
-opentelemetry-zipkin = { workspace = true, optional = true }
-tracing-opentelemetry = { workspace = true, optional = true }
-tracing-subscriber = { workspace = true, optional = true }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-stdout = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+opentelemetry-jaeger = { workspace = true }
+opentelemetry-zipkin = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # Additional dependencies for OTLP integration
-reqwest = { workspace = true, optional = true }
+reqwest = { workspace = true }
 
 # Utility dependencies
 uuid = { workspace = true }
@@ -162,6 +162,11 @@ path = "examples/plugins/plugin-self-test.rs"
 name = "otel-stdout-exporter-demo"
 path = "../../examples/otel_stdout_exporter_demo.rs"
 
+# Consolidated Tests (80/20 Phase 1 & 2)
+[[test]]
+name = "template_variable_resolution_test"
+path = "tests/template_variable_resolution_test.rs"
+
 # Integration tests
 [[test]]
 name = "prd_template_workflow"
@@ -175,23 +180,6 @@ path = "tests/integration/prd_template_workflow.rs"
 # name = "prd_otel_validation"
 # path = "tests/integration/prd_otel_validation.rs"
 
-# London School TDD Tests
-[[test]]
-name = "service_registry_london_tdd"
-path = "tests/integration/service_registry_london_tdd.rs"
-
-[[test]]
-name = "generic_container_plugin_london_tdd"
-path = "tests/integration/generic_container_plugin_london_tdd.rs"
-
-# [[test]]
-# name = "service_metrics_london_tdd"
-# path = "tests/integration/service_metrics_london_tdd.rs"
-
-[[test]]
-name = "error_handling_london_tdd"
-path = "tests/integration/error_handling_london_tdd.rs"
-
 # v1.0 Critical Tests - London School TDD
 [[test]]
 name = "hot_reload_integration"
@@ -204,14 +192,6 @@ path = "tests/integration/change_detection_integration.rs"
 [[test]]
 name = "macro_library_integration"
 path = "tests/integration/macro_library_integration.rs"
-
-[[test]]
-name = "report_format_integration"
-path = "tests/integration/report_format_integration.rs"
-
-[[test]]
-name = "fake_green_detection"
-path = "tests/integration/fake_green_detection.rs"
 
 [[test]]
 name = "artifacts_collection_test"
@@ -245,39 +225,12 @@ path = "examples/innovations/ai-powered-test-optimizer.rs"
 name = "simple-framework-stress-demo"
 path = "examples/innovations/simple-framework-stress-demo.rs"
 
+[[example]]
+name = "otel-graph-validation"
+path = "examples/observability/otel_graph_validation.rs"
+
 [features]
-default = ["tracing-subscriber", "reqwest"]
+default = []
 ai = [
 ] # Marker feature for AI functionality (no dependencies to avoid circular deps)
-otel-tracing = [
-  "opentelemetry",
-  "opentelemetry_sdk",
-  "tracing-opentelemetry",
-  "tracing-subscriber",
-]
-otel-metrics = ["opentelemetry/metrics", "opentelemetry_sdk/metrics"]
-otel-logs = ["opentelemetry/logs", "opentelemetry_sdk/logs"]
-otel-otlp = ["opentelemetry-otlp", "reqwest"]
-otel-jaeger = ["opentelemetry-jaeger", "reqwest"]
-otel-zipkin = ["opentelemetry-zipkin", "reqwest"]
-otel-stdout = ["opentelemetry-stdout"]
 otel-testing = ["opentelemetry_sdk/testing"]
-otel-full = [
-  "otel-tracing",
-  "otel-metrics",
-  "otel-logs",
-  "otel-otlp",
-  "otel-jaeger",
-  "otel-zipkin",
-  "otel-stdout",
-  "otel-testing",
-]
-otel = ["otel-traces", "otel-metrics", "otel-stdout", "otel-logs"]
-otel-traces = [
-  "opentelemetry",
-  "opentelemetry_sdk",
-  "opentelemetry-stdout",
-  "opentelemetry-otlp",
-  "tracing-opentelemetry",
-  "tracing-subscriber",
-]

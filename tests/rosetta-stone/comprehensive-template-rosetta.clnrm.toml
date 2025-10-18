@@ -1,0 +1,318 @@
+# =============================================================================
+# Comprehensive Template Integration Rosetta Stone
+# =============================================================================
+# This test validates ALL template engine features in real-world scenarios:
+# - Variables (vars) and environment variable interpolation
+# - Control flow (conditionals, loops)
+# - Functions (built-in and OTEL helpers)
+# - Collections (pick, sample)
+# - Complex nested expressions
+# - Real-world production patterns
+#
+# Test Coverage:
+# 1. OTEL helper functions (trace_id, span_id, traceparent)
+# 2. Conditional rendering based on feature flags
+# 3. Loop-based multi-service orchestration
+# 4. Collection sampling for chaos testing
+# 5. Environment variable fallbacks
+# 6. Complex nested template expressions
+# =============================================================================
+
+[test.metadata]
+name = "comprehensive_template_rosetta"
+description = "Comprehensive validation of all template engine features with real-world patterns"
+tags = ["rosetta-stone", "templates", "otel", "advanced"]
+
+# =============================================================================
+# SECTION 1: Variable Definitions
+# =============================================================================
+# Define reusable variables that demonstrate template interpolation
+[vars]
+# Service configuration
+services = ["api", "web", "worker", "cache", "db"]
+primary_service = "api"
+replica_count = 3
+
+# Feature flags
+enable_otel = true
+enable_chaos = false
+enable_tracing = true
+enable_metrics = true
+
+# OTEL configuration
+otel_endpoint = "http://jaeger:4318"
+otel_sample_ratio = 1.0
+service_name = "clnrm-test-suite"
+
+# Test data
+test_endpoints = ["/health", "/metrics", "/ready"]
+http_methods = ["GET", "POST", "PUT", "DELETE"]
+status_codes = [200, 201, 400, 404, 500]
+
+# Chaos testing parameters
+chaos_targets = ["network", "cpu", "memory", "disk"]
+failure_rates = [0.1, 0.25, 0.5]
+
+# =============================================================================
+# SECTION 2: Service Definitions
+# =============================================================================
+# Use Alpine containers for lightweight, fast testing
+
+[services.test_container]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+wait_strategy = "log"
+wait_log_message = "/"
+
+[services.otel_simulator]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+environment = [
+    "OTEL_ENABLED={{ vars.enable_otel }}",
+    "SERVICE_NAME={{ vars.service_name }}",
+    "TRACE_ENABLED={{ vars.enable_tracing }}"
+]
+
+[services.template_validator]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+# =============================================================================
+# SCENARIO 1: OTEL Helper Functions
+# =============================================================================
+# Validate W3C Trace Context generation functions
+
+[[steps]]
+name = "test_otel_trace_id_format"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ trace_id() }}'"]
+expected_output_regex = "^[0-9a-f]{32}$"
+description = "Validate trace_id() generates 32-character hex string (W3C format)"
+
+[[steps]]
+name = "test_otel_span_id_format"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ span_id() }}'"]
+expected_output_regex = "^[0-9a-f]{16}$"
+description = "Validate span_id() generates 16-character hex string (W3C format)"
+
+[[steps]]
+name = "test_otel_traceparent_format"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ traceparent() }}'"]
+expected_output_regex = "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+description = "Validate traceparent() generates full W3C Trace Context header"
+
+[[steps]]
+name = "test_otel_traceparent_injection"
+service = "test_container"
+command = ["sh", "-c", "export TRACEPARENT='{{ traceparent() }}' && echo $TRACEPARENT"]
+expected_output_regex = "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+description = "Validate traceparent can be injected into environment variables"
+
+# =============================================================================
+# SCENARIO 2: Conditional Rendering Based on Feature Flags
+# =============================================================================
+# Demonstrate if/else logic with feature toggles
+
+[[steps]]
+name = "test_otel_enabled_flag"
+service = "otel_simulator"
+command = ["sh", "-c", "echo '{% if vars.enable_otel %}OTEL_ACTIVE{% else %}OTEL_DISABLED{% endif %}'"]
+expected_output_regex = "OTEL_ACTIVE"
+description = "Conditional rendering when OTEL is enabled"
+
+[[steps]]
+name = "test_chaos_disabled_flag"
+service = "test_container"
+command = ["sh", "-c", "echo '{% if vars.enable_chaos %}CHAOS_ENABLED{% else %}CHAOS_DISABLED{% endif %}'"]
+expected_output_regex = "CHAOS_DISABLED"
+description = "Conditional rendering when chaos engineering is disabled"
+
+[[steps]]
+name = "test_multi_condition_tracing"
+service = "test_container"
+command = ["sh", "-c", "echo '{% if vars.enable_otel and vars.enable_tracing %}DISTRIBUTED_TRACING{% else %}NO_TRACING{% endif %}'"]
+expected_output_regex = "DISTRIBUTED_TRACING"
+description = "Multiple condition evaluation (AND logic)"
+
+[[steps]]
+name = "test_nested_conditional"
+service = "test_container"
+command = ["sh", "-c", "echo '{% if vars.enable_otel %}{% if vars.enable_metrics %}FULL_OBSERVABILITY{% else %}TRACING_ONLY{% endif %}{% else %}NO_OBSERVABILITY{% endif %}'"]
+expected_output_regex = "FULL_OBSERVABILITY"
+description = "Nested conditional logic for complex feature combinations"
+
+# =============================================================================
+# SCENARIO 3: Loop-Based Multi-Service Orchestration
+# =============================================================================
+# Iterate over service collections to generate dynamic configurations
+
+[[steps]]
+name = "test_service_list_iteration"
+service = "test_container"
+command = ["sh", "-c", "echo '{% for svc in vars.services %}{{ svc }},{% endfor %}' | sed 's/,$//'"]
+expected_output_regex = "api,web,worker,cache,db"
+description = "Iterate over service list and generate comma-separated output"
+
+[[steps]]
+name = "test_endpoint_health_checks"
+service = "test_container"
+command = ["sh", "-c", "echo '{% for endpoint in vars.test_endpoints %}CHECK:{{ endpoint }};{% endfor %}' | sed 's/;$//'"]
+expected_output_regex = "CHECK:/health;CHECK:/metrics;CHECK:/ready"
+description = "Generate health check commands for multiple endpoints"
+
+[[steps]]
+name = "test_replica_generation"
+service = "test_container"
+command = ["sh", "-c", "echo '{% for i in range(vars.replica_count) %}replica-{{ i }},{% endfor %}' | sed 's/,$//'"]
+expected_output_regex = "replica-0,replica-1,replica-2"
+description = "Generate replica instances using range() function"
+
+[[steps]]
+name = "test_method_endpoint_matrix"
+service = "test_container"
+command = ["sh", "-c", "echo '{% for method in vars.http_methods %}{% for endpoint in vars.test_endpoints %}{{ method }}:{{ endpoint }};{% endfor %}{% endfor %}' | wc -l"]
+expected_output_regex = "1"
+description = "Nested loops creating HTTP method/endpoint test matrix"
+
+# =============================================================================
+# SCENARIO 4: Collection Sampling for Chaos Testing
+# =============================================================================
+# Use pick() and sample() functions for randomized testing
+
+[[steps]]
+name = "test_pick_single_target"
+service = "test_container"
+command = ["sh", "-c", "TARGET='{{ pick(array=vars.chaos_targets) }}'; case $TARGET in network|cpu|memory|disk) echo VALID_TARGET;; *) echo INVALID_TARGET;; esac"]
+expected_output_regex = "VALID_TARGET"
+description = "Pick single chaos target from collection"
+
+[[steps]]
+name = "test_pick_failure_rate"
+service = "test_container"
+command = ["sh", "-c", "RATE='{{ pick(array=vars.failure_rates) }}'; awk -v r=$RATE 'BEGIN { if (r >= 0.1 && r <= 0.5) print \"VALID_RATE\"; else print \"INVALID_RATE\" }'"]
+expected_output_regex = "VALID_RATE"
+description = "Pick failure rate and validate range"
+
+[[steps]]
+name = "test_sample_status_codes"
+service = "test_container"
+command = ["sh", "-c", "CODES='{{ sample(array=vars.status_codes, n=3) | join(\",\") }}'; echo $CODES | grep -E '^([0-9]{3},?){1,3}$' && echo VALID_SAMPLE"]
+expected_output_regex = "VALID_SAMPLE"
+description = "Sample subset of HTTP status codes"
+
+[[steps]]
+name = "test_pick_with_conditional"
+service = "test_container"
+command = ["sh", "-c", "echo '{% if vars.enable_chaos %}{{ pick(array=vars.chaos_targets) }}{% else %}NO_CHAOS{% endif %}' | grep -E '^(network|cpu|memory|disk|NO_CHAOS)$' && echo VALID"]
+expected_output_regex = "VALID"
+description = "Combine pick() with conditional logic"
+
+# =============================================================================
+# SCENARIO 5: Environment Variable Interpolation with Fallbacks
+# =============================================================================
+# Demonstrate environment variable usage and default values
+
+[[steps]]
+name = "test_env_var_interpolation"
+service = "test_container"
+command = ["sh", "-c", "export TEST_VAR='production' && echo '{{ env.TEST_VAR | default(\"development\") }}'"]
+expected_output_regex = "production"
+description = "Interpolate environment variable when set"
+
+[[steps]]
+name = "test_env_var_fallback"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ env.NONEXISTENT_VAR | default(\"fallback_value\") }}'"]
+expected_output_regex = "fallback_value"
+description = "Use default value when environment variable is unset"
+
+[[steps]]
+name = "test_combined_env_and_vars"
+service = "otel_simulator"
+command = ["sh", "-c", "echo 'SERVICE={{ vars.service_name }} ENV={{ env.OTEL_ENABLED }}'"]
+expected_output_regex = "SERVICE=clnrm-test-suite ENV=true"
+description = "Combine vars and env in single template"
+
+# =============================================================================
+# SCENARIO 6: Complex Real-World Production Patterns
+# =============================================================================
+# Demonstrate production-grade template usage patterns
+
+[[steps]]
+name = "test_distributed_trace_injection"
+service = "test_container"
+command = ["sh", "-c", "echo 'curl -H \"traceparent: {{ traceparent() }}\" -H \"X-Service: {{ vars.primary_service }}\" {{ vars.otel_endpoint }}/v1/traces'"]
+expected_output_regex = "curl -H \"traceparent: 00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}\" -H \"X-Service: api\" http://jaeger:4318/v1/traces"
+description = "Generate HTTP request with distributed tracing headers"
+
+[[steps]]
+name = "test_feature_flag_config_generation"
+service = "template_validator"
+command = ["sh", "-c", "cat <<'EOF'\n{% if vars.enable_otel %}otel.enabled=true\notel.endpoint={{ vars.otel_endpoint }}\n{% endif %}{% if vars.enable_tracing %}tracing.sample_ratio={{ vars.otel_sample_ratio }}\n{% endif %}service.name={{ vars.service_name }}\nEOF"]
+expected_output_regex = "otel\\.enabled=true.*otel\\.endpoint=http://jaeger:4318.*tracing\\.sample_ratio=1\\.0.*service\\.name=clnrm-test-suite"
+description = "Generate dynamic configuration file based on feature flags"
+
+[[steps]]
+name = "test_service_discovery_pattern"
+service = "test_container"
+command = ["sh", "-c", "echo '{% for svc in vars.services %}{{ svc }}.internal:8080{% if not loop.last %},{% endif %}{% endfor %}'"]
+expected_output_regex = "api\\.internal:8080,web\\.internal:8080,worker\\.internal:8080,cache\\.internal:8080,db\\.internal:8080"
+description = "Generate service discovery endpoints list"
+
+[[steps]]
+name = "test_chaos_experiment_config"
+service = "test_container"
+command = ["sh", "-c", "cat <<'EOF'\n{% if vars.enable_chaos %}chaos:\n  target: {{ pick(array=vars.chaos_targets) }}\n  rate: {{ pick(array=vars.failure_rates) }}\n  trace_id: {{ trace_id() }}\n{% else %}chaos: disabled\n{% endif %}EOF"]
+expected_output_regex = "(chaos:.*target:.*(network|cpu|memory|disk).*rate:.*(0\\.1|0\\.25|0\\.5).*trace_id:.*[0-9a-f]{32}|chaos: disabled)"
+description = "Generate chaos engineering experiment with tracing"
+
+[[steps]]
+name = "test_load_balancer_config"
+service = "test_container"
+command = ["sh", "-c", "echo 'upstream {{ vars.primary_service }} { {% for i in range(vars.replica_count) %}server {{ vars.primary_service }}-{{ i }}:8080; {% endfor %} }'"]
+expected_output_regex = "upstream api \\{ server api-0:8080; server api-1:8080; server api-2:8080; \\}"
+description = "Generate nginx-style load balancer upstream configuration"
+
+[[steps]]
+name = "test_prometheus_scrape_config"
+service = "template_validator"
+command = ["sh", "-c", "cat <<'EOF'\n- job_name: '{{ vars.service_name }}'\n  scrape_interval: 15s\n  static_configs:\n  - targets:\n    {% for svc in vars.services %}- {{ svc }}.internal:9090\n    {% endfor %}EOF"]
+expected_output_regex = "job_name: 'clnrm-test-suite'.*scrape_interval: 15s.*static_configs:.*targets:.*- api\\.internal:9090.*- web\\.internal:9090"
+description = "Generate Prometheus scrape configuration for service mesh"
+
+[[steps]]
+name = "test_otel_resource_attributes"
+service = "test_container"
+command = ["sh", "-c", "echo 'OTEL_RESOURCE_ATTRIBUTES=service.name={{ vars.service_name }},deployment.environment={% if vars.enable_otel %}production{% else %}development{% endif %},trace.id={{ trace_id() }}'"]
+expected_output_regex = "OTEL_RESOURCE_ATTRIBUTES=service\\.name=clnrm-test-suite,deployment\\.environment=production,trace\\.id=[0-9a-f]{32}"
+description = "Generate OTEL resource attributes with dynamic values"
+
+[[steps]]
+name = "test_multi_protocol_trace_propagation"
+service = "test_container"
+command = ["sh", "-c", "TRACEPARENT='{{ traceparent() }}'; echo \"HTTP: traceparent=$TRACEPARENT\" && echo \"gRPC: grpc-trace-bin=$(echo $TRACEPARENT | cut -d'-' -f2,3)\""]
+expected_output_regex = "HTTP: traceparent=00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}.*gRPC: grpc-trace-bin=[0-9a-f]{32}-[0-9a-f]{16}"
+description = "Multi-protocol trace context propagation (HTTP + gRPC)"
+
+# =============================================================================
+# ASSERTIONS
+# =============================================================================
+
+[assertions]
+# Validate all template scenarios executed successfully
+steps_should_have_executed = 30
+
+# Ensure hermetic execution
+execution_should_be_hermetic = true
+
+# Container lifecycle validation
+containers_should_have_started = 3
+containers_should_have_stopped = 3
+
+# Verify no test failures
+all_steps_should_succeed = true

@@ -3,7 +3,6 @@
 //! Provides in-memory span exporters and test helpers for validating
 //! OpenTelemetry functionality without external dependencies.
 
-#[cfg(feature = "otel-traces")]
 use opentelemetry::{
     trace::{Span, Status, Tracer, TracerProvider},
     KeyValue,
@@ -11,31 +10,25 @@ use opentelemetry::{
 
 use std::sync::{Arc, Mutex};
 
-#[cfg(feature = "otel-traces")]
 use crate::validation::SpanData;
 
-#[cfg(feature = "otel-traces")]
 use opentelemetry_sdk::trace::{InMemorySpanExporter, SdkTracerProvider};
 
-#[cfg(feature = "otel-traces")]
 /// Use the built-in OpenTelemetry SDK InMemorySpanExporter
 pub type TestSpanExporter = InMemorySpanExporter;
 
-#[cfg(feature = "otel-traces")]
 /// Test tracer provider with in-memory exporter
 pub struct TestTracerProvider {
     provider: SdkTracerProvider,
     exporter: TestSpanExporter,
 }
 
-#[cfg(feature = "otel-traces")]
 impl Default for TestTracerProvider {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(feature = "otel-traces")]
 impl TestTracerProvider {
     /// Create a new test tracer provider
     pub fn new() -> Self {
@@ -103,11 +96,9 @@ impl TestTracerProvider {
     }
 }
 
-#[cfg(feature = "otel-traces")]
 /// Helper functions for creating test spans
 pub struct TestSpanHelper;
 
-#[cfg(feature = "otel-traces")]
 impl TestSpanHelper {
     /// Create a test span with the given name
     pub fn create_span(tracer: &opentelemetry_sdk::trace::Tracer, name: &'static str) -> impl Span {

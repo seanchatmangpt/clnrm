@@ -126,6 +126,36 @@ pub fn validate_config(config: &Config) -> Result<(), CleanroomError> {
 
 ## 🧪 Testing Best Practices
 
+### 🎯 Core Testing Philosophy
+**Test behaviors, not implementation details. The best test suite is the smallest one that still catches all bugs.**
+
+Focus on testing what the code does (behavior) rather than how it does it (implementation). This approach:
+- Makes tests more resilient to refactoring
+- Reduces test maintenance overhead
+- Ensures tests catch real bugs, not just implementation changes
+- Keeps the test suite lean and focused
+
+```rust
+// ❌ Bad: Testing implementation details
+#[test]
+fn test_container_uses_docker_api() {
+    let container = Container::new();
+    assert_eq!(container.backend_type, BackendType::Docker); // Implementation detail!
+}
+
+// ✅ Good: Testing behavior
+#[test]
+async fn test_container_starts_and_runs_commands() -> Result<(), CleanroomError> {
+    let container = Container::new();
+    container.start().await?;
+    
+    let result = container.exec("echo 'hello'").await?;
+    assert_eq!(result.stdout.trim(), "hello"); // Behavior!
+    
+    Ok(())
+}
+```
+
 ### ✅ Use proper async test functions
 ```rust
 // ✅ Good: Async test functions for integration tests
@@ -412,3 +442,80 @@ pub fn execute_test(&self) -> Result<()> {
 - [ ] No fake implementations - incomplete features call `unimplemented!()`
 
 ### If ANY of these fail, the code is NOT ready for production.
+
+## 🤖 AI Code Generation Guidelines
+
+### ❌ NEVER generate code that will fail fake scanner
+When generating code, ensure it passes the fake scanner (`scripts/scan-fakes.sh`). Avoid these patterns:
+
+```rust
+// ❌ Bad: These patterns will be caught by fake scanner
+pub fn some_function() -> Result<(), Error> {
+    unimplemented!("Not implemented yet"); // FAILS fake scanner
+}
+
+pub fn another_function() -> Result<(), Error> {
+    println!("Processing..."); // FAILS fake scanner - use tracing instead
+    Ok(()) // FAILS if this is a stub
+}
+
+pub fn fake_service() -> ServiceHandle {
+    ServiceHandle::fake() // FAILS fake scanner
+}
+
+pub fn process_data() -> Result<(), Error> {
+    let result = some_operation().unwrap(); // FAILS fake scanner
+    Ok(())
+}
+```
+
+### ✅ Generate production-ready code that passes fake scanner
+```rust
+// ✅ Good: Real implementations that pass fake scanner
+pub fn some_function() -> Result<(), Error> {
+    let data = load_data()?;
+    let processed = process_data(data)?;
+    save_result(processed)?;
+    Ok(())
+}
+
+pub fn another_function() -> Result<(), Error> {
+    tracing::info!("Processing data");
+    let result = perform_operation()?;
+    tracing::debug!("Operation completed successfully");
+    Ok(result)
+}
+
+pub fn real_service() -> Result<ServiceHandle, Error> {
+    let config = load_service_config()?;
+    let handle = ServiceHandle::new(config)?;
+    Ok(handle)
+}
+
+pub fn process_data() -> Result<(), Error> {
+    let result = some_operation()
+        .map_err(|e| Error::ProcessingFailed(format!("Operation failed: {}", e)))?;
+    Ok(result)
+}
+```
+
+### ✅ Code Generation Checklist
+Before generating any code file, ensure:
+- [ ] No `unimplemented!()`, `todo!()`, or `panic!()` macros
+- [ ] No `println!()` - use `tracing::info!()` instead
+- [ ] No `.unwrap()` or `.expect()` - use proper error handling
+- [ ] No fake/stub/dummy/placeholder return values
+- [ ] No hardcoded responses in production code
+- [ ] All functions either work completely OR call `unimplemented!()` with clear message
+- [ ] Code compiles without warnings
+- [ ] Passes `cargo clippy` checks
+- [ ] Follows async/sync best practices
+- [ ] Uses proper error types with context
+
+### 🚨 Critical: Test Generated Code
+Always run the fake scanner on generated code:
+```bash
+bash scripts/scan-fakes.sh /path/to/generated/code
+```
+
+If the scanner fails, the generated code is NOT production-ready and must be fixed.

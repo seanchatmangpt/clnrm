@@ -39,7 +39,6 @@ pub use error::{CleanroomError, Result};
 pub use policy::{Policy, SecurityLevel, SecurityPolicy};
 pub use scenario::scenario;
 
-#[cfg(feature = "otel-traces")]
 pub use telemetry::{Export, OtelConfig, OtelGuard};
 
 pub use assertions::{cache, database, email_service, UserAssertions};
@@ -63,7 +62,6 @@ pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporte
 pub use services::generic::GenericContainerPlugin;
 pub use services::surrealdb::SurrealDbPlugin;
 pub use template::{TemplateContext, TemplateRenderer};
-#[cfg(feature = "otel-traces")]
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};
 pub use validation::{PrdExpectations, ShapeValidator, ValidationReport};
 pub use watch::{debouncer::FileDebouncer, WatchConfig};

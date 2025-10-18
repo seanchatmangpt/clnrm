@@ -357,7 +357,7 @@ cargo make <task-name>
 
 **Old cursor commands** are in `.cursor/commands-archive/` for reference.
 
-**Old shell scripts** are in `scripts-archive/` for reference.
+**Shell scripts** are consolidated in `scripts/` following Rust core team best practices.
 
 **Mapping:**
 

@@ -3,38 +3,27 @@
 //! Provides comprehensive OpenTelemetry setup with support for multiple exporters
 //! and proper resource configuration.
 
-#[cfg(feature = "otel-traces")]
 use crate::error::Result;
-#[cfg(feature = "otel-traces")]
 use crate::telemetry::config::{ExporterConfig, OtlpProtocol, TelemetryConfig};
-#[cfg(feature = "otel-traces")]
 use crate::telemetry::exporters::{
     create_span_exporter, validate_exporter_config, SpanExporterType,
 };
-#[cfg(feature = "otel-traces")]
 use opentelemetry::global;
-#[cfg(feature = "otel-traces")]
 use opentelemetry::trace::TracerProvider;
-#[cfg(feature = "otel-traces")]
 use opentelemetry::KeyValue;
-#[cfg(feature = "otel-traces")]
 use opentelemetry_sdk::{
     trace::{self, RandomIdGenerator, Sampler},
     Resource,
 };
-#[cfg(feature = "otel-traces")]
 use tracing_opentelemetry;
-#[cfg(feature = "otel-traces")]
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[cfg(feature = "otel-traces")]
 /// Handle for managing telemetry lifecycle
 #[derive(Debug)]
 pub struct TelemetryHandle {
     config: TelemetryConfig,
 }
 
-#[cfg(feature = "otel-traces")]
 impl TelemetryHandle {
     /// Create a disabled telemetry handle
     pub fn disabled() -> Self {
@@ -71,13 +60,11 @@ impl TelemetryHandle {
     }
 }
 
-#[cfg(feature = "otel-traces")]
 /// Builder for telemetry configuration
 pub struct TelemetryBuilder {
     config: TelemetryConfig,
 }
 
-#[cfg(feature = "otel-traces")]
 impl TelemetryBuilder {
     /// Create a new telemetry builder
     pub fn new(config: TelemetryConfig) -> Self {
@@ -101,7 +88,6 @@ impl TelemetryBuilder {
         })
     }
 
-    #[cfg(feature = "otel-traces")]
     /// Create OpenTelemetry resource
     fn create_resource(&self) -> Result<Resource> {
         // Build resource with service information
@@ -128,7 +114,6 @@ impl TelemetryBuilder {
         Ok(resource)
     }
 
-    #[cfg(feature = "otel-traces")]
     /// Create exporters from configuration
     fn create_exporters(&self) -> Result<Vec<SpanExporterType>> {
         let mut exporters = Vec::new();
@@ -145,7 +130,6 @@ impl TelemetryBuilder {
         Ok(exporters)
     }
 
-    #[cfg(feature = "otel-traces")]
     /// Initialize tracing with OpenTelemetry
     fn init_tracing(&self) -> Result<()> {
         // Create resource with service information
@@ -193,7 +177,6 @@ impl TelemetryBuilder {
         Ok(())
     }
 
-    #[cfg(feature = "otel-traces")]
     /// Initialize metrics with OpenTelemetry
     fn init_metrics(&self) -> Result<()> {
         // Create resource with service information
@@ -210,14 +193,12 @@ impl TelemetryBuilder {
     }
 }
 
-#[cfg(feature = "otel-traces")]
 /// Initialize telemetry with default configuration
 pub fn init_default() -> Result<TelemetryHandle> {
     let config = TelemetryConfig::default();
     TelemetryBuilder::new(config).init()
 }
 
-#[cfg(feature = "otel-traces")]
 /// Initialize telemetry with OTLP configuration
 pub fn init_otlp(endpoint: &str) -> Result<TelemetryHandle> {
     let config = TelemetryConfig {
@@ -232,7 +213,6 @@ pub fn init_otlp(endpoint: &str) -> Result<TelemetryHandle> {
     TelemetryBuilder::new(config).init()
 }
 
-#[cfg(feature = "otel-traces")]
 /// Initialize telemetry with stdout configuration for development
 pub fn init_stdout() -> Result<TelemetryHandle> {
     let config = TelemetryConfig {
@@ -257,7 +237,6 @@ mod tests {
         assert_eq!(handle.service_version(), "1.0.0");
     }
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     #[serial]
     fn test_telemetry_builder_disabled() {
@@ -269,7 +248,6 @@ mod tests {
         assert!(!handle.is_enabled());
     }
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     #[serial]
     fn test_init_default() {
@@ -277,7 +255,6 @@ mod tests {
         assert!(!handle.is_enabled());
     }
 
-    #[cfg(feature = "otel-traces")]
     #[test]
     #[serial]
     fn test_init_stdout() {

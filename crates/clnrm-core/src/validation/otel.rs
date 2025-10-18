@@ -155,19 +155,14 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[cfg(feature = "otel-traces")]
 use crate::error::{CleanroomError, Result};
 
-#[cfg(feature = "otel-traces")]
 use opentelemetry::trace::TraceId;
 
-#[cfg(feature = "otel-traces")]
 use opentelemetry_sdk::trace::{InMemorySpanExporter, SpanData as OtelSpanData, SpanProcessor};
 
-#[cfg(feature = "otel-traces")]
 use std::sync::{Arc, Mutex};
 
-#[cfg(feature = "otel-traces")]
 /// Span collector for validation purposes
 ///
 /// This span processor captures spans for validation while allowing them to continue
@@ -181,14 +176,12 @@ pub struct ValidationSpanProcessor {
     spans: Arc<Mutex<Vec<OtelSpanData>>>,
 }
 
-#[cfg(feature = "otel-traces")]
 impl Default for ValidationSpanProcessor {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(feature = "otel-traces")]
 impl ValidationSpanProcessor {
     /// Create a new validation span processor
     pub fn new() -> Self {
@@ -262,7 +255,6 @@ impl ValidationSpanProcessor {
     }
 }
 
-#[cfg(feature = "otel-traces")]
 impl SpanProcessor for ValidationSpanProcessor {
     /// Process a span for validation collection
     ///
@@ -405,7 +397,6 @@ pub struct TraceValidationResult {
     pub errors: Vec<String>,
 }
 
-#[cfg(feature = "otel-traces")]
 /// OpenTelemetry validator with real span data validation
 #[derive(Debug, Clone)]
 pub struct OtelValidator {
@@ -417,7 +408,6 @@ pub struct OtelValidator {
     validation_processor: Option<ValidationSpanProcessor>,
 }
 
-#[cfg(feature = "otel-traces")]
 impl OtelValidator {
     /// Create a new OTel validator with default configuration
     ///
@@ -1119,7 +1109,6 @@ impl OtelValidator {
     }
 }
 
-#[cfg(feature = "otel-traces")]
 impl Default for OtelValidator {
     fn default() -> Self {
         Self::new()

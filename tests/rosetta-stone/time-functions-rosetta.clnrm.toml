@@ -1,0 +1,248 @@
+# Time/Date Functions Rosetta Stone Test
+# Validates time/date template functions with frozen clock for deterministic testing
+#
+# Functions tested:
+# - now_rfc3339(): Current time in RFC3339 format
+# - now_unix(): Current time as Unix timestamp (seconds)
+# - now_ms(): Current time in milliseconds
+# - now_plus(seconds): Current time plus offset in seconds
+#
+# Test Strategy:
+# 1. Freeze clock at known timestamp: 2025-10-17T12:00:00Z
+# 2. Validate each time function returns expected frozen time
+# 3. Test time arithmetic with now_plus()
+# 4. Verify consistency across multiple calls
+# 5. Test edge cases (negative offsets, large offsets)
+# 6. Validate format correctness
+
+[test.metadata]
+name = "rosetta_time_functions"
+description = "Validates time/date template functions with frozen clock for deterministic testing"
+timeout = "90s"
+
+# Freeze clock for deterministic time testing
+# All time functions will return this fixed timestamp
+[determinism]
+freeze_clock = "2025-10-17T12:00:00Z"
+
+# Service configuration - Alpine container for testing
+[services.test_container]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+# =============================================================================
+# Test Scenario 1: Basic now_rfc3339() - Frozen clock consistency
+# =============================================================================
+
+[[steps]]
+name = "test_frozen_now_rfc3339_basic"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_rfc3339() }}'"]
+expected_output_regex = "^2025-10-17T12:00:00"
+description = "Verify now_rfc3339() returns frozen clock time in RFC3339 format"
+
+[[steps]]
+name = "test_frozen_now_rfc3339_consistency"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_rfc3339() }}' && echo '{{ now_rfc3339() }}'"]
+expected_output_regex = "2025-10-17T12:00:00.*2025-10-17T12:00:00"
+description = "Verify multiple now_rfc3339() calls return identical frozen time"
+
+[[steps]]
+name = "test_frozen_now_rfc3339_format"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_rfc3339() }}'"]
+expected_output_regex = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
+description = "Verify RFC3339 format structure (YYYY-MM-DDTHH:MM:SS)"
+
+# =============================================================================
+# Test Scenario 2: now_unix() - Unix timestamp validation
+# =============================================================================
+
+[[steps]]
+name = "test_frozen_now_unix_basic"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_unix() }}'"]
+expected_output_regex = "^1760947200$"
+description = "Verify now_unix() returns frozen clock as Unix timestamp (2025-10-17T12:00:00Z = 1760947200)"
+
+[[steps]]
+name = "test_frozen_now_unix_consistency"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_unix() }}' && echo '{{ now_unix() }}'"]
+expected_output_regex = "1760947200.*1760947200"
+description = "Verify multiple now_unix() calls return identical frozen timestamp"
+
+[[steps]]
+name = "test_frozen_now_unix_numeric"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_unix() }}'"]
+expected_output_regex = "^\\d{10}$"
+description = "Verify Unix timestamp is 10-digit integer"
+
+# =============================================================================
+# Test Scenario 3: now_ms() - Millisecond timestamp validation
+# =============================================================================
+
+[[steps]]
+name = "test_frozen_now_ms_basic"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_ms() }}'"]
+expected_output_regex = "^1760947200000$"
+description = "Verify now_ms() returns frozen clock in milliseconds (1760947200000)"
+
+[[steps]]
+name = "test_frozen_now_ms_consistency"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_ms() }}' && echo '{{ now_ms() }}'"]
+expected_output_regex = "1760947200000.*1760947200000"
+description = "Verify multiple now_ms() calls return identical frozen millisecond timestamp"
+
+[[steps]]
+name = "test_frozen_now_ms_numeric"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_ms() }}'"]
+expected_output_regex = "^\\d{13}$"
+description = "Verify millisecond timestamp is 13-digit integer"
+
+# =============================================================================
+# Test Scenario 4: now_plus() - Positive time offsets
+# =============================================================================
+
+[[steps]]
+name = "test_now_plus_one_hour"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=3600) }}'"]
+expected_output_regex = "^2025-10-17T13:00:00"
+description = "Verify now_plus(seconds=3600) adds 1 hour (12:00:00 + 1h = 13:00:00)"
+
+[[steps]]
+name = "test_now_plus_one_day"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=86400) }}'"]
+expected_output_regex = "^2025-10-18T12:00:00"
+description = "Verify now_plus(seconds=86400) adds 24 hours (next day at same time)"
+
+[[steps]]
+name = "test_now_plus_one_minute"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=60) }}'"]
+expected_output_regex = "^2025-10-17T12:01:00"
+description = "Verify now_plus(seconds=60) adds 1 minute"
+
+[[steps]]
+name = "test_now_plus_five_seconds"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=5) }}'"]
+expected_output_regex = "^2025-10-17T12:00:05"
+description = "Verify now_plus(seconds=5) adds 5 seconds"
+
+# =============================================================================
+# Test Scenario 5: now_plus() - Negative time offsets (past)
+# =============================================================================
+
+[[steps]]
+name = "test_now_plus_minus_one_hour"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=-3600) }}'"]
+expected_output_regex = "^2025-10-17T11:00:00"
+description = "Verify now_plus(seconds=-3600) subtracts 1 hour (12:00:00 - 1h = 11:00:00)"
+
+[[steps]]
+name = "test_now_plus_minus_one_day"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=-86400) }}'"]
+expected_output_regex = "^2025-10-16T12:00:00"
+description = "Verify now_plus(seconds=-86400) subtracts 24 hours (previous day)"
+
+[[steps]]
+name = "test_now_plus_minus_thirty_minutes"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=-1800) }}'"]
+expected_output_regex = "^2025-10-17T11:30:00"
+description = "Verify now_plus(seconds=-1800) subtracts 30 minutes"
+
+# =============================================================================
+# Test Scenario 6: Cross-function consistency validation
+# =============================================================================
+
+[[steps]]
+name = "test_cross_function_consistency_unix_vs_rfc3339"
+service = "test_container"
+command = ["sh", "-c", "echo 'Unix: {{ now_unix() }}' && echo 'RFC3339: {{ now_rfc3339() }}'"]
+expected_output_regex = "Unix: 1760947200.*RFC3339: 2025-10-17T12:00:00"
+description = "Verify now_unix() and now_rfc3339() represent same frozen time"
+
+[[steps]]
+name = "test_cross_function_consistency_ms_vs_unix"
+service = "test_container"
+command = ["sh", "-c", "echo 'MS: {{ now_ms() }}' && echo 'Unix: {{ now_unix() }}'"]
+expected_output_regex = "MS: 1760947200000.*Unix: 1760947200"
+description = "Verify now_ms() is exactly now_unix() * 1000"
+
+[[steps]]
+name = "test_all_functions_together"
+service = "test_container"
+command = ["sh", "-c", "echo 'RFC3339={{ now_rfc3339() }}|Unix={{ now_unix() }}|MS={{ now_ms() }}|Plus1h={{ now_plus(seconds=3600) }}'"]
+expected_output_regex = "RFC3339=2025-10-17T12:00:00.*Unix=1760947200.*MS=1760947200000.*Plus1h=2025-10-17T13:00:00"
+description = "Verify all time functions work together with consistent frozen clock"
+
+# =============================================================================
+# Edge Cases and Large Offsets
+# =============================================================================
+
+[[steps]]
+name = "test_now_plus_zero_offset"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=0) }}'"]
+expected_output_regex = "^2025-10-17T12:00:00"
+description = "Verify now_plus(seconds=0) equals now_rfc3339() (no offset)"
+
+[[steps]]
+name = "test_now_plus_large_positive_offset"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=604800) }}'"]
+expected_output_regex = "^2025-10-24T12:00:00"
+description = "Verify now_plus(seconds=604800) adds 7 days (1 week)"
+
+[[steps]]
+name = "test_now_plus_large_negative_offset"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=-604800) }}'"]
+expected_output_regex = "^2025-10-10T12:00:00"
+description = "Verify now_plus(seconds=-604800) subtracts 7 days (1 week ago)"
+
+[[steps]]
+name = "test_now_plus_month_boundary"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_plus(seconds=1209600) }}'"]
+expected_output_regex = "^2025-10-31T12:00:00"
+description = "Verify now_plus(seconds=1209600) adds 14 days (crosses month boundary)"
+
+# =============================================================================
+# Determinism Validation - Verify frozen clock behavior
+# =============================================================================
+
+[[steps]]
+name = "test_frozen_clock_prevents_drift"
+service = "test_container"
+command = ["sh", "-c", "echo '{{ now_rfc3339() }}' && sleep 2 && echo '{{ now_rfc3339() }}'"]
+expected_output_regex = "2025-10-17T12:00:00.*2025-10-17T12:00:00"
+description = "Verify frozen clock prevents time drift even after sleep"
+
+[[steps]]
+name = "test_frozen_clock_deterministic_sequence"
+service = "test_container"
+command = ["sh", "-c", "for i in 1 2 3 4 5; do echo '{{ now_unix() }}'; done"]
+expected_output_regex = "^(1760947200\\n){4}1760947200$"
+description = "Verify frozen clock returns identical values in sequence"
+
+# =============================================================================
+# Assertions - Overall test validation
+# =============================================================================
+
+[assertions]
+container_should_have_executed_commands = 29
+execution_should_be_hermetic = true
+all_steps_should_succeed = true
