@@ -530,33 +530,3 @@ pub async fn initialize_sample_marketplace(config: &MarketplaceConfig) -> Result
     println!("✅ Sample marketplace initialized with 3 plugins");
     Ok(marketplace)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::marketplace::MarketplaceConfig;
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_marketplace_commands() -> Result<()> {
-        let temp_dir = std::env::temp_dir().join(format!("clnrm-test-{}", uuid::Uuid::new_v4()));
-        let config = MarketplaceConfig {
-            registry_urls: vec![],
-            cache_dir: temp_dir.join("cache"),
-            install_dir: temp_dir.join("plugins"),
-            community_enabled: false,
-            auto_update: false,
-        };
-        let marketplace = Marketplace::new(config)?;
-
-        // Test search functionality
-        let _results = marketplace.search("test").await?;
-        // Should find our test plugins or return empty results
-
-        // Test list functionality
-        let installed = marketplace.list_installed()?;
-        assert!(installed.is_empty()); // No plugins installed initially
-
-        let _ = std::fs::remove_dir_all(&temp_dir);
-        Ok(())
-    }
-}

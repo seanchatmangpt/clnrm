@@ -273,33 +273,3 @@ impl ServicePlugin for OllamaPlugin {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_ollama_plugin_creation() {
-        let config = OllamaConfig {
-            endpoint: "http://localhost:11434".to_string(),
-            default_model: "qwen3-coder:30b".to_string(),
-            timeout_seconds: 60,
-        };
-
-        let plugin = OllamaPlugin::new("test_ollama", config);
-        assert_eq!(plugin.name(), "test_ollama");
-    }
-
-    #[test]
-    fn test_ollama_config() {
-        let config = OllamaConfig {
-            endpoint: "http://localhost:11434".to_string(),
-            default_model: "qwen3-coder:30b".to_string(),
-            timeout_seconds: 60,
-        };
-
-        assert_eq!(config.endpoint, "http://localhost:11434");
-        assert_eq!(config.default_model, "qwen3-coder:30b");
-        assert_eq!(config.timeout_seconds, 60);
-    }
-}

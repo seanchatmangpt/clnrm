@@ -13,11 +13,9 @@ pub mod otel;
 pub mod shape;
 pub mod span_validator;
 pub mod status_validator;
-#[cfg(test)]
-pub mod test_helpers;
 pub mod window_validator;
 
-pub use count_validator::CountExpectation;
+pub use count_validator::{CountBound, CountExpectation};
 pub use graph_validator::{GraphExpectation, GraphValidator};
 pub use hermeticity_validator::{
     HermeticityExpectation, HermeticityValidator, HermeticityViolation, ViolationType,

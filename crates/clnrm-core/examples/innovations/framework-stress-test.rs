@@ -12,7 +12,6 @@
 //! - Error recovery and resilience testing
 
 use clnrm_core::{CleanroomEnvironment, CleanroomError, Result};
-use futures_util::future;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
@@ -35,7 +34,6 @@ async fn main() -> Result<()> {
 
     // Create 20 environments concurrently to stress test the framework
     for i in 0..20 {
-        let env_clone = env.clone();
         let handle = tokio::spawn(async move {
             println!("   Creating environment {}...", i + 1);
             let test_env = CleanroomEnvironment::new().await?;
@@ -247,14 +245,14 @@ async fn main() -> Result<()> {
     let concurrent_start = Instant::now();
 
     // Run multiple stress tests concurrently
-    let stress_tests = vec![
-        run_memory_stress_test(&env),
-        run_cpu_stress_test(&env),
-        run_io_stress_test(&env),
-        run_network_stress_test(&env),
-    ];
+    let (result1, result2, result3, result4) = tokio::join!(
+        run_memory_stress_test(CleanroomEnvironment::new().await?),
+        run_cpu_stress_test(CleanroomEnvironment::new().await?),
+        run_io_stress_test(CleanroomEnvironment::new().await?),
+        run_network_stress_test(CleanroomEnvironment::new().await?)
+    );
 
-    let results = future::join_all(stress_tests).await;
+    let results = vec![result1, result2, result3, result4];
 
     let mut success_count = 0;
     for (i, result) in results.iter().enumerate() {
@@ -353,7 +351,7 @@ async fn main() -> Result<()> {
 /// Memory stress test - creates and destroys many objects
 async fn run_memory_stress_test(env: CleanroomEnvironment) -> Result<()> {
     for i in 0..20 {
-        let container = env
+        let _container = env
             .get_or_create_container(&format!("memory-test-{}", i), || {
                 Ok::<String, CleanroomError>(format!("memory-container-{}", i))
             })

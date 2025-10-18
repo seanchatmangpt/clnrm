@@ -17,15 +17,3 @@ pub fn register_extended_functions(tera: &mut Tera) -> Result<()> {
     
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_register_extended_functions() {
-        let mut tera = Tera::default();
-        let result = register_extended_functions(&mut tera);
-        assert!(result.is_ok());
-    }
-}

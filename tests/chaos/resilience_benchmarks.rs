@@ -424,31 +424,3 @@ async fn benchmark_stability_over_time() -> Result<()> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod comprehensive_benchmarks {
-    use super::*;
-
-    /// Comprehensive resilience benchmark
-    #[tokio::test]
-    async fn comprehensive_resilience_benchmark() -> Result<()> {
-        println!("\n=================================");
-        println!("COMPREHENSIVE RESILIENCE BENCHMARK");
-        println!("=================================\n");
-
-        // Run all benchmarks
-        benchmark_baseline_performance().await?;
-        benchmark_network_chaos_resilience().await?;
-        benchmark_recovery_time().await?;
-        benchmark_throughput_degradation().await?;
-        benchmark_resource_exhaustion_impact().await?;
-        benchmark_cascading_failure_propagation().await?;
-        benchmark_concurrent_chaos().await?;
-
-        println!("\n=================================");
-        println!("BENCHMARK SUITE COMPLETED");
-        println!("=================================\n");
-
-        Ok(())
-    }
-}

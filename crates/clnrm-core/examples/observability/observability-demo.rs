@@ -132,9 +132,9 @@ async fn test_observability_framework_self_test() -> Result<()> {
     );
 
     // Should have some observability data even with zero config
-    assert!(simple_traces.len() >= 0, "Should have trace data");
+    assert!(!simple_traces.is_empty(), "Should have trace data");
     assert!(
-        simple_metrics.tests_executed >= 0,
+        simple_metrics.tests_executed > 0,
         "Should have metrics data"
     );
 

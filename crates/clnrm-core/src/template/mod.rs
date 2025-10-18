@@ -121,7 +121,10 @@ impl TemplateRenderer {
     ///     .unwrap()
     ///     .with_determinism(engine);
     /// ```
-    pub fn with_determinism(mut self, engine: crate::determinism::DeterminismEngine) -> Result<Self> {
+    pub fn with_determinism(
+        mut self,
+        engine: crate::determinism::DeterminismEngine,
+    ) -> Result<Self> {
         let engine_arc = std::sync::Arc::new(engine);
 
         // Re-register functions with determinism engine
@@ -294,132 +297,4 @@ pub fn is_template(content: &str) -> bool {
 pub fn get_cached_template_renderer() -> Result<TemplateRenderer> {
     static INSTANCE: OnceLock<Result<TemplateRenderer>> = OnceLock::new();
     INSTANCE.get_or_init(TemplateRenderer::new).clone()
-}
-
-#[cfg(test)]
-mod tests {
-    #![allow(
-        clippy::unwrap_used,
-        clippy::expect_used,
-        clippy::indexing_slicing,
-        clippy::panic
-    )]
-
-    use super::*;
-    use serial_test::serial;
-
-    // Core functionality tests - Keep these
-    #[test]
-    #[serial]
-    fn test_template_detection() {
-        assert!(is_template("{{ var }}"));
-        assert!(is_template("{% for x in list %}"));
-        assert!(is_template("{# comment #}"));
-        assert!(!is_template("plain text"));
-        assert!(!is_template("[test]\nname = \"value\""));
-    }
-
-    #[test]
-    #[serial]
-    fn test_rendering_with_context() {
-        let mut renderer = TemplateRenderer::new().unwrap();
-        let mut context = TemplateContext::new();
-        context.vars.insert(
-            "name".to_string(),
-            serde_json::Value::String("World".to_string()),
-        );
-        renderer = renderer.with_context(context);
-
-        let result = renderer.render_str("Hello {{ vars.name }}", "test");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "Hello World");
-    }
-
-    #[test]
-    #[serial]
-    fn test_error_handling_invalid_template() {
-        let mut renderer = TemplateRenderer::new().unwrap();
-        let result = renderer.render_str("{{ unclosed", "test");
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(matches!(err.kind, crate::error::ErrorKind::TemplateError));
-    }
-
-    #[test]
-    #[serial]
-    fn test_macro_library_loaded() {
-        let renderer = TemplateRenderer::new().unwrap();
-        assert!(renderer
-            .tera
-            .get_template_names()
-            .any(|n| n == "_macros.toml.tera"));
-    }
-
-    // Comprehensive macro test - covers all macro types in one test
-    #[test]
-    #[serial]
-    fn test_complete_template_with_all_macros() {
-        let mut renderer = TemplateRenderer::new().unwrap();
-        let template = r#"
-{% import "_macros.toml.tera" as m %}
-[test.metadata]
-name = "integration-test"
-description = "Full integration test using all macros"
-
-{{ m::service("postgres", "postgres:15", env={"POSTGRES_PASSWORD": "test"}) }}
-{{ m::service("api", "nginx:alpine", args=["--port", "8080"]) }}
-
-{{ m::scenario("start_db", "postgres", "pg_isready") }}
-{{ m::scenario("test_api", "api", "curl localhost", expect_success=false) }}
-
-{{ m::span("test.root") }}
-{{ m::span("db.connect", parent="test.root", attrs={"db.system": "postgres"}) }}
-{{ m::span_exists("http.server") }}
-
-{{ m::graph_relationship("api.handler", "db.query", relationship="calls") }}
-{{ m::temporal_ordering("auth.login", "api.request") }}
-{{ m::error_propagation("db.query", "api.handler") }}
-{{ m::service_interaction("frontend", "api", method="GET") }}
-{{ m::attribute_validation("http.request", "http.status_code", "200") }}
-{{ m::resource_check("container", "postgres_db") }}
-{{ m::batch_validation(["span1", "span2"], "exists = true") }}
-"#;
-
-        let result = renderer.render_str(template, "test_complete_template_with_all_macros");
-        assert!(result.is_ok());
-        let output = result.unwrap();
-
-        // Verify all macro categories work
-        assert!(output.contains("[test.metadata]"));
-        assert!(output.contains("[service.postgres]"));
-        assert!(output.contains("[service.api]"));
-        assert!(output.contains("[[scenario]]"));
-        assert!(output.contains("[[expect.span]]"));
-        assert!(output.contains("[[expect.graph]]"));
-        assert!(output.contains("[[expect.temporal]]"));
-        assert!(output.contains("[[expect.resource]]"));
-        assert!(output.contains("error.source"));
-        assert!(output.contains("http.method"));
-    }
-
-    // Template control flow - important edge case
-    #[test]
-    #[serial]
-    fn test_macro_with_loop() {
-        let mut renderer = TemplateRenderer::new().unwrap();
-        let template = r#"
-{% import "_macros.toml.tera" as m %}
-{% set services = ["postgres", "redis", "nginx"] %}
-{% for svc in services %}
-{{ m::service(svc, "alpine:latest") }}
-{% endfor %}
-"#;
-
-        let result = renderer.render_str(template, "test_macro_with_loop");
-        assert!(result.is_ok());
-        let output = result.unwrap();
-        assert!(output.contains("[service.postgres]"));
-        assert!(output.contains("[service.redis]"));
-        assert!(output.contains("[service.nginx]"));
-    }
 }

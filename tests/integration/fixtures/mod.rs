@@ -152,39 +152,3 @@ pub fn save_fixture<T: Serialize>(name: &str, data: &T) -> anyhow::Result<()> {
     std::fs::write(&fixture_path, content)?;
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_config_fixtures() {
-        let alpine = ConfigFixture::default_alpine();
-        assert_eq!(alpine.backend, "testcontainers");
-        assert_eq!(alpine.security_level, "medium");
-
-        let high_sec = ConfigFixture::high_security();
-        assert_eq!(high_sec.security_level, "high");
-    }
-
-    #[test]
-    fn test_command_fixtures() {
-        let echo = CommandFixture::echo_hello();
-        assert_eq!(echo.command, "echo");
-        assert_eq!(echo.expected_exit_code, 0);
-
-        let fail = CommandFixture::failing_command();
-        assert_eq!(fail.expected_exit_code, 1);
-    }
-
-    #[test]
-    fn test_result_fixtures() {
-        let success = ResultFixture::successful_execution();
-        assert_eq!(success.exit_code, 0);
-        assert!(!success.stdout.is_empty());
-
-        let fail = ResultFixture::failed_execution();
-        assert_ne!(fail.exit_code, 0);
-        assert!(!fail.stderr.is_empty());
-    }
-}

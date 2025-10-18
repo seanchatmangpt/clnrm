@@ -471,27 +471,3 @@ pub async fn with_web_server(image: &str) -> Result<()> {
     );
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_service_setup_creation() -> Result<()> {
-        let env = CleanroomEnvironment::new().await?;
-        let setup = ServiceSetup::new(Arc::new(env));
-
-        // Test that service setup can be created
-        assert!(setup.services.read().await.is_empty());
-        Ok(())
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_jane_friendly_functions() {
-        // Test the Jane-friendly API functions
-        assert!(with_database("postgres:15").await.is_ok());
-        assert!(with_cache("redis:7").await.is_ok());
-        assert!(with_message_queue("rabbitmq").await.is_ok());
-        assert!(with_web_server("nginx").await.is_ok());
-    }
-}

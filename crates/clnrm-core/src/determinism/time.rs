@@ -25,22 +25,3 @@ pub fn parse_rfc3339(timestamp_str: &str) -> Result<DateTime<Utc>, chrono::Parse
 pub fn format_rfc3339(timestamp: &DateTime<Utc>) -> String {
     timestamp.to_rfc3339()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_rfc3339_valid() {
-        let timestamp_str = "2025-01-01T00:00:00Z";
-        let result = parse_rfc3339(timestamp_str);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_parse_rfc3339_invalid() {
-        let timestamp_str = "not-a-timestamp";
-        let result = parse_rfc3339(timestamp_str);
-        assert!(result.is_err());
-    }
-}

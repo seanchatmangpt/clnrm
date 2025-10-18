@@ -14,7 +14,6 @@ categories = ["development-tools"]
 name = "clnrm_core"
 path = "src/lib.rs"
 test = false
-example = false
 
 [dependencies]
 # Core dependencies
@@ -203,11 +202,7 @@ default = []
 ai = [
 ] # Marker feature for AI functionality (no dependencies to avoid circular deps)
 otel-testing = ["opentelemetry_sdk/testing"]
-
-# Test configuration - enforce 1 second timeout per test
-[profile.test]
-opt-level = 1 # Slightly optimize tests for speed
-debug = false # Disable debug info for faster compilation
+otel-traces = [] # Feature for OpenTelemetry traces functionality
 
 # Test timeout enforcement
 [package.metadata.cargo-make]

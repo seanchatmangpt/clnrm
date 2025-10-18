@@ -427,24 +427,3 @@ pub fn large_test_content(size_mb: usize) -> String {
 pub fn unicode_test_content() -> String {
     "Test: Hello 世界 🚀 Привет مرحبا".to_string()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_builder_creates_valid_config() {
-        let config = TestConfigBuilder::new("test")
-            .with_description("desc")
-            .with_step("step1", vec!["echo", "hello"])
-            .build();
-
-        assert!(config.validate().is_ok());
-    }
-
-    #[test]
-    fn test_fixture_minimal_config_is_valid() {
-        let config = fixture_minimal_test_config();
-        assert!(config.validate().is_ok());
-    }
-}

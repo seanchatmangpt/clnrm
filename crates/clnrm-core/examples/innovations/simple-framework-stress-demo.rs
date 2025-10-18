@@ -108,7 +108,7 @@ async fn main() -> Result<(), CleanroomError> {
             .await;
 
         match reused_result {
-            Ok(handle) => {
+            Ok(_handle) => {
                 println!("   ✅ Container {} reused successfully", i);
             }
             Err(e) => {

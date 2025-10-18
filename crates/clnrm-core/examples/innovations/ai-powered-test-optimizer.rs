@@ -304,7 +304,7 @@ impl AIPoweredTestOptimizer {
 
         for (test_name, pattern) in &self.learned_patterns {
             // Simple prediction based on historical success rate
-            let failure_probability = 1.0 - pattern.success_rate;
+            let _failure_probability = 1.0 - pattern.success_rate;
 
             // Adjust based on recent trends
             let recent_executions = self

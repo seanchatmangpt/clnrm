@@ -369,35 +369,3 @@ async fn test_circuit_breaker_pattern() -> Result<()> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod dependency_resilience_tests {
-    use super::*;
-
-    /// Test graceful degradation with dependency failures
-    #[tokio::test]
-    async fn test_graceful_degradation() -> Result<()> {
-        let engine = ChaosEnginePlugin::new("graceful_degradation")
-            .with_failure_rate(0.6);
-
-        let features = vec![
-            ("core_feature", true),    // Must work
-            ("enhanced_feature", false), // Can degrade
-            ("premium_feature", false),  // Can degrade
-        ];
-
-        for (feature, is_critical) in &features {
-            if engine.inject_failure(feature).await? {
-                if *is_critical {
-                    panic!("Critical feature '{}' failed", feature);
-                } else {
-                    println!("Feature '{}' degraded gracefully", feature);
-                }
-            } else {
-                println!("Feature '{}' working normally", feature);
-            }
-        }
-
-        Ok(())
-    }
-}

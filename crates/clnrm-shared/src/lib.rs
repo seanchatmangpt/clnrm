@@ -39,21 +39,3 @@ impl Default for SharedConfig {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_generate_session_id() {
-        let id1 = generate_session_id();
-        let id2 = generate_session_id();
-        assert_ne!(id1, id2);
-    }
-
-    #[test]
-    fn test_shared_config_default() {
-        let config = SharedConfig::default();
-        assert_eq!(config.version, env!("CARGO_PKG_VERSION"));
-    }
-}

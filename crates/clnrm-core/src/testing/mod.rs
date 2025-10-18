@@ -3,7 +3,6 @@
 //! This module provides testing infrastructure including property-based
 //! test generators, test fixtures, and helper functions.
 
-
 // Re-export framework test types and functions for CLI commands
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;

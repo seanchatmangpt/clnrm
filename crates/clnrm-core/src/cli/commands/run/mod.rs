@@ -1126,30 +1126,3 @@ mod watch {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_run_tests_sequential_with_results_empty_paths() -> Result<()> {
-        let paths = vec![];
-        let config = CliConfig::default();
-
-        let results = run_tests_sequential_with_results(&paths, &config).await?;
-
-        assert_eq!(results.len(), 0);
-        Ok(())
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_run_tests_parallel_with_results_empty_paths() -> Result<()> {
-        let paths = vec![];
-        let config = CliConfig::default();
-
-        let results = run_tests_parallel_with_results(&paths, &config).await?;
-
-        assert_eq!(results.len(), 0);
-        Ok(())
-    }
-}

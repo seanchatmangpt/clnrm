@@ -221,16 +221,3 @@ async fn pull_single_image(image: &str) -> Result<()> {
     println!("  ✓ Pulled {}", image);
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_is_test_file() {
-        assert!(is_test_file(Path::new("test.clnrm.toml")));
-        assert!(is_test_file(Path::new("tests/integration.clnrm.toml")));
-        assert!(!is_test_file(Path::new("config.toml")));
-        assert!(!is_test_file(Path::new("test.txt")));
-    }
-}

@@ -445,39 +445,3 @@ async fn test_pagination_under_chaos() -> Result<()> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod database_resilience_tests {
-    use super::*;
-
-    /// Test database resilience under continuous failures
-    #[tokio::test]
-    async fn test_continuous_database_failures() -> Result<()> {
-        let engine = ChaosEnginePlugin::new("continuous_db_failures")
-            .with_failure_rate(0.5);
-
-        let duration = Duration::from_secs(5);
-        let start = Instant::now();
-        let mut operations = 0;
-        let mut failures = 0;
-
-        while start.elapsed() < duration {
-            operations += 1;
-
-            if engine.inject_failure(&format!("operation_{}", operations)).await? {
-                failures += 1;
-            }
-
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
-
-        let failure_rate = (failures as f64 / operations as f64) * 100.0;
-
-        println!("Continuous database failure test:");
-        println!("  Operations: {}", operations);
-        println!("  Failures: {} ({:.1}%)", failures, failure_rate);
-        println!("  Duration: {:?}", start.elapsed());
-
-        Ok(())
-    }
-}

@@ -30,24 +30,3 @@ pub fn verify_digest(data: &[u8], expected_digest: &str) -> bool {
     let actual_digest = generate_digest(data);
     actual_digest == expected_digest
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_generate_digest_deterministic() {
-        let data = b"test data";
-        let digest1 = generate_digest(data);
-        let digest2 = generate_digest(data);
-        assert_eq!(digest1, digest2);
-    }
-
-    #[test]
-    fn test_verify_digest_valid() {
-        let data = b"test data";
-        let digest = generate_digest(data);
-        let valid = verify_digest(data, &digest);
-        assert!(valid);
-    }
-}

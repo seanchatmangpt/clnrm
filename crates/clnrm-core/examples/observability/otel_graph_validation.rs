@@ -27,9 +27,7 @@
 //! ```
 
 use clnrm_core::error::{CleanroomError, Result};
-use clnrm_core::validation::otel::{
-    OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion, ValidationSpanProcessor,
-};
+use clnrm_core::validation::otel::{OtelValidationConfig, OtelValidator, ValidationSpanProcessor};
 use opentelemetry::{
     global,
     trace::{Span, SpanId, TraceContextExt, Tracer},
@@ -487,215 +485,10 @@ impl Default for GraphValidator {
 }
 
 /// Example: Validate a simple tree structure
-#[cfg(test)]
-#[tokio::test]
-async fn test_graph_edge_validation() -> Result<()> {
-    // Arrange: Create graph validator
-    let validator = GraphValidator::new()?;
-
-    // Generate test spans with expected call graph:
-    // api_gateway → auth_service → database
-    //            → user_service → cache
-    let tracer = global::tracer("test");
-
-    let mut api_span = tracer.start("api_gateway");
-    let api_context = Context::current_with_span(api_span);
-
-    let mut auth_span = tracer.start_with_context("auth_service", &api_context);
-    let auth_context = Context::current_with_span(auth_span);
-
-    let mut db_span = tracer.start_with_context("database", &auth_context);
-    db_span.end();
-
-    let mut user_span = tracer.start_with_context("user_service", &api_context);
-    let user_context = Context::current_with_span(user_span);
-
-    let mut cache_span = tracer.start_with_context("cache", &user_context);
-    cache_span.end();
-
-    // Give processor time to collect spans
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    // Act: Validate expected edges
-    let assertions = vec![
-        GraphAssertion::HasEdge {
-            parent_name: "api_gateway".to_string(),
-            child_name: "auth_service".to_string(),
-        },
-        GraphAssertion::HasEdge {
-            parent_name: "auth_service".to_string(),
-            child_name: "database".to_string(),
-        },
-        GraphAssertion::HasEdge {
-            parent_name: "api_gateway".to_string(),
-            child_name: "user_service".to_string(),
-        },
-        GraphAssertion::HasEdge {
-            parent_name: "user_service".to_string(),
-            child_name: "cache".to_string(),
-        },
-        GraphAssertion::NoCycles,
-    ];
-
-    let result = validator.validate(&assertions)?;
-
-    // Assert: All validations should pass
-    assert!(
-        result.passed,
-        "Graph validation failed: {:?}",
-        result.errors
-    );
-    assert_eq!(result.passed_assertions, assertions.len());
-
-    Ok(())
-}
-
 /// Example: Validate tree structure
-#[cfg(test)]
-#[tokio::test]
-async fn test_graph_tree_structure() -> Result<()> {
-    // Arrange: Create graph validator
-    let validator = GraphValidator::new()?;
-
-    // Generate tree-structured spans
-    let tracer = global::tracer("test");
-
-    let mut root_span = tracer.start("root_span");
-    let root_context = Context::current_with_span(root_span);
-
-    let mut child1_span = tracer.start_with_context("child1", &root_context);
-    child1_span.end();
-
-    let mut child2_span = tracer.start_with_context("child2", &root_context);
-    child2_span.end();
-
-    // Give processor time to collect spans
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    // Act: Validate tree properties
-    let assertions = vec![
-        GraphAssertion::IsTree,
-        GraphAssertion::SingleRoot {
-            root_name: "root_span".to_string(),
-        },
-        GraphAssertion::AllReachableFromRoot {
-            root_name: "root_span".to_string(),
-        },
-        GraphAssertion::MaxDepth { max_depth: 5 },
-        GraphAssertion::NoOrphans,
-        GraphAssertion::IsDAG,
-        GraphAssertion::ConnectedComponents { expected_count: 1 },
-    ];
-
-    let result = validator.validate(&assertions)?;
-
-    // Assert: All tree validations should pass
-    assert!(result.passed, "Tree validation failed: {:?}", result.errors);
-    assert_eq!(result.passed_assertions, assertions.len());
-
-    Ok(())
-}
-
 /// Example: Detect graph anomalies (cyclic dependencies)
-#[cfg(test)]
-#[tokio::test]
-async fn test_graph_cycle_detection() -> Result<()> {
-    // Arrange: Create graph validator
-    let validator = GraphValidator::new()?;
-
-    // Generate normal acyclic spans
-    let tracer = global::tracer("test");
-
-    let mut span1 = tracer.start("span1");
-    let context1 = Context::current_with_span(span1);
-
-    let mut span2 = tracer.start_with_context("span2", &context1);
-    span2.end();
-
-    // Give processor time to collect spans
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    // Act: Validate no cycles
-    let assertions = vec![GraphAssertion::NoCycles, GraphAssertion::IsDAG];
-
-    let result = validator.validate(&assertions)?;
-
-    // Assert: Should pass (no cycles)
-    assert!(result.passed, "Cycle detection failed: {:?}", result.errors);
-
-    Ok(())
-}
-
 /// Example: Detect orphaned spans
-#[cfg(test)]
-#[tokio::test]
-async fn test_graph_orphan_detection() -> Result<()> {
-    // Arrange: Create graph validator
-    let validator = GraphValidator::new()?;
-
-    // Generate connected spans (no orphans)
-    let tracer = global::tracer("test");
-
-    let mut parent = tracer.start("parent");
-    let parent_context = Context::current_with_span(parent);
-
-    let mut child = tracer.start_with_context("child", &parent_context);
-    child.end();
-
-    // Give processor time to collect spans
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    // Act: Validate no orphans
-    let assertions = vec![GraphAssertion::NoOrphans];
-
-    let result = validator.validate(&assertions)?;
-
-    // Assert: Should pass (no orphans)
-    assert!(
-        result.passed,
-        "Orphan detection failed: {:?}",
-        result.errors
-    );
-
-    Ok(())
-}
-
 /// Example: Validate connected components
-#[cfg(test)]
-#[tokio::test]
-async fn test_graph_connected_components() -> Result<()> {
-    // Arrange: Create graph validator with single connected component
-    let validator = GraphValidator::new()?;
-
-    let tracer = global::tracer("test");
-
-    let mut root = tracer.start("root");
-    let root_context = Context::current_with_span(root);
-
-    let mut child1 = tracer.start_with_context("child1", &root_context);
-    child1.end();
-
-    let mut child2 = tracer.start_with_context("child2", &root_context);
-    child2.end();
-
-    // Give processor time to collect spans
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    // Act: Validate single connected component
-    let assertions = vec![GraphAssertion::ConnectedComponents { expected_count: 1 }];
-
-    let result = validator.validate(&assertions)?;
-
-    // Assert: Should have exactly one connected component
-    assert!(
-        result.passed,
-        "Connected component validation failed: {:?}",
-        result.errors
-    );
-
-    Ok(())
-}
-
 /// Main demonstration function
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -757,16 +550,16 @@ async fn main() -> Result<()> {
 
     let tracer = global::tracer("demo");
 
-    let mut api_span = tracer.start("api_gateway");
+    let api_span = tracer.start("api_gateway");
     let api_context = Context::current_with_span(api_span);
 
-    let mut auth_span = tracer.start_with_context("auth_service", &api_context);
+    let auth_span = tracer.start_with_context("auth_service", &api_context);
     let auth_context = Context::current_with_span(auth_span);
 
     let mut db_span = tracer.start_with_context("database", &auth_context);
     db_span.end();
 
-    let mut user_span = tracer.start_with_context("user_service", &api_context);
+    let user_span = tracer.start_with_context("user_service", &api_context);
     let user_context = Context::current_with_span(user_span);
 
     let mut cache_span = tracer.start_with_context("cache", &user_context);

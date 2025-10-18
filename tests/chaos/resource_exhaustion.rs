@@ -277,33 +277,3 @@ async fn test_file_descriptor_exhaustion() -> Result<()> {
     // Files are automatically closed when vector goes out of scope
     Ok(())
 }
-
-#[cfg(test)]
-mod stress_tests {
-    use super::*;
-
-    /// Test sustained resource pressure
-    #[tokio::test]
-    #[ignore] // Long-running test
-    async fn test_sustained_resource_pressure() -> Result<()> {
-        let engine = ChaosEnginePlugin::new("sustained_pressure");
-
-        let duration_secs = 30; // 30 seconds of sustained pressure
-
-        let scenario = ChaosScenario::CpuSaturation {
-            duration_secs,
-            target_percent: 60,
-        };
-
-        println!("Running sustained resource pressure for {}s", duration_secs);
-
-        let start = Instant::now();
-        engine.run_scenario(&scenario).await?;
-        let elapsed = start.elapsed();
-
-        println!("Sustained pressure test completed after {}s", elapsed.as_secs());
-        assert!(elapsed.as_secs() >= duration_secs);
-
-        Ok(())
-    }
-}

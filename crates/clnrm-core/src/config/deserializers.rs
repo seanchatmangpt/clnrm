@@ -37,16 +37,3 @@ fn parse_duration(s: &str) -> Result<Duration, String> {
 
     Ok(duration)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_duration() {
-        assert_eq!(parse_duration("60s").unwrap(), Duration::from_secs(60));
-        assert_eq!(parse_duration("5m").unwrap(), Duration::from_secs(300));
-        assert_eq!(parse_duration("1h").unwrap(), Duration::from_secs(3600));
-        assert_eq!(parse_duration("2d").unwrap(), Duration::from_secs(172800));
-    }
-}

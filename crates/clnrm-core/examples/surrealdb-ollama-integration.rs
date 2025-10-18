@@ -12,7 +12,6 @@ use clnrm_core::{
     },
 };
 use serde_json::{json, Value};
-use std::collections::HashMap;
 use surrealdb::{
     engine::remote::ws::{Client, Ws},
     opt::auth::Root,

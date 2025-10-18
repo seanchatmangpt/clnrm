@@ -16,7 +16,7 @@ async fn test_toml_configuration_self_validation() -> Result<()> {
     println!("📋 Testing TOML configuration system...");
     println!("📋 This validates README claims about TOML configuration");
 
-    let env = CleanroomEnvironment::new().await?;
+    let _env = CleanroomEnvironment::new().await?;
     let start_time = std::time::Instant::now();
 
     // Test 1: Parse framework's own TOML test files (dogfooding)

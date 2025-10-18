@@ -7,7 +7,7 @@
 use clnrm_core::error::Result;
 use clnrm_core::{CleanroomEnvironment, HealthStatus, ServiceHandle, ServicePlugin};
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tracing::{debug, info};
 
 /// Innovative plugin self-testing using the framework's own plugin system

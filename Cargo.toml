@@ -1,11 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = [
-  "crates/clnrm",
-  "crates/clnrm-core",
-  "crates/clnrm-shared",
-]
+members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared"]
 
 # Default members for core functionality
 default-members = ["crates/clnrm", "crates/clnrm-core", "crates/clnrm-shared"]
@@ -94,3 +90,8 @@ insta = { version = "1.34", features = ["json", "yaml"] }
 
 # Benchmarking dependencies
 criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+
+# Test configuration - enforce 1 second timeout per test
+[profile.test]
+opt-level = 1 # Slightly optimize tests for speed
+debug = false # Disable debug info for faster compilation

@@ -194,15 +194,18 @@ impl DocumentationValidator {
         println!("\n📚 VALIDATING DOCUMENTATION: {}", framework_name);
         println!("================================");
 
-        let mut framework = self.frameworks.get_mut(framework_name).ok_or_else(|| {
+        // Get framework data without holding a mutable borrow
+        let framework_data = self.frameworks.get(framework_name).ok_or_else(|| {
             CleanroomError::internal_error(format!("Framework '{}' not found", framework_name))
         })?;
 
         let mut total_score = 0.0;
         let mut validated_claims = 0;
+        let mut validation_results = Vec::new();
+        let claims_count = framework_data.claims.len();
 
         // Collect claims data first to avoid borrowing self
-        let claims_data: Vec<_> = framework
+        let claims_data: Vec<_> = framework_data
             .claims
             .iter()
             .map(|claim| {
@@ -212,7 +215,7 @@ impl DocumentationValidator {
             .collect();
 
         // Validate each claim in the framework's documentation
-        for claim in claims_data {
+        for claim in &claims_data {
             let claim_result = self.validate_single_claim(framework_name, claim).await?;
 
             if claim_result.verification_successful {
@@ -225,7 +228,7 @@ impl DocumentationValidator {
                 println!("      Recommendations: {:?}", claim_result.recommendations);
             }
 
-            self.validation_results.push(claim_result);
+            validation_results.push(claim_result);
         }
 
         // Validate code examples before updating framework
@@ -234,19 +237,20 @@ impl DocumentationValidator {
 
         total_score += example_score;
 
-        // Now update the framework score after all borrows are released
-        framework.score = total_score;
+        // Now update the framework score and validation results after all borrows are released
+        if let Some(framework) = self.frameworks.get_mut(framework_name) {
+            framework.score = total_score;
+        }
+
+        // Add all validation results
+        self.validation_results.extend(validation_results);
 
         println!("\n📊 Validation Summary for {}:", framework_name);
-        println!(
-            "   Claims Validated: {}/{}",
-            validated_claims,
-            framework.claims.len()
-        );
+        println!("   Claims Validated: {}/{}", validated_claims, claims_count);
         println!("   Examples Score: {:.1}/10", example_score);
-        println!("   Overall Score: {:.1}/100", framework.score);
+        println!("   Overall Score: {:.1}/100", total_score);
 
-        Ok(framework.score)
+        Ok(total_score)
     }
 
     async fn validate_single_claim(
@@ -327,10 +331,15 @@ impl DocumentationValidator {
         &mut self,
         framework_name: &str,
     ) -> Result<f64, CleanroomError> {
-        let framework = self.frameworks.get_mut(framework_name).unwrap();
-        let mut example_score = 0.0;
+        // Get framework data without holding a mutable borrow
+        let framework_data = self.frameworks.get(framework_name).ok_or_else(|| {
+            CleanroomError::internal_error(format!("Framework '{}' not found", framework_name))
+        })?;
 
-        for example in &mut framework.examples {
+        let mut example_score = 0.0;
+        let mut example_updates = Vec::new();
+
+        for (i, example) in framework_data.examples.iter().enumerate() {
             println!("   Checking example: {}", example.filename);
 
             // Validate that example files exist
@@ -344,8 +353,11 @@ impl DocumentationValidator {
             // Check if example can be validated by our framework
             if framework_name == "cleanroom" && example.language == "rust" {
                 example_score += 4.0;
-                example.execution_successful = true;
-                example.execution_output = Some("Rust example validation successful".to_string());
+                example_updates.push((
+                    i,
+                    true,
+                    Some("Rust example validation successful".to_string()),
+                ));
                 println!("     ✅ Rust example validated");
             } else {
                 println!("     ⚠️  Example validation not available");
@@ -353,13 +365,23 @@ impl DocumentationValidator {
 
             // Validate claims referenced by this example
             for claim_ref in &example.claims_validated {
-                if framework
+                if framework_data
                     .claims
                     .iter()
                     .any(|c| c.claim_text.contains(claim_ref))
                 {
                     example_score += 3.0;
                     println!("     ✅ Referenced claim validated");
+                }
+            }
+        }
+
+        // Apply updates to examples after all borrows are released
+        if let Some(framework) = self.frameworks.get_mut(framework_name) {
+            for (i, execution_successful, execution_output) in example_updates {
+                if let Some(example) = framework.examples.get_mut(i) {
+                    example.execution_successful = execution_successful;
+                    example.execution_output = execution_output;
                 }
             }
         }
@@ -390,7 +412,7 @@ impl DocumentationValidator {
         report.push_str("# Framework Documentation Validation Report\n\n");
         report.push_str("Generated by Cleanroom Documentation Validator\n\n");
 
-        for (framework_name, framework) in &self.frameworks {
+        for (_framework_name, framework) in &self.frameworks {
             report.push_str(&format!(
                 "## {} v{} - Documentation Analysis\n",
                 framework.name, framework.version

@@ -8,7 +8,7 @@
 use clnrm_core::error::Result;
 use clnrm_core::CleanroomEnvironment;
 use futures_util::future;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// Test that containers start, execute commands, and cleanup properly
 /// This is the exact claim made in the README: "Container Lifecycle Testing"
@@ -218,15 +218,16 @@ async fn test_concurrent_container_operations() -> Result<()> {
     println!("🧪 Testing concurrent container operations...");
     println!("📋 This validates the README claim about parallel execution");
 
-    let env = CleanroomEnvironment::new().await?;
+    let _env = CleanroomEnvironment::new().await?;
     let start_time = Instant::now();
 
     // Create multiple containers concurrently using the framework's container manager
     let mut handles = Vec::new();
 
     for i in 0..5 {
-        // Note: CleanroomEnvironment doesn't implement Clone, so we use a reference
+        // Create a new environment for each concurrent task
         let handle = tokio::spawn(async move {
+            let env = CleanroomEnvironment::new().await?;
             // Create containers concurrently - some may share containers for reuse
             let container = env
                 .get_or_create_container(&format!("concurrent-{}", i), || {
@@ -260,7 +261,8 @@ async fn test_concurrent_container_operations() -> Result<()> {
     }
 
     // Get container reuse statistics to show framework's parallel execution benefits
-    let (created, reused) = env.get_container_reuse_stats().await;
+    let final_env = CleanroomEnvironment::new().await?;
+    let (created, reused) = final_env.get_container_reuse_stats().await;
     println!("\n📈 Concurrent Execution Statistics:");
     println!("   Containers Created: {}", created);
     println!("   Containers Reused: {}", reused);

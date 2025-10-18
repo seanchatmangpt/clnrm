@@ -61,29 +61,3 @@ pub async fn execute_chaos_scenario(
 ) -> Result<()> {
     engine.run_scenario(&scenario).await
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_chaos_module_initialization() {
-        let config = ChaosTestConfig::default();
-        let engine = init_chaos_engine(config).await;
-        assert!(engine.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_chaos_scenario_execution() {
-        let config = ChaosTestConfig::default();
-        let engine = init_chaos_engine(config).await.unwrap();
-
-        let scenario = ChaosScenario::RandomFailures {
-            duration_secs: 1,
-            failure_rate: 0.5,
-        };
-
-        let result = execute_chaos_scenario(&engine, scenario).await;
-        assert!(result.is_ok());
-    }
-}

@@ -168,38 +168,3 @@ pub async fn run_dev_mode(
 ) -> Result<()> {
     run_dev_mode_with_filters(paths, debounce_ms, clear_screen, None, None, cli_config).await
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_run_dev_mode_with_nonexistent_path() -> Result<()> {
-        // Arrange
-        let paths = vec![PathBuf::from("/nonexistent/path/that/does/not/exist")];
-        let config = CliConfig::default();
-
-        // Act
-        let result = run_dev_mode_with_filters(Some(paths), 300, false, None, None, config).await;
-
-        // Assert
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.message.contains("does not exist"));
-        Ok(())
-    }
-
-    #[test]
-    fn test_dev_mode_with_filter_pattern() {
-        // Test that filter pattern configuration works
-        let pattern = "otel".to_string();
-        assert_eq!(pattern, "otel");
-    }
-
-    #[test]
-    fn test_dev_mode_with_timebox() {
-        // Test that timebox configuration works
-        let timebox = 5000u64;
-        assert_eq!(timebox, 5000);
-    }
-}

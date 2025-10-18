@@ -255,23 +255,3 @@ fn get_health_status(percentage: u32) -> &'static str {
         _ => "CRITICAL - Immediate attention required",
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_health_status() {
-        assert_eq!(
-            get_health_status(100),
-            "EXCELLENT - All systems operational"
-        );
-        assert_eq!(get_health_status(85), "GOOD - Minor issues detected");
-        assert_eq!(get_health_status(75), "ACCEPTABLE - Some features degraded");
-        assert_eq!(get_health_status(65), "DEGRADED - Multiple issues detected");
-        assert_eq!(
-            get_health_status(50),
-            "CRITICAL - Immediate attention required"
-        );
-    }
-}

@@ -15,8 +15,6 @@ use clnrm_core::{
     CleanroomEnvironment, CleanroomError, HealthStatus, ServiceHandle, ServicePlugin,
 };
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
@@ -74,6 +72,7 @@ enum SessionStatus {
 }
 
 /// Distributed Service Coordinator Plugin
+#[derive(Debug)]
 struct DistributedCoordinatorPlugin {
     orchestrator: std::sync::Arc<std::sync::Mutex<DistributedTestingOrchestrator>>,
 }
@@ -89,35 +88,24 @@ impl ServicePlugin for DistributedCoordinatorPlugin {
         "distributed_coordinator"
     }
 
-    fn start(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ServiceHandle, CleanroomError>> + Send + '_>> {
-        let name = self.name().to_string();
-        Box::pin(async move {
-            println!("🚀 Starting Distributed Testing Coordinator");
+    fn start(&self) -> Result<ServiceHandle, CleanroomError> {
+        println!("🚀 Starting Distributed Testing Coordinator");
 
-            let handle = ServiceHandle {
-                id: format!("distributed-coordinator-{}", uuid::Uuid::new_v4()),
-                service_name: name,
-                metadata: HashMap::new(),
-            };
+        let handle = ServiceHandle {
+            id: format!("distributed-coordinator-{}", uuid::Uuid::new_v4()),
+            service_name: self.name().to_string(),
+            metadata: HashMap::new(),
+        };
 
-            Ok(handle)
-        })
+        Ok(handle)
     }
 
-    fn stop(
-        &self,
-        handle: ServiceHandle,
-    ) -> Pin<Box<dyn Future<Output = Result<(), CleanroomError>> + Send + '_>> {
-        let service_name = handle.service_name.clone();
-        Box::pin(async move {
-            println!(
-                "🛑 Stopping Distributed Testing Coordinator: {}",
-                service_name
-            );
-            Ok(())
-        })
+    fn stop(&self, handle: ServiceHandle) -> Result<(), CleanroomError> {
+        println!(
+            "🛑 Stopping Distributed Testing Coordinator: {}",
+            handle.service_name
+        );
+        Ok(())
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {

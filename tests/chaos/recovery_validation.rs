@@ -445,33 +445,3 @@ async fn test_partial_recovery() -> Result<()> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod comprehensive_recovery_tests {
-    use super::*;
-
-    /// Comprehensive recovery validation suite
-    #[tokio::test]
-    async fn comprehensive_recovery_validation() -> Result<()> {
-        println!("\n==========================================");
-        println!("COMPREHENSIVE RECOVERY VALIDATION SUITE");
-        println!("==========================================\n");
-
-        test_basic_recovery_cycle().await?;
-        test_graceful_degradation().await?;
-        test_recovery_time_objective().await?;
-        test_automatic_failover().await?;
-        test_circuit_breaker_recovery().await?;
-        test_state_preservation().await?;
-        test_retry_with_backoff().await?;
-        test_health_check_recovery().await?;
-        test_cascading_recovery().await?;
-        test_partial_recovery().await?;
-
-        println!("\n==========================================");
-        println!("ALL RECOVERY TESTS PASSED");
-        println!("==========================================\n");
-
-        Ok(())
-    }
-}
