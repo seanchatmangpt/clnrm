@@ -371,6 +371,7 @@ Report results
 - **[CLAUDE.md](CLAUDE.md)** - Development guidelines and architecture
 - **[TOML Reference](docs/TOML_REFERENCE.md)** - Configuration format (describes planned features)
 - **[Codebase Quality Analysis](CODEBASE_QUALITY_ANALYSIS.md)** - Current code status
+- **[Rosetta Stone Pattern Analysis](docs/ROSETTA_STONE_PATTERN_ANALYSIS.md)** - Comprehensive analysis of the innovative Rosetta Stone testing methodology
 - **[False README](docs/FALSE_README.md)** - Archived version with false claims
 
 **Note:** Some documentation describes planned features not yet implemented. Check this README's feature matrix for actual status.
