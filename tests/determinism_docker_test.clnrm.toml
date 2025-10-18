@@ -1,0 +1,21 @@
+# Determinism Validation Test - Property-Based Testing in Docker
+# Tests that determinism features work when running in Docker containers
+
+[meta]
+name = "determinism_docker_validation"
+version = "1.0.0"
+description = "Validates freeze_clock and seed work in Docker containers"
+
+[determinism]
+seed = 42
+freeze_clock = "2025-01-15T12:00:00Z"
+
+[service.test_container]
+type = "generic_container"
+image = "alpine:latest"
+args = ["sh", "-c", "echo 'Container ready'"]
+
+[[scenario]]
+name = "validate_deterministic_execution"
+service = "test_container"
+run = "echo 'Testing determinism in Docker'"

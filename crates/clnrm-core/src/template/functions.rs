@@ -11,25 +11,31 @@
 //! - Extended functions: UUIDs, collections, OTEL helpers, etc.
 
 use crate::error::Result;
-use chrono::Utc;
 use fake::Fake;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tera::{Function, Tera, Value};
 
 /// Register all custom functions with Tera
-pub fn register_functions(tera: &mut Tera) -> Result<()> {
+///
+/// # Arguments
+/// * `tera` - Tera template engine
+/// * `determinism` - Optional determinism engine for reproducible rendering
+pub fn register_functions(
+    tera: &mut Tera,
+    determinism: Option<Arc<crate::determinism::DeterminismEngine>>,
+) -> Result<()> {
     // Original functions
     tera.register_function("env", EnvFunction);
-    tera.register_function("now_rfc3339", NowRfc3339Function::new());
+    tera.register_function("now_rfc3339", NowRfc3339Function::new(determinism.clone()));
     tera.register_function("sha256", Sha256Function);
     tera.register_function("toml_encode", TomlEncodeFunction);
 
-    // Fake data generators
-    register_fake_data_functions(tera);
+    // Fake data generators with determinism support
+    register_fake_data_functions(tera, determinism);
 
     // Extended functions (UUIDs, collections, OTEL, etc.)
     super::extended::register_extended_functions(tera);
@@ -38,7 +44,7 @@ pub fn register_functions(tera: &mut Tera) -> Result<()> {
 }
 
 /// Register all fake data generator functions
-fn register_fake_data_functions(tera: &mut Tera) {
+fn register_fake_data_functions(tera: &mut Tera, _determinism: Option<Arc<crate::determinism::DeterminismEngine>>) {
     // UUIDs
     tera.register_function("fake_uuid", FakeUuidFunction);
     tera.register_function("fake_uuid_seeded", FakeUuidSeededFunction);
@@ -145,41 +151,22 @@ impl Function for EnvFunction {
 ///
 /// Returns RFC3339 formatted timestamp. Can be frozen for deterministic tests.
 struct NowRfc3339Function {
-    frozen: Arc<Mutex<Option<String>>>,
+    engine: Option<Arc<crate::determinism::DeterminismEngine>>,
 }
 
 impl NowRfc3339Function {
-    fn new() -> Self {
-        Self {
-            frozen: Arc::new(Mutex::new(None)),
-        }
-    }
-
-    /// Freeze the clock to a specific timestamp for deterministic testing
-    #[allow(dead_code)]
-    pub fn freeze(&self, timestamp: String) {
-        if let Ok(mut frozen) = self.frozen.lock() {
-            *frozen = Some(timestamp);
-        }
-    }
-
-    /// Unfreeze the clock to use real time
-    #[allow(dead_code)]
-    pub fn unfreeze(&self) {
-        if let Ok(mut frozen) = self.frozen.lock() {
-            *frozen = None;
-        }
+    fn new(engine: Option<Arc<crate::determinism::DeterminismEngine>>) -> Self {
+        Self { engine }
     }
 }
 
 impl Function for NowRfc3339Function {
     fn call(&self, _args: &HashMap<String, Value>) -> tera::Result<Value> {
-        if let Ok(frozen) = self.frozen.lock() {
-            if let Some(ref frozen_time) = *frozen {
-                return Ok(Value::String(frozen_time.clone()));
-            }
+        if let Some(ref eng) = self.engine {
+            Ok(Value::String(eng.get_timestamp_rfc3339()))
+        } else {
+            Ok(Value::String(chrono::Utc::now().to_rfc3339()))
         }
-        Ok(Value::String(Utc::now().to_rfc3339()))
     }
 }
 
@@ -987,30 +974,8 @@ mod tests {
     }
 
     #[test]
-    fn test_now_rfc3339_frozen() {
-        let func = NowRfc3339Function::new();
-        let frozen_time = "2024-01-01T00:00:00Z".to_string();
-        func.freeze(frozen_time.clone());
-
-        let args = HashMap::new();
-        let result = func.call(&args).unwrap();
-        assert_eq!(result.as_str().unwrap(), frozen_time);
-    }
 
     #[test]
-    fn test_now_rfc3339_unfreeze() {
-        let func = NowRfc3339Function::new();
-        let frozen_time = "2024-01-01T00:00:00Z".to_string();
-
-        // Freeze, then unfreeze
-        func.freeze(frozen_time.clone());
-        func.unfreeze();
-
-        let args = HashMap::new();
-        let result = func.call(&args).unwrap();
-        // Should not be the frozen time anymore
-        assert_ne!(result.as_str().unwrap(), frozen_time);
-    }
 
     #[test]
     fn test_sha256_function() {

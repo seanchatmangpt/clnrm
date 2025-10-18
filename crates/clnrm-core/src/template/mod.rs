@@ -28,6 +28,7 @@ pub use determinism::DeterminismConfig;
 pub struct TemplateRenderer {
     tera: Tera,
     context: TemplateContext,
+    determinism: Option<std::sync::Arc<crate::determinism::DeterminismEngine>>,
 }
 
 /// Macro library content embedded at compile time
@@ -44,8 +45,8 @@ impl TemplateRenderer {
     pub fn new() -> Result<Self> {
         let mut tera = Tera::default();
 
-        // Register custom functions
-        functions::register_functions(&mut tera)?;
+        // Register custom functions (no determinism engine)
+        functions::register_functions(&mut tera, None)?;
 
         // Register extended functions (UUID, string transforms, time helpers, OTEL)
         extended::register_extended_functions(&mut tera);
@@ -59,6 +60,7 @@ impl TemplateRenderer {
         Ok(Self {
             tera,
             context: TemplateContext::new(),
+            determinism: None,
         })
     }
 
@@ -69,8 +71,8 @@ impl TemplateRenderer {
     pub fn with_defaults() -> Result<Self> {
         let mut tera = Tera::default();
 
-        // Register custom functions
-        functions::register_functions(&mut tera)?;
+        // Register custom functions (no determinism engine)
+        functions::register_functions(&mut tera, None)?;
 
         // Register extended functions (UUID, string transforms, time helpers, OTEL)
         extended::register_extended_functions(&mut tera);
@@ -84,6 +86,7 @@ impl TemplateRenderer {
         Ok(Self {
             tera,
             context: TemplateContext::with_defaults(),
+            determinism: None,
         })
     }
 
@@ -91,6 +94,41 @@ impl TemplateRenderer {
     pub fn with_context(mut self, context: TemplateContext) -> Self {
         self.context = context;
         self
+    }
+
+    /// Set determinism engine for reproducible template rendering
+    ///
+    /// When configured, this freezes `now_rfc3339()` function and provides
+    /// seeded random generation for fake data functions.
+    ///
+    /// # Arguments
+    /// * `engine` - DeterminismEngine with optional seed and freeze_clock
+    ///
+    /// # Returns
+    /// * Self with determinism enabled
+    ///
+    /// # Example
+    /// ```no_run
+    /// use clnrm_core::template::TemplateRenderer;
+    /// use clnrm_core::determinism::{DeterminismEngine, DeterminismConfig};
+    ///
+    /// let config = DeterminismConfig {
+    ///     seed: Some(42),
+    ///     freeze_clock: Some("2025-01-01T00:00:00Z".to_string()),
+    /// };
+    /// let engine = DeterminismEngine::new(config).unwrap();
+    /// let renderer = TemplateRenderer::new()
+    ///     .unwrap()
+    ///     .with_determinism(engine);
+    /// ```
+    pub fn with_determinism(mut self, engine: crate::determinism::DeterminismEngine) -> Result<Self> {
+        let engine_arc = std::sync::Arc::new(engine);
+
+        // Re-register functions with determinism engine
+        functions::register_functions(&mut self.tera, Some(engine_arc.clone()))?;
+
+        self.determinism = Some(engine_arc);
+        Ok(self)
     }
 
     /// Merge user-provided variables into context (respects precedence)

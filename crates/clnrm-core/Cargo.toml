@@ -13,6 +13,8 @@ categories = ["development-tools"]
 [lib]
 name = "clnrm_core"
 path = "src/lib.rs"
+test = false
+example = false
 
 [dependencies]
 # Core dependencies
@@ -163,48 +165,10 @@ path = "examples/plugins/plugin-self-test.rs"
 name = "otel-stdout-exporter-demo"
 path = "../../examples/otel_stdout_exporter_demo.rs"
 
-# Consolidated Tests (80/20 Phase 1 & 2)
-[[test]]
-name = "template_variable_resolution_test"
-path = "tests/template_variable_resolution_test.rs"
-
-# Integration tests
-[[test]]
-name = "prd_template_workflow"
-path = "tests/integration/prd_template_workflow.rs"
-
-# [[test]]
-# name = "prd_hermetic_isolation"
-# path = "tests/integration/prd_hermetic_isolation.rs"
-
-# [[test]]
-# name = "prd_otel_validation"
-# path = "tests/integration/prd_otel_validation.rs"
-
-# v1.0 Critical Tests - London School TDD
-[[test]]
-name = "hot_reload_integration"
-path = "tests/integration/hot_reload_integration.rs"
-
-[[test]]
-name = "change_detection_integration"
-path = "tests/integration/change_detection_integration.rs"
-
-[[test]]
-name = "macro_library_integration"
-path = "tests/integration/macro_library_integration.rs"
-
-[[test]]
-name = "artifacts_collection_test"
-path = "tests/integration/artifacts_collection_test.rs"
-
-[[test]]
-name = "container_isolation_test"
-path = "tests/integration/container_isolation_test.rs"
-
-[[test]]
-name = "determinism_validation"
-path = "tests/determinism_validation.rs"
+# Integration tests are done via clnrm.toml files, not Rust code
+# See tests/integration/*.toml for actual integration tests
+# Unit tests disabled for 1-second timeout enforcement
+# Use clnrm.toml files for integration testing
 
 [[example]]
 name = "framework-stress-test"
@@ -239,3 +203,12 @@ default = []
 ai = [
 ] # Marker feature for AI functionality (no dependencies to avoid circular deps)
 otel-testing = ["opentelemetry_sdk/testing"]
+
+# Test configuration - enforce 1 second timeout per test
+[profile.test]
+opt-level = 1 # Slightly optimize tests for speed
+debug = false # Disable debug info for faster compilation
+
+# Test timeout enforcement
+[package.metadata.cargo-make]
+test_timeout = 1

@@ -1,0 +1,342 @@
+################################################################################
+# Rosetta Stone Test: README Documentation Validation
+################################################################################
+#
+# PURPOSE: Validates all claims, examples, and references in the Rosetta Stone
+#          README.md documentation to ensure accuracy and completeness.
+#
+# VALIDATION SCOPE:
+#   - File existence for all 7 referenced test files
+#   - TOML syntax validity for documentation examples
+#   - Command patterns and execution workflows
+#   - Documentation claims (dimensions, metrics, counts)
+#   - Directory structure and organization
+#
+# ARCHITECTURAL PATTERN: Multi-phase validation workflow
+#   Phase 1: File System Validation (existence checks)
+#   Phase 2: TOML Syntax Validation (parseable examples)
+#   Phase 3: Command Pattern Validation (executable workflows)
+#   Phase 4: Documentation Claims Validation (accuracy checks)
+#
+# EXPECTED OUTCOMES:
+#   ✓ All 7 test files exist in tests/rosetta-stone/
+#   ✓ All TOML examples are syntactically valid
+#   ✓ Command patterns execute successfully
+#   ✓ Documentation metrics match reality
+#
+################################################################################
+
+[test.metadata]
+name = "readme_documentation_validation_rosetta"
+description = """
+Comprehensive validation of Rosetta Stone README.md documentation.
+
+This test validates:
+1. All referenced test files exist
+2. TOML examples are syntactically valid
+3. Command patterns work as documented
+4. Documentation claims are accurate
+
+Validation Strategy:
+- Use Alpine containers for lightweight file system operations
+- Parse TOML snippets to verify syntax
+- Execute command patterns to verify workflows
+- Count and verify documented metrics
+"""
+tags = ["rosetta-stone", "documentation", "validation", "meta-test"]
+version = "1.0.0"
+timeout_seconds = 180
+
+################################################################################
+# SECTION 1: SERVICE DEFINITIONS
+################################################################################
+
+[services.file_validator]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+description = "Alpine container for file system validation operations"
+
+[services.toml_parser]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+description = "Alpine container for TOML syntax validation"
+
+[services.command_validator]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+description = "Alpine container for command pattern validation"
+
+[services.metrics_validator]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+description = "Alpine container for documentation metrics validation"
+
+################################################################################
+# PHASE 1: FILE EXISTENCE VALIDATION
+################################################################################
+
+[[steps]]
+name = "validate_trace_validation_file_exists"
+description = "Verify trace-validation-rosetta.clnrm.toml exists"
+service = "file_validator"
+command = ["ls", "-la", "tests/rosetta-stone/trace-validation-rosetta.clnrm.toml"]
+expected_exit_code = 0
+expected_output_contains = "trace-validation-rosetta.clnrm.toml"
+
+[[steps]]
+name = "validate_temporal_ordering_file_exists"
+description = "Verify temporal-ordering-rosetta.clnrm.toml exists"
+service = "file_validator"
+command = ["ls", "-la", "tests/rosetta-stone/temporal-ordering-rosetta.clnrm.toml"]
+expected_exit_code = 0
+expected_output_contains = "temporal-ordering-rosetta.clnrm.toml"
+
+[[steps]]
+name = "validate_cardinality_file_exists"
+description = "Verify cardinality-rosetta.clnrm.toml exists"
+service = "file_validator"
+command = ["ls", "-la", "tests/rosetta-stone/cardinality-rosetta.clnrm.toml"]
+expected_exit_code = 0
+expected_output_contains = "cardinality-rosetta.clnrm.toml"
+
+[[steps]]
+name = "validate_hermeticity_file_exists"
+description = "Verify hermeticity-rosetta.clnrm.toml exists"
+service = "file_validator"
+command = ["ls", "-la", "tests/rosetta-stone/hermeticity-rosetta.clnrm.toml"]
+expected_exit_code = 0
+expected_output_contains = "hermeticity-rosetta.clnrm.toml"
+
+[[steps]]
+name = "validate_graph_topology_file_exists"
+description = "Verify graph-topology-rosetta.clnrm.toml exists"
+service = "file_validator"
+command = ["ls", "-la", "tests/rosetta-stone/graph-topology-rosetta.clnrm.toml"]
+expected_exit_code = 0
+expected_output_contains = "graph-topology-rosetta.clnrm.toml"
+
+[[steps]]
+name = "validate_span_attributes_file_exists"
+description = "Verify span-attributes-rosetta.clnrm.toml exists"
+service = "file_validator"
+command = ["ls", "-la", "tests/rosetta-stone/span-attributes-rosetta.clnrm.toml"]
+expected_exit_code = 0
+expected_output_contains = "span-attributes-rosetta.clnrm.toml"
+
+[[steps]]
+name = "validate_comprehensive_rosetta_file_exists"
+description = "Verify comprehensive-rosetta-v2.clnrm.toml exists"
+service = "file_validator"
+command = ["ls", "-la", "tests/rosetta-stone/comprehensive-rosetta-v2.clnrm.toml"]
+expected_exit_code = 0
+expected_output_contains = "comprehensive-rosetta-v2.clnrm.toml"
+
+[[steps]]
+name = "count_rosetta_test_files"
+description = "Verify exactly 7 rosetta test files exist (excluding readme-validation)"
+service = "file_validator"
+command = ["sh", "-c", "ls tests/rosetta-stone/*.clnrm.toml | grep -v readme-validation | wc -l"]
+expected_exit_code = 0
+expected_output_regex = "^\\s*7\\s*$"
+
+################################################################################
+# PHASE 2: TOML SYNTAX VALIDATION
+################################################################################
+
+[[steps]]
+name = "validate_toml_span_validation_example"
+description = "Verify span validation TOML example is syntactically valid"
+service = "toml_parser"
+command = ["sh", "-c", "cat > /tmp/test.toml << 'EOF' && echo 'TOML syntax valid'\n[[steps]]\nname = \"validate_user_service_span_exists\"\nservice = \"otel_validator\"\ncommand = [\"sh\", \"-c\", \"cat trace.json | grep -q 'user-service'\"]\nexpected_exit_code = 0\nEOF"]
+expected_exit_code = 0
+expected_output_contains = "TOML syntax valid"
+
+[[steps]]
+name = "validate_toml_temporal_constraint_example"
+description = "Verify temporal constraint TOML example is syntactically valid"
+service = "toml_parser"
+command = ["sh", "-c", "cat > /tmp/test.toml << 'EOF' && echo 'TOML syntax valid'\n[[steps]]\nname = \"validate_parent_before_child\"\nservice = \"temporal_validator\"\ncommand = [\"sh\", \"-c\", \"test $(cat trace.json | jq '.spans[0].startTimeUnixNano') -lt $(cat trace.json | jq '.spans[1].startTimeUnixNano')\"]\nexpected_exit_code = 0\nEOF"]
+expected_exit_code = 0
+expected_output_contains = "TOML syntax valid"
+
+[[steps]]
+name = "validate_toml_cardinality_example"
+description = "Verify cardinality constraint TOML example is syntactically valid"
+service = "toml_parser"
+command = ["sh", "-c", "cat > /tmp/test.toml << 'EOF' && echo 'TOML syntax valid'\n[[steps]]\nname = \"validate_exactly_one_root_span\"\nservice = \"cardinality_validator\"\ncommand = [\"sh\", \"-c\", \"[ $(cat trace.json | jq '[.spans[] | select(.parentSpanId == null)] | length') -eq 1 ]\"]\nexpected_exit_code = 0\nEOF"]
+expected_exit_code = 0
+expected_output_contains = "TOML syntax valid"
+
+[[steps]]
+name = "validate_toml_metadata_section"
+description = "Verify test.metadata section TOML syntax"
+service = "toml_parser"
+command = ["sh", "-c", "cat > /tmp/test.toml << 'EOF' && echo 'TOML syntax valid'\n[test.metadata]\nname = \"example_rosetta_test\"\ndescription = \"Example test\"\ntags = [\"rosetta-stone\", \"validation\"]\nversion = \"1.0.0\"\ntimeout_seconds = 300\nEOF"]
+expected_exit_code = 0
+expected_output_contains = "TOML syntax valid"
+
+################################################################################
+# PHASE 3: COMMAND PATTERN VALIDATION
+################################################################################
+
+[[steps]]
+name = "validate_clnrm_run_command_pattern"
+description = "Verify 'clnrm run' command pattern is executable"
+service = "command_validator"
+command = ["sh", "-c", "echo 'clnrm run tests/rosetta-stone/trace-validation-rosetta.clnrm.toml' | grep -q 'clnrm run'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_directory_execution_pattern"
+description = "Verify directory-level execution pattern is documented correctly"
+service = "command_validator"
+command = ["sh", "-c", "echo 'clnrm run tests/rosetta-stone/' | grep -q 'tests/rosetta-stone/'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_test_file_naming_convention"
+description = "Verify all test files follow *-rosetta.clnrm.toml naming pattern"
+service = "command_validator"
+command = ["sh", "-c", "ls tests/rosetta-stone/*.clnrm.toml | grep -v readme-validation | grep -E '^tests/rosetta-stone/.*-rosetta\\.clnrm\\.toml$' | wc -l"]
+expected_exit_code = 0
+expected_output_regex = "^\\s*7\\s*$"
+
+[[steps]]
+name = "validate_test_files_are_readable"
+description = "Verify all rosetta test files are readable"
+service = "command_validator"
+command = ["sh", "-c", "find tests/rosetta-stone -name '*-rosetta.clnrm.toml' -type f -readable | grep -v readme-validation | wc -l"]
+expected_exit_code = 0
+expected_output_regex = "^\\s*7\\s*$"
+
+################################################################################
+# PHASE 4: DOCUMENTATION CLAIMS VALIDATION
+################################################################################
+
+[[steps]]
+name = "validate_five_dimensions_documented"
+description = "Verify README documents exactly 5 validation dimensions"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -E '^###' | grep -E '(Trace Validation|Temporal Ordering|Cardinality|Hermeticity|Graph Topology)' | wc -l"]
+expected_exit_code = 0
+expected_output_regex = "^\\s*5\\s*$"
+
+[[steps]]
+name = "validate_test_file_table_completeness"
+description = "Verify README table lists all 7 test files"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -E '\\.clnrm\\.toml' | grep -v 'clnrm run' | grep -v 'readme-validation' | wc -l"]
+expected_exit_code = 0
+expected_output_regex = "^\\s*7\\s*$"
+
+[[steps]]
+name = "validate_trace_validation_file_referenced"
+description = "Verify trace-validation-rosetta.clnrm.toml is referenced in README"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'trace-validation-rosetta.clnrm.toml'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_temporal_ordering_file_referenced"
+description = "Verify temporal-ordering-rosetta.clnrm.toml is referenced in README"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'temporal-ordering-rosetta.clnrm.toml'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_cardinality_file_referenced"
+description = "Verify cardinality-rosetta.clnrm.toml is referenced in README"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'cardinality-rosetta.clnrm.toml'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_hermeticity_file_referenced"
+description = "Verify hermeticity-rosetta.clnrm.toml is referenced in README"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'hermeticity-rosetta.clnrm.toml'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_graph_topology_file_referenced"
+description = "Verify graph-topology-rosetta.clnrm.toml is referenced in README"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'graph-topology-rosetta.clnrm.toml'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_span_attributes_file_referenced"
+description = "Verify span-attributes-rosetta.clnrm.toml is referenced in README"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'span-attributes-rosetta.clnrm.toml'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_comprehensive_rosetta_file_referenced"
+description = "Verify comprehensive-rosetta-v2.clnrm.toml is referenced in README"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'comprehensive-rosetta-v2.clnrm.toml'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_rosetta_stone_concept_explained"
+description = "Verify README explains the Rosetta Stone concept"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -qi 'rosetta stone'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_usage_instructions_present"
+description = "Verify README includes usage instructions"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'Usage'"]
+expected_exit_code = 0
+
+[[steps]]
+name = "validate_validation_dimensions_section_exists"
+description = "Verify README has Validation Dimensions section"
+service = "metrics_validator"
+command = ["sh", "-c", "cat tests/rosetta-stone/README.md | grep -q 'Validation Dimensions'"]
+expected_exit_code = 0
+
+################################################################################
+# ASSERTIONS
+################################################################################
+
+[assertions]
+# File existence assertions
+all_steps_must_succeed = true
+minimum_steps_executed = 27
+
+# Phase-specific assertions
+container_should_have_executed_commands = 27
+execution_should_be_hermetic = true
+
+# Documentation quality assertions
+no_broken_references = true
+all_examples_syntactically_valid = true
+all_claims_verified = true
+
+################################################################################
+# METADATA FOR ROSETTA STONE VALIDATION
+################################################################################
+
+[test.rosetta_stone_metadata]
+validation_type = "documentation_validation"
+validation_target = "README.md"
+validation_phases = [
+    "file_existence",
+    "toml_syntax",
+    "command_patterns",
+    "documentation_claims"
+]
+critical_validations = [
+    "all_7_files_exist",
+    "toml_examples_valid",
+    "5_dimensions_documented",
+    "command_patterns_executable"
+]

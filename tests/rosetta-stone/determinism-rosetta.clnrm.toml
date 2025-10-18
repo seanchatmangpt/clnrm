@@ -1,0 +1,147 @@
+# =============================================================================
+# Determinism Features Rosetta Stone Test
+# =============================================================================
+# This test validates that determinism features (freeze_clock and seed) work
+# correctly when running tests in Docker containers via the Homebrew binary.
+#
+# Test Coverage:
+# 1. Frozen clock - now_rfc3339() returns same timestamp
+# 2. Seeded random generation - fake data functions are deterministic
+# 3. Property-based testing with determinism
+# =============================================================================
+
+[test.metadata]
+name = "determinism_rosetta"
+description = "Validates freeze_clock and seed work in Docker containers"
+version = "1.0.0"
+author = "Cleanroom Test Framework"
+tags = ["rosetta-stone", "determinism", "property-based-testing"]
+
+# =============================================================================
+# Determinism Configuration
+# =============================================================================
+[determinism]
+seed = 42
+freeze_clock = "2025-01-15T12:00:00Z"
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+[services.test_container]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+description = "Lightweight Alpine Linux container for determinism testing"
+
+# =============================================================================
+# Test Scenarios - Deterministic Property-Based Testing
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Scenario 1: Frozen Clock Validation
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_frozen_clock_first_call"
+service = "test_container"
+command = ["echo", "{{ now_rfc3339() }}"]
+description = "First call to now_rfc3339() should return frozen time"
+expected_output_regex = "^2025-01-15T12:00:00"
+
+[[steps]]
+name = "test_frozen_clock_second_call"
+service = "test_container"
+command = ["echo", "{{ now_rfc3339() }}"]
+description = "Second call should return same frozen time (deterministic)"
+expected_output_regex = "^2025-01-15T12:00:00"
+
+[[steps]]
+name = "test_frozen_clock_in_variable"
+service = "test_container"
+command = ["sh", "-c", "timestamp='{{ now_rfc3339() }}'; echo \"$timestamp\" | grep -q '2025-01-15T12:00:00' && echo 'FROZEN_CLOCK_WORKS'"]
+description = "Verify frozen clock works in variable assignment"
+expected_output_regex = "FROZEN_CLOCK_WORKS"
+
+# -----------------------------------------------------------------------------
+# Scenario 2: Seeded Random Generation - Deterministic Fake Data
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_seeded_fake_name"
+service = "test_container"
+command = ["echo", "{{ fake_name() }}"]
+description = "Fake name generation with seed=42 should be deterministic"
+expected_output_regex = "^[A-Za-z]+\\s+[A-Za-z]+.*$"
+
+[[steps]]
+name = "test_seeded_fake_email"
+service = "test_container"
+command = ["echo", "{{ fake_email() }}"]
+description = "Fake email generation with seed=42 should be deterministic"
+expected_output_regex = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+
+[[steps]]
+name = "test_seeded_fake_int_range"
+service = "test_container"
+command = ["sh", "-c", "val='{{ fake_int_range(min=10, max=20) }}'; test $val -ge 10 -a $val -le 20 && echo 'VALID_RANGE'"]
+description = "Seeded integer range should still respect bounds"
+expected_output_regex = "VALID_RANGE"
+
+# -----------------------------------------------------------------------------
+# Scenario 3: Property-Based Testing - Reproducibility
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_reproducible_user_profile"
+service = "test_container"
+command = ["sh", "-c", "echo 'Name: {{ fake_name() }}, Email: {{ fake_email() }}, Time: {{ now_rfc3339() }}'"]
+description = "Combined fake data should be reproducible with same seed"
+expected_output_regex = "^Name: [A-Za-z]+\\s+[A-Za-z]+.*, Email: [^@]+@[^@]+\\.[^@]+, Time: 2025-01-15T12:00:00"
+
+[[steps]]
+name = "test_multiple_fake_calls_deterministic"
+service = "test_container"
+command = ["sh", "-c", "name1='{{ fake_name() }}'; name2='{{ fake_name() }}'; test -n \"$name1\" -a -n \"$name2\" && echo 'GENERATED'"]
+description = "Multiple fake data calls with seed should be deterministic sequence"
+expected_output_regex = "GENERATED"
+
+[[steps]]
+name = "test_property_based_range_validation"
+service = "test_container"
+command = ["sh", "-c", "for i in 1 2 3 4 5; do val='{{ fake_int_range(min=0, max=100) }}'; test $val -ge 0 -a $val -le 100 || exit 1; done && echo 'ALL_IN_RANGE'"]
+description = "Property: All generated integers must be in range [0, 100]"
+expected_output_regex = "ALL_IN_RANGE"
+
+# -----------------------------------------------------------------------------
+# Scenario 4: Determinism in Complex Scenarios
+# -----------------------------------------------------------------------------
+
+[[steps]]
+name = "test_json_generation_deterministic"
+service = "test_container"
+command = ["sh", "-c", "echo '{\"id\":{{ fake_int_range(min=1, max=1000) }},\"name\":\"{{ fake_name() }}\",\"timestamp\":\"{{ now_rfc3339() }}\"}'"]
+description = "JSON generation should be deterministic with seed and frozen clock"
+expected_output_regex = '^\{"id":[0-9]+,"name":"[^"]+","timestamp":"2025-01-15T12:00:00[^"]*"\}$'
+
+[[steps]]
+name = "test_determinism_across_steps"
+service = "test_container"
+command = ["sh", "-c", "timestamp='{{ now_rfc3339() }}'; echo \"$timestamp\" | grep -q '2025-01-15' && echo 'CONSISTENT'"]
+description = "Determinism should work across different test steps"
+expected_output_regex = "CONSISTENT"
+
+# =============================================================================
+# Assertions
+# =============================================================================
+[assertions]
+# All steps should execute successfully
+all_steps_should_pass = true
+
+# Verify hermetic execution
+execution_should_be_hermetic = true
+
+# Container should execute all commands (11 steps)
+container_should_have_executed_commands = 11
+
+# No failures allowed - determinism must work consistently
+no_failed_assertions = true

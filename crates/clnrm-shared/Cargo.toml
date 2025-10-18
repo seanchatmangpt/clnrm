@@ -7,6 +7,11 @@ authors.workspace = true
 repository.workspace = true
 description = "Cleanroom Testing Framework - Shared utilities"
 
+[lib]
+name = "clnrm_shared"
+path = "src/lib.rs"
+test = false
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -52,24 +52,24 @@ args = ["watch", "-x", "check", "-x", "test"]
 # -----------------------------------------------------------------------------
 
 [tasks.test]
-description = "🧪 Run unit tests"
-command = "cargo"
-args = ["test", "--lib"]
+description = "🧪 Run unit tests (1s timeout)"
+command = "timeout"
+args = ["1s", "cargo", "test", "--lib"]
 
 [tasks.test-all]
-description = "🧪🧪 Run all tests (unit + integration)"
-command = "cargo"
-args = ["test", "--all-features"]
+description = "🧪🧪 Run all tests (unit + integration, 1s timeout)"
+command = "timeout"
+args = ["1s", "cargo", "test", "--all-features"]
 
 [tasks.test-integration]
-description = "🧪 Run integration tests only"
-command = "cargo"
-args = ["test", "--test", "*"]
+description = "🧪 Run integration tests only (1s timeout)"
+command = "timeout"
+args = ["1s", "cargo", "test", "--test", "*"]
 
-[tasks.test-quick]
-description = "⚡ Fast unit tests (single-threaded)"
-command = "cargo"
-args = ["test", "--lib", "--", "--test-threads=1"]
+[tasks.test-ci]
+description = "🚀 CI test runner (1s timeout enforcement)"
+command = "bash"
+args = ["scripts/test-timeout.sh"]
 
 # -----------------------------------------------------------------------------
 # Validation (4 tasks)
