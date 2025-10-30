@@ -174,16 +174,24 @@ impl MockOtlpCollector {
 
     /// Get all received spans
     pub fn get_received_spans(&self) -> Vec<crate::validation::SpanData> {
-        self.received_spans.lock().unwrap().clone()
+        self.received_spans
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_default()
     }
 
     /// Clear all received spans
     pub fn clear(&self) {
-        self.received_spans.lock().unwrap().clear();
+        if let Ok(mut guard) = self.received_spans.lock() {
+            guard.clear();
+        }
     }
 
     /// Check if any spans have been received
     pub fn has_spans(&self) -> bool {
-        !self.received_spans.lock().unwrap().is_empty()
+        self.received_spans
+            .lock()
+            .map(|guard| !guard.is_empty())
+            .unwrap_or(false)
     }
 }

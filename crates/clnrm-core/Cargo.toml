@@ -197,8 +197,11 @@ path = "examples/observability/otel_graph_validation.rs"
 default = []
 ai = [
 ] # Marker feature for AI functionality (no dependencies to avoid circular deps)
+otel = ["otel-traces", "otel-metrics", "otel-logs"] # Umbrella feature for all OTEL functionality
 otel-testing = ["opentelemetry_sdk/testing"]
 otel-traces = [] # Feature for OpenTelemetry traces functionality
+otel-metrics = [] # Feature for OpenTelemetry metrics functionality
+otel-logs = [] # Feature for OpenTelemetry logs functionality
 
 # Test timeout enforcement
 [package.metadata.cargo-make]

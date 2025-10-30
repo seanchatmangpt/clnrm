@@ -171,7 +171,7 @@ impl TreeNode {
     /// Build the clap command for this node
     pub fn build_command(&self) -> Command {
         let mut cmd = Command::new(self.name.as_str())
-            .about(self.about.as_str());
+            .about(self.about.clone());
 
         for child in &self.children {
             cmd = cmd.subcommand(child.build_command());

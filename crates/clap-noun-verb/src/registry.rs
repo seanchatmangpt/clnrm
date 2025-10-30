@@ -151,7 +151,7 @@ impl CommandRegistry {
     /// Build the complete clap command structure
     pub fn build_command(&self) -> Command {
         let mut cmd = Command::new(self.config.name.as_str())
-            .about(self.config.about.as_str());
+            .about(self.config.about.clone());
 
         if let Some(version) = &self.config.version {
             cmd = cmd.version(&**version);

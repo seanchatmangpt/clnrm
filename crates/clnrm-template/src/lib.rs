@@ -18,7 +18,8 @@ pub mod custom;
 #[cfg(feature = "async")]
 pub mod r#async;
 pub mod builder;
-pub mod integration;
+// TODO: Re-enable integration module after adding actix_web dependency
+// pub mod integration;
 
 pub use error::{TemplateError, Result};
 pub use renderer::{TemplateRenderer, render_template, render_template_file, is_template, get_cached_template_renderer, OutputFormat};
@@ -34,7 +35,8 @@ pub use custom::{CustomFunction, CustomFilter, FunctionRegistry, register_custom
 #[cfg(feature = "async")]
 pub use r#async::{AsyncTemplateRenderer, async_render, async_render_file, async_render_with_json};
 pub use builder::TemplateEngineBuilder;
-pub use integration::{WebIntegration, CliIntegration, TemplateCli, TemplateServer};
+// TODO: Re-enable integration exports after adding actix_web dependency
+// pub use integration::{WebIntegration, CliIntegration, TemplateCli, TemplateServer};
 
 /// Macro library content embedded at compile time
 pub const MACRO_LIBRARY: &str = include_str!("_macros.toml.tera");

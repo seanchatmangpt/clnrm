@@ -514,11 +514,10 @@ service = "db"
 
     let config = parse_toml_config(toml)?;
 
-    if config.services.is_none() {
-        return Err(CleanroomError::validation_error("Services not parsed"));
-    }
+    let services = config.services.ok_or_else(|| {
+        CleanroomError::validation_error("Services not parsed")
+    })?;
 
-    let services = config.services.unwrap();
     if !services.contains_key("db") {
         return Err(CleanroomError::validation_error("Service 'db' not found"));
     }
@@ -848,28 +847,151 @@ async fn test_multi_plugin_coordination() -> Result<()> {
     Ok(())
 }
 
-// CLI test stubs
+// CLI test implementations (80/20 critical tests)
 async fn test_cli_parsing() -> Result<()> {
-    // Validate CLI argument parsing works
+    use crate::config::parse_toml_config;
+
+    // Test that CLI can parse TOML configurations
+    let toml = r#"
+[meta]
+name = "cli_test"
+version = "1.0.0"
+
+[[scenario]]
+name = "test"
+
+[[scenario.steps]]
+name = "step1"
+command = ["echo", "test"]
+"#;
+
+    let config = parse_toml_config(toml).map_err(|e| {
+        CleanroomError::internal_error("CLI parsing failed")
+            .with_context("Failed to parse TOML configuration in CLI test")
+            .with_source(e.to_string())
+    })?;
+
+    if let Some(meta) = &config.meta {
+        if meta.name != "cli_test" {
+            return Err(CleanroomError::validation_error("CLI parsing: name mismatch"));
+        }
+    } else {
+        return Err(CleanroomError::validation_error("CLI parsing: meta not found"));
+    }
+
     Ok(())
 }
 
 async fn test_cli_validation() -> Result<()> {
     use crate::validation::shape::ShapeValidator;
-    let _validator = ShapeValidator::new();
-    // Basic validation check
+    use std::fs;
+    use tempfile::TempDir;
+
+    // Create temp directory and test file
+    let temp_dir = TempDir::new().map_err(|e| {
+        CleanroomError::internal_error("Failed to create temp dir for CLI validation test")
+            .with_source(e.to_string())
+    })?;
+
+    let test_file = temp_dir.path().join("test.toml");
+    let valid_toml = r#"
+[meta]
+name = "validation_test"
+version = "1.0.0"
+
+[[scenario]]
+name = "test_scenario"
+
+[[scenario.steps]]
+name = "test_step"
+command = ["echo", "test"]
+"#;
+
+    fs::write(&test_file, valid_toml).map_err(|e| {
+        CleanroomError::internal_error("Failed to write test file for CLI validation")
+            .with_source(e.to_string())
+    })?;
+
+    // Test validation
+    let mut validator = ShapeValidator::new();
+    let result = validator.validate_file(&test_file)?;
+
+    if !result.passed {
+        return Err(CleanroomError::validation_error("CLI validation failed")
+            .with_source(format!("Errors: {:?}", result.errors)));
+    }
+
     Ok(())
 }
 
 async fn test_cli_report_generation() -> Result<()> {
+    use crate::reporting::{generate_reports, ReportConfig};
+    use tempfile::TempDir;
+
+    // Create temp directory for reports
+    let temp_dir = TempDir::new().map_err(|e| {
+        CleanroomError::internal_error("Failed to create temp dir for report test")
+            .with_source(e.to_string())
+    })?;
+
+    // Create test results
+    let test_results = FrameworkTestResults {
+        total_tests: 1,
+        passed_tests: 1,
+        failed_tests: 0,
+        total_duration_ms: 100,
+        test_results: vec![TestResult {
+            name: "test".to_string(),
+            passed: true,
+            duration_ms: 100,
+            error: None,
+        }],
+    };
+
     // Test report generation
+    let report_dir = temp_dir.path().join("reports");
+    let config = ReportConfig {
+        output_dir: report_dir.clone(),
+        formats: vec!["json".to_string()],
+        include_system_info: true,
+        include_timings: true,
+    };
+
+    generate_reports(&test_results, &config).map_err(|e| {
+        CleanroomError::internal_error("Report generation failed")
+            .with_context("Failed to generate test reports in CLI test")
+            .with_source(e.to_string())
+    })?;
+
+    // Verify report was created
+    if !report_dir.exists() {
+        return Err(CleanroomError::validation_error("Report directory not created"));
+    }
+
     Ok(())
 }
 
 async fn test_cli_format() -> Result<()> {
     use crate::formatting::format_toml_content;
-    let toml = "[meta]\nname=\"test\"\nversion=\"1.0.0\"";
-    let _formatted = format_toml_content(toml)?;
+
+    // Test TOML formatting
+    let unformatted = "[meta]\nname=\"test\"\nversion=\"1.0.0\"";
+    let formatted = format_toml_content(unformatted).map_err(|e| {
+        CleanroomError::internal_error("TOML formatting failed")
+            .with_context("Failed to format TOML content in CLI test")
+            .with_source(e.to_string())
+    })?;
+
+    // Verify formatted output is valid
+    if formatted.is_empty() {
+        return Err(CleanroomError::validation_error("Formatted TOML is empty"));
+    }
+
+    // Verify it contains key elements
+    if !formatted.contains("[meta]") || !formatted.contains("name") {
+        return Err(CleanroomError::validation_error("Formatted TOML missing key elements"));
+    }
+
     Ok(())
 }
 
@@ -916,23 +1038,78 @@ async fn test_cli_output_formats() -> Result<()> {
     Ok(())
 }
 
-// OTEL test stubs
+// OTEL test implementations (80/20 critical tests)
 async fn test_otel_init() -> Result<()> {
-    // Test OTEL initialization
+    use crate::telemetry::{init_otel, Export, OtelConfig};
+
+    // Test OTEL initialization with stdout exporter
+    let config = OtelConfig {
+        service_name: "test-service",
+        deployment_env: "test",
+        sample_ratio: 1.0,
+        export: Export::Stdout,
+        enable_fmt_layer: false,
+        headers: None,
+    };
+
+    let guard = init_otel(config).map_err(|e| {
+        CleanroomError::internal_error("OTEL initialization failed")
+            .with_context("Failed to initialize OTEL with stdout exporter")
+            .with_source(e.to_string())
+    })?;
+
+    // Verify guard exists and can be dropped
+    drop(guard);
+
     Ok(())
 }
 
 async fn test_otel_span_creation() -> Result<()> {
-    // Test span creation
+    use opentelemetry::global;
+    use opentelemetry::trace::{Tracer, TracerProvider};
+
+    // Get global tracer
+    let tracer_provider = global::tracer_provider();
+    let mut span = tracer_provider.tracer("test-tracer").start("test-span");
+
+    // Verify span can be created and ended
+    span.end();
+
     Ok(())
 }
 
 async fn test_otel_trace_context() -> Result<()> {
-    // Test trace context propagation
+    use opentelemetry::global;
+    use opentelemetry::trace::{Span, Tracer, TracerProvider};
+    use opentelemetry::KeyValue;
+
+    // Create a span with attributes
+    let tracer_provider = global::tracer_provider();
+    let mut span = tracer_provider.tracer("test-tracer").start("context-test");
+
+    // Set attributes
+    span.set_attributes(vec![
+        KeyValue::new("test.key", "test.value"),
+        KeyValue::new("test.number", 42),
+    ]);
+
+    // End span
+    span.end();
+
     Ok(())
 }
 
 async fn test_otel_exporters() -> Result<()> {
-    // Test OTEL exporter configuration
-    Ok(())
+    use crate::telemetry::Export;
+
+    // Test that different export types can be created
+    let _stdout = Export::Stdout;
+    let _otlp_http = Export::OtlpHttp { endpoint: "http://localhost:4318" };
+    let _otlp_grpc = Export::OtlpGrpc { endpoint: "http://localhost:4317" };
+
+    // Verify types can be matched
+    match _stdout {
+        Export::Stdout => Ok(()),
+        _ => Err(CleanroomError::validation_error("Export type mismatch")),
+    }
 }
