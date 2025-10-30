@@ -316,3 +316,4 @@ fn test_verb_args_functionality() -> Result<()> {
 
     Ok(())
 }
+

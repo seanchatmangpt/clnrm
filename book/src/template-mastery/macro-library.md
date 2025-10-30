@@ -508,3 +508,4 @@ Now that you understand the macro library:
 - [Tera Macro Documentation](https://tera.netlify.app/docs/templates/macros/)
 - [Macro Library Implementation](../templates/_macros.toml.tera)
 - [Template System Overview](README.md)
+

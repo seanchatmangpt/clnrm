@@ -7,8 +7,8 @@
 //! - Custom validation rules
 
 use crate::error::{TemplateError, Result};
-use serde_json::{Map, Value};
-use std::collections::{HashMap, HashSet};
+use serde_json::Value;
+use std::collections::HashSet;
 
 /// Template output validator
 ///
@@ -17,13 +17,14 @@ use std::collections::{HashMap, HashSet};
 /// - Required fields presence
 /// - Schema compliance
 /// - Custom validation rules
+#[derive(Clone)]
 pub struct TemplateValidator {
     /// Required fields that must be present
     required_fields: HashSet<String>,
     /// Required top-level sections for TOML
     required_sections: HashSet<String>,
     /// Custom validation rules
-    rules: Vec<ValidationRule>,
+    pub(crate) rules: Vec<ValidationRule>,
     /// Expected output format
     format: OutputFormat,
     /// Schema for validation (TOML/JSON schema)

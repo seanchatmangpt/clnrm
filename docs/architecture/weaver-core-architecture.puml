@@ -1,0 +1,158 @@
+@startuml Weaver-Centric clnrm Architecture
+
+!define CRITICAL_COLOR #FF6B6B
+!define WEAVER_COLOR #4ECDC4
+!define CLNRM_COLOR #95E1D3
+!define DOCKER_COLOR #2E86DE
+
+title clnrm v1.2.0: Weaver Live-Check Core Architecture
+
+' Core principle: Everything validates through Weaver
+note as CorePrinciple #FFEB9C
+  **SINGLE SOURCE OF TRUTH**
+
+  weaver registry live-check
+  validates ALL telemetry
+
+  No feature ships without
+  Weaver validation passing
+end note
+
+' Weaver as the central validator
+package "OpenTelemetry Weaver" as Weaver <<External>> #WEAVER_COLOR {
+  component "weaver registry check" as WeaverCheck
+  component "weaver registry live-check" as WeaverLiveCheck
+  component "weaver registry generate" as WeaverGenerate
+
+  database "Telemetry Schema\nRegistry" as Registry {
+    folder "core/" {
+      artifact "test_execution.yaml"
+      artifact "container_lifecycle.yaml"
+      artifact "plugin_system.yaml"
+    }
+    folder "metrics/" {
+      artifact "test_metrics.yaml"
+      artifact "system_metrics.yaml"
+    }
+    folder "events/" {
+      artifact "test_events.yaml"
+    }
+  }
+}
+
+' clnrm Core - Everything pivots around Weaver
+package "clnrm Core" as ClnrmCore #CLNRM_COLOR {
+
+  ' Schema-driven code generation
+  component "Generated Telemetry\n(Type-Safe Builders)" as GeneratedTelemetry {
+    component "TestExecutionSpan"
+    component "ContainerLifecycleSpan"
+    component "PluginSystemSpan"
+    component "TestMetrics"
+  }
+
+  ' Core testing engine - instrumented for Weaver
+  component "Test Execution Engine" as TestEngine {
+    component "TOML Parser"
+    component "Test Orchestrator"
+    component "Container Manager"
+    component "Plugin System"
+  }
+
+  ' Live validation integration
+  component "Weaver Integration" as WeaverIntegration {
+    component "Live-Check Controller"
+    component "OTLP Exporter"
+    component "Validation Reporter"
+  }
+
+  ' CLI - schema-aware
+  component "CLI Layer" as CLI {
+    component "clnrm run"
+    component "clnrm validate-telemetry"
+    component "clnrm self-test"
+  }
+}
+
+' Docker/Container Layer
+package "Container Backend" as ContainerBackend #DOCKER_COLOR {
+  component "Docker API" as DockerAPI
+  component "Container Manager" as ContainerMgr
+  database "Containers" as Containers {
+    artifact "Test Container 1"
+    artifact "Test Container 2"
+    artifact "Plugin Containers"
+  }
+}
+
+' OTLP Collection
+package "OTLP Infrastructure" as OTLP {
+  component "OTLP Collector"
+  database "Telemetry Export" as TelemetryExport {
+    artifact "Spans"
+    artifact "Metrics"
+    artifact "Logs"
+  }
+}
+
+' User interaction
+actor "Developer" as Developer
+actor "CI/CD Pipeline" as CICD
+
+' Relationships - Schema First Flow
+
+' 1. Schema Definition drives everything
+Registry -down-> WeaverCheck : validates
+WeaverCheck -down-> WeaverGenerate : schema valid ✓
+WeaverGenerate -down-> GeneratedTelemetry : generates type-safe code
+
+' 2. Generated code instruments test engine
+GeneratedTelemetry -down-> TestEngine : provides telemetry builders
+
+' 3. Test engine produces telemetry
+TestEngine -down-> ContainerMgr : executes in containers
+ContainerMgr -down-> Containers : creates/manages
+TestEngine -right-> OTLP : exports telemetry
+
+' 4. Telemetry validated by Weaver
+OTLP -down-> TelemetryExport : stores
+TelemetryExport -up-> WeaverLiveCheck : validates against schema
+
+' 5. Validation results control CI/CD
+WeaverLiveCheck -down-> WeaverIntegration : validation results
+WeaverIntegration -down-> CLI : reports
+
+' 6. Users/CI interact through CLI
+Developer -right-> CLI : runs tests
+CICD -right-> CLI : validates in pipeline
+
+' Critical validation flow
+note right of WeaverLiveCheck #CRITICAL_COLOR
+  **CRITICAL VALIDATION**
+
+  If live-check fails:
+  - Feature doesn't work
+  - Tests don't matter
+  - Build fails
+
+  If live-check passes:
+  - Feature proven to work
+  - Telemetry matches schema
+  - Ship it! ✓
+end note
+
+' TDD Flow annotation
+note bottom of Registry
+  **London TDD Approach**
+
+  1. Define schema (interface)
+  2. Generate mocks from schema
+  3. Write tests using mocks
+  4. Implement against mocks
+  5. Validate with Weaver live-check
+
+  Schema = Contract
+  Live-check = Validation
+end note
+
+@enduml

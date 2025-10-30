@@ -2,11 +2,55 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 CRITICAL: The False Positive Paradox
+
+**clnrm exists to eliminate false positives in testing. Therefore, we CANNOT validate clnrm using methods that produce false positives.**
+
+### The Only Source of Truth: OpenTelemetry Weaver
+
+**ALL validation MUST use OTel Weaver schema validation:**
+
+```bash
+# ✅ CORRECT - Weaver validation is the ONLY trusted validation
+weaver registry check -r registry/
+weaver registry live-check --registry registry/
+
+# ❌ WRONG - These can produce false positives:
+cargo test              # Tests can pass with broken features
+clnrm self-test         # Framework testing itself is circular
+validation agents       # Agents can hallucinate validation
+README validation       # Documentation can claim features work when they don't
+```
+
+**Why Weaver is Different:**
+- Schema-first: Code must conform to declared telemetry schema
+- Live validation: Verifies actual runtime telemetry against schema
+- No circular dependency: External tool validates our framework
+- Industry standard: OTel's official validation approach
+- Detects fake-green: Catches tests that pass but don't validate actual behavior
+
+### The Meta-Problem We Solve
+
+```
+Traditional Testing (What We Replace):
+  Test passes ✅ → Assumes feature works → FALSE POSITIVE
+  └─ Test only validates test code, not production behavior
+
+clnrm with Weaver Validation:
+  Weaver validates schema ✅ → Telemetry proves feature works → TRUE POSITIVE
+  └─ Schema validation proves actual runtime behavior
+```
+
+**Integration Status:**
+- 🚧 Weaver integration: IN PROGRESS (critical for v1.2.0)
+- ⚠️ Current validation: May contain false positives until Weaver integration complete
+- 🎯 Goal: 100% Weaver-validated claims by v1.2.0
+
 ## Project Overview
 
-**Cleanroom Testing Framework** (clnrm) - A hermetic integration testing framework for container-based isolation with plugin architecture. Version 0.4.0.
+**Cleanroom Testing Framework** (clnrm) - A hermetic integration testing framework for container-based isolation with plugin architecture. Version 1.1.0.
 
-The framework follows the "eat your own dog food" principle - it tests itself using its own testing capabilities.
+The framework follows the "eat your own dog food" principle - it tests itself using its own testing capabilities, validated by OTel Weaver schema conformance.
 
 ## Workspace Structure
 
@@ -81,25 +125,32 @@ cargo test -p clnrm-core test_name
 cargo test --test integration_otel
 ```
 
-### Testing Levels
+### Testing Levels (Validation Hierarchy)
+
+**🔴 CRITICAL: Validation hierarchy matters!**
 
 ```bash
-# Unit tests only (cargo test is fine)
-cargo test --lib
+# LEVEL 1: Weaver Schema Validation (MANDATORY - Source of Truth)
+weaver registry check -r registry/                    # Validate schema definition
+weaver registry live-check --registry registry/       # Validate runtime telemetry
 
-# Integration tests (cargo test is fine)
-cargo test --test '*'
+# LEVEL 2: Compilation & Code Quality (Baseline)
+cargo build --release --features otel                 # Must compile
+cargo clippy -- -D warnings                           # Zero warnings
 
-# Framework self-tests (MUST use Homebrew installation)
-clnrm self-test
-clnrm self-test --suite otel --otel-exporter stdout
-
-# Property-based tests (160K+ generated cases)
-cargo test --features proptest
-
-# Fuzz testing
-cargo +nightly fuzz run fuzz_target_name
+# LEVEL 3: Traditional Tests (Supporting Evidence - Can Have False Positives)
+cargo test --lib                                      # Unit tests
+cargo test --test '*'                                 # Integration tests
+clnrm self-test                                       # Framework self-tests (Homebrew)
+clnrm self-test --suite otel --otel-exporter stdout  # OTEL suite
+cargo test --features proptest                        # Property-based tests (160K+ cases)
+cargo +nightly fuzz run fuzz_target_name              # Fuzz testing
 ```
+
+**⚠️ Test Passes ≠ Feature Works:**
+- Tests can pass even when features don't work (false positives)
+- Only Weaver validation proves runtime behavior matches schema
+- Traditional tests provide supporting evidence, not proof
 
 ### Quality Checks
 
@@ -338,21 +389,38 @@ let output = env.execute_command(&handle, &["echo", "hello"]).await?;
 - Testing guide: `docs/TESTING.md`
 - Core team standards: `.cursorrules`
 
-## Definition of Done
+## Definition of Done (CRITICAL: Weaver Validation Required)
 
 Before ANY code is production-ready, ALL must be true:
 
+### Build & Code Quality (Baseline)
 - [ ] `cargo build --release --features otel` succeeds with zero warnings
-- [ ] `cargo test` passes completely
 - [ ] `cargo clippy -- -D warnings` shows zero issues
 - [ ] No `.unwrap()` or `.expect()` in production code paths
 - [ ] All traits remain `dyn` compatible (no async trait methods)
 - [ ] Proper `Result<T, CleanroomError>` error handling
-- [ ] Tests follow AAA pattern with descriptive names
 - [ ] No `println!` in production code (use `tracing` macros)
 - [ ] No fake `Ok(())` returns from incomplete implementations
+
+### Weaver Validation (MANDATORY - Source of Truth)
+- [ ] **`weaver registry check -r registry/` passes** (schema is valid)
+- [ ] **`weaver registry live-check --registry registry/` passes** (runtime telemetry conforms to schema)
+- [ ] All claimed OTEL spans/metrics/logs defined in schema
+- [ ] Schema documents exact telemetry behavior
+- [ ] Live telemetry matches schema declarations
+
+### Traditional Testing (Supporting Evidence Only)
+- [ ] `cargo test` passes completely
+- [ ] Tests follow AAA pattern with descriptive names
 - [ ] **Homebrew installation validates the feature** (`brew install clnrm && clnrm self-test`)
 - [ ] Feature tested via production installation path, not `cargo run`
+
+**⚠️ CRITICAL HIERARCHY:**
+1. **Weaver validation** = Source of truth (proves feature works)
+2. **Compilation + Clippy** = Code quality baseline (proves code is valid)
+3. **Traditional tests** = Supporting evidence (can have false positives)
+
+**If Weaver validation fails, the feature DOES NOT WORK, regardless of test results.**
 
 ## Integration with Observability
 
@@ -424,10 +492,33 @@ clnrm report --format html --output report.html
 
 ## Key Principles
 
-1. **Hermetic Testing**: Each test runs in complete isolation
-2. **Self-Testing**: Framework validates itself using its own capabilities
-3. **Plugin Architecture**: Extensible for any technology stack
-4. **TOML Configuration**: Declarative test definitions without code
-5. **Production Quality**: FAANG-level error handling and code standards
-6. **Observable by Default**: Built-in tracing and metrics
-7. **Workspace Isolation**: Experimental features separated from production core
+1. **Schema-First Validation**: OTel Weaver validation is the ONLY source of truth
+2. **No False Positives**: Tests can lie; telemetry schemas don't
+3. **Hermetic Testing**: Each test runs in complete isolation
+4. **Self-Testing**: Framework validates itself using its own capabilities (validated by Weaver)
+5. **Plugin Architecture**: Extensible for any technology stack
+6. **TOML Configuration**: Declarative test definitions without code
+7. **Production Quality**: FAANG-level error handling and code standards
+8. **Observable by Default**: Built-in tracing and metrics (Weaver-validated)
+9. **Workspace Isolation**: Experimental features separated from production core
+
+### The Meta-Principle: Don't Trust Tests, Trust Schemas
+
+**Problem clnrm Solves:**
+```
+Traditional Testing:
+  assert(result == expected) ✅  ← Can pass even when feature is broken
+  └─ Tests validate test logic, not production behavior
+
+clnrm Solution:
+  Schema defines behavior → Weaver validates runtime telemetry ✅
+  └─ Schema validation proves actual runtime behavior matches specification
+```
+
+**Why This Matters:**
+- A test can pass because it tests the wrong thing
+- A test can pass because it's mocked incorrectly
+- A test can pass because it doesn't test the actual feature
+- **A Weaver schema validation can only pass if the actual runtime telemetry matches the declared schema**
+
+This is why clnrm uses Weaver validation as the source of truth.

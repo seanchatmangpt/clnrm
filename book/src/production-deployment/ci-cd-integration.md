@@ -820,3 +820,4 @@ Now that you understand CI/CD integration:
 - [GitLab CI Documentation](https://docs.gitlab.com/ee/ci/)
 - [Jenkins Pipeline Documentation](https://www.jenkins.io/doc/book/pipeline/)
 - [Azure DevOps Documentation](https://docs.microsoft.com/en-us/azure/devops/)
+

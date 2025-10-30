@@ -3,8 +3,9 @@
 use clap_noun_verb::{run_cli, noun, verb, VerbArgs};
 
 fn main() -> clap_noun_verb::Result<()> {
-    run_cli("clnrm-test", |cli| {
-        cli.about("Test CLI using noun-verb pattern")
+    run_cli(|cli| {
+        cli.name("clnrm-test")
+            .about("Test CLI using noun-verb pattern")
             .noun(noun!("services", "Manage application services", [
                 verb!("status", "Show status of all services", |_args: &VerbArgs| {
                     println!("📊 Service Status:");
@@ -48,3 +49,4 @@ fn main() -> clap_noun_verb::Result<()> {
             ]))
     })
 }
+

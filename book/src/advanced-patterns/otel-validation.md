@@ -815,3 +815,4 @@ Now that you understand OTEL validation:
 - [OpenTelemetry Specification](https://opentelemetry.io/docs/)
 - [OTEL Rust SDK](https://github.com/open-telemetry/opentelemetry-rust)
 - [Plugin Development](../plugin-development/README.md)
+

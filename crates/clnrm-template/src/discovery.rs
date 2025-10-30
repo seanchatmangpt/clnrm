@@ -8,11 +8,8 @@
 
 use crate::error::{TemplateError, Result};
 use crate::renderer::TemplateRenderer;
-use crate::context::TemplateContext;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
-use std::time::{Duration, SystemTime};
 
 /// Template discovery and loading system
 ///
@@ -321,7 +318,7 @@ impl TemplateDiscovery {
 #[derive(Debug)]
 pub struct TemplateLoader {
     /// Loaded templates (name -> content)
-    templates: HashMap<String, String>,
+    pub(crate) templates: HashMap<String, String>,
     /// Hot-reload enabled
     hot_reload: bool,
     /// Template organization strategy

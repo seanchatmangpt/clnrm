@@ -55,3 +55,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Static string lifetimes for trait compatibility
 - Dyn-compatible trait design
 - Comprehensive test coverage
+

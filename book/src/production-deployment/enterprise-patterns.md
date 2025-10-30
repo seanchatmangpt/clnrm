@@ -583,3 +583,4 @@ Now that you understand enterprise patterns:
 - [Enterprise Testing Strategies](https://martinfowler.com/articles/enterprise-testing-strategies/)
 - [Compliance Testing](https://www.infoq.com/articles/compliance-testing/)
 - [Multi-Environment Testing](https://testing.googleblog.com/2018/07/multi-environment-testing.html)
+

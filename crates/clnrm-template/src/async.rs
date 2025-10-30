@@ -10,7 +10,7 @@ use crate::error::{TemplateError, Result};
 use crate::context::TemplateContext;
 use crate::renderer::{TemplateRenderer, OutputFormat};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 /// Async template renderer for async applications
@@ -47,8 +47,12 @@ impl AsyncTemplateRenderer {
     /// * `name` - Template name for error reporting
     pub async fn render_str(&mut self, template: &str, name: &str) -> Result<String> {
         // Template rendering is CPU-bound, so we run it in a blocking task
+        // Clone strings to move into spawn_blocking
+        let template = template.to_string();
+        let name = name.to_string();
+        let mut renderer = self.renderer.clone();
         tokio::task::spawn_blocking(move || {
-            self.renderer.render_str(template, name)
+            renderer.render_str(&template, &name)
         })
         .await
         .map_err(|e| TemplateError::InternalError(format!("Async rendering failed: {}", e)))?
@@ -344,8 +348,11 @@ pub mod async_validation {
         template_name: &str,
         validator: &crate::validation::TemplateValidator
     ) -> Result<()> {
+        let output = output.to_string();
+        let template_name = template_name.to_string();
+        let validator = validator.clone();
         tokio::task::spawn_blocking(move || {
-            validator.validate(output, template_name)
+            validator.validate(&output, &template_name)
         })
         .await
         .map_err(|e| TemplateError::InternalError(format!("Async validation failed: {}", e)))?

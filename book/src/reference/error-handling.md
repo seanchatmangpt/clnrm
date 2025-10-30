@@ -632,3 +632,4 @@ Now that you understand error handling:
 - [Error Handling in Rust](https://doc.rust-lang.org/book/ch09-00-error-handling.html)
 - [Structured Error Handling](https://nick.groenen.me/posts/structured-error-handling/)
 - [Error Context Patterns](https://www.lpalmieri.com/posts/error-context/)
+

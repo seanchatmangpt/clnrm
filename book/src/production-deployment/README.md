@@ -675,3 +675,4 @@ Now that you understand production deployment:
 - [CI/CD Best Practices](https://martinfowler.com/articles/continuousIntegration.html)
 - [Kubernetes Testing Patterns](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 - [Enterprise Testing Strategies](https://www.infoq.com/articles/enterprise-testing-strategies/)
+

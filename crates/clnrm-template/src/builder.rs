@@ -180,7 +180,14 @@ impl TemplateEngineBuilder {
 
     /// Set validation format
     pub fn with_validation_format(mut self, format: OutputFormat) -> Self {
-        self.validator = self.validator.format(format);
+        // Convert renderer::OutputFormat to validation::OutputFormat
+        let validation_format = match format {
+            OutputFormat::Toml => crate::validation::OutputFormat::Toml,
+            OutputFormat::Json => crate::validation::OutputFormat::Json,
+            OutputFormat::Yaml => crate::validation::OutputFormat::Yaml,
+            OutputFormat::Plain => crate::validation::OutputFormat::Auto,
+        };
+        self.validator = self.validator.format(validation_format);
         self
     }
 
@@ -280,9 +287,7 @@ impl TemplateEngineBuilder {
     /// Build cached renderer for performance
     pub fn build_cached(self) -> Result<CachedRenderer> {
         let context = self.context_builder.build();
-        let loader = self.build()?;
-
-        let (hot_reload, ttl) = self.cache_config.unwrap_or((true, Duration::from_secs(3600)));
+        let (hot_reload, _ttl) = self.cache_config.unwrap_or((true, Duration::from_secs(3600)));
         CachedRenderer::new(context, hot_reload)
     }
 
@@ -290,17 +295,25 @@ impl TemplateEngineBuilder {
     #[cfg(feature = "async")]
     pub async fn build_async_cached(self) -> Result<crate::r#async::AsyncTemplateRenderer> {
         let context = self.context_builder.build();
-        crate::r#async::AsyncTemplateRenderer::with_defaults().await?.with_context(context)
+        Ok(crate::r#async::AsyncTemplateRenderer::with_defaults().await?.with_context(context))
     }
 
     /// Build complete template engine with all components
     ///
     /// Returns a struct containing all configured components for advanced usage
     pub fn build_complete(self) -> Result<TemplateEngine> {
-        let loader = self.build()?;
+        // Load templates using discovery configuration
+        let loader = self.discovery.load()?;
+
+        // Build context from configuration
         let context = self.context_builder.build();
 
-        let (hot_reload, ttl) = self.cache_config.unwrap_or((true, Duration::from_secs(3600)));
+        // Apply validation rules to templates
+        for (name, content) in &loader.templates {
+            self.validator.validate(content, name)?;
+        }
+
+        let (hot_reload, _ttl) = self.cache_config.unwrap_or((true, Duration::from_secs(3600)));
         let cached_renderer = CachedRenderer::new(context.clone(), hot_reload)?;
 
         Ok(TemplateEngine {

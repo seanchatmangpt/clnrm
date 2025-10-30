@@ -948,16 +948,37 @@ async fn test_cli_report_generation() -> Result<()> {
         }],
     };
 
-    // Test report generation
+    // Test report generation - create a ValidationReport from test results
+    use crate::validation::ValidationReport;
+
     let report_dir = temp_dir.path().join("reports");
+    std::fs::create_dir_all(&report_dir).map_err(|e| {
+        CleanroomError::internal_error("Failed to create report directory")
+            .with_source(e.to_string())
+    })?;
+
+    // Create minimal validation report for testing
+    let mut validation_report = ValidationReport::new();
+    if test_results.failed_tests == 0 {
+        for _ in 0..test_results.total_tests {
+            validation_report.add_pass("test_passed");
+        }
+    } else {
+        for _ in 0..test_results.failed_tests {
+            validation_report.add_fail("test_failed", "Test failed".to_string());
+        }
+    }
+
     let config = ReportConfig {
-        output_dir: report_dir.clone(),
-        formats: vec!["json".to_string()],
-        include_system_info: true,
-        include_timings: true,
+        json_path: Some(report_dir.join("results.json").to_string_lossy().to_string()),
+        junit_path: None,
+        digest_path: None,
     };
 
-    generate_reports(&test_results, &config).map_err(|e| {
+    // Use empty spans JSON for testing
+    let spans_json = "[]";
+
+    generate_reports(&config, &validation_report, spans_json).map_err(|e| {
         CleanroomError::internal_error("Report generation failed")
             .with_context("Failed to generate test reports in CLI test")
             .with_source(e.to_string())
@@ -1070,10 +1091,10 @@ async fn test_otel_span_creation() -> Result<()> {
 
     // Get global tracer
     let tracer_provider = global::tracer_provider();
-    let mut span = tracer_provider.tracer("test-tracer").start("test-span");
+    let span = tracer_provider.tracer("test-tracer").start("test-span");
 
-    // Verify span can be created and ended
-    span.end();
+    // Verify span can be created and ended (span.end() consumes self)
+    drop(span); // Span automatically ends when dropped
 
     Ok(())
 }
@@ -1087,13 +1108,13 @@ async fn test_otel_trace_context() -> Result<()> {
     let tracer_provider = global::tracer_provider();
     let mut span = tracer_provider.tracer("test-tracer").start("context-test");
 
-    // Set attributes
+    // Set attributes (takes &mut self)
     span.set_attributes(vec![
         KeyValue::new("test.key", "test.value"),
         KeyValue::new("test.number", 42),
     ]);
 
-    // End span
+    // End span (takes self by value)
     span.end();
 
     Ok(())

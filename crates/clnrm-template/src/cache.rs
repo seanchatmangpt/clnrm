@@ -3,7 +3,7 @@
 //! Provides caching for compiled templates and hot-reload functionality
 //! for development and dynamic template loading.
 
-use crate::error::{TemplateError, Result};
+use crate::error::Result;
 use crate::renderer::TemplateRenderer;
 use crate::context::TemplateContext;
 use std::collections::HashMap;

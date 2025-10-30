@@ -389,3 +389,4 @@ fn test_run_cli_function() -> Result<()> {
 
     Ok(())
 }
+

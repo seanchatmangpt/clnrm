@@ -1,0 +1,97 @@
+# OpenTelemetry OTLP Export Validation
+#
+# This test validates that OTLP export configuration works correctly.
+# Tests stdout NDJSON export (no external dependencies) and validates export format.
+
+[test.metadata]
+name = "otel_otlp_export"
+description = "Validate OTLP export functionality with stdout NDJSON"
+timeout = "30s"
+
+# Service configuration
+[services.export_test]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+# Steps to trigger span export
+[[steps]]
+name = "trigger_export_operation_1"
+service = "export_test"
+command = ["echo", "Export test operation 1"]
+expected_output_regex = "Export test operation 1"
+expected_exit_code = 0
+
+[[steps]]
+name = "trigger_export_operation_2"
+service = "export_test"
+command = ["sh", "-c", "echo 'Export test operation 2' && date"]
+expected_output_regex = "Export test operation 2"
+expected_exit_code = 0
+
+# OTEL Validation Configuration
+[otel_validation]
+enabled = true
+validate_spans = true
+validate_exports = true
+
+# Export validation configuration
+[otel_validation.export]
+exporter_type = "stdout_ndjson"
+validate_format = true
+validate_required_fields = true
+
+# Required fields in exported spans
+required_span_fields = [
+    "name",
+    "trace_id",
+    "span_id",
+    "parent_span_id",
+    "start_time",
+    "end_time",
+    "attributes",
+    "status"
+]
+
+# Expected resource attributes in exports
+[otel_validation.export.resource_attributes]
+"service.name" = "clnrm"
+"telemetry.sdk.language" = "rust"
+"telemetry.sdk.name" = "opentelemetry"
+
+# Expected spans to be exported
+[[otel_validation.expected_spans]]
+name = "clnrm.run"
+required = true
+should_be_exported = true
+
+[[otel_validation.expected_spans]]
+name = "clnrm.test"
+required = true
+should_be_exported = true
+
+[[otel_validation.expected_spans]]
+name = "clnrm.step"
+required = true
+should_be_exported = true
+
+# Assertions
+[assertions]
+container_should_have_executed_commands = 2
+execution_should_be_hermetic = true
+all_spans_should_export = true
+
+# Export validation assertions
+[assertions.export_validation]
+export_format_is_valid_json = true
+export_contains_all_required_fields = true
+export_has_valid_trace_ids = true
+export_has_valid_span_ids = true
+export_timestamps_are_realistic = true
+
+# Fake-green detection for exports
+[assertions.fake_green_detection]
+exported_span_count_matches_generated = true
+no_duplicate_span_ids = true
+no_invalid_trace_ids = true
+timestamps_are_monotonic = true

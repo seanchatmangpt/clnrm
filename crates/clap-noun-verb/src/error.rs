@@ -70,3 +70,4 @@ impl NounVerbError {
 
 /// Result type alias for noun-verb operations
 pub type Result<T> = std::result::Result<T, NounVerbError>;
+

@@ -54,3 +54,4 @@ attrs.all = { "key" = "value" }
 - **[CLI Reference](cli-reference.md)** - Complete command-line interface documentation
 - **[TOML Schema](toml-schema.md)** - Detailed TOML configuration schema
 - **[Error Handling](error-handling.md)** - Error types and handling patterns
+

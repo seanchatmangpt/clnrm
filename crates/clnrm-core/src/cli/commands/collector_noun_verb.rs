@@ -1,7 +1,7 @@
 //! Collector command implementation using noun-verb pattern
 
-use crate::error::{CleanroomError, Result};
-use clap_noun_verb::{noun, verb, VerbArgs};
+use crate::error::Result;
+use clap_noun_verb::{noun, verb, VerbArgs, NounVerbError};
 
 /// Create the collector noun command
 pub fn collector_command() -> impl clap_noun_verb::NounCommand {
@@ -10,6 +10,7 @@ pub fn collector_command() -> impl clap_noun_verb::NounCommand {
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     start_collector().await
+                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
                 })
             })
         }),
@@ -17,6 +18,7 @@ pub fn collector_command() -> impl clap_noun_verb::NounCommand {
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     stop_collector().await
+                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
                 })
             })
         }),
@@ -24,6 +26,7 @@ pub fn collector_command() -> impl clap_noun_verb::NounCommand {
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     show_collector_status().await
+                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
                 })
             })
         }),
@@ -31,6 +34,7 @@ pub fn collector_command() -> impl clap_noun_verb::NounCommand {
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     show_collector_logs().await
+                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
                 })
             })
         }),
@@ -73,3 +77,4 @@ async fn show_collector_logs() -> Result<()> {
     println!("[2024-01-01 10:05:23] INFO: Received 150 spans");
     Ok(())
 }
+

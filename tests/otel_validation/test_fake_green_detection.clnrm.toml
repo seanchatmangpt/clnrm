@@ -1,0 +1,148 @@
+# Fake-Green Detection for OTEL Validation
+#
+# This test specifically validates that OTEL instrumentation is NOT generating
+# fake/simulated data. It ensures spans match actual execution and detects common
+# fake-green patterns.
+#
+# Critical: This test MUST fail if spans don't match real execution.
+
+[test.metadata]
+name = "otel_fake_green_detection"
+description = "Detect fake/simulated OTEL spans that don't match actual execution"
+timeout = "30s"
+
+# Service configuration
+[services.validation_target]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+# Execute exactly 5 commands to validate span count accuracy
+[[steps]]
+name = "command_1"
+service = "validation_target"
+command = ["echo", "Command 1"]
+expected_output_regex = "Command 1"
+expected_exit_code = 0
+
+[[steps]]
+name = "command_2"
+service = "validation_target"
+command = ["echo", "Command 2"]
+expected_output_regex = "Command 2"
+expected_exit_code = 0
+
+[[steps]]
+name = "command_3"
+service = "validation_target"
+command = ["sh", "-c", "sleep 0.05 && echo 'Command 3'"]
+expected_output_regex = "Command 3"
+expected_exit_code = 0
+
+[[steps]]
+name = "command_4"
+service = "validation_target"
+command = ["sh", "-c", "sleep 0.1 && echo 'Command 4'"]
+expected_output_regex = "Command 4"
+expected_exit_code = 0
+
+[[steps]]
+name = "command_5"
+service = "validation_target"
+command = ["echo", "Command 5"]
+expected_output_regex = "Command 5"
+expected_exit_code = 0
+
+# OTEL Validation Configuration
+[otel_validation]
+enabled = true
+validate_spans = true
+validate_traces = true
+validate_performance = true
+strict_mode = true  # Fail on any validation error
+
+# Fake-Green Detection Rules
+[otel_validation.fake_green_detection]
+enabled = true
+
+# Rule 1: Span count must exactly match command count
+# If we executed 5 commands, there should be exactly 5 container.exec spans
+validate_exact_span_count = true
+expected_container_exec_spans = 5
+
+# Rule 2: Span timing must be realistic
+# Spans should have realistic durations (> 0ms, < max_expected)
+validate_span_timing = true
+min_span_duration_ms = 0.001  # Any span < 1 microsecond is fake
+max_span_duration_ms = 10000.0  # Any span > 10 seconds is suspicious
+
+# Rule 3: Spans must have valid attributes matching execution
+validate_span_attributes = true
+required_attributes = [
+    "command",
+    "container.id",
+    "otel.kind",
+    "component"
+]
+
+# Rule 4: No duplicate spans
+# Same span_id appearing multiple times indicates simulation
+validate_no_duplicate_span_ids = true
+
+# Rule 5: Timestamps must be monotonic
+# End time must be after start time, parent must start before child
+validate_timestamp_ordering = true
+
+# Rule 6: Span hierarchy must match execution order
+# Child spans must execute within parent span timeframe
+validate_temporal_hierarchy = true
+
+# Expected spans for validation
+[[otel_validation.expected_spans]]
+name = "clnrm.container.exec"
+required = true
+count_exact = 5  # Must be exactly 5, not more, not less
+
+[otel_validation.expected_spans.attributes]
+"component" = "container_backend"
+"otel.kind" = "internal"
+
+# Assertions
+[assertions]
+container_should_have_executed_commands = 5
+execution_should_be_hermetic = true
+
+# Critical fake-green detection assertions
+[assertions.fake_green_detection]
+# CRITICAL: Span count must match command count exactly
+span_count_equals_command_count = true
+expected_span_count = 5
+
+# CRITICAL: All spans must have realistic timing
+all_spans_have_realistic_duration = true
+no_zero_duration_spans = true
+no_negative_duration_spans = true
+
+# CRITICAL: No simulated/fake data
+no_duplicate_span_ids = true
+no_invalid_trace_ids = true
+no_missing_required_attributes = true
+
+# CRITICAL: Temporal validation
+timestamps_are_monotonic = true
+child_spans_within_parent_timeframe = true
+step_spans_in_execution_order = true
+
+# CRITICAL: Span attributes match actual execution
+span_attributes_match_commands = true
+container_ids_are_valid = true
+command_attributes_are_accurate = true
+
+# CRITICAL: No fake spans without execution
+# Every container.exec span must correspond to actual command execution
+no_orphaned_exec_spans = true
+all_commands_have_corresponding_spans = true
+
+# CRITICAL: Performance validation
+# If spans claim < 1ms duration but sleep 100ms, that's fake
+span_duration_matches_sleep_time = true

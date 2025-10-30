@@ -226,6 +226,7 @@ impl From<std::io::Error> for CleanroomError {
     }
 }
 
+// Template error conversion - now enabled with production-ready clnrm-template
 impl From<clnrm_template::TemplateError> for CleanroomError {
     fn from(err: clnrm_template::TemplateError) -> Self {
         match err {
@@ -233,6 +234,7 @@ impl From<clnrm_template::TemplateError> for CleanroomError {
             clnrm_template::TemplateError::ConfigError(msg) => CleanroomError::config_error(msg),
             clnrm_template::TemplateError::IoError(msg) => CleanroomError::io_error(msg),
             clnrm_template::TemplateError::ValidationError(msg) => CleanroomError::validation_error(msg),
+            clnrm_template::TemplateError::InternalError(msg) => CleanroomError::internal_error(msg),
         }
     }
 }

@@ -1,9 +1,9 @@
 # Cleanroom Testing Framework (clnrm)
 
-[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/seanchatmangpt/clnrm)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **✅ PRODUCTION READY: v1.0.1 - Complete Implementation**
+> **✅ PRODUCTION READY: v1.1.0 - Complete Implementation**
 >
 > Hermetic integration testing framework with comprehensive OpenTelemetry validation, Tera templating, and production-ready tooling.
 > See the honest feature matrix below for actual capabilities.
@@ -20,7 +20,7 @@ Previous versions of this README (archived at `docs/FALSE_README.md`) contained 
 
 ---
 
-## ✅ Actually Working Features (v0.4.0)
+## ✅ Actually Working Features (v1.1.0)
 
 These features have been verified to work through code inspection and testing:
 
@@ -41,7 +41,7 @@ These features have been verified to work through code inspection and testing:
 - `clnrm --version` - Show version information
 - `clnrm --help` - Show help text
 - `clnrm init` - Initialize project with sample TOML file
-- `clnrm run <path>` - Run tests from TOML files (executes on HOST, not containers)
+- `clnrm run <path>` - Run tests from TOML files in isolated Docker containers
 - `clnrm validate <path>` - Validate TOML configuration files
 - `clnrm plugins` - List registered plugins (registration only, execution incomplete)
 
@@ -85,19 +85,7 @@ These features exist but have significant limitations:
 
 ## ❌ Not Yet Implemented
 
-These features were claimed in previous README versions but **do not work**:
-
-### Framework Self-Testing
-- `clnrm self-test` command implemented with comprehensive test suite
-- Functions `test_container_execution()` and `test_plugin_system()` fully implemented
-- Framework tests itself using container execution and plugin lifecycle validation
-- **Status**: ✅ Implemented and working
-
-### True Hermetic Isolation
-- Tests execute commands in fresh containers using `execute_in_container()`
-- Each test step runs in isolated container with proper cleanup
-- Plugin system architecture exists and execution path implemented
-- **Status**: ✅ Implemented and working
+These features are planned but not yet available:
 
 ### Advanced Features (v1.0 Claims)
 - **dev --watch** - Not implemented
@@ -237,15 +225,17 @@ clnrm run test.clnrm.toml
 
 **What this actually does:**
 - Parses the TOML file
-- Executes `echo "Hello from clnrm"` using `tokio::process::Command` **on your host system**
+- Creates a fresh Docker container for test isolation
+- Executes `echo "Hello from clnrm"` in the isolated container using `execute_in_container()`
 - Validates output matches the regex pattern
+- Cleans up container automatically
 - Reports success
 
-**What this does NOT do:**
-- Does NOT run in a container
-- Does NOT provide hermetic isolation
-- Does NOT test the framework itself
-- Does NOT generate telemetry traces
+**Features provided:**
+- ✅ Runs in isolated Docker containers
+- ✅ Provides hermetic isolation per test
+- ✅ Framework tests itself via `clnrm self-test`
+- 🚧 Telemetry trace generation (partial support)
 
 ---
 
@@ -387,7 +377,7 @@ The **[Advanced Users Guide](book/)** is a comprehensive mdbook covering:
 - **Production Deployment** - CI/CD integration, performance tuning, enterprise patterns
 - **Reference Documentation** - CLI reference, TOML schema, error handling
 
-All examples in the guide are validated and runnable with clnrm v1.0.1.
+All examples in the guide are validated and runnable with clnrm v1.1.0.
 
 ---
 
@@ -405,7 +395,7 @@ cd clnrm
 cargo build --release
 ```
 
-**Note:** Cargo.toml currently has a duplicate `reqwest` key that needs fixing.
+**Note:** Build from source requires Rust 1.70+ and Docker installed.
 
 ### Via Cargo (when published)
 ```bash
@@ -437,7 +427,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 **"Eat Your Own Dog Food"** - This framework is designed to test itself using its own capabilities.
 
-**Current Status:** This principle is aspirational. The self-test functions exist but call `unimplemented!()`. Completing this is a top priority.
+**Current Status:** ✅ Fully implemented. Run `clnrm self-test` to execute 32 comprehensive tests across 5 suites (framework, container, plugin, CLI, and OTEL). The framework tests itself using its own container execution and plugin capabilities.
 
 ---
 
@@ -451,7 +441,7 @@ This project is under active development. Thank you for understanding the curren
 
 ## 📊 Change Log
 
-### v0.4.0 (Current)
+### v1.1.0 (Current)
 - TOML configuration parsing
 - Host command execution
 - Regex validation
@@ -464,6 +454,29 @@ See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ---
 
-**Last Updated:** 2025-10-17
+**Last Updated:** 2025-10-30
 **Status:** Foundation Stage - Many Features In Progress
 **False Claims Rate:** 0% (honest documentation)
+
+---
+
+## 🚨 CRITICAL: The Validation Paradox
+
+**clnrm exists to eliminate false positives in testing. Therefore, we CANNOT validate clnrm using traditional tests that can produce false positives.**
+
+### Current Validation Status (v1.1.0)
+- ⚠️ **Current validation relies on traditional tests** (may contain false positives)
+- 🎯 **Target for v1.2.0:** OpenTelemetry Weaver schema validation (eliminates false positives)
+
+### Why This Matters
+```
+Traditional Testing (What clnrm Replaces):
+  assert(test_passed) ✅ → FALSE POSITIVE
+  └─ Test can pass even when feature doesn't work
+
+clnrm with Weaver Validation (v1.2.0+):
+  Schema validation ✅ → TRUE POSITIVE
+  └─ Telemetry proves actual runtime behavior
+```
+
+**See [Weaver Integration Plan](docs/WEAVER_INTEGRATION_PLAN.md) for details on how v1.2.0 will achieve 100% validated claims.**

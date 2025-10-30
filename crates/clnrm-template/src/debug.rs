@@ -9,8 +9,6 @@
 
 use crate::error::{TemplateError, Result};
 use crate::context::TemplateContext;
-use crate::renderer::{TemplateRenderer, OutputFormat};
-use crate::validation::{TemplateValidator, ValidationRule};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -357,6 +355,36 @@ impl TemplateDebugger {
             eprintln!("Render time: {}ms", time);
         }
     }
+
+    /// Find unused variables in template compared to context
+    ///
+    /// # Arguments
+    /// * `debug_info` - Debug info from template analysis
+    /// * `context` - Template context
+    pub fn find_unused_variables(&self, debug_info: &DebugInfo, context: &TemplateContext) -> Vec<String> {
+        let mut unused = Vec::new();
+        for var_name in context.vars.keys() {
+            if !debug_info.variables_used.contains(var_name) {
+                unused.push(var_name.clone());
+            }
+        }
+        unused
+    }
+
+    /// Find missing variables (used in template but not in context)
+    ///
+    /// # Arguments
+    /// * `debug_info` - Debug info from template analysis
+    /// * `context` - Template context
+    pub fn find_missing_variables(&self, debug_info: &DebugInfo, context: &TemplateContext) -> Vec<String> {
+        let mut missing = Vec::new();
+        for var_name in &debug_info.variables_used {
+            if !context.vars.contains_key(var_name) {
+                missing.push(var_name.clone());
+            }
+        }
+        missing
+    }
 }
 
 /// Template analyzer for static analysis
@@ -631,7 +659,7 @@ impl TemplateLinter {
 }
 
 /// Template validation tools for development workflows
-pub struct TemplateValidator {
+pub struct DebugTemplateValidator {
     /// Base validator
     validator: crate::validation::TemplateValidator,
     /// Linter for code quality
@@ -640,7 +668,7 @@ pub struct TemplateValidator {
     debugger: TemplateDebugger,
 }
 
-impl TemplateValidator {
+impl DebugTemplateValidator {
     /// Create new template validator
     pub fn new() -> Self {
         Self {

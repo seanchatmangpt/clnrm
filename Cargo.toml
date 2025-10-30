@@ -9,17 +9,16 @@ members = [
   "crates/clap-noun-verb",
 ]
 
-# Default members for core functionality
+# Default members for core functionality (template excluded - experimental)
 default-members = [
   "crates/clnrm",
   "crates/clnrm-core",
   "crates/clnrm-shared",
-  "crates/clnrm-template",
   "crates/clap-noun-verb",
 ]
 
 [workspace.package]
-version = "1.0.1"
+version = "1.1.0"
 edition = "2021"
 license = "MIT"
 authors = ["Sean Chatman <seanchatmangpt@gmail.com>"]

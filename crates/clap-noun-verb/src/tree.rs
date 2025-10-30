@@ -28,6 +28,7 @@ pub struct TreeNode {
 /// Command handler for leaf nodes
 pub struct CommandHandler {
     /// Handler function
+    #[allow(clippy::type_complexity)]
     pub handler: Box<dyn Fn(&VerbArgs) -> Result<()> + Send + Sync>,
 }
 
@@ -111,6 +112,7 @@ impl CommandTree {
     }
 
     /// Recursively route commands through the tree
+    #[allow(clippy::only_used_in_recursion)]
     fn route_recursive(&self, node: &TreeNode, matches: &ArgMatches) -> Result<()> {
         if let Some((child_name, child_matches)) = matches.subcommand() {
             // Find the child command
@@ -170,8 +172,12 @@ impl TreeNode {
 
     /// Build the clap command for this node
     pub fn build_command(&self) -> Command {
-        let mut cmd = Command::new(self.name.as_str())
-            .about(self.about.clone());
+        // Clone to owned strings and convert to static lifetime for clap
+        // Note: This leaks memory but is acceptable for CLI construction (happens once per run)
+        let name: &'static str = Box::leak(self.name.clone().into_boxed_str());
+        let about: &'static str = Box::leak(self.about.clone().into_boxed_str());
+        let mut cmd = Command::new(name)
+            .about(about);
 
         for child in &self.children {
             cmd = cmd.subcommand(child.build_command());
@@ -270,6 +276,7 @@ pub mod patterns {
     use super::*;
 
     /// Create a simple noun-verb pattern
+    #[allow(clippy::type_complexity)]
     pub fn noun_verb_pattern(
         noun_name: impl Into<String>,
         about: impl Into<String>,

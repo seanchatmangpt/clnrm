@@ -150,11 +150,16 @@ impl CommandRegistry {
 
     /// Build the complete clap command structure
     pub fn build_command(&self) -> Command {
-        let mut cmd = Command::new(self.config.name.as_str())
-            .about(self.config.about.clone());
+        // Clone to owned strings and convert to static lifetime for clap
+        // Note: This leaks memory but is acceptable for CLI construction (happens once per run)
+        let name: &'static str = Box::leak(self.config.name.clone().into_boxed_str());
+        let about: &'static str = Box::leak(self.config.about.clone().into_boxed_str());
+        let mut cmd = Command::new(name)
+            .about(about);
 
         if let Some(version) = &self.config.version {
-            cmd = cmd.version(&**version);
+            let version_str: &'static str = Box::leak(version.to_string().into_boxed_str());
+            cmd = cmd.version(version_str);
         }
 
         // Add global arguments
@@ -185,6 +190,7 @@ impl CommandRegistry {
     }
 
     /// Recursively route commands through nested noun-verb structure
+    #[allow(clippy::only_used_in_recursion)]
     fn route_recursive(&self, noun: &dyn NounCommand, noun_name: &str, matches: &ArgMatches) -> Result<()> {
         // Check if there's a subcommand (either verb or sub-noun)
         if let Some((sub_name, sub_matches)) = matches.subcommand() {

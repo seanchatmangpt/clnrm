@@ -1,0 +1,276 @@
+@startuml Weaver Integration Detailed Sequence
+
+!define CRITICAL #FF6B6B
+!define SUCCESS #2ECC71
+!define PROCESSING #3498DB
+
+title Detailed Weaver Integration Sequence (End-to-End)
+
+actor "Developer" as Dev
+participant "clnrm CLI" as CLI
+participant "WeawerController" as Controller
+participant "TestEngine" as Engine
+participant "Generated\nTelemetry" as GenTelemetry
+participant "Container\nManager" as ContainerMgr
+participant "Docker" as Docker
+participant "OTLP\nExporter" as OTLP
+participant "Weaver\nLive-Check" as Weaver
+database "Telemetry\nRegistry" as Registry
+
+== Initialization Phase ==
+
+Dev -> CLI : clnrm run tests/ --validate-telemetry
+activate CLI #PROCESSING
+
+CLI -> Controller : initialize with validation
+activate Controller #PROCESSING
+
+Controller -> Registry : load telemetry schemas
+activate Registry
+Registry --> Controller : schemas loaded
+note right
+  Loaded schemas:
+  - test_execution
+  - container_lifecycle
+  - plugin_system
+  - test_metrics
+end note
+
+Controller -> Weaver : start live-check listener
+activate Weaver #CRITICAL
+note right of Weaver
+  weaver registry live-check \
+    --registry registry/ \
+    --otlp-grpc-port 4317 \
+    --output ./validation/ \
+    --format json
+end note
+Weaver --> Controller : listener started on :4317
+
+Controller -> OTLP : configure exporter
+activate OTLP
+OTLP --> Controller : exporter ready
+
+Controller --> CLI : validation environment ready
+deactivate Registry
+
+== Test Execution Phase ==
+
+CLI -> Engine : execute test suite
+activate Engine #PROCESSING
+
+loop For each test in TOML
+
+  Engine -> GenTelemetry : create_test_execution_span()
+  activate GenTelemetry
+  note right
+    Generated from schema:
+
+    TestExecutionSpan::new(
+      test_name,
+      container_image
+    )
+  end note
+  GenTelemetry --> Engine : span created
+
+  Engine -> ContainerMgr : create_isolated_container()
+  activate ContainerMgr
+
+  ContainerMgr -> GenTelemetry : create_container_lifecycle_span()
+  GenTelemetry --> ContainerMgr : span created
+
+  ContainerMgr -> Docker : docker run alpine:latest
+  activate Docker
+  Docker --> ContainerMgr : container_id: "abc123"
+
+  ContainerMgr -> GenTelemetry : span.set_container_id("abc123")
+  ContainerMgr -> GenTelemetry : span.set_state(ContainerState::Running)
+
+  note right of GenTelemetry #SUCCESS
+    Telemetry automatically includes:
+    - container.id = "abc123"
+    - container.image = "alpine:latest"
+    - container.state = "running"
+    - test.isolated = true
+
+    ALL required by schema
+  end note
+
+  ContainerMgr --> Engine : container ready
+
+  Engine -> Docker : execute test commands
+  Docker --> Engine : command results
+
+  Engine -> GenTelemetry : span.set_test_result(TestResult::Pass)
+  Engine -> GenTelemetry : span.record_duration(125.5)
+
+  deactivate Docker
+
+  ' Export telemetry
+  Engine -> OTLP : export_span(test_execution_span)
+  OTLP -> Weaver : stream telemetry via OTLP gRPC
+  note right of OTLP
+    OTLP Span Export:
+    {
+      "name": "test_execution",
+      "attributes": {
+        "container.id": "abc123",
+        "container.image": "alpine:latest",
+        "test.isolated": true,
+        "test.result": "pass",
+        "duration_ms": 125.5
+      }
+    }
+  end note
+
+  ' Real-time validation
+  Weaver -> Registry : load schema for validation
+  activate Registry
+  Weaver -> Weaver : validate span against schema
+  deactivate Registry
+
+  alt Span Matches Schema
+    Weaver -> Weaver : log: ✓ validation passed
+    note right of Weaver #SUCCESS
+      Validation PASSED:
+      ✓ container.id present (required)
+      ✓ test.isolated = true (required)
+      ✓ test.result valid enum (required)
+      ✓ All types match schema
+
+      TRUE POSITIVE
+      Feature is working!
+    end note
+  else Span Doesn't Match Schema
+    Weaver -> Weaver : log: ✗ violation found
+    note right of Weaver #CRITICAL
+      Validation FAILED:
+      ✗ Missing required attribute:
+        container.id
+
+      FALSE NEGATIVE
+      Container may not have run!
+      Test result invalid!
+    end note
+  end
+
+  ' Cleanup
+  ContainerMgr -> Docker : docker rm abc123
+  Docker --> ContainerMgr : removed
+  deactivate ContainerMgr
+
+  ContainerMgr -> GenTelemetry : span.end()
+  GenTelemetry -> OTLP : export_span(container_lifecycle_span)
+  OTLP -> Weaver : stream lifecycle telemetry
+
+  deactivate GenTelemetry
+
+end
+
+Engine --> CLI : all tests completed
+deactivate Engine
+
+== Validation Report Phase ==
+
+CLI -> Controller : request validation results
+Controller -> Weaver : stop listener & generate report
+deactivate OTLP
+
+Weaver -> Weaver : aggregate all validations
+Weaver -> Weaver : calculate statistics
+
+note right of Weaver
+  Statistics:
+  - total_entities: 15
+  - total_advisories: 16
+  - violation: 2
+  - improvement: 3
+  - information: 11
+  - registry_coverage: 85%
+end note
+
+Weaver --> Controller : validation report
+deactivate Weaver
+
+Controller -> Controller : parse validation results
+
+alt All Validations Passed
+  Controller --> CLI : ValidationResult::Success #SUCCESS
+  note right
+    {
+      "status": "success",
+      "violations": 0,
+      "coverage": 0.85,
+      "total_tests": 15,
+      "message": "All telemetry validated"
+    }
+  end note
+
+  CLI --> Dev : ✓ Tests passed\n✓ Telemetry validated\nExit code: 0 #SUCCESS
+
+  note over Dev #SUCCESS
+    **SAFE TO SHIP**
+
+    Tests passed ✓
+    Weaver validation passed ✓
+
+    Features proven to work!
+  end note
+
+else Any Validation Failed
+  Controller --> CLI : ValidationResult::Failure #CRITICAL
+  note right
+    {
+      "status": "failure",
+      "violations": 2,
+      "details": [
+        {
+          "test": "http_test",
+          "issue": "missing container.id",
+          "level": "violation"
+        }
+      ]
+    }
+  end note
+
+  CLI --> Dev : ✗ Tests passed\n✗ Telemetry validation FAILED\nExit code: 1 #CRITICAL
+
+  note over Dev #CRITICAL
+    **DO NOT SHIP**
+
+    Tests passed ✓
+    Weaver validation FAILED ✗
+
+    Feature may have false positives!
+    Fix implementation or schema.
+  end note
+end
+
+deactivate Controller
+deactivate CLI
+
+== The Critical Decision Point ==
+
+note over Dev, Registry #FFEB9C
+  **THE WEAVER DECISION GATE**
+
+  Traditional Approach:
+    Tests pass → Ship it
+    └─ Risk: False positives
+
+  clnrm Approach:
+    Tests pass AND Weaver validates → Ship it
+    └─ Proof: Runtime behavior proven
+
+  **If Weaver validation fails:**
+  1. Implementation bug (fix code)
+  2. Schema incorrect (fix schema)
+  3. Configuration issue (fix config)
+  4. Test not exercising code (fix test)
+
+  **Never ship without Weaver validation passing.**
+
+  This is the ONLY way to prove features work.
+end note
+
+@enduml

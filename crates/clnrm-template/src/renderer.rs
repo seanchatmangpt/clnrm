@@ -6,10 +6,9 @@
 use crate::error::{TemplateError, Result};
 use crate::context::TemplateContext;
 use crate::functions::{register_functions, TimestampProvider};
-use std::collections::HashMap;
 use std::path::Path;
 use std::sync::OnceLock;
-use tera::{Tera, Function, Value};
+use tera::Tera;
 
 /// Template renderer with Tera engine
 ///
@@ -21,7 +20,7 @@ use tera::{Tera, Function, Value};
 /// - Macro library for common TOML patterns
 #[derive(Clone)]
 pub struct TemplateRenderer {
-    tera: Tera,
+    pub(crate) tera: Tera,
     context: TemplateContext,
     determinism: Option<std::sync::Arc<dyn TimestampProvider + Send + Sync>>,
 }

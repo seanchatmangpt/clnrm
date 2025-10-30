@@ -9,7 +9,7 @@
 //! - Template file organization and management
 
 use crate::error::{TemplateError, Result};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::fs;

@@ -599,3 +599,4 @@ Now that you understand variable resolution:
 - [Variable Resolution Implementation](../crates/clnrm-core/src/template/resolver.rs)
 - [Environment Variable Integration](../crates/clnrm-core/src/config/)
 - [Template System Overview](README.md)
+

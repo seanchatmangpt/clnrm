@@ -7,7 +7,7 @@
 //! - `TemplateBuilder` - Fluent API for complex configurations
 
 use crate::error::{TemplateError, Result};
-use crate::context::{TemplateContext, TemplateContextBuilder};
+use crate::context::TemplateContext;
 use crate::renderer::{TemplateRenderer, render_template};
 use std::collections::HashMap;
 use std::path::Path;
@@ -162,7 +162,7 @@ pub enum OutputFormat {
 }
 
 /// Convert TOML to JSON format
-fn convert_to_json(toml_content: &str) -> Result<String> {
+pub fn convert_to_json(toml_content: &str) -> Result<String> {
     let parsed: Value = toml::from_str(toml_content)
         .map_err(|e| TemplateError::ValidationError(format!("Failed to parse TOML for JSON conversion: {}", e)))?;
 
@@ -171,7 +171,7 @@ fn convert_to_json(toml_content: &str) -> Result<String> {
 }
 
 /// Convert TOML to YAML format
-fn convert_to_yaml(toml_content: &str) -> Result<String> {
+pub fn convert_to_yaml(toml_content: &str) -> Result<String> {
     let parsed: Value = toml::from_str(toml_content)
         .map_err(|e| TemplateError::ValidationError(format!("Failed to parse TOML for YAML conversion: {}", e)))?;
 
@@ -180,7 +180,7 @@ fn convert_to_yaml(toml_content: &str) -> Result<String> {
 }
 
 /// Strip template syntax to get plain text
-fn strip_template_syntax(content: &str) -> Result<String> {
+pub fn strip_template_syntax(content: &str) -> Result<String> {
     // Simple implementation - remove {{ }} and {% %} blocks
     let mut result = String::new();
     let mut in_braces = false;
@@ -345,7 +345,6 @@ impl TemplateBuilder {
 /// Quick template rendering functions for common patterns
 pub mod quick {
     use super::*;
-    use std::collections::HashMap;
 
     /// Render a simple greeting template
     pub fn greeting(name: &str) -> String {

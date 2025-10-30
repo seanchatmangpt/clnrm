@@ -39,6 +39,7 @@ impl CommandRouter {
     }
 
     /// Recursively route commands through nested noun-verb structure
+    #[allow(clippy::only_used_in_recursion)]
     fn route_recursive(&self, noun: &dyn NounCommand, noun_name: &str, matches: &ArgMatches) -> Result<()> {
         // Check if there's a subcommand (either verb or sub-noun)
         if let Some((sub_name, sub_matches)) = matches.subcommand() {

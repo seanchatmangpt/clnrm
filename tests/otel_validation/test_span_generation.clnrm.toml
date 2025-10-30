@@ -1,0 +1,106 @@
+# OpenTelemetry Span Generation Validation
+#
+# This test validates that clnrm generates OTEL spans correctly during test execution.
+# Uses stdout NDJSON export for validation without external dependencies.
+#
+# Critical: This test validates REAL span generation, not fake/simulated data.
+
+[test.metadata]
+name = "otel_span_generation"
+description = "Validate OTEL spans are generated correctly during clnrm execution"
+timeout = "30s"
+
+# Service configuration - Generic container for basic command execution
+[services.test_container]
+type = "generic_container"
+plugin = "generic_container"
+image = "alpine:latest"
+
+[services.test_container.env]
+TEST_ENV = "otel_validation"
+
+# Step 1: Execute simple command to trigger span generation
+[[steps]]
+name = "execute_command_with_span"
+service = "test_container"
+command = ["echo", "Span generation test"]
+expected_output_regex = "Span generation test"
+expected_exit_code = 0
+
+# Step 2: Execute second command to trigger multiple spans
+[[steps]]
+name = "execute_second_command"
+service = "test_container"
+command = ["sh", "-c", "echo 'Second span' && sleep 0.1"]
+expected_output_regex = "Second span"
+expected_exit_code = 0
+
+# Step 3: Execute third command for span hierarchy validation
+[[steps]]
+name = "execute_nested_command"
+service = "test_container"
+command = ["sh", "-c", "echo 'Nested span' && date"]
+expected_output_regex = "Nested span"
+expected_exit_code = 0
+
+# OTEL Validation Configuration
+[otel_validation]
+enabled = true
+validate_spans = true
+validate_traces = true
+validate_performance = true
+max_overhead_ms = 100.0
+
+# Expected Spans - These prove clnrm executed correctly
+[[otel_validation.expected_spans]]
+name = "clnrm.run"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"clnrm.version" = "0.4.0"
+"otel.kind" = "internal"
+"component" = "runner"
+
+[[otel_validation.expected_spans]]
+name = "clnrm.test"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"test.name" = "otel_span_generation"
+"test.hermetic" = "true"
+"otel.kind" = "internal"
+
+[[otel_validation.expected_spans]]
+name = "clnrm.step"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"step.name" = "execute_command_with_span"
+"otel.kind" = "internal"
+"component" = "step_executor"
+
+[[otel_validation.expected_spans]]
+name = "clnrm.container.exec"
+required = true
+
+[otel_validation.expected_spans.attributes]
+"command" = "echo"
+"otel.kind" = "internal"
+"component" = "container_backend"
+
+# Assertions
+[assertions]
+container_should_have_executed_commands = 3
+execution_should_be_hermetic = true
+all_steps_should_succeed = true
+
+# Performance assertion - ensure OTEL overhead is acceptable
+[assertions.performance]
+max_overhead_ms = 100.0
+baseline_duration_ms = 500.0
+
+# Fake-green detection - ensure span count matches executed commands
+[assertions.fake_green_detection]
+span_count_matches_command_count = true
+span_timing_is_realistic = true
+no_spans_without_execution = true

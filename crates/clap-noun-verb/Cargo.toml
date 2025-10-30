@@ -32,3 +32,4 @@ path = "examples/services.rs"
 [[example]]
 name = "collector"
 path = "examples/collector.rs"
+

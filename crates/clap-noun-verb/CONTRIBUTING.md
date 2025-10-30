@@ -188,3 +188,4 @@ If you have questions about contributing, please:
 - Ask in the project discussions
 
 Thank you for contributing to clap-noun-verb!
+

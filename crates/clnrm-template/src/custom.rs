@@ -7,6 +7,7 @@
 //! - Type-safe function signatures
 
 use crate::error::{TemplateError, Result};
+use crate::renderer::TemplateRenderer;
 use serde_json::Value;
 use std::collections::HashMap;
 use tera::{Function, Filter, Tera};
@@ -158,7 +159,7 @@ impl FunctionRegistry {
 }
 
 /// Convenience functions for registering custom functions and filters
-
+///
 /// Register a custom function with Tera
 ///
 /// # Arguments
@@ -198,7 +199,7 @@ where
 }
 
 /// Common custom function implementations for reuse
-
+///
 /// Create a simple function that returns a static string
 pub fn simple_string_function(value: &str) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
     let value = value.to_string();
@@ -225,7 +226,7 @@ pub fn format_function(format_str: &str) -> impl Fn(&HashMap<String, Value>) -> 
 }
 
 /// Create a function that performs arithmetic operations
-pub fn arithmetic_function(operation: ArithmeticOp) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
+pub fn arithmetic_function(operation: ArithmeticOp) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
     move |args| {
         let a = args.get("a").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let b = args.get("b").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -260,9 +261,9 @@ pub enum ArithmeticOp {
 }
 
 /// Common custom filter implementations
-
+///
 /// Create a filter that converts values to uppercase
-pub fn uppercase_filter() -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
+pub fn uppercase_filter() -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
     |value, _args| {
         match value {
             Value::String(s) => Ok(Value::String(s.to_uppercase())),
@@ -272,7 +273,7 @@ pub fn uppercase_filter() -> impl Fn(&Value, &HashMap<String, Value>) -> Result<
 }
 
 /// Create a filter that converts values to lowercase
-pub fn lowercase_filter() -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
+pub fn lowercase_filter() -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
     |value, _args| {
         match value {
             Value::String(s) => Ok(Value::String(s.to_lowercase())),
@@ -282,7 +283,7 @@ pub fn lowercase_filter() -> impl Fn(&Value, &HashMap<String, Value>) -> Result<
 }
 
 /// Create a filter that truncates strings
-pub fn truncate_filter(max_len: usize) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
+pub fn truncate_filter(max_len: usize) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
     move |value, _args| {
         match value {
             Value::String(s) => {
@@ -298,7 +299,7 @@ pub fn truncate_filter(max_len: usize) -> impl Fn(&Value, &HashMap<String, Value
 }
 
 /// Create a filter that joins array elements
-pub fn join_filter(separator: &str) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
+pub fn join_filter(separator: &str) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
     let separator = separator.to_string();
     move |value, _args| {
         match value {

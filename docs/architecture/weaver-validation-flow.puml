@@ -1,0 +1,182 @@
+@startuml Weaver Validation Flow
+
+!define PASS_COLOR #2ECC71
+!define FAIL_COLOR #E74C3C
+!define WEAVER_COLOR #3498DB
+
+title Weaver Live-Check Validation Flow (The Only Source of Truth)
+
+participant "Developer" as Dev
+participant "clnrm CLI" as CLI
+participant "Test Engine" as Engine
+participant "Container" as Container
+participant "OTLP Exporter" as OTLP
+participant "Weaver Live-Check" as Weaver
+participant "Schema Registry" as Registry
+participant "CI/CD" as CI
+
+== Schema-First Development ==
+
+Dev -> Registry : 1. Define telemetry schema
+activate Registry
+note right
+  test_execution.yaml:
+    span.clnrm.test_execution:
+      attributes:
+        - container.id: required
+        - test.isolated: boolean
+        - test.result: enum
+end note
+
+Dev -> Weaver : 2. weaver registry check
+Weaver -> Registry : validate schema
+Weaver --> Dev : schema valid ✓
+deactivate Registry
+
+Dev -> Weaver : 3. weaver registry generate rust
+Weaver -> Registry : load schema
+Weaver --> Dev : type-safe builders generated
+note right
+  TestExecutionSpan::new(
+    container_id,
+    test_name
+  )
+end note
+
+== Test Execution with Live Validation ==
+
+Dev -> CLI : 4. clnrm run tests/ --validate
+
+activate CLI
+CLI -> Weaver : start live-check listener
+activate Weaver
+note right of Weaver #WEAVER_COLOR
+  weaver registry live-check
+  --otlp-grpc-port 4317
+  --registry registry/
+end note
+
+CLI -> Engine : execute tests
+activate Engine
+
+loop For each test
+  Engine -> Container : create isolated container
+  activate Container
+
+  Engine -> Container : execute test steps
+  Container --> Engine : test results
+
+  Engine -> OTLP : export telemetry
+  activate OTLP
+  note right
+    Span: test_execution
+      container.id: "abc123"
+      test.isolated: true
+      test.result: "pass"
+  end note
+
+  OTLP -> Weaver : stream telemetry
+
+  Weaver -> Registry : load schema for validation
+  activate Registry
+
+  Weaver -> Weaver : validate telemetry\nagainst schema
+
+  alt Telemetry Matches Schema
+    Weaver --> OTLP : ✓ validation passed #PASS_COLOR
+    note right of Weaver #PASS_COLOR
+      **TRUE POSITIVE**
+
+      Telemetry proves:
+      - Container ran (container.id exists)
+      - Isolation worked (test.isolated = true)
+      - Test executed (test.result = pass)
+
+      Feature is VALIDATED ✓
+    end note
+  else Telemetry Doesn't Match Schema
+    Weaver --> OTLP : ✗ validation failed #FAIL_COLOR
+    note right of Weaver #FAIL_COLOR
+      **VALIDATION FAILURE**
+
+      Missing required attribute:
+        container.id
+
+      This means:
+      - Container may not have run
+      - Feature is NOT working
+      - MUST FIX before shipping
+    end note
+  end
+
+  deactivate Registry
+  deactivate OTLP
+  deactivate Container
+end
+
+Engine --> CLI : all tests completed
+deactivate Engine
+
+Weaver -> Weaver : generate validation report
+Weaver --> CLI : validation results
+
+alt All Validations Passed
+  CLI --> Dev : ✓ Tests passed\n✓ Telemetry validated #PASS_COLOR
+  note right
+    Exit code: 0
+
+    Safe to ship!
+    Feature proven to work.
+  end note
+else Any Validation Failed
+  CLI --> Dev : ✗ Tests passed\n✗ Telemetry validation FAILED #FAIL_COLOR
+  note right
+    Exit code: 1
+
+    DO NOT SHIP!
+    Tests may have false positives.
+    Fix telemetry or implementation.
+  end note
+end
+
+deactivate CLI
+deactivate Weaver
+
+== CI/CD Integration ==
+
+CI -> CLI : clnrm run tests/ --validate
+
+alt Weaver Validation Passes
+  CLI --> CI : exit 0 #PASS_COLOR
+  CI -> CI : build passes
+  CI -> CI : deploy
+else Weaver Validation Fails
+  CLI --> CI : exit 1 #FAIL_COLOR
+  CI -> CI : build FAILS
+  note right
+    CI blocks deployment
+    until Weaver validation passes
+  end note
+end
+
+== The Critical Difference ==
+
+note over Dev, CI #FFEB9C
+  **Traditional Testing (What We Replace)**
+
+  cargo test → All tests pass ✓
+  └─ Ship it!
+  └─ Risk: Tests can have false positives
+
+  **Weaver Validation (What We Use)**
+
+  weaver registry live-check → Telemetry validated ✓
+  └─ Ship it!
+  └─ Proof: Runtime behavior matches schema
+
+  **Key Insight:**
+  Tests validate test code.
+  Schemas validate production behavior.
+end note
+
+@enduml

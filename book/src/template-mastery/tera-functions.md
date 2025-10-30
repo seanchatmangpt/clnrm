@@ -525,3 +525,4 @@ Now that you understand Tera functions:
 - [Tera Documentation](https://tera.netlify.app/)
 - [Template System Mastery Overview](README.md)
 - [Custom Function Implementation](../plugin-development/README.md)
+
