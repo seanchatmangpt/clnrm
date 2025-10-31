@@ -136,9 +136,13 @@ impl ServicePlugin for GenericContainerPlugin {
                         .with_source(e.to_string())
                 })?;
 
+                // Generate container ID
+                let container_id = format!("generic-{}", Uuid::new_v4());
+
                 let mut metadata = HashMap::new();
                 metadata.insert("image".to_string(), format!("{}:{}", self.image, self.tag));
                 metadata.insert("container_type".to_string(), "generic".to_string());
+                metadata.insert("container_id".to_string(), container_id.clone());
 
                 // Add port information
                 for port in &self.ports {
@@ -149,7 +153,7 @@ impl ServicePlugin for GenericContainerPlugin {
 
                 // Store container reference
                 let mut container_guard = self.container_id.write().await;
-                *container_guard = Some(format!("generic-{}", Uuid::new_v4()));
+                *container_guard = Some(container_id);
 
                 Ok(ServiceHandle {
                     id: Uuid::new_v4().to_string(),

@@ -114,8 +114,8 @@ pub fn span_count() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use opentelemetry::trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState};
-    use opentelemetry_sdk::trace::{SpanData, SpanEvents, SpanKind, SpanLinks};
+    use opentelemetry::trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState, SpanKind};
+    use opentelemetry_sdk::trace::{SpanData, SpanEvents, SpanLinks};
     use std::borrow::Cow;
     use std::time::SystemTime;
 
@@ -131,7 +131,7 @@ mod tests {
             parent_span_id: SpanId::INVALID,
             parent_span_is_remote: false,
             span_kind: SpanKind::Internal,
-            name: Cow::Borrowed(name),
+            name: Cow::Owned(name.to_string()),
             start_time: SystemTime::now(),
             end_time: SystemTime::now(),
             attributes: Vec::new(),
@@ -175,7 +175,13 @@ mod tests {
 
     #[test]
     fn test_span_count() {
+        // Clear any spans from other tests (global state)
         clear_collected_spans();
+
+        // Wait a bit for any async cleanup
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        // Now verify clean state
         assert_eq!(span_count(), 0);
 
         store_span(create_test_span("span1"));

@@ -339,7 +339,16 @@ impl WeaverController<Running> {
             })?;
         }
 
-        let output = Self::wait_with_timeout(&mut process, Duration::from_secs(10))?;
+        // FIX: Always wait for process, even on error, to prevent zombie processes
+        let output_result = Self::wait_with_timeout(&mut process, Duration::from_secs(10));
+
+        // Ensure process is cleaned up even if wait_with_timeout failed
+        if output_result.is_err() {
+            warn!("Wait timeout failed, ensuring process cleanup to prevent zombie");
+            let _ = process.wait(); // Prevent zombie process
+        }
+
+        let output = output_result?;
 
         if !output.stdout.is_empty() {
             debug!("Weaver stdout: {}", String::from_utf8_lossy(&output.stdout));

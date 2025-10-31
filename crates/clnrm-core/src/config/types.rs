@@ -602,8 +602,8 @@ impl TestConfig {
         // FAIL FAST: Performance testing is not yet implemented
         if self.performance.is_some() {
             return Err(CleanroomError::not_implemented(
-                "Performance testing features ([test.performance] section with sample_size, baseline_name, regression_detection) are not yet implemented. \
-                 Remove the [test.performance] section to run this test."
+                "Performance testing features ([performance] section with sample_size, baseline_name, regression_detection) are not yet implemented. \
+                 Remove the [performance] section to run this test."
             ));
         }
 

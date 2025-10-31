@@ -174,48 +174,105 @@ pub struct CliHealthSpan {
     start_time: Instant,
 }
 
+/// Parameters for finishing a health check span
+#[derive(Debug, Default)]
+pub struct HealthCheckResult {
+    pub success: bool,
+    pub overall: String,
+    pub checks_total: usize,
+    pub checks_passed: usize,
+    pub checks_failed: usize,
+    pub docker_available: bool,
+    pub docker_version: Option<String>,
+    pub docker_type: Option<String>,
+    pub weaver_available: bool,
+    pub weaver_version: Option<String>,
+    pub error: Option<(String, String)>,
+}
+
+impl HealthCheckResult {
+    pub fn builder() -> HealthCheckResultBuilder {
+        HealthCheckResultBuilder::default()
+    }
+}
+
+/// Builder for HealthCheckResult
+#[derive(Debug, Default)]
+pub struct HealthCheckResultBuilder {
+    result: HealthCheckResult,
+}
+
+impl HealthCheckResultBuilder {
+    pub fn success(mut self, success: bool) -> Self {
+        self.result.success = success;
+        self
+    }
+
+    pub fn overall(mut self, overall: impl Into<String>) -> Self {
+        self.result.overall = overall.into();
+        self
+    }
+
+    pub fn checks(mut self, total: usize, passed: usize, failed: usize) -> Self {
+        self.result.checks_total = total;
+        self.result.checks_passed = passed;
+        self.result.checks_failed = failed;
+        self
+    }
+
+    pub fn docker(mut self, available: bool, version: Option<String>, dtype: Option<String>) -> Self {
+        self.result.docker_available = available;
+        self.result.docker_version = version;
+        self.result.docker_type = dtype;
+        self
+    }
+
+    pub fn weaver(mut self, available: bool, version: Option<String>) -> Self {
+        self.result.weaver_available = available;
+        self.result.weaver_version = version;
+        self
+    }
+
+    pub fn error(mut self, error_type: String, error_message: String) -> Self {
+        self.result.error = Some((error_type, error_message));
+        self
+    }
+
+    pub fn build(self) -> HealthCheckResult {
+        self.result
+    }
+}
+
 impl CliHealthSpan {
-    pub fn finish(
-        self,
-        success: bool,
-        overall: &str,
-        checks_total: usize,
-        checks_passed: usize,
-        checks_failed: usize,
-        docker_available: bool,
-        docker_version: Option<String>,
-        docker_type: Option<String>,
-        weaver_available: bool,
-        weaver_version: Option<String>,
-        error: Option<(String, String)>,
-    ) {
+    /// Finish the health span with a single parameter object
+    pub fn finish(self, result: HealthCheckResult) {
         let duration_ms = self.start_time.elapsed().as_secs_f64() * 1000.0;
 
         let _enter = self.span.enter();
 
         // Required attributes
-        self.span.record("operation.success", success);
-        self.span.record("health.overall", overall);
-        self.span.record("health.checks_total", checks_total as i64);
-        self.span.record("health.checks_passed", checks_passed as i64);
-        self.span.record("health.checks_failed", checks_failed as i64);
-        self.span.record("docker.available", docker_available);
+        self.span.record("operation.success", result.success);
+        self.span.record("health.overall", result.overall.as_str());
+        self.span.record("health.checks_total", result.checks_total as i64);
+        self.span.record("health.checks_passed", result.checks_passed as i64);
+        self.span.record("health.checks_failed", result.checks_failed as i64);
+        self.span.record("docker.available", result.docker_available);
         self.span.record("operation.duration_ms", duration_ms);
 
         // Recommended attributes
-        if let Some(version) = docker_version {
+        if let Some(version) = result.docker_version {
             self.span.record("docker.version", version.as_str());
         }
-        if let Some(dtype) = docker_type {
+        if let Some(dtype) = result.docker_type {
             self.span.record("docker.type", dtype.as_str());
         }
-        self.span.record("weaver.available", weaver_available);
-        if let Some(version) = weaver_version {
+        self.span.record("weaver.available", result.weaver_available);
+        if let Some(version) = result.weaver_version {
             self.span.record("weaver.version", version.as_str());
         }
 
         // Conditional error attributes
-        if let Some((error_type, error_message)) = error {
+        if let Some((error_type, error_message)) = result.error {
             self.span.record("error.type", error_type.as_str());
             self.span.record("error.message", error_message.as_str());
         }
