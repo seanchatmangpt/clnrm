@@ -309,37 +309,82 @@ async fn run_tests_impl_with_report(
     otel_exporter: &str,
     otel_endpoint: Option<&str>,
 ) -> Result<()> {
-    // Initialize OpenTelemetry if requested
-    // CRITICAL: Guard must live until the end of the function to ensure telemetry export completes
     use crate::telemetry::{init_otel, flush_telemetry_and_wait, Export, OtelConfig};
-    let _otel_guard = if otel_exporter != "none" {
-        let export = match otel_exporter {
-            "stdout" => Export::Stdout,
-            "otlp-http" => {
-                let endpoint = otel_endpoint.ok_or_else(|| {
-                    CleanroomError::validation_error("OTEL endpoint required for otlp-http exporter")
-                })?;
-                // Convert to static string by leaking (acceptable for CLI setup)
-                let static_endpoint: &'static str = Box::leak(endpoint.to_string().into_boxed_str());
-                Export::OtlpHttp {
-                    endpoint: static_endpoint,
-                }
+    use crate::telemetry::weaver_controller::{WeaverConfig, WeaverController};
+
+    // ========================================
+    // STEP 1: START WEAVER FIRST (Weaver-first pattern)
+    // ========================================
+    let weaver_controller = if config.validate {
+        let weaver_config = WeaverConfig {
+            registry_path: PathBuf::from("registry"),
+            otlp_port: 0, // 0 = auto-discover
+            admin_port: 0, // 0 = auto-discover
+            output_dir: PathBuf::from("./validation_output"),
+            stream: false,
+        };
+
+        let mut controller = WeaverController::new(weaver_config);
+        info!("🔍 Starting Weaver validation (Weaver-first pattern)");
+
+        // Start Weaver and get coordination metadata
+        let coordination = controller.start_and_coordinate().map_err(|e| {
+            CleanroomError::validation_error(format!("Failed to start Weaver: {}", e))
+        })?;
+
+        info!("✅ Weaver ready (PID: {}, OTLP port: {})",
+            coordination.weaver_pid, coordination.otlp_grpc_port);
+
+        Some(controller)
+    } else {
+        None
+    };
+
+    // ========================================
+    // STEP 2: INITIALIZE OTEL WITH WEAVER COORDINATION
+    // ========================================
+    // CRITICAL: Guard must live until the end of the function to ensure telemetry export completes
+    let _otel_guard = if otel_exporter != "none" || config.validate {
+        // If Weaver is enabled, ALWAYS use its coordinated port
+        let export = if config.validate {
+            let weaver = weaver_controller.as_ref().unwrap();
+            let otlp_port = weaver.get_otlp_port();
+            let endpoint = format!("http://localhost:{}", otlp_port);
+            // Convert to static string by leaking (acceptable for CLI setup)
+            let static_endpoint: &'static str = Box::leak(endpoint.into_boxed_str());
+
+            info!("🔗 OTEL configured to export to Weaver at {}", static_endpoint);
+            Export::OtlpGrpc {
+                endpoint: static_endpoint,
             }
-            "otlp-grpc" => {
-                let endpoint = otel_endpoint.ok_or_else(|| {
-                    CleanroomError::validation_error("OTEL endpoint required for otlp-grpc exporter")
-                })?;
-                // Convert to static string by leaking (acceptable for CLI setup)
-                let static_endpoint: &'static str = Box::leak(endpoint.to_string().into_boxed_str());
-                Export::OtlpGrpc {
-                    endpoint: static_endpoint,
+        } else {
+            // No Weaver, use user-specified exporter
+            match otel_exporter {
+                "stdout" => Export::Stdout,
+                "otlp-http" => {
+                    let endpoint = otel_endpoint.ok_or_else(|| {
+                        CleanroomError::validation_error("OTEL endpoint required for otlp-http exporter")
+                    })?;
+                    let static_endpoint: &'static str = Box::leak(endpoint.to_string().into_boxed_str());
+                    Export::OtlpHttp {
+                        endpoint: static_endpoint,
+                    }
                 }
-            }
-            _ => {
-                return Err(CleanroomError::validation_error(format!(
-                    "Invalid OTEL exporter '{}'. Valid: none, stdout, otlp-http, otlp-grpc",
-                    otel_exporter
-                )))
+                "otlp-grpc" => {
+                    let endpoint = otel_endpoint.ok_or_else(|| {
+                        CleanroomError::validation_error("OTEL endpoint required for otlp-grpc exporter")
+                    })?;
+                    let static_endpoint: &'static str = Box::leak(endpoint.to_string().into_boxed_str());
+                    Export::OtlpGrpc {
+                        endpoint: static_endpoint,
+                    }
+                }
+                _ => {
+                    return Err(CleanroomError::validation_error(format!(
+                        "Invalid OTEL exporter '{}'. Valid: none, stdout, otlp-http, otlp-grpc",
+                        otel_exporter
+                    )))
+                }
             }
         };
 
@@ -356,33 +401,9 @@ async fn run_tests_impl_with_report(
         None
     };
 
-    // Initialize Weaver validation if requested
-    use crate::telemetry::weaver_controller::{WeaverConfig, WeaverController};
-    let weaver_controller = if config.validate {
-        let weaver_config = WeaverConfig {
-            registry_path: PathBuf::from("registry"),
-            otlp_port: 4317, // Will be auto-discovered in start_live_check
-            admin_port: 8080, // Will be auto-discovered in start_live_check
-            output_dir: PathBuf::from("./validation_output"),
-            stream: false,
-        };
-
-        let mut controller = WeaverController::new(weaver_config);
-        info!("🔍 Starting Weaver validation");
-
-        // Start Weaver live-check (discovers available ports)
-        controller.start_live_check().map_err(|e| {
-            CleanroomError::validation_error(format!("Failed to start Weaver: {}", e))
-        })?;
-
-        // Get the discovered OTLP port and update OTEL exporter endpoint
-        let discovered_port = controller.get_otlp_port();
-        info!("🔗 Weaver listening on port {}, updating OTEL endpoint", discovered_port);
-
-        Some(controller)
-    } else {
-        None
-    };
+    // ========================================
+    // STEP 3: RUN TESTS (telemetry goes to Weaver if enabled)
+    // ========================================
 
     // Create root span for entire test run (OTEL self-testing)
     let run_span = {
@@ -563,7 +584,9 @@ async fn run_tests_impl_with_report(
         }
     }
 
-    // Explicit telemetry flush before collecting Weaver report
+    // ========================================
+    // STEP 4: FLUSH OTEL TELEMETRY
+    // ========================================
     if _otel_guard.is_some() {
         info!("🔄 Flushing telemetry...");
         flush_telemetry_and_wait();
@@ -571,9 +594,11 @@ async fn run_tests_impl_with_report(
         info!("✅ Telemetry flushed");
     }
 
-    // Collect Weaver validation report if enabled
+    // ========================================
+    // STEP 5: STOP WEAVER AND GET VALIDATION REPORT
+    // ========================================
     if let Some(mut weaver) = weaver_controller {
-        info!("📊 Collecting Weaver validation report...");
+        info!("📊 Stopping Weaver and collecting validation report...");
 
         // Additional wait to ensure telemetry reaches Weaver
         thread::sleep(Duration::from_millis(1000));
@@ -582,9 +607,38 @@ async fn run_tests_impl_with_report(
             CleanroomError::validation_error(format!("Failed to get Weaver report: {}", e))
         })?;
 
+        // ========================================
+        // STEP 6: VALIDATE SAMPLE COUNT (CRITICAL)
+        // ========================================
+        if report.sample_count == 0 {
+            error!("🚨 CRITICAL: Weaver received ZERO telemetry samples!");
+            error!("   This means validation did not actually test anything.");
+            error!("   Validation result is meaningless.");
+            error!("");
+            error!("   Possible causes:");
+            error!("   - OTEL exporter not configured correctly");
+            error!("   - Telemetry sent to wrong port");
+            error!("   - Tests failed before emitting telemetry");
+            error!("   - Weaver not receiving OTLP data");
+
+            println!("\n=== Weaver Validation Report ===");
+            println!("Status: FAILED (zero samples)");
+            println!("Samples Received: {}", report.sample_count);
+            println!("Violations: {}", report.violations);
+            println!("\n❌ VALIDATION FAILED: Zero telemetry samples received");
+            println!("Cannot validate telemetry that was never sent.");
+            println!("This is a FALSE NEGATIVE - fix OTEL configuration.\n");
+
+            return Err(CleanroomError::validation_error(
+                "Weaver validation failed: zero telemetry samples received. \
+                 Check OTEL configuration and ensure tests emit telemetry.",
+            ));
+        }
+
         // Print validation summary
         println!("\n=== Weaver Validation Report ===");
         println!("Status: {:?}", report.status);
+        println!("Samples Received: {} ✓", report.sample_count);
         println!("Violations: {}", report.violations);
         println!("Improvements: {}", report.improvements);
         println!("Information: {}", report.information);
@@ -593,6 +647,9 @@ async fn run_tests_impl_with_report(
             report.registry_coverage * 100.0
         );
 
+        // ========================================
+        // STEP 7: CHECK VIOLATIONS AND EXIT WITH ERROR IF FOUND
+        // ========================================
         if report.violations > 0 {
             println!("\n❌ VALIDATION FAILED");
             println!("Telemetry does not match semantic conventions.");
@@ -613,12 +670,18 @@ async fn run_tests_impl_with_report(
                 }
             }
 
-            return Err(CleanroomError::validation_error(
-                "Weaver detected semantic convention violations",
-            ));
+            println!("\n💡 Tip: Fix violations to ensure tests are not producing false positives.");
+            println!("See validation_output/validation_report.json for full details.\n");
+
+            return Err(CleanroomError::validation_error(format!(
+                "Weaver validation failed with {} violations. \
+                 Telemetry does not conform to semantic conventions.",
+                report.violations
+            )));
         } else {
             println!("✅ No violations detected");
-            println!("Telemetry matches semantic conventions.\n");
+            println!("Telemetry matches semantic conventions.");
+            println!("Validation passed: {} samples validated successfully.\n", report.sample_count);
         }
     }
 

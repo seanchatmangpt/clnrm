@@ -358,12 +358,23 @@ Report results
 
 ## 📚 Documentation
 
+### Core Documentation
 - **[Advanced Users Guide](book/)** - Comprehensive guide for advanced clnrm users (mdbook)
 - **[CLAUDE.md](CLAUDE.md)** - Development guidelines and architecture
 - **[TOML Reference](docs/TOML_REFERENCE.md)** - Configuration format (describes planned features)
 - **[Codebase Quality Analysis](CODEBASE_QUALITY_ANALYSIS.md)** - Current code status
 - **[Rosetta Stone Pattern Analysis](docs/ROSETTA_STONE_PATTERN_ANALYSIS.md)** - Comprehensive analysis of the innovative Rosetta Stone testing methodology
-- **[False README](docs/FALSE_README.md)** - Archived version with false claims
+
+### Weaver Validation (v1.2.0+)
+- **[Weaver Best Practices](docs/WEAVER_BEST_PRACTICES.md)** - ⭐ **NEW** - Schema design, live-check usage, performance optimization
+- **[Migration Guide v1.2.0](docs/MIGRATION_GUIDE_v1.2.0.md)** - ⭐ **NEW** - Upgrading from v1.1.0, breaking changes, step-by-step migration
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - ⭐ **NEW** - Common issues, debugging, solutions
+- **[Weaver User Guide](docs/WEAVER_USER_GUIDE.md)** - Using Weaver validation with clnrm
+- **[Schema Writing Guide](docs/SCHEMA_WRITING_GUIDE.md)** - Authoring OpenTelemetry schemas
+- **[London TDD Strategy](crates/clnrm-core/tests/weaver/LONDON_TDD_STRATEGY.md)** - Schema-driven mock testing
+
+### Historical Documentation
+- **[False README](docs/FALSE_README.md)** - Archived version with false claims (educational)
 
 **Note:** Some documentation describes planned features not yet implemented. Check this README's feature matrix for actual status.
 
@@ -478,34 +489,109 @@ Traditional tests can have false positives:
 - Schema defines exact behavior contract
 - **Cannot pass with fake implementation**
 
+### Weaver-First Architecture Principles
+
+**The Meta-Problem clnrm Solves:**
+
+```
+Traditional Testing (What We Replace):
+  Test passes ✅ → Assumes feature works → FALSE POSITIVE
+  └─ Test only validates test code, not production behavior
+
+clnrm with Weaver Validation:
+  Schema defines behavior → Weaver validates runtime telemetry ✅
+  └─ Schema validation proves actual runtime behavior
+```
+
+**Key Principles:**
+
+1. **Schema-First Development**: Always start with schema definition before code
+2. **Three-Tier Validation Hierarchy**: Weaver > Compilation > Traditional Tests
+3. **Zero-Sample Detection**: Validation fails if no telemetry received
+4. **Type-Safe State Machines**: Rust's type system enforces correct usage
+5. **Hermetic Isolation**: Every test proves container execution via telemetry
+
 ### Validation Flow
 
 ```
-Define schema → Generate code → Write tests → Implement → Validate with Weaver
-     ↓              ↓             ↓            ↓              ↓
-  Contract      Type-safe     Interface   Implementation  Runtime
-  defined       builders      validated    complete      validated
+Define Schema → Generate Code → Write Tests → Implement → Validate with Weaver
+      ↓              ↓             ↓            ↓              ↓
+   Contract      Type-safe     Interface   Implementation  Runtime
+   defined       builders      validated    complete      validated
 ```
+
+**What Each Step Proves:**
+- **Schema**: Defines the contract (what must be true)
+- **Code Generation**: Creates type-safe APIs (enforced at compile-time)
+- **Tests**: Verify behavior (but can have false positives)
+- **Implementation**: Actual runtime behavior
+- **Weaver**: Proves implementation matches contract (source of truth)
 
 Traditional testing validates test logic. Weaver validates production behavior.
 
-### Running with Validation
+### Quick Start with Weaver Validation
 
 ```bash
-# Run tests with Weaver validation
-clnrm run tests/ --validate
+# 1. Install Weaver (one-time setup)
+cargo install weaver-cli
+weaver --version  # Should be 0.16.1+
 
-# If validation passes:
-✅ Tests passed
-✅ Telemetry validated
-→ Feature proven to work
+# 2. Validate schemas
+weaver registry check -r registry/
 
-# If validation fails:
-✓ Tests passed
-✗ Telemetry validation FAILED
-→ Feature may have false positives
-→ DO NOT SHIP
+# 3. Run tests with live validation
+# Terminal 1: Start Weaver listener
+weaver registry live-check --registry registry/ --format json --output ./validation_report
+
+# Terminal 2: Run tests with OTLP export
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+cargo test --features otel
+
+# Terminal 1: Stop listener (CTRL+C), then check results
+cat validation_report/summary.json
+
+# 4. Interpret results
+✅ sample_count > 0         # Telemetry was emitted
+✅ violations = 0           # No schema violations
+✅ registry_coverage > 0.0  # Attributes were observed
+→ Feature PROVEN to work
+
+❌ sample_count = 0         # No telemetry = validation invalid
+❌ violations > 0           # Schema violations detected
+→ Feature may have false positives - DO NOT SHIP
 ```
+
+### Validation Hierarchy (v1.2.0)
+
+```
+┌─────────────────────────────────────────┐
+│ LEVEL 1: Weaver Schema Validation      │  ← SOURCE OF TRUTH
+│ ✅ weaver registry check                │     (Highest Authority)
+│ ✅ weaver registry live-check           │
+│    • Proves runtime behavior matches     │
+│    • Detects missing telemetry           │
+│    • Cannot be faked                     │
+└─────────────────────────────────────────┘
+              ↓ Must Pass ↓
+┌─────────────────────────────────────────┐
+│ LEVEL 2: Compilation & Code Quality    │  ← CODE CORRECTNESS
+│ ✅ cargo build --release --features otel│     (Second Authority)
+│ ✅ cargo clippy -- -D warnings          │
+│    • Proves code is valid Rust           │
+│    • Enforces best practices             │
+└─────────────────────────────────────────┘
+              ↓ Must Pass ↓
+┌─────────────────────────────────────────┐
+│ LEVEL 3: Traditional Tests              │  ← SUPPORTING EVIDENCE
+│ ✅ cargo test                            │     (Can Have False Positives)
+│ ✅ clnrm self-test                       │
+│    • Verify test logic                   │
+│    • May pass with broken features       │
+│    • NOT source of truth                 │
+└─────────────────────────────────────────┘
+```
+
+**Critical Rule**: If Weaver validation fails, the feature DOES NOT WORK, regardless of test results.
 
 ### LIVE-CHECK Compliance: How Weaver Validation Works
 

@@ -42,6 +42,12 @@ pub use telemetry::{Export, OtelConfig, OtelGuard};
 pub use telemetry::weaver_controller::{
     ValidationReport as WeaverValidationReport, ValidationStatus, WeaverConfig, WeaverController,
 };
+// Type-safe Weaver coordination exports
+pub use telemetry::weaver_coordination::{
+    WeaverController as TypeSafeWeaverController,
+    WeaverConfig as TypeSafeWeaverConfig,
+    Running, Stopped, Unstarted,
+};
 
 pub use assertions::{cache, database, email_service, UserAssertions};
 pub use cache::{Cache, CacheManager, CacheStats, FileCache, MemoryCache};

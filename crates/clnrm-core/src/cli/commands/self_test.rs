@@ -87,19 +87,9 @@ pub async fn run_self_tests(
     let test_results = run_framework_tests_by_suite(suite.as_deref())
         .await
         .map_err(|e| {
-            let error = CleanroomError::internal_error("Framework self-tests failed")
+            CleanroomError::internal_error("Framework self-tests failed")
                 .with_context("Failed to execute framework test suite")
-                .with_source(e.to_string());
-
-            cli_span.finish(
-                false,
-                0,
-                0,
-                0,
-                Some(("TestExecutionError".to_string(), error.to_string())),
-            );
-
-            error
+                .with_source(e.to_string())
         })?;
 
     // Display results (CLI output is acceptable for user-facing messages)

@@ -54,8 +54,8 @@ exporters:
     tls:
       insecure: true
 
-  # Logging exporter for debugging
-  logging:
+  # Debug exporter for debugging (replaces deprecated logging exporter)
+  debug:
     verbosity: detailed
     sampling_initial: 5
     sampling_thereafter: 200
@@ -74,19 +74,19 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, resource, attributes, batch]
-      exporters: [otlp/jaeger, logging, file]
+      exporters: [otlp/jaeger, debug, file]
 
     # Metrics pipeline
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, resource, attributes, batch]
-      exporters: [logging, file]
+      exporters: [debug, file]
 
     # Logs pipeline
     logs:
       receivers: [otlp]
       processors: [memory_limiter, resource, attributes, batch]
-      exporters: [logging, file]
+      exporters: [debug, file]
 
   # Telemetry configuration for collector itself
   telemetry:
@@ -96,7 +96,6 @@ service:
       encoding: json
       output_paths:
         - stdout
-        - /var/log/otel/collector.log
       error_output_paths:
         - stderr
     metrics:

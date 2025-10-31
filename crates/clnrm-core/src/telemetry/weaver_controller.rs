@@ -87,6 +87,7 @@ pub struct ValidationReport {
     /// Percentage of registry coverage (0.0 - 1.0)
     pub registry_coverage: f64,
     /// Number of telemetry samples received (CRITICAL: must be > 0 for valid validation)
+    #[serde(default)]
     pub sample_count: u32,
     /// Detailed list of validation issues
     pub details: Vec<ValidationDetail>,
@@ -716,16 +717,28 @@ impl WeaverController {
             CleanroomError::io_error(format!("Failed to read validation report: {}", e))
         })?;
 
-        let report: ValidationReport = serde_json::from_str(&report_json).map_err(|e| {
+        let mut report: ValidationReport = serde_json::from_str(&report_json).map_err(|e| {
             CleanroomError::serialization_error(format!(
                 "Failed to parse validation report: {}",
                 e
             ))
         })?;
 
+        // CRITICAL: Zero-sample validation (prevents false positives)
+        if report.sample_count == 0 {
+            error!("🚨 CRITICAL: Weaver received ZERO telemetry samples!");
+            error!("   This means validation did not actually test anything.");
+            error!("   Possible causes:");
+            error!("   - OTEL exporter not configured correctly");
+            error!("   - Telemetry sent to wrong port");
+            error!("   - Tests failed before emitting telemetry");
+            report.status = ValidationStatus::Failure;
+        }
+
         // Log summary
         info!("📊 Validation Report Summary:");
         info!("   Status: {:?}", report.status);
+        info!("   Samples Received: {}", report.sample_count);
         info!("   Violations: {}", report.violations);
         info!("   Improvements: {}", report.improvements);
         info!("   Information: {}", report.information);

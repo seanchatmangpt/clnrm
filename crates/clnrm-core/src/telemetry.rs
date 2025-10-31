@@ -13,6 +13,9 @@ pub mod testing;
 pub mod validation_analyzer;
 pub mod weaver_controller;
 
+// Type-safe Weaver coordination (state machine pattern)
+pub mod weaver_coordination;
+
 // Weaver innovation modules
 pub mod weaver_stats;
 pub mod weaver_emit;
@@ -102,6 +105,96 @@ pub struct OtelGuard {
     tracer_provider: SdkTracerProvider,
     meter_provider: Option<SdkMeterProvider>,
     logger_provider: Option<opentelemetry_sdk::logs::SdkLoggerProvider>,
+    /// Export monitoring for Weaver coordination
+    export_monitor: Option<ExportMonitor>,
+}
+
+/// Monitor for OTLP export health and failures
+///
+/// Tracks export attempts and failures to provide visibility into
+/// telemetry delivery to Weaver. Critical for detecting silent data loss.
+#[derive(Debug, Clone)]
+pub struct ExportMonitor {
+    /// Number of successful exports
+    pub successful_exports: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    /// Number of failed exports
+    pub failed_exports: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    /// Last export attempt timestamp
+    pub last_export_at: std::sync::Arc<std::sync::Mutex<Option<std::time::Instant>>>,
+}
+
+impl Default for ExportMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ExportMonitor {
+    /// Create new export monitor
+    pub fn new() -> Self {
+        Self {
+            successful_exports: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            failed_exports: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            last_export_at: std::sync::Arc::new(std::sync::Mutex::new(None)),
+        }
+    }
+
+    /// Record successful export
+    pub fn record_success(&self) {
+        self.successful_exports
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if let Ok(mut last) = self.last_export_at.lock() {
+            *last = Some(std::time::Instant::now());
+        }
+    }
+
+    /// Record failed export
+    pub fn record_failure(&self) {
+        self.failed_exports
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Get export statistics
+    pub fn stats(&self) -> ExportStats {
+        let successful = self
+            .successful_exports
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let failed = self
+            .failed_exports
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let last_export = self.last_export_at.lock().ok().and_then(|l| *l);
+
+        ExportStats {
+            successful_exports: successful,
+            failed_exports: failed,
+            last_export_at: last_export,
+        }
+    }
+}
+
+/// Export statistics snapshot
+#[derive(Debug, Clone)]
+pub struct ExportStats {
+    pub successful_exports: u64,
+    pub failed_exports: u64,
+    pub last_export_at: Option<std::time::Instant>,
+}
+
+impl ExportStats {
+    /// Check if exports are healthy (no failures, recent exports)
+    pub fn is_healthy(&self, max_age_secs: u64) -> bool {
+        if self.failed_exports > 0 {
+            return false;
+        }
+
+        if let Some(last) = self.last_export_at {
+            let age = last.elapsed().as_secs();
+            age <= max_age_secs
+        } else {
+            // No exports yet - consider unhealthy
+            false
+        }
+    }
 }
 
 impl Drop for OtelGuard {
@@ -112,9 +205,31 @@ impl Drop for OtelGuard {
         // This ensures batch exporters send buffered spans/metrics/logs to collectors
         // Without this, buffered data is lost when the provider drops
 
+        // Log export statistics if monitoring is enabled
+        if let Some(ref monitor) = self.export_monitor {
+            let stats = monitor.stats();
+            tracing::info!(
+                "📊 Export statistics: {} successful, {} failed",
+                stats.successful_exports,
+                stats.failed_exports
+            );
+
+            if stats.failed_exports > 0 {
+                tracing::warn!(
+                    "⚠️  {} export failures detected during telemetry lifecycle",
+                    stats.failed_exports
+                );
+            }
+        }
+
         // Flush traces with timeout
         if let Err(e) = self.tracer_provider.force_flush() {
             tracing::error!("Failed to flush traces during shutdown: {}", e);
+            if let Some(ref monitor) = self.export_monitor {
+                monitor.record_failure();
+            }
+        } else if let Some(ref monitor) = self.export_monitor {
+            monitor.record_success();
         }
 
         // Give async exports time to complete (batch processor uses async)
@@ -130,6 +245,11 @@ impl Drop for OtelGuard {
         if let Some(mp) = self.meter_provider.take() {
             if let Err(e) = mp.force_flush() {
                 tracing::error!("Failed to flush metrics during shutdown: {}", e);
+                if let Some(ref monitor) = self.export_monitor {
+                    monitor.record_failure();
+                }
+            } else if let Some(ref monitor) = self.export_monitor {
+                monitor.record_success();
             }
             std::thread::sleep(Duration::from_millis(100));
             if let Err(e) = mp.shutdown() {
@@ -141,6 +261,11 @@ impl Drop for OtelGuard {
         if let Some(lp) = self.logger_provider.take() {
             if let Err(e) = lp.force_flush() {
                 tracing::error!("Failed to flush logs during shutdown: {}", e);
+                if let Some(ref monitor) = self.export_monitor {
+                    monitor.record_failure();
+                }
+            } else if let Some(ref monitor) = self.export_monitor {
+                monitor.record_success();
             }
             std::thread::sleep(Duration::from_millis(100));
             if let Err(e) = lp.shutdown() {
@@ -285,7 +410,163 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
         tracer_provider: tp,
         meter_provider,
         logger_provider,
+        export_monitor: None,
     })
+}
+
+/// Initialize OpenTelemetry with Weaver coordination (Weaver-first pattern)
+///
+/// This is the PREFERRED initialization method for clnrm v1.2.0+. It ensures:
+/// - Weaver is running before OTEL starts
+/// - OTEL exports to Weaver's actual listening port (no hardcoded 4317)
+/// - Batching configured appropriately for test scenarios
+/// - Export failures are handled gracefully
+///
+/// # Weaver-First Pattern
+///
+/// This function enforces the Weaver-first pattern by requiring active WeaverCoordination.
+/// If Weaver is not running, initialization will fail fast.
+///
+/// # Arguments
+///
+/// * `config` - Standard OTEL configuration
+/// * `coordination` - Weaver coordination metadata from `WeaverController::start_and_coordinate()`
+///
+/// # Returns
+///
+/// Returns `OtelGuard` on success, which handles proper shutdown and flushing on drop.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Weaver is not running (coordination validation fails)
+/// - OTLP exporter creation fails
+/// - Tracing subscriber initialization fails
+///
+/// # Example
+///
+/// ```no_run
+/// use clnrm_core::telemetry::{init_otel_with_weaver, OtelConfig, Export};
+/// use clnrm_core::telemetry::weaver_controller::{WeaverController, WeaverConfig};
+///
+/// # fn example() -> clnrm_core::error::Result<()> {
+/// // Step 1: Start Weaver and get coordination
+/// let mut weaver = WeaverController::new(WeaverConfig::default());
+/// let coordination = weaver.start_and_coordinate()?;
+///
+/// // Step 2: Initialize OTEL with Weaver coordination
+/// let _otel_guard = init_otel_with_weaver(
+///     OtelConfig {
+///         service_name: "clnrm",
+///         deployment_env: "testing",
+///         sample_ratio: 1.0,
+///         export: Export::OtlpGrpc { endpoint: "" }, // Endpoint ignored, uses coordination
+///         enable_fmt_layer: false,
+///         headers: None,
+///     },
+///     &coordination,
+/// )?;
+///
+/// // Step 3: Run tests (telemetry validated by Weaver)
+/// // ...
+/// # Ok(())
+/// # }
+/// ```
+pub fn init_otel_with_weaver(
+    mut cfg: OtelConfig,
+    coordination: &weaver_controller::WeaverCoordination,
+) -> Result<OtelGuard, CleanroomError> {
+    use tracing::{info, warn};
+
+    info!("🚀 Initializing OTEL with Weaver coordination (v1.2.0 pattern)");
+    info!(
+        "   Weaver PID: {}, OTLP port: {}",
+        coordination.weaver_pid, coordination.otlp_grpc_port
+    );
+
+    // CRITICAL: Validate Weaver is actually running
+    // This prevents silent telemetry loss due to dead Weaver processes
+    if !is_weaver_running(coordination.weaver_pid) {
+        return Err(CleanroomError::validation_error(format!(
+            "Weaver process (PID {}) is not running. \
+             Cannot initialize OTEL without active Weaver validation. \
+             Start Weaver using WeaverController::start_and_coordinate() first.",
+            coordination.weaver_pid
+        )));
+    }
+
+    // Override export configuration to use Weaver's actual port
+    // This ensures telemetry goes to Weaver's listener, not a hardcoded endpoint
+    let weaver_endpoint = format!("http://localhost:{}", coordination.otlp_grpc_port);
+    info!("   Using Weaver endpoint: {}", weaver_endpoint);
+
+    // Convert to 'static str by leaking (acceptable for process-lifetime config)
+    let endpoint_static: &'static str = Box::leak(weaver_endpoint.into_boxed_str());
+
+    cfg.export = Export::OtlpGrpc {
+        endpoint: endpoint_static,
+    };
+
+    // Configure batching based on test scenario
+    // For test scenarios, we want aggressive flushing to ensure telemetry
+    // reaches Weaver before tests complete
+    std::env::set_var("OTEL_BSP_SCHEDULE_DELAY", "100"); // Flush every 100ms (default: 5000ms)
+    std::env::set_var("OTEL_BSP_MAX_QUEUE_SIZE", "2048"); // Default: 2048
+    std::env::set_var("OTEL_BSP_MAX_EXPORT_BATCH_SIZE", "512"); // Default: 512
+
+    warn!(
+        "   Configured aggressive batching for test scenario (100ms flush interval)"
+    );
+
+    // Initialize OTEL with Weaver-coordinated configuration
+    let mut guard = init_otel(cfg)?;
+
+    // Add export monitoring for Weaver coordination
+    let monitor = ExportMonitor::new();
+    guard.export_monitor = Some(monitor);
+
+    info!("✅ OTEL initialized with Weaver coordination");
+    info!(
+        "   Telemetry will be validated by Weaver (PID {})",
+        coordination.weaver_pid
+    );
+    info!("   Export monitoring enabled for health tracking");
+
+    Ok(guard)
+}
+
+/// Check if Weaver process is still running
+///
+/// This is a critical safety check to prevent silent telemetry loss.
+/// If Weaver crashes or is killed, OTEL exporters will silently drop telemetry.
+///
+/// # Platform Support
+///
+/// - Unix: Uses `kill(pid, 0)` to check process existence
+/// - Windows: Always returns true (no reliable check without additional dependencies)
+fn is_weaver_running(pid: u32) -> bool {
+    #[cfg(unix)]
+    {
+        use nix::sys::signal::kill;
+        use nix::unistd::Pid;
+
+        let pid = Pid::from_raw(pid as i32);
+        match kill(pid, None) {
+            Ok(()) => true,  // Process exists
+            Err(_) => false, // Process doesn't exist or no permission
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        // On Windows, we don't have a reliable way to check without additional dependencies
+        // Assume process is running (caller should have started it recently)
+        let _ = pid; // Suppress unused variable warning
+        tracing::warn!(
+            "Process liveness check not supported on this platform, assuming Weaver is running"
+        );
+        true
+    }
 }
 
 /// Validation utilities for OpenTelemetry testing

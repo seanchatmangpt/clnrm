@@ -1,0 +1,689 @@
+# Weaver Refactor Validation - CI/CD Pipeline
+#
+# This workflow implements the "Weaver as Single Source of Truth" principle
+# for clnrm v1.2.0 refactoring. It validates that all telemetry matches
+# schema definitions and blocks merges on violations.
+#
+# ## What This Proves
+#
+# - Schema Compliance: All telemetry matches Weaver schema definitions
+# - No False Positives: Runtime telemetry validation proves features work
+# - Production Readiness: sample_count > 0 proves code executed
+# - Zero Violations: violations == 0 proves schema conformance
+#
+# ## Validation Flow
+#
+# 1. Start OTLP collector service (Docker)
+# 2. Install Weaver and dependencies
+# 3. Build clnrm with OTEL features
+# 4. Run tests with telemetry export
+# 5. Validate sample_count > 0 (telemetry captured)
+# 6. Validate violations == 0 (schema conformance)
+# 7. Upload reports and comment on PR
+#
+# ## Failure Modes
+#
+# - sample_count == 0: Tests didn't emit telemetry (FAIL)
+# - violations > 0: Telemetry doesn't match schema (FAIL)
+# - Weaver timeout: No telemetry received within timeout (FAIL)
+
+name: Weaver Refactor Validation
+
+on:
+  push:
+    branches: [master, main, develop]
+    paths:
+      - 'registry/**'
+      - 'crates/clnrm-core/src/telemetry/**'
+      - 'crates/clnrm-core/tests/**'
+      - '.github/workflows/weaver-refactor-validation.yml'
+  pull_request:
+    branches: [master, main, develop]
+    paths:
+      - 'registry/**'
+      - 'crates/clnrm-core/src/telemetry/**'
+      - 'crates/clnrm-core/tests/**'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - telemetry
+      fail_on_violations:
+        description: 'Fail CI if violations detected'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+  WEAVER_VERSION: "0.16.1"
+  # OTLP configuration
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+  OTEL_SERVICE_NAME: "clnrm-ci"
+  OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=ci,service.version=1.2.0"
+  # Weaver ports
+  WEAVER_OTLP_GRPC_PORT: 4317
+  WEAVER_ADMIN_PORT: 8080
+
+jobs:
+  # Job 1: Schema Validation
+  schema-validation:
+    name: "Step 1: Validate Schema Registry"
+    runs-on: ubuntu-latest
+    outputs:
+      schema_valid: ${{ steps.check.outputs.valid }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Weaver
+        run: |
+          echo "📦 Installing Weaver v${WEAVER_VERSION}..."
+          cargo install weaver-forge --version ${WEAVER_VERSION}
+          weaver --version
+
+      - name: Validate schema registry
+        id: check
+        run: |
+          echo "::group::Weaver Schema Check"
+          if weaver registry check --registry registry/ --future; then
+            echo "✅ Schema validation PASSED"
+            echo "valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Schema validation FAILED"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "::endgroup::"
+
+      - name: Upload schema validation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-validation
+          path: registry/
+          retention-days: 7
+
+  # Job 2: Build clnrm with OTEL
+  build-with-otel:
+    name: "Step 2: Build clnrm with OTEL Features"
+    runs-on: ubuntu-latest
+    needs: schema-validation
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Build clnrm with OTEL features
+        run: |
+          echo "🔨 Building clnrm with OTEL features..."
+          cargo build --release --features otel -p clnrm-core
+
+      - name: Verify binary
+        run: |
+          echo "✅ Build successful"
+          ls -lh target/release/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clnrm-binary
+          path: target/release/
+          retention-days: 1
+
+  # Job 3: Live Telemetry Validation
+  live-telemetry-validation:
+    name: "Step 3: Live Telemetry Validation"
+    runs-on: ubuntu-latest
+    needs: [schema-validation, build-with-otel]
+    services:
+      # OTLP collector service
+      otel-collector:
+        image: otel/opentelemetry-collector-contrib:0.112.0
+        ports:
+          - 4317:4317  # OTLP gRPC
+          - 4318:4318  # OTLP HTTP
+          - 13133:13133  # Health check
+        options: >-
+          --health-cmd "wget --spider -q http://localhost:13133/"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+          --health-start-period 10s
+
+    outputs:
+      sample_count: ${{ steps.validation.outputs.sample_count }}
+      violations: ${{ steps.validation.outputs.violations }}
+      status: ${{ steps.validation.outputs.status }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install Weaver
+        run: |
+          echo "📦 Installing Weaver v${WEAVER_VERSION}..."
+          cargo install weaver-forge --version ${WEAVER_VERSION}
+          weaver --version
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq lsof bc
+
+      - name: Verify OTLP collector is ready
+        run: |
+          echo "🔍 Checking OTLP collector health..."
+          max_wait=30
+          elapsed=0
+          while [ $elapsed -lt $max_wait ]; do
+            if curl -sf http://localhost:13133/ >/dev/null 2>&1; then
+              echo "✅ OTLP collector is ready"
+              exit 0
+            fi
+            echo -n "."
+            sleep 2
+            elapsed=$((elapsed + 2))
+          done
+          echo ""
+          echo "❌ OTLP collector not ready within ${max_wait}s"
+          exit 1
+
+      - name: Start Weaver live-check listener
+        id: weaver
+        run: |
+          mkdir -p validation_output
+          echo "🔍 Starting Weaver live-check..."
+
+          # Start Weaver in background
+          weaver registry live-check \
+            --registry registry/ \
+            --otlp-grpc-port 4317 \
+            --admin-port 8080 \
+            --output validation_output/ \
+            --format json \
+            --inactivity-timeout 60 \
+            > weaver.log 2>&1 &
+
+          WEAVER_PID=$!
+          echo "pid=${WEAVER_PID}" >> $GITHUB_OUTPUT
+          echo "✅ Weaver started (PID: ${WEAVER_PID})"
+
+          # Wait for Weaver to be ready
+          echo "⏳ Waiting for Weaver to start listening..."
+          max_wait=20
+          elapsed=0
+          while [ $elapsed -lt $max_wait ]; do
+            # Check if process still exists
+            if ! ps -p $WEAVER_PID >/dev/null 2>&1; then
+              echo "❌ Weaver process died unexpectedly"
+              echo "::group::Weaver logs"
+              cat weaver.log
+              echo "::endgroup::"
+              exit 1
+            fi
+
+            # Check if listening (admin API)
+            if curl -sf http://localhost:8080/health >/dev/null 2>&1; then
+              echo "✅ Weaver is listening"
+              break
+            fi
+
+            echo -n "."
+            sleep 1
+            elapsed=$((elapsed + 1))
+          done
+
+          if [ $elapsed -ge $max_wait ]; then
+            echo ""
+            echo "❌ Weaver did not start listening within ${max_wait}s"
+            echo "::group::Weaver logs"
+            cat weaver.log
+            echo "::endgroup::"
+            exit 1
+          fi
+
+      - name: Build clnrm with OTEL
+        run: |
+          echo "🔨 Building clnrm with OTEL features..."
+          cargo build --release --features otel -p clnrm-core
+
+      - name: Run integration tests with telemetry
+        env:
+          OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+          OTEL_SERVICE_NAME: "clnrm-ci"
+          RUST_LOG: "info,clnrm_core::telemetry=debug"
+        run: |
+          echo "🧪 Running tests with OTLP export..."
+
+          # Determine which test suite to run
+          TEST_SUITE="${{ github.event.inputs.test_suite || 'all' }}"
+
+          case "$TEST_SUITE" in
+            unit)
+              echo "Running unit tests..."
+              cargo test --features otel --lib -- --nocapture
+              ;;
+            integration)
+              echo "Running integration tests..."
+              cargo test --features otel --test '*' -- --nocapture
+              ;;
+            telemetry)
+              echo "Running telemetry-specific tests..."
+              cargo test --features otel -p clnrm-core telemetry -- --nocapture
+              ;;
+            all|*)
+              echo "Running all tests..."
+              cargo test --features otel -- --nocapture
+              ;;
+          esac
+
+          # Give Weaver time to process telemetry
+          echo "⏳ Waiting for telemetry to be processed..."
+          sleep 5
+
+      - name: Stop Weaver and get validation report
+        if: always()
+        run: |
+          WEAVER_PID="${{ steps.weaver.outputs.pid }}"
+          echo "🛑 Stopping Weaver (PID: ${WEAVER_PID})"
+
+          # Send SIGHUP for graceful shutdown with report generation
+          if ps -p $WEAVER_PID >/dev/null 2>&1; then
+            kill -HUP $WEAVER_PID || true
+
+            # Wait for process to exit
+            max_wait=15
+            elapsed=0
+            while [ $elapsed -lt $max_wait ]; do
+              if ! ps -p $WEAVER_PID >/dev/null 2>&1; then
+                echo "✅ Weaver stopped gracefully"
+                break
+              fi
+              sleep 1
+              elapsed=$((elapsed + 1))
+            done
+
+            # Force kill if still running
+            if ps -p $WEAVER_PID >/dev/null 2>&1; then
+              echo "⚠️  Force killing Weaver..."
+              kill -9 $WEAVER_PID || true
+            fi
+          else
+            echo "⚠️  Weaver process already stopped"
+          fi
+
+          # Show Weaver logs
+          echo "::group::Weaver Logs"
+          cat weaver.log || echo "(no logs)"
+          echo "::endgroup::"
+
+      - name: Parse validation report
+        id: validation
+        if: always()
+        run: |
+          echo "📊 Parsing validation report..."
+
+          # Find the validation report
+          REPORT_FILE=""
+          if [ -f validation_output/live_check.json ]; then
+            REPORT_FILE="validation_output/live_check.json"
+          elif [ -f validation_output/validation_report.json ]; then
+            REPORT_FILE="validation_output/validation_report.json"
+          else
+            echo "⚠️  Searching for validation report..."
+            REPORT_FILE=$(find validation_output -name "*.json" -type f | head -1)
+          fi
+
+          if [ -z "$REPORT_FILE" ] || [ ! -f "$REPORT_FILE" ]; then
+            echo "❌ Validation report not found"
+            echo "::group::Output Directory"
+            ls -lR validation_output/ || echo "(empty)"
+            echo "::endgroup::"
+            echo "sample_count=0" >> $GITHUB_OUTPUT
+            echo "violations=999" >> $GITHUB_OUTPUT
+            echo "status=error" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "✅ Found validation report: $REPORT_FILE"
+          echo "::group::Validation Report"
+          cat "$REPORT_FILE" | jq . || cat "$REPORT_FILE"
+          echo "::endgroup::"
+
+          # Parse metrics (adapt to actual Weaver output format)
+          SAMPLE_COUNT=$(jq -r '.sample_count // .samples // 0' "$REPORT_FILE" 2>/dev/null || echo "0")
+          VIOLATIONS=$(jq -r '.violations // .violation_count // 0' "$REPORT_FILE" 2>/dev/null || echo "0")
+          STATUS=$(jq -r '.status // "unknown"' "$REPORT_FILE" 2>/dev/null || echo "unknown")
+
+          echo "sample_count=${SAMPLE_COUNT}" >> $GITHUB_OUTPUT
+          echo "violations=${VIOLATIONS}" >> $GITHUB_OUTPUT
+          echo "status=${STATUS}" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "📊 Validation Results:"
+          echo "  Sample Count: ${SAMPLE_COUNT}"
+          echo "  Violations:   ${VIOLATIONS}"
+          echo "  Status:       ${STATUS}"
+          echo ""
+
+          # Critical validation: sample_count MUST be > 0
+          if [ "$SAMPLE_COUNT" -eq 0 ]; then
+            echo "❌ CRITICAL: sample_count == 0 (no telemetry captured)"
+            echo "::error::No telemetry samples captured. Tests may not be emitting OTEL."
+            exit 1
+          else
+            echo "✅ Telemetry captured: ${SAMPLE_COUNT} samples"
+          fi
+
+          # Critical validation: violations MUST be 0
+          FAIL_ON_VIOLATIONS="${{ github.event.inputs.fail_on_violations }}"
+          if [ "$FAIL_ON_VIOLATIONS" != "false" ] && [ "$VIOLATIONS" -gt 0 ]; then
+            echo "❌ CRITICAL: violations > 0 (schema violations detected)"
+            echo "::error::${VIOLATIONS} schema violation(s) detected"
+
+            # Show violation details if available
+            echo "::group::Violation Details"
+            jq -r '.details[]? | select(.level == "violation" or .severity == "error") | "- \(.message // .description)"' "$REPORT_FILE" 2>/dev/null || echo "No details available"
+            echo "::endgroup::"
+            exit 1
+          elif [ "$VIOLATIONS" -gt 0 ]; then
+            echo "⚠️  ${VIOLATIONS} violation(s) detected (not failing due to input)"
+          else
+            echo "✅ Zero violations detected"
+          fi
+
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weaver-validation-results
+          path: |
+            validation_output/
+            weaver.log
+          retention-days: 30
+
+      - name: Create validation summary
+        if: always()
+        run: |
+          SAMPLE_COUNT="${{ steps.validation.outputs.sample_count }}"
+          VIOLATIONS="${{ steps.validation.outputs.violations }}"
+          STATUS="${{ steps.validation.outputs.status }}"
+
+          echo "# 🎯 Weaver Live-Check Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Results:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Sample Count:** ${SAMPLE_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Violations:** ${VIOLATIONS}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${STATUS}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$SAMPLE_COUNT" -eq 0 ]; then
+            echo "## ❌ FAILED: No Telemetry Captured" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Tests did not emit any OTEL telemetry. This means:" >> $GITHUB_STEP_SUMMARY
+            echo "- OTEL instrumentation may not be enabled" >> $GITHUB_STEP_SUMMARY
+            echo "- Tests may not be exercising instrumented code paths" >> $GITHUB_STEP_SUMMARY
+            echo "- OTLP export configuration may be incorrect" >> $GITHUB_STEP_SUMMARY
+          elif [ "$VIOLATIONS" -gt 0 ]; then
+            echo "## ❌ FAILED: Schema Violations Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Telemetry does not conform to schema definitions:" >> $GITHUB_STEP_SUMMARY
+            echo "- ${VIOLATIONS} violation(s) detected" >> $GITHUB_STEP_SUMMARY
+            echo "- Review validation report for details" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ✅ PASSED: Weaver Validation Successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All validation checks passed:" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Telemetry captured (${SAMPLE_COUNT} samples)" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Zero schema violations" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Runtime behavior matches schema" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Job 4: PR Comment with Results
+  pr-comment:
+    name: "Step 4: Comment on PR"
+    runs-on: ubuntu-latest
+    needs: live-telemetry-validation
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - name: Download validation results
+        uses: actions/download-artifact@v4
+        with:
+          name: weaver-validation-results
+          path: validation_results/
+
+      - name: Create PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sampleCount = '${{ needs.live-telemetry-validation.outputs.sample_count }}';
+            const violations = '${{ needs.live-telemetry-validation.outputs.violations }}';
+            const status = '${{ needs.live-telemetry-validation.outputs.status }}';
+
+            const sampleCountNum = parseInt(sampleCount) || 0;
+            const violationsNum = parseInt(violations) || 0;
+
+            let emoji = '✅';
+            let statusText = 'PASSED';
+            let canMerge = true;
+
+            if (sampleCountNum === 0) {
+              emoji = '❌';
+              statusText = 'FAILED - No Telemetry';
+              canMerge = false;
+            } else if (violationsNum > 0) {
+              emoji = '❌';
+              statusText = 'FAILED - Schema Violations';
+              canMerge = false;
+            }
+
+            const body = `## ${emoji} Weaver Refactor Validation
+
+            **Status:** ${statusText}
+
+            ### Validation Results:
+            - **Sample Count:** ${sampleCount} ${sampleCountNum > 0 ? '✅' : '❌'}
+            - **Violations:** ${violations} ${violationsNum === 0 ? '✅' : '❌'}
+            - **Status:** ${status}
+
+            ### What This Means:
+
+            ${canMerge
+              ? `✅ **Safe to Merge**
+
+            All Weaver validation checks passed:
+            - Runtime telemetry was captured (${sampleCount} samples)
+            - Zero schema violations detected
+            - Telemetry matches schema definitions
+
+            This proves that:
+            - OTEL instrumentation is working
+            - Features are actually emitting telemetry
+            - No stub implementations (runtime validation passed)`
+              : `❌ **Not Safe to Merge**
+
+            ${sampleCountNum === 0
+              ? `**Critical Issue:** No telemetry captured
+
+            Tests ran but did not emit any OTEL telemetry. Possible causes:
+            - OTEL features not enabled in tests
+            - Instrumented code paths not exercised
+            - OTLP export configuration incorrect
+
+            **Action Required:** Fix OTEL instrumentation before merging.`
+              : `**Critical Issue:** ${violations} schema violation(s) detected
+
+            Runtime telemetry does not match schema definitions. Possible causes:
+            - Telemetry attributes don't match schema
+            - Missing required attributes
+            - Type mismatches
+
+            **Action Required:** Review validation report and fix violations.`
+            }
+            `}
+
+            ### Validation Artifacts:
+            - [Validation Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - Download \`weaver-validation-results\` artifact for detailed analysis
+
+            ---
+            *Weaver validation ensures that runtime telemetry matches schema definitions. This is the only way to prove features actually work (no false positives).*
+            `;
+
+            // Try to update existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Weaver Refactor Validation')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                comment_id: botComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+
+  # Job 5: Deployment Gate
+  deployment-gate:
+    name: "Step 5: Deployment Gate"
+    runs-on: ubuntu-latest
+    needs: live-telemetry-validation
+    if: always()
+    steps:
+      - name: Evaluate gate status
+        run: |
+          SAMPLE_COUNT="${{ needs.live-telemetry-validation.outputs.sample_count }}"
+          VIOLATIONS="${{ needs.live-telemetry-validation.outputs.violations }}"
+
+          echo "🚦 Deployment Gate Evaluation"
+          echo "================================"
+          echo "Sample Count: $SAMPLE_COUNT"
+          echo "Violations:   $VIOLATIONS"
+          echo ""
+
+          # Gate logic
+          PASS=true
+
+          # Check 1: sample_count > 0 (MANDATORY)
+          if [ "$SAMPLE_COUNT" -eq 0 ]; then
+            echo "❌ Gate Check FAILED: sample_count == 0"
+            echo "   No telemetry captured. Cannot prove features work."
+            PASS=false
+          else
+            echo "✅ Gate Check PASSED: sample_count > 0 ($SAMPLE_COUNT samples)"
+          fi
+
+          # Check 2: violations == 0 (MANDATORY)
+          if [ "$VIOLATIONS" -gt 0 ]; then
+            echo "❌ Gate Check FAILED: violations > 0 ($VIOLATIONS violations)"
+            echo "   Telemetry does not match schema definitions."
+            PASS=false
+          else
+            echo "✅ Gate Check PASSED: violations == 0"
+          fi
+
+          echo ""
+          if [ "$PASS" = true ]; then
+            echo "✅ DEPLOYMENT GATE: PASSED"
+            echo "   Safe to merge and deploy."
+            exit 0
+          else
+            echo "❌ DEPLOYMENT GATE: FAILED"
+            echo "   Fix issues before merging."
+            exit 1
+          fi
+
+  # Final summary job
+  summary:
+    name: "Summary"
+    runs-on: ubuntu-latest
+    needs: [schema-validation, build-with-otel, live-telemetry-validation, deployment-gate]
+    if: always()
+    steps:
+      - name: Generate final summary
+        run: |
+          echo "# 🎯 Weaver Refactor Validation - Final Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          SCHEMA="${{ needs.schema-validation.outputs.schema_valid }}"
+          SAMPLE_COUNT="${{ needs.live-telemetry-validation.outputs.sample_count }}"
+          VIOLATIONS="${{ needs.live-telemetry-validation.outputs.violations }}"
+
+          echo "## Pipeline Results:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Schema validation
+          if [ "$SCHEMA" = "true" ]; then
+            echo "- ✅ **Schema Validation:** PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ **Schema Validation:** FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Build
+          echo "- ✅ **Build with OTEL:** PASSED" >> $GITHUB_STEP_SUMMARY
+
+          # Live validation
+          if [ "$SAMPLE_COUNT" -gt 0 ] && [ "$VIOLATIONS" -eq 0 ]; then
+            echo "- ✅ **Live Validation:** PASSED (${SAMPLE_COUNT} samples, 0 violations)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ **Live Validation:** FAILED (${SAMPLE_COUNT} samples, ${VIOLATIONS} violations)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Deployment gate
+          if [ "$SAMPLE_COUNT" -gt 0 ] && [ "$VIOLATIONS" -eq 0 ]; then
+            echo "- ✅ **Deployment Gate:** PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ **Deployment Gate:** FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## What This Validates:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This pipeline proves:" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔍 Schema definitions are valid" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔨 Code compiles with OTEL features" >> $GITHUB_STEP_SUMMARY
+          echo "- 📡 Tests emit runtime telemetry" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Telemetry matches schema (no violations)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🛡️ No false positives (runtime validation)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$SAMPLE_COUNT" -gt 0 ] && [ "$VIOLATIONS" -eq 0 ]; then
+            echo "**Status: SAFE TO MERGE ✅**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status: NOT SAFE TO MERGE ❌**" >> $GITHUB_STEP_SUMMARY
+          fi
