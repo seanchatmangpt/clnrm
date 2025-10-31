@@ -231,6 +231,102 @@ pub struct SpanValidator {
 }
 
 impl SpanValidator {
+    /// Create SpanValidator from OpenTelemetry SpanData
+    ///
+    /// Converts OpenTelemetry SDK span data to validator span format
+    /// for runtime validation against test expectations.
+    ///
+    /// # Arguments
+    ///
+    /// * `spans` - OpenTelemetry SpanData from telemetry collection
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - SpanValidator instance or error
+    pub fn from_span_data(spans: &[opentelemetry_sdk::trace::SpanData]) -> Result<Self> {
+        let converted_spans: Vec<SpanData> = spans
+            .iter()
+            .map(Self::convert_otel_span)
+            .collect();
+
+        Ok(Self {
+            spans: converted_spans,
+        })
+    }
+
+    /// Convert OpenTelemetry SpanData to validator SpanData
+    fn convert_otel_span(span: &opentelemetry_sdk::trace::SpanData) -> SpanData {
+        use opentelemetry::trace::TraceContextExt;
+
+        // Convert attributes
+        let mut attributes = std::collections::HashMap::new();
+        for kv in &span.attributes {
+            let key = kv.key.to_string();
+            let value = match &kv.value {
+                opentelemetry::Value::Bool(b) => serde_json::json!(b),
+                opentelemetry::Value::I64(i) => serde_json::json!(i),
+                opentelemetry::Value::F64(f) => serde_json::json!(f),
+                opentelemetry::Value::String(s) => serde_json::json!(s.to_string()),
+                _ => serde_json::json!(kv.value.to_string()),
+            };
+            attributes.insert(key, value);
+        }
+
+        // Convert span kind
+        let kind = match span.span_kind {
+            opentelemetry_sdk::trace::SpanKind::Internal => Some(SpanKind::Internal),
+            opentelemetry_sdk::trace::SpanKind::Server => Some(SpanKind::Server),
+            opentelemetry_sdk::trace::SpanKind::Client => Some(SpanKind::Client),
+            opentelemetry_sdk::trace::SpanKind::Producer => Some(SpanKind::Producer),
+            opentelemetry_sdk::trace::SpanKind::Consumer => Some(SpanKind::Consumer),
+        };
+
+        // Convert events
+        let events = if span.events.is_empty() {
+            None
+        } else {
+            Some(
+                span.events
+                    .iter()
+                    .map(|e| e.name.to_string())
+                    .collect(),
+            )
+        };
+
+        // Get parent span ID
+        let parent_span_id = if span.parent_span_id != opentelemetry::trace::SpanId::INVALID {
+            Some(format!("{:x}", span.parent_span_id))
+        } else {
+            None
+        };
+
+        // Convert timestamps
+        let start_time_unix_nano = span
+            .start_time
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .ok()
+            .map(|d| d.as_nanos() as u64);
+
+        let end_time_unix_nano = span
+            .end_time
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .ok()
+            .map(|d| d.as_nanos() as u64);
+
+        SpanData {
+            name: span.name.to_string(),
+            attributes,
+            trace_id: format!("{:x}", span.span_context.trace_id()),
+            span_id: format!("{:x}", span.span_context.span_id()),
+            parent_span_id,
+            start_time_unix_nano,
+            end_time_unix_nano,
+            kind,
+            events,
+            resource_attributes: std::collections::HashMap::new(),
+        }
+    }
+
     /// Create a new SpanValidator by loading spans from a JSON file
     ///
     /// The file should be in the format produced by OTEL collector's file exporter.

@@ -593,7 +593,7 @@ async fn test_container_execution() -> Result<()> {
     // Execute a command (echo "test")
     let command = vec!["echo".to_string(), "test".to_string()];
     let execution_result = environment
-        .execute_in_container("test_container", &command)
+        .execute_in_container("test_container", &command, None, None)
         .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to execute command in test container")
@@ -710,7 +710,7 @@ async fn test_plugin_system() -> Result<()> {
     // Test service coordination by executing a command in the container
     let command = vec!["echo".to_string(), "plugin_coordination_test".to_string()];
     let execution_result = environment
-        .execute_in_container("test_container", &command)
+        .execute_in_container("test_container", &command, None, None)
         .await
         .map_err(|e| {
             CleanroomError::internal_error("Failed to execute coordination test command")

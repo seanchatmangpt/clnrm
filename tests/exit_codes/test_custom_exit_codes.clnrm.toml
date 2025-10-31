@@ -1,0 +1,38 @@
+# Test custom exit code validation
+# Demonstrates the ability to specify expected exit codes for error handling tests
+
+[meta]
+name = "custom_exit_codes"
+version = "1.0.0"
+description = "Test custom exit code validation for error handling scenarios"
+
+# Test 1: Default behavior - expect exit code 0 (implicit)
+[[steps]]
+name = "expect_zero_implicit"
+command = ["sh", "-c", "true"]
+# No expected_exit_code specified = defaults to 0
+
+# Test 2: Explicit zero exit code
+[[steps]]
+name = "expect_zero_explicit"
+command = ["sh", "-c", "true"]
+expected_exit_code = 0
+
+# Test 3: Expect exit code 1 (common error code)
+[[steps]]
+name = "expect_one"
+command = ["sh", "-c", "false"]
+expected_exit_code = 1
+
+# Test 4: Real-world example - cat with missing file
+[[steps]]
+name = "test_cat_missing_file"
+command = ["cat", "/nonexistent/file.txt"]
+expected_exit_code = 1
+
+# Test 5: Success step with output
+[[steps]]
+name = "test_success_with_output"
+command = ["echo", "Success"]
+expected_exit_code = 0
+expected_output_regex = "Success"

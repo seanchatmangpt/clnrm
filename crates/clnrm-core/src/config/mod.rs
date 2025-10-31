@@ -21,8 +21,9 @@ pub mod weaver;
 
 // Re-export commonly used types for backward compatibility
 pub use types::{
-    ArtifactsConfig, DeterminismConfig, LimitsConfig, MetaConfig, PolicyConfig, ReportConfig,
-    ScenarioConfig, StepConfig, TestConfig, TestMetadata, TestMetadataSection, TimeoutConfig,
+    ArtifactsConfig, DeterminismConfig, LimitsConfig, MetaConfig, PerformanceTestConfig,
+    PolicyConfig, ReportConfig, ScenarioConfig, StepConfig, TestConfig, TestMetadata,
+    TestMetadataSection, TimeoutConfig,
 };
 
 pub use services::{HealthCheckConfig, ServiceConfig, VolumeConfig};

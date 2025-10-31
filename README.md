@@ -27,22 +27,18 @@ cargo install clnrm
 
 ## Quick Example
 
+Test an API service with database integration. Weaver automatically validates that your telemetry follows OpenTelemetry semantic conventions, ensuring correct instrumentation without manual trace inspection.
+
 ```bash
-# Initialize a new test project
-clnrm init
-cd tests
-
-# Run the generated test
-clnrm run basic.clnrm.toml
+# Run the test
+clnrm run tests/api_with_database.clnrm.toml
 ```
-
-The generated test file looks like this:
 
 ```toml
 [meta]
-name = "weaver_validation_example"
+name = "api_with_database"
 version = "1.0.0"
-description = "Test with OpenTelemetry Weaver live-checking"
+description = "API service with database - Weaver validates telemetry structure"
 
 # Enable Weaver schema validation
 [weaver]
@@ -55,36 +51,97 @@ admin_port = 0       # Auto-discover available port
 [otel]
 exporter = "otlp-http"
 resources = {
-  "service.name" = "my_service",
+  "service.name" = "api_service",
   "deployment.environment" = "test"
 }
 
+# Multiple services working together
 [service.api]
 plugin = "generic_container"
-image = "my-app:latest"
+image = "my-api:latest"
 
-# Test scenario that emits telemetry
+[service.database]
+plugin = "generic_container"
+image = "postgres:15-alpine"
+
+# Scenario that emits rich telemetry
 [[scenario]]
-name = "validate_api_telemetry"
+name = "api_handles_user_request"
 service = "api"
-run = "my-app --endpoint /api/v1/users"
+run = "my-api --endpoint /api/v1/users"
 artifacts.collect = ["spans:default"]
 
-# Validate telemetry against semantic conventions
+# Validate HTTP server span
 [[expect.span]]
-name = "http.request"
+name = "http.server.request"
 kind = "server"
 attrs.all = {
   "http.method" = "GET",
   "http.route" = "/api/v1/users"
 }
 
-[expect.counts]
-spans_total = { gte = 1 }
-errors_total = { eq = 0 }
+# Validate database query span (must be child of HTTP span)
+[[expect.span]]
+name = "db.query"
+kind = "client"
+parent = "http.server.request"
+attrs.all = {
+  "db.system" = "postgresql",
+  "db.operation" = "SELECT"
+}
+
+# Validate trace graph structure - proves services actually communicated
+[expect.graph]
+must_include = [
+  ["http.server.request", "db.query"]  # HTTP span must have DB child
+]
+acyclic = true  # No cycles allowed (proves correct trace structure)
+
+# Validate temporal ordering - proves operations happened in correct sequence
+[expect.order]
+must_precede = [
+  ["http.server.request", "db.query"],        # Request must come before query
+  ["db.query", "http.server.response"]       # Query must come before response
+]
+
+# Ensure no external service leaks - catch accidental production calls
+[expect.hermeticity]
+no_external_services = true
+span_attrs.forbid_keys = ["net.peer.name"]  # Forbid external hostnames
 ```
 
-When you run this test, Weaver validates your telemetry against OpenTelemetry semantic conventions, ensuring your instrumentation is correct and complete. No need to manually check logs or traces—Weaver does it automatically.
+### Why This Matters
+
+This test validates **behavior**, not just exit codes. Consider what traditional testing misses:
+
+**Traditional Testing Problem:**
+```bash
+#!/bin/bash
+# Fake-green test - passes but does nothing
+echo "✅ Test passed"
+exit 0
+# ❌ Database never queried
+# ❌ API never handled request  
+# ❌ Services never interacted
+# ✅ Traditional testing: PASS (exit code 0)
+```
+
+**OTEL-First Validation Solution:**
+Your test fails if:
+- ❌ **No HTTP server span exists** → API never actually ran (just returned exit code 0)
+- ❌ **No database query span** → Database was never accessed (test is fake-green)
+- ❌ **Graph structure wrong** → Services didn't actually communicate (no parent-child edge)
+- ❌ **Temporal ordering violated** → Operations happened in wrong sequence (bug in execution)
+- ❌ **External service calls detected** → Test leaked to production (hermeticity violation)
+- ❌ **Semantic conventions violated** → Instrumentation incorrect (Weaver catches this)
+
+**OTEL-first validation** requires **proof of execution** through telemetry:
+- ✅ **Graph structure** proves service interaction happened (HTTP → DB edge exists)
+- ✅ **Temporal ordering** proves operations occurred in correct sequence (request before query)
+- ✅ **Hermeticity** catches accidental external service calls (forbidden attributes)
+- ✅ **Semantic conventions** validated automatically by Weaver (correct attribute names)
+
+Weaver automatically validates all of this against OpenTelemetry schemas—no manual trace inspection needed. The test fails if your code doesn't actually execute correctly, even if it returns exit code 0.
 
 ## Features
 
@@ -96,19 +153,20 @@ When you run this test, Weaver validates your telemetry against OpenTelemetry se
 
 **OpenTelemetry Integration**
 - **Weaver live-checking** - Automatic schema validation during test execution
-- OTLP export for telemetry collection
+- OTLP export for telemetry collection (HTTP/gRPC)
 - Resource attribute configuration
-- Custom headers and propagators
+- Custom headers and propagators (tracecontext, baggage)
 - Sample ratio control
 
-**Telemetry Validation**
-- Span expectations (name, kind, attributes, events, duration)
-- Graph structure validation (edges, cycles, connectivity)
-- Count/cardinality validation (spans, events, errors)
-- Temporal ordering validation (must_precede, must_follow)
-- Temporal window validation (spans within time windows)
-- Status code validation (OK, ERROR, UNSET)
-- Hermeticity validation (no external services, forbidden attributes)
+**Behavior Validation (Not Just Exit Codes)**
+Unlike traditional testing that only checks return codes, clnrm validates actual execution through telemetry:
+- **Span expectations** - Validate name, kind, attributes, events, duration
+- **Graph structure** - Ensure correct parent-child relationships and acyclic traces
+- **Temporal ordering** - Prove operations occur in the correct sequence
+- **Count/cardinality** - Validate span, event, and error counts match expectations
+- **Temporal windows** - Ensure spans occur within expected time boundaries
+- **Status codes** - Validate span status (OK, ERROR, UNSET) across the trace
+- **Hermeticity** - Catch accidental external service calls or forbidden attributes
 
 **CLI Commands**
 - `clnrm init` - Initialize new test project

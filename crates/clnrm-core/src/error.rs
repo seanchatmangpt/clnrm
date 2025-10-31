@@ -67,6 +67,8 @@ pub enum ErrorKind {
     InternalError,
     /// Template rendering error
     TemplateError,
+    /// Feature not yet implemented
+    NotImplementedError,
 }
 
 impl CleanroomError {
@@ -196,6 +198,11 @@ impl CleanroomError {
     /// Create a template error
     pub fn template_error(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::TemplateError, message)
+    }
+
+    /// Create a not implemented error
+    pub fn not_implemented(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::NotImplementedError, message)
     }
 }
 

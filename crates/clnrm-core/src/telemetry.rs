@@ -29,6 +29,10 @@ pub mod test_execution;
 // CLI command telemetry helpers - schema-compliant builders
 pub mod cli_helpers;
 
+// Span storage and validation processor for runtime validation
+pub mod span_storage;
+pub mod validation_processor;
+
 use {
     opentelemetry::{
         global, propagation::TextMapCompositePropagator, trace::TracerProvider, KeyValue,
@@ -352,9 +356,11 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
         }
     };
 
-    // Tracer provider with batch exporter.
+    // Tracer provider with batch exporter + validation processor.
+    // The validation processor stores spans in memory for runtime validation.
     let tp = opentelemetry_sdk::trace::SdkTracerProvider::builder()
         .with_batch_exporter(span_exporter)
+        .with_span_processor(validation_processor::ValidationSpanProcessor::new())
         .with_sampler(sampler)
         .with_resource(resource.clone())
         .build();

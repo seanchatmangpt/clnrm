@@ -152,6 +152,25 @@ pub struct TestConfig {
     /// Weaver live-checking configuration (v1.3.0)
     #[serde(default)]
     pub weaver: Option<super::weaver::WeaverConfig>,
+    /// Performance testing configuration (UNSUPPORTED - fails validation)
+    /// This field exists to catch unsupported config and provide clear error messages
+    #[serde(default)]
+    pub performance: Option<PerformanceTestConfig>,
+}
+
+/// Performance testing configuration (NOT YET IMPLEMENTED)
+/// This struct exists solely to catch unsupported configuration and fail fast
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PerformanceTestConfig {
+    /// Sample size for performance tests
+    #[serde(default)]
+    pub sample_size: Option<u32>,
+    /// Baseline name for regression detection
+    #[serde(default)]
+    pub baseline_name: Option<String>,
+    /// Enable regression detection
+    #[serde(default)]
+    pub regression_detection: Option<bool>,
 }
 
 /// Meta configuration (v0.6.0 - simplified metadata section)
@@ -438,6 +457,14 @@ impl TestConfig {
             weaver.validate().map_err(|e| {
                 CleanroomError::validation_error(format!("Weaver config: {}", e))
             })?;
+        }
+
+        // FAIL FAST: Performance testing is not yet implemented
+        if self.performance.is_some() {
+            return Err(CleanroomError::not_implemented(
+                "Performance testing features ([test.performance] section with sample_size, baseline_name, regression_detection) are not yet implemented. \
+                 Remove the [test.performance] section to run this test."
+            ));
         }
 
         Ok(())

@@ -776,6 +776,8 @@ impl CleanroomEnvironment {
         &self,
         container_name: &str,
         command: &[String],
+        workdir: Option<&str>,
+        env: Option<&HashMap<String, String>>,
     ) -> Result<ExecutionResult> {
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -805,10 +807,22 @@ impl CleanroomEnvironment {
 
         // Execute command using backend - this creates a fresh container for each command
         // This provides maximum isolation and is appropriate for testing scenarios
-        let cmd = Cmd::new("sh")
+        let mut cmd = Cmd::new("sh")
             .arg("-c")
             .arg(command.join(" "))
             .env("CONTAINER_NAME", container_name);
+
+        // Apply workdir if provided
+        if let Some(wd) = workdir {
+            cmd = cmd.workdir(std::path::PathBuf::from(wd));
+        }
+
+        // Apply environment variables if provided
+        if let Some(env_vars) = env {
+            for (key, value) in env_vars {
+                cmd = cmd.env(key, value);
+            }
+        }
 
         // Use spawn_blocking to avoid runtime conflicts with testcontainers
         // Clone the backend to move it into the blocking task

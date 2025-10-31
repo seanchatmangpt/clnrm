@@ -7,6 +7,8 @@ use crate::cleanroom::CleanroomEnvironment;
 use crate::cli::types::CliConfig;
 use crate::error::{CleanroomError, Result};
 use crate::telemetry::spans;
+use crate::telemetry::span_storage;
+use crate::validation::span_validator::SpanValidator;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
@@ -27,9 +29,15 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
     let test_config: crate::config::TestConfig = toml::from_str(&content)
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
 
+    // FAIL FAST: Validate config immediately after parsing (catches unsupported features)
+    test_config.validate()?;
+
     let test_name = test_config.get_name()?;
 
     tracing::Span::current().record("test.name", &test_name);
+
+    // Clear span storage for this test run (critical for validation isolation)
+    span_storage::clear_collected_spans();
 
     info!("🚀 Executing test: {}", test_name);
     info!("🚀 Executing test: {}", test_name);
@@ -111,7 +119,12 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
             // Core Team Compliance: Use async for I/O, proper error handling, no unwrap/expect
             let container_name = format!("test-{}-step-{}", test_name, step.name);
             let execution_result = environment
-                .execute_in_container(&container_name, &rendered_command)
+                .execute_in_container(
+                    &container_name,
+                    &rendered_command,
+                    step.workdir.as_deref(),
+                    step.env.as_ref(),
+                )
                 .await
                 .map_err(|e| {
                     CleanroomError::container_error(format!(
@@ -135,10 +148,12 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
                 info!("⚠️  Stderr: {}", stderr.trim());
             }
 
-            if execution_result.exit_code != 0 {
+            // Validate exit code (default to 0 if not specified)
+            let expected_exit_code = step.expected_exit_code.unwrap_or(0);
+            if execution_result.exit_code != expected_exit_code {
                 return Err(CleanroomError::validation_error(format!(
-                    "Step '{}' failed with exit code: {}",
-                    step.name, execution_result.exit_code
+                    "Step '{}' exited with code {} but expected {}",
+                    step.name, execution_result.exit_code, expected_exit_code
                 )));
             }
 
@@ -190,6 +205,51 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
             }
             Err(e) => {
                 warn!("⚠️  Failed to stop service '{}': {}", service_name, e);
+            }
+        }
+    }
+
+    // ========================================
+    // CRITICAL: Validate span expectations if configured
+    // ========================================
+    if let Some(ref expect) = test_config.expect {
+        if !expect.span.is_empty() {
+            info!("🔍 Validating {} span expectation(s)...", expect.span.len());
+
+            // Get collected spans from telemetry
+            let collected_spans = span_storage::get_collected_spans();
+
+            if collected_spans.is_empty() {
+                warn!("⚠️  No spans collected - span validation skipped");
+                warn!("    Enable OTEL exporter to validate spans");
+            } else {
+                // Convert SpanData to validation format
+                let validator = SpanValidator::from_span_data(&collected_spans)?;
+
+                info!("📊 Collected {} span(s) for validation", collected_spans.len());
+
+                // Validate expectations
+                let validation_result = validator.validate_expectations(&expect.span)?;
+
+                if !validation_result.passed {
+                    // Format error with all failures
+                    let failure_messages: Vec<String> = validation_result
+                        .failures
+                        .iter()
+                        .map(|f| format!("  - [{}] {}", f.rule, f.message))
+                        .collect();
+
+                    return Err(CleanroomError::validation_error(format!(
+                        "Span validation failed ({} failures):\n{}",
+                        validation_result.failures.len(),
+                        failure_messages.join("\n")
+                    )));
+                }
+
+                info!(
+                    "✅ All span expectations validated ({} checks passed)",
+                    validation_result.validations_count
+                );
             }
         }
     }
