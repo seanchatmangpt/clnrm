@@ -61,7 +61,6 @@ timeout = "120s"
 
 [services.test_container]
 type = "generic_container"
-plugin = "alpine"
 image = "alpine:latest"
 
 [[steps]]
@@ -71,8 +70,8 @@ expected_output_regex = "Hello from cleanroom!"
 
 [[steps]]
 name = "verify_environment"
-command = ["sh", "-c", "echo 'Test environment ready' && uname -a"]
-expected_output_regex = "Test environment ready"
+command = ["uname", "-s"]
+expected_output_regex = "Linux"
 "#;
 
     std::fs::write(&basic_test_file, test_content)?;

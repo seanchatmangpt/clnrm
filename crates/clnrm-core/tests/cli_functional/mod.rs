@@ -8,11 +8,11 @@
 
 mod helpers;
 
-pub mod file_ops;
-pub mod execution;
-pub mod trace_analysis;
 pub mod baseline;
-pub mod services;
-pub mod reporting;
 pub mod dev;
+pub mod execution;
+pub mod file_ops;
+pub mod reporting;
+pub mod services;
+pub mod trace_analysis;
 
