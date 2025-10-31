@@ -1,0 +1,7 @@
+[meta]
+name = "invalid_test"
+version = "1.0.0"
+
+# Missing required scenario section
+# This should fail validation and linting
+

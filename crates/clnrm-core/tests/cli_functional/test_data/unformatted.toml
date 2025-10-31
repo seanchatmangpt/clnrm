@@ -1,0 +1,14 @@
+[meta]
+name="test"
+version="1.0.0"
+description="Unformatted TOML file"
+
+[[scenario]]
+name="test_scenario"
+service="test_service"
+run="echo test"
+
+[service.test_service]
+plugin="generic_container"
+image="alpine:latest"
+

@@ -1,0 +1,16 @@
+{
+  "spans": [
+    {
+      "name": "test.span",
+      "span_id": "span-1",
+      "trace_id": "trace-1",
+      "parent_span_id": null,
+      "kind": "internal",
+      "attributes": {
+        "test.framework": "clnrm",
+        "result": "pass"
+      }
+    }
+  ]
+}
+
