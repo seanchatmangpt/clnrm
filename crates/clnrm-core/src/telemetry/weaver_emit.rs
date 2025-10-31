@@ -169,7 +169,7 @@ impl WeaverEmitter {
 
         // Build weaver emit command
         let mut cmd = Command::new("weaver");
-        cmd.args(&[
+        cmd.args([
             "registry",
             "emit",
             "--registry",
@@ -179,7 +179,7 @@ impl WeaverEmitter {
         if self.config.stdout {
             cmd.arg("--stdout");
         } else {
-            cmd.args(&["--endpoint", &self.config.endpoint]);
+            cmd.args(["--endpoint", &self.config.endpoint]);
         }
 
         if self.config.debug {
@@ -238,7 +238,7 @@ impl WeaverEmitter {
 
         // Build command
         let mut cmd = Command::new("weaver");
-        cmd.args(&[
+        cmd.args([
             "registry",
             "emit",
             "--registry",
@@ -284,7 +284,7 @@ impl WeaverEmitter {
 
         // Re-run to capture stdout (previous call validated)
         let output = Command::new("weaver")
-            .args(&[
+            .args([
                 "registry",
                 "emit",
                 "--registry",

@@ -431,11 +431,28 @@ pub struct DeterminismConfig {
     /// Frozen clock timestamp (RFC3339 format)
     #[serde(default)]
     pub freeze_clock: Option<String>,
+    /// Enable deterministic port assignment
+    #[serde(default)]
+    pub deterministic_ports: Option<bool>,
+    /// Enable deterministic volume naming
+    #[serde(default)]
+    pub deterministic_volumes: Option<bool>,
 }
 
 impl DeterminismConfig {
     pub fn is_deterministic(&self) -> bool {
-        self.seed.is_some() || self.freeze_clock.is_some()
+        self.seed.is_some()
+            || self.freeze_clock.is_some()
+            || self.deterministic_ports.unwrap_or(false)
+            || self.deterministic_volumes.unwrap_or(false)
+    }
+
+    pub fn has_deterministic_ports(&self) -> bool {
+        self.deterministic_ports.unwrap_or(false)
+    }
+
+    pub fn has_deterministic_volumes(&self) -> bool {
+        self.deterministic_volumes.unwrap_or(false)
     }
 }
 

@@ -122,13 +122,14 @@ mod tests {
     fn create_test_span(name: &str) -> SpanData {
         SpanData {
             span_context: SpanContext::new(
-                TraceId::from_u128(1),
-                SpanId::from_u64(1),
+                TraceId::from_bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
+                SpanId::from_bytes([0, 0, 0, 0, 0, 0, 0, 1]),
                 TraceFlags::default(),
                 false,
                 TraceState::default(),
             ),
             parent_span_id: SpanId::INVALID,
+            parent_span_is_remote: false,
             span_kind: SpanKind::Internal,
             name: Cow::Borrowed(name),
             start_time: SystemTime::now(),

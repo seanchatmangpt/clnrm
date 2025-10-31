@@ -10,6 +10,7 @@
 pub mod assertions;
 pub mod backend;
 pub mod cache;
+pub mod chaos;
 pub mod cleanroom;
 pub mod cli;
 pub mod config;

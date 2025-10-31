@@ -89,6 +89,40 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
         HashMap::new()
     };
 
+    // Initialize chaos engineering if enabled
+    let chaos_handle = if let Some(ref chaos_config) = test_config.chaos {
+        if chaos_config.enabled {
+            info!("🎭 Chaos engineering enabled with {} experiments", chaos_config.experiments.len());
+
+            // Create chaos plugin from TOML config
+            let chaos_plugin = crate::chaos::ChaosOrchestrator::create_plugin(
+                "chaos_engine",
+                chaos_config
+            )?;
+
+            // Register and start chaos engine
+            let plugin_box: Box<dyn crate::cleanroom::ServicePlugin> = Box::new(chaos_plugin);
+            environment.register_service(plugin_box).await?;
+            let started_handle = environment.start_service("chaos_engine").await?;
+
+            // Emit telemetry for chaos initialization
+            for exp in &chaos_config.experiments {
+                let attrs = crate::chaos::ChaosOrchestrator::get_experiment_attributes(exp);
+                info!("🎯 Chaos experiment: {} targeting {}", exp.experiment_type, exp.target_service);
+                for (key, value) in attrs {
+                    tracing::Span::current().record(key.as_str(), value.as_str());
+                }
+            }
+
+            Some(started_handle)
+        } else {
+            debug!("Chaos engineering disabled in config");
+            None
+        }
+    } else {
+        None
+    };
+
     // Execute test steps
     for (i, step) in test_config.steps.iter().enumerate() {
         info!("📋 Step {}: {}", i + 1, step.name);
@@ -247,6 +281,18 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
         for scenario in &test_config.scenario {
             scenario::execute_scenario(scenario, &environment, &service_handles, &test_config)
                 .await?;
+        }
+    }
+
+    // Cleanup chaos engine first (before services)
+    if let Some(ref handle) = chaos_handle {
+        match environment.stop_service(&handle.id).await {
+            Ok(()) => {
+                info!("🛑 Chaos engine stopped successfully");
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to stop chaos engine: {}", e);
+            }
         }
     }
 

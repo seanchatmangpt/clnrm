@@ -37,6 +37,8 @@ pub struct TestcontainerBackend {
     memory_limit: Option<u64>,
     /// CPU limit (number of CPUs)
     cpu_limit: Option<f64>,
+    /// Determinism engine for reproducible execution
+    determinism_engine: Option<Arc<crate::determinism::DeterminismEngine>>,
 }
 
 impl TestcontainerBackend {
@@ -63,6 +65,7 @@ impl TestcontainerBackend {
             volume_validator: Arc::new(VolumeValidator::default()),
             memory_limit: None,
             cpu_limit: None,
+            determinism_engine: None,
         })
     }
 
@@ -156,6 +159,15 @@ impl TestcontainerBackend {
         self
     }
 
+    /// Set determinism engine for reproducible execution
+    ///
+    /// # Arguments
+    /// * `engine` - DeterminismEngine with configured seed, clock freezing, etc.
+    pub fn with_determinism(mut self, engine: Arc<crate::determinism::DeterminismEngine>) -> Self {
+        self.determinism_engine = Some(engine);
+        self
+    }
+
     /// Check if testcontainers is available
     pub fn is_available() -> bool {
         // For now, assume Docker is available if we can create a GenericImage
@@ -245,6 +257,39 @@ impl TestcontainerBackend {
         // Add policy environment variables
         for (key, value) in self.policy.to_env() {
             container_request = container_request.with_env_var(key, value);
+        }
+
+        // Add determinism environment variables
+        if let Some(ref engine) = self.determinism_engine {
+            // Set RANDOM env var for seeded random number generation
+            if engine.get_seed().is_some() {
+                // Use seed to generate initial RANDOM value
+                let random_value = match engine.next_u32() {
+                    Ok(val) => val,
+                    Err(e) => {
+                        warn!("Failed to generate random value from seed: {}", e);
+                        0
+                    }
+                };
+                container_request = container_request.with_env_var("RANDOM", random_value.to_string());
+            }
+
+            // Set FAKETIME env vars for clock freezing (requires libfaketime in container)
+            if let Some(frozen_clock) = engine.get_frozen_clock() {
+                container_request = container_request.with_env_var("FAKETIME", frozen_clock);
+                // LD_PRELOAD for libfaketime - assumes libfaketime.so.1 is in standard location
+                // Users must ensure libfaketime is installed in their container image
+                container_request = container_request.with_env_var("LD_PRELOAD", "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1");
+                // Make faketime work in multi-threaded environments
+                container_request = container_request.with_env_var("FAKETIME_NO_CACHE", "1");
+            }
+
+            // Set CLEANROOM_ALLOWED_PORTS for deterministic port allocation
+            if engine.config().has_deterministic_ports() {
+                if let Ok(port_list) = engine.get_port_pool_env() {
+                    container_request = container_request.with_env_var("CLEANROOM_ALLOWED_PORTS", port_list);
+                }
+            }
         }
 
         // Add volume mounts from backend storage

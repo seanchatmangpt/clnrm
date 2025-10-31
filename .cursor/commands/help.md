@@ -11,6 +11,7 @@ Quick reference for all available commands.
 | `/validate` | Production validation | 5-10m |
 | `/fix` | Auto-fix formatting & clippy | 10-30s |
 | `/release` | Release preparation | 10-15m |
+| `/acp` | Git add, commit, push | ~5s |
 | `/help` | Show this help | - |
 
 ## Cargo-Make Tasks
@@ -93,6 +94,7 @@ All commands enforce:
 **Before Commit:**
 ```bash
 cargo make pre-commit  # fmt + clippy + test
+/acp                   # Stage, commit, push
 ```
 
 **Before PR:**

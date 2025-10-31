@@ -362,7 +362,7 @@ pub mod async_validation {
 /// Async template caching for high-performance applications
 pub mod async_cache {
     use super::*;
-    use crate::cache::{TemplateCache, CachedRenderer};
+    use crate::cache::CachedRenderer;
 
     /// Create async cached renderer
     ///

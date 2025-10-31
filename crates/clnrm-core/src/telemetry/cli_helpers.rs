@@ -64,20 +64,26 @@ impl CliInitSpan {
 
         // Recommended attributes
         if let Some(path) = config_path {
-            self.span.record("config.path", &path.as_str());
+            self.span.record("config.path", path.as_str());
         }
         self.span.record("files.created", files_created as i64);
 
         // Conditional error attributes
         if let Some((error_type, error_message)) = error {
-            self.span.record("error.type", &error_type.as_str());
-            self.span.record("error.message", &error_message.as_str());
+            self.span.record("error.type", error_type.as_str());
+            self.span.record("error.message", error_message.as_str());
         }
     }
 }
 
 /// Builder for CLI plugins span (clnrm plugins)
 pub struct CliPluginsSpanBuilder;
+
+impl Default for CliPluginsSpanBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl CliPluginsSpanBuilder {
     pub fn new() -> Self {
@@ -127,13 +133,13 @@ impl CliPluginsSpan {
         self.span.record("plugins.custom", plugins_custom as i64);
 
         if let Some(json) = plugins_by_type {
-            self.span.record("plugins.by_type", &json.as_str());
+            self.span.record("plugins.by_type", json.as_str());
         }
 
         // Conditional error attributes
         if let Some((error_type, error_message)) = error {
-            self.span.record("error.type", &error_type.as_str());
-            self.span.record("error.message", &error_message.as_str());
+            self.span.record("error.type", error_type.as_str());
+            self.span.record("error.message", error_message.as_str());
         }
     }
 }
@@ -198,20 +204,20 @@ impl CliHealthSpan {
 
         // Recommended attributes
         if let Some(version) = docker_version {
-            self.span.record("docker.version", &version.as_str());
+            self.span.record("docker.version", version.as_str());
         }
         if let Some(dtype) = docker_type {
-            self.span.record("docker.type", &dtype.as_str());
+            self.span.record("docker.type", dtype.as_str());
         }
         self.span.record("weaver.available", weaver_available);
         if let Some(version) = weaver_version {
-            self.span.record("weaver.version", &version.as_str());
+            self.span.record("weaver.version", version.as_str());
         }
 
         // Conditional error attributes
         if let Some((error_type, error_message)) = error {
-            self.span.record("error.type", &error_type.as_str());
-            self.span.record("error.message", &error_message.as_str());
+            self.span.record("error.type", error_type.as_str());
+            self.span.record("error.message", error_message.as_str());
         }
     }
 }
@@ -270,8 +276,8 @@ impl CliSelfTestSpan {
 
         // Conditional error attributes
         if let Some((error_type, error_message)) = error {
-            self.span.record("error.type", &error_type.as_str());
-            self.span.record("error.message", &error_message.as_str());
+            self.span.record("error.type", error_type.as_str());
+            self.span.record("error.message", error_message.as_str());
         }
     }
 }

@@ -832,7 +832,7 @@ impl CleanroomEnvironment {
 
         // Build command for execution
         // Backend API pattern: Command encapsulation with environment isolation
-        let mut cmd = Cmd::new("sh")
+        let cmd = Cmd::new("sh")
             .arg("-c")
             .arg(command.join(" "))
             .env("SERVICE_NAME", &service_handle.service_name)

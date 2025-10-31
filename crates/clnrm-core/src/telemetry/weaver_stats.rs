@@ -187,7 +187,7 @@ impl WeaverStats {
 
         // Run weaver registry stats
         let output = Command::new("weaver")
-            .args(&[
+            .args([
                 "registry",
                 "stats",
                 "--registry",
@@ -305,14 +305,14 @@ impl WeaverStats {
             stats.recommended_attributes
         ));
         report.push_str(&format!("   - Optional: {}\n", stats.optional_attributes));
-        report.push_str("\n");
+        report.push('\n');
 
         // Signals
         report.push_str("📡 Signal Types:\n");
         report.push_str(&format!("   Spans: {}\n", stats.total_spans));
         report.push_str(&format!("   Metrics: {}\n", stats.total_metrics));
         report.push_str(&format!("   Events: {}\n", stats.total_events));
-        report.push_str("\n");
+        report.push('\n');
 
         // Quality Score
         let score = stats.quality_score();
@@ -328,7 +328,7 @@ impl WeaverStats {
                 "❌ NO"
             }
         ));
-        report.push_str("\n");
+        report.push('\n');
 
         // Recommendations
         report.push_str("💡 Recommendations:\n");

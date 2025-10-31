@@ -2,7 +2,7 @@
 
 **Principle:** Cargo-make is the engine, Cursor commands are the interface.
 
-## Available Commands (6 Essential)
+## Available Commands (7 Essential)
 
 Type `/` in Cursor chat to access:
 
@@ -13,6 +13,7 @@ Type `/` in Cursor chat to access:
 | `/validate` | `cargo make validate` | Production validation |
 | `/fix` | `cargo make fix` | Auto-fix issues |
 | `/release` | `cargo make release-validation` | Release prep |
+| `/acp` | `git add -A && commit && push` | Git add, commit, push |
 | `/help` | - | Show help |
 
 ## System Architecture
@@ -45,10 +46,10 @@ Type `/` in Cursor chat to access:
 - **Total:** 185 things to maintain
 
 ### After (Simple)
-- 6 cursor commands (80/20 essential)
+- 7 cursor commands (80/20 essential)
 - 125 cargo-make tasks (single source of truth)
 - 0 shell scripts (logic embedded)
-- **Total:** 131 things to maintain (29% reduction)
+- **Total:** 132 things to maintain (29% reduction)
 
 ## Benefits
 
@@ -110,7 +111,7 @@ This ensures:
 ## Finding Commands
 
 ### In Cursor
-Type `/` to see all 6 commands
+Type `/` to see all 7 commands
 
 ### In Terminal
 ```bash

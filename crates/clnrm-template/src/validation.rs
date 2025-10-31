@@ -476,9 +476,7 @@ impl TemplateValidator {
                 for (_, value) in obj {
                     self.validate_toml_sizes(value, template_name)?;
                 }
-            }
-            Value::Array(arr) => {
-                for value in arr {
+                for value in obj.values() {
                     self.validate_toml_sizes(value, template_name)?;
                 }
             }

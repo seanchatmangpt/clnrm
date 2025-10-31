@@ -10,14 +10,14 @@
 
 use crate::error::{TemplateError, Result};
 use crate::context::{TemplateContext, TemplateContextBuilder};
-use crate::renderer::{TemplateRenderer, OutputFormat};
+use crate::renderer::OutputFormat;
 use crate::discovery::{TemplateDiscovery, TemplateLoader, TemplateOrganization};
 use crate::validation::{TemplateValidator, ValidationRule};
-use crate::cache::{TemplateCache, CachedRenderer};
+use crate::cache::CachedRenderer;
 use crate::custom::{CustomFunction, CustomFilter, FunctionRegistry};
 use crate::toml::{TomlLoader, TomlWriter, TomlMerger};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 use serde_json::Value;
 

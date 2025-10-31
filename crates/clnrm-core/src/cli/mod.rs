@@ -349,7 +349,7 @@ pub async fn run_cli() -> Result<()> {
             baseline,
             verify_digest,
             output,
-        } => reproduce_baseline(&baseline, verify_digest, output.as_ref().map(|p| p.as_path())).await,
+        } => reproduce_baseline(&baseline, verify_digest, output.as_deref()).await,
 
         Commands::RedGreen {
             paths,
@@ -387,7 +387,7 @@ pub async fn run_cli() -> Result<()> {
                     crate::error::CleanroomError::serialization_error(format!("Failed to serialize map: {}", e))
                 })?
             };
-            render_template_with_vars(&template, &map_str, output.as_ref().map(|p| p.as_path()), show_vars)?;
+            render_template_with_vars(&template, &map_str, output.as_deref(), show_vars)?;
             Ok(())
         },
 

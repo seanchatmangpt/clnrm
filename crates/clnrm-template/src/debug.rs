@@ -668,6 +668,12 @@ pub struct DebugTemplateValidator {
     debugger: TemplateDebugger,
 }
 
+impl Default for DebugTemplateValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DebugTemplateValidator {
     /// Create new template validator
     pub fn new() -> Self {

@@ -21,8 +21,10 @@
 //! ```
 
 pub mod digest;
+pub mod ports;
 pub mod rng;
 pub mod time;
+pub mod volumes;
 
 use crate::config::DeterminismConfig;
 use crate::error::{CleanroomError, Result};
@@ -35,6 +37,8 @@ use std::sync::{Arc, Mutex};
 /// This engine provides:
 /// - Seeded random number generation
 /// - Frozen clock timestamps
+/// - Deterministic port allocation
+/// - Hash-based volume naming
 /// - Digest generation for trace verification
 pub struct DeterminismEngine {
     /// Configuration for determinism features
@@ -43,6 +47,8 @@ pub struct DeterminismEngine {
     rng: Option<Arc<Mutex<Box<dyn RngCore + Send>>>>,
     /// Frozen timestamp
     frozen_time: Option<DateTime<Utc>>,
+    /// Port allocator for deterministic port assignment
+    port_allocator: Option<ports::PortAllocator>,
 }
 
 impl std::fmt::Debug for DeterminismEngine {
@@ -51,6 +57,7 @@ impl std::fmt::Debug for DeterminismEngine {
             .field("config", &self.config)
             .field("has_rng", &self.rng.is_some())
             .field("frozen_time", &self.frozen_time)
+            .field("has_port_allocator", &self.port_allocator.is_some())
             .finish()
     }
 }
@@ -79,10 +86,18 @@ impl DeterminismEngine {
             .seed
             .map(|seed| Arc::new(Mutex::new(rng::create_seeded_rng(seed))));
 
+        // Initialize port allocator if deterministic ports enabled
+        let port_allocator = if config.has_deterministic_ports() {
+            Some(ports::PortAllocator::new())
+        } else {
+            None
+        };
+
         Ok(Self {
             config,
             rng,
             frozen_time,
+            port_allocator,
         })
     }
 
@@ -202,6 +217,117 @@ impl DeterminismEngine {
     pub fn config(&self) -> &DeterminismConfig {
         &self.config
     }
+
+    /// Allocate next deterministic port
+    ///
+    /// # Returns
+    /// * `Result<u16>` - Next port from the deterministic pool
+    ///
+    /// # Errors
+    /// * Returns error if deterministic ports not enabled
+    /// * Returns error if no ports available
+    pub fn allocate_port(&self) -> Result<u16> {
+        self.port_allocator
+            .as_ref()
+            .ok_or_else(|| {
+                CleanroomError::deterministic_error(
+                    "Deterministic ports not enabled. Set determinism.deterministic_ports = true in config"
+                )
+            })?
+            .allocate()
+    }
+
+    /// Release port back to the pool
+    ///
+    /// # Arguments
+    /// * `port` - Port to release
+    ///
+    /// # Errors
+    /// * Returns error if deterministic ports not enabled
+    /// * Returns error if port was not allocated
+    pub fn release_port(&self, port: u16) -> Result<()> {
+        self.port_allocator
+            .as_ref()
+            .ok_or_else(|| {
+                CleanroomError::deterministic_error(
+                    "Deterministic ports not enabled"
+                )
+            })?
+            .release(port)
+    }
+
+    /// Get list of allocated ports
+    ///
+    /// # Returns
+    /// * `Result<Vec<u16>>` - List of currently allocated ports
+    ///
+    /// # Errors
+    /// * Returns error if deterministic ports not enabled
+    pub fn allocated_ports(&self) -> Result<Vec<u16>> {
+        self.port_allocator
+            .as_ref()
+            .ok_or_else(|| {
+                CleanroomError::deterministic_error(
+                    "Deterministic ports not enabled"
+                )
+            })?
+            .allocated_ports()
+    }
+
+    /// Generate deterministic volume name
+    ///
+    /// Uses hash-based naming with test name and seed
+    ///
+    /// # Arguments
+    /// * `test_name` - Name of the test
+    ///
+    /// # Returns
+    /// * String - Deterministic volume name
+    pub fn generate_volume_name(&self, test_name: &str) -> String {
+        volumes::generate_volume_name(test_name, self.config.seed)
+    }
+
+    /// Generate deterministic container name
+    ///
+    /// # Arguments
+    /// * `test_name` - Name of the test
+    /// * `step_name` - Name of the step
+    ///
+    /// # Returns
+    /// * String - Deterministic container name
+    pub fn generate_container_name(&self, test_name: &str, step_name: &str) -> String {
+        volumes::generate_container_name(test_name, step_name, self.config.seed)
+    }
+
+    /// Generate deterministic network name
+    ///
+    /// # Arguments
+    /// * `test_name` - Name of the test
+    ///
+    /// # Returns
+    /// * String - Deterministic network name
+    pub fn generate_network_name(&self, test_name: &str) -> String {
+        volumes::generate_network_name(test_name, self.config.seed)
+    }
+
+    /// Get port pool as environment variable string
+    ///
+    /// Returns comma-separated list of ports for CLEANROOM_ALLOWED_PORTS
+    ///
+    /// # Returns
+    /// * `Result<String>` - Comma-separated port list
+    ///
+    /// # Errors
+    /// * Returns error if deterministic ports not enabled
+    pub fn get_port_pool_env(&self) -> Result<String> {
+        if self.port_allocator.is_some() {
+            Ok(ports::PortAllocator::default_ports_string())
+        } else {
+            Err(CleanroomError::deterministic_error(
+                "Deterministic ports not enabled"
+            ))
+        }
+    }
 }
 
 // Implement Clone for DeterminismEngine
@@ -219,6 +345,7 @@ impl Clone for DeterminismEngine {
                 .seed
                 .map(|seed| Arc::new(Mutex::new(rng::create_seeded_rng(seed)))),
             frozen_time: self.frozen_time,
+            port_allocator: self.port_allocator.clone(),
         }
     }
 }

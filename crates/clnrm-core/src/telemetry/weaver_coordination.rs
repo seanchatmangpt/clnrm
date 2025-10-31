@@ -122,7 +122,7 @@ impl WeaverController<Unstarted> {
         })?;
 
         let mut cmd = Command::new("weaver");
-        cmd.args(&[
+        cmd.args([
             "registry",
             "live-check",
             "--registry",
@@ -272,7 +272,7 @@ impl WeaverController<Unstarted> {
         #[cfg(unix)]
         {
             let _ = Command::new("pkill")
-                .args(&["-9", "-f", "weaver registry live-check"])
+                .args(["-9", "-f", "weaver registry live-check"])
                 .output();
             thread::sleep(Duration::from_millis(500));
         }

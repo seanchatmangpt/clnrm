@@ -101,12 +101,10 @@ impl ValidationAnalysis {
             .collect();
 
         // Check for missing critical attributes
-        let critical_attributes = vec![
-            "container.id",
+        let critical_attributes = ["container.id",
             "test.isolated",
             "test.result",
-            "container.destroyed_at",
-        ];
+            "container.destroyed_at"];
 
         let missing_critical: Vec<String> = critical_attributes
             .iter()
