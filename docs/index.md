@@ -22,7 +22,7 @@
 - [OTLP Quick Start](OTLP_QUICK_START.md) - Quick OTLP setup
 
 ### Reference Documentation
-- [Weaver User Guide](weaver/WEAVER_USER_GUIDE.md) - Weaver integration reference
+- [Weaver User Guide](weaver/README.md) - Weaver integration reference
 - [Weaver Quick Reference](weaver/QUICK_REFERENCE.md) - Quick Weaver commands
 - [Weaver Live Check Reference](weaver/WEAVER_LIVE_CHECK_REFERENCE.md) - Live check usage
 - [Validator Quick Reference](VALIDATOR_QUICK_REFERENCE.md) - Validation commands
@@ -37,9 +37,10 @@
 - [Weaver Integration Design](architecture/WEAVER_INTEGRATION_DESIGN.md)
 
 ### Backend
-- [Backend Documentation](backend/) - Backend implementation details
-- [OTLP Setup](backend/OTLP_SETUP_COMPLETE.md)
+- [Backend Documentation](backend/README.md) - Backend implementation details
+- [OTLP Infrastructure](backend/OTLP_INFRASTRUCTURE.md) - OTLP setup and configuration
 - [Port Management](backend/PORT_MANAGEMENT.md)
+- [Quick Reference](backend/QUICK_REFERENCE.md)
 
 ### Testing
 - [Testing Documentation](testing/) - Testing guides and references
@@ -51,17 +52,17 @@
 - [Weaver Advisors](weaver-advisors/) - Advisor implementation
 
 ### Validation
-- [Validation Documentation](validation/) - Validation guides and tools
-- [Validation Results Guide](validation/VALIDATION_RESULTS_GUIDE.md)
+- [Validation Documentation](validation/README.md) - Validation guides and tools
 
 ### Runbooks
-- [Production Runbooks](runbooks/) - Operational guides
+- [Production Runbooks](runbooks/README.md) - Operational guides
 - [CI/CD Integration](runbooks/CICD_INTEGRATION.md)
 - [Docker Deployment](runbooks/DOCKER_DEPLOYMENT.md)
 - [Kubernetes Deployment](runbooks/KUBERNETES_DEPLOYMENT.md)
+- [Weaver CI Workflow](runbooks/WEAVER_CI_WORKFLOW_GUIDE.md)
 
 ### Scripts
-- [Script Documentation](scripts/) - Automation scripts reference
+- [Script Documentation](scripts/README.md) - Automation scripts reference
 
 ---
 
@@ -83,7 +84,6 @@
 - [Performance Quick Reference](PERFORMANCE_QUICK_REFERENCE.md)
 
 ### Implementation Guides
-- [Docker Container Execution](DOCKER_CONTAINER_EXECUTION_IMPLEMENTATION.md)
 - [Docker Validation](DOCKER_VALIDATION.md)
 - [Environment Variable Resolution](ENV_VARIABLE_RESOLUTION.md)
 - [Instrumentation Quick Reference](INSTRUMENTATION_QUICK_REFERENCE.md)
@@ -112,7 +112,9 @@ Historical analysis reports, completion summaries, and archived documentation ar
 
 - [PRD v1](PRD-v1.md) - Product Requirements Document
 - [Definition of Done v1](DEFINITION_OF_DONE_V1.md)
+- [Agent Capabilities Matrix](AGENT_CAPABILITIES_MATRIX.md) - Complete agent selection reference
 - [Documentation Consolidation Summary](DOCUMENTATION_CONSOLIDATION_SUMMARY.md) - Recent consolidation results
+- [v1.2.1 Release Notes](../RELEASE_NOTES_v1.2.1.md) - Critical bug fixes
 
 ---
 
@@ -123,5 +125,5 @@ Historical analysis reports, completion summaries, and archived documentation ar
 
 ---
 
-**Last Updated:** 2025-10-30
-**Status:** Active documentation for clnrm v1.1.0+
+**Last Updated:** 2025-10-31
+**Status:** Active documentation for clnrm v1.2.1+

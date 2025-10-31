@@ -56,7 +56,7 @@ endpoint = "{{ endpoint }}"
 "deployment.environment" = "{{ env }}"
 
 [service.test]
-plugin = "generic_container"
+type = "generic_container"
 image = "{{ image }}"
 
 [determinism]

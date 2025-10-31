@@ -620,31 +620,9 @@ impl WeaverController {
 
         self.live_check_process = Some(child);
 
-        // Wait for listener to be ready
+        // Wait for listener to be ready with proper health check
         info!("⏳ Waiting for Weaver to initialize...");
-        thread::sleep(Duration::from_millis(1000));
-
-        // TODO: Add proper health check via admin port
-        // For now, assume if process is still running, it's ready
-        if let Some(ref mut process) = self.live_check_process {
-            match process.try_wait() {
-                Ok(Some(status)) => {
-                    return Err(CleanroomError::internal_error(format!(
-                        "Weaver exited prematurely with status: {}",
-                        status
-                    )));
-                }
-                Ok(None) => {
-                    info!("✅ Weaver live-check is ready");
-                }
-                Err(e) => {
-                    return Err(CleanroomError::internal_error(format!(
-                        "Failed to check Weaver status: {}",
-                        e
-                    )));
-                }
-            }
-        }
+        self.wait_for_weaver_ready()?;
 
         Ok(())
     }
@@ -766,6 +744,130 @@ impl WeaverController {
     /// This is only useful when streaming is enabled in the configuration.
     pub fn is_validation_passing(&self) -> bool {
         !self.has_violations.load(Ordering::Relaxed)
+    }
+
+    /// Wait for Weaver to become ready by polling the admin health endpoint
+    ///
+    /// Uses exponential backoff with a maximum timeout. Polls the HTTP health endpoint
+    /// at `http://localhost:{admin_port}/health` to verify Weaver is actually listening.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Weaver process exits before becoming ready
+    /// - Health check times out (default: 30 seconds)
+    /// - HTTP health check fails persistently
+    fn wait_for_weaver_ready(&mut self) -> Result<()> {
+        const MAX_TIMEOUT: Duration = Duration::from_secs(30);
+        const INITIAL_DELAY: Duration = Duration::from_millis(100);
+        const MAX_DELAY: Duration = Duration::from_millis(1000);
+
+        let start = Instant::now();
+        let mut delay = INITIAL_DELAY;
+
+        // Check if process is still running
+        if let Some(ref mut process) = self.live_check_process {
+            match process.try_wait() {
+                Ok(Some(status)) => {
+                    return Err(CleanroomError::internal_error(format!(
+                        "Weaver exited prematurely with status: {}. \
+                         Check Weaver logs in validation_output/ for details.",
+                        status
+                    )));
+                }
+                Ok(None) => {
+                    // Process still running, continue with health check
+                }
+                Err(e) => {
+                    return Err(CleanroomError::internal_error(format!(
+                        "Failed to check Weaver status: {}",
+                        e
+                    )));
+                }
+            }
+        }
+
+        let admin_port = self.config.admin_port;
+        let health_url = format!("http://localhost:{}/health", admin_port);
+
+        loop {
+            // Check timeout
+            if start.elapsed() > MAX_TIMEOUT {
+                return Err(CleanroomError::timeout_error(format!(
+                    "Weaver health check timed out after {}s. \
+                     Admin port: {}, Health URL: {}",
+                    MAX_TIMEOUT.as_secs(),
+                    admin_port,
+                    health_url
+                )));
+            }
+
+            // Attempt HTTP health check using blocking reqwest client
+            match Self::check_weaver_health(&health_url) {
+                Ok(true) => {
+                    let elapsed = start.elapsed();
+                    info!(
+                        "✅ Weaver health check passed (elapsed: {}ms)",
+                        elapsed.as_millis()
+                    );
+                    return Ok(());
+                }
+                Ok(false) => {
+                    // Health check failed or network error, continue polling
+                    debug!("Health check not ready yet, will retry...");
+                }
+                Err(e) => {
+                    // Unexpected error, but continue polling
+                    debug!("Health check error: {} (will retry)", e);
+                }
+            }
+
+            // Wait before next attempt with exponential backoff
+            thread::sleep(delay);
+            delay = std::cmp::min(delay * 2, MAX_DELAY);
+
+            // Re-check process state periodically
+            if let Some(ref mut process) = self.live_check_process {
+                if let Ok(Some(status)) = process.try_wait() {
+                    return Err(CleanroomError::internal_error(format!(
+                        "Weaver exited during health check with status: {}. \
+                         Check Weaver logs in validation_output/ for details.",
+                        status
+                    )));
+                }
+            }
+        }
+    }
+
+    /// Check Weaver health endpoint
+    ///
+    /// Performs a blocking HTTP GET request to the Weaver health endpoint.
+    /// Returns `Ok(true)` if health check succeeds, `Ok(false)` if it fails
+    /// or network error occurs (allowing polling to continue).
+    fn check_weaver_health(url: &str) -> Result<bool> {
+        // Use blocking reqwest client for health checks
+        let client = match reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+        {
+            Ok(client) => client,
+            Err(e) => {
+                debug!("Failed to create HTTP client: {} (will retry)", e);
+                return Ok(false);
+            }
+        };
+
+        match client.get(url).send() {
+            Ok(response) => {
+                let status = response.status();
+                Ok(status.is_success())
+            }
+            Err(e) => {
+                // Network errors are expected during startup, return false to continue polling
+                debug!("Health check request failed: {} (will retry)", e);
+                Ok(false)
+            }
+        }
     }
 
     /// Get the OTLP port that Weaver is listening on
@@ -904,13 +1006,19 @@ mod tests {
         assert!(controller.is_validation_passing());
     }
 
-    // Integration tests would require Weaver to be installed
-    // These are left as TODO for CI environment setup
+    // Integration tests are in tests/weaver/ directory
+    // See tests/weaver/otel_integration_tests.rs for complete integration test suite
 
     #[test]
     #[ignore = "Requires Weaver installation"]
     fn test_weaver_controller_lifecycle() {
         // This test requires Weaver to be installed and a registry to exist
-        // TODO: Add integration test with mock Weaver process
+        // For comprehensive integration tests, see:
+        // - tests/weaver/otel_integration_tests.rs (24 integration tests)
+        // - tests/weaver/phase2_coordination/ (coordination pattern tests)
+        // - tests/weaver/phase3_otel_integration/ (OTEL contract tests)
+        //
+        // These integration tests verify end-to-end Weaver coordination,
+        // telemetry export, and schema validation.
     }
 }

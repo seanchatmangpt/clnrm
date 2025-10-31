@@ -13,7 +13,7 @@ brew install clnrm
 
 # Verify installation
 clnrm --version
-# Output: clnrm 1.0.0
+# Output: clnrm 1.2.1
 ```
 
 ### Via Cargo
@@ -24,7 +24,7 @@ cargo install clnrm
 
 # Verify installation
 clnrm --version
-# Output: clnrm 1.0.0
+# Output: clnrm 1.2.1
 ```
 
 ### Via Pre-built Binary
@@ -76,7 +76,7 @@ endpoint = "http://localhost:4318"  # OTEL endpoint
 exporter = "otlp"           # stdout | otlp
 
 [service.my-api]
-plugin = "generic_container"
+type = "generic_container"
 image = "my-api:latest"     # Your service image
 args = ["server", "--port", "8080"]
 env = {

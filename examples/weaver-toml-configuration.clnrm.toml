@@ -1,0 +1,49 @@
+# Weaver Live-Checking TOML Configuration Example
+#
+# This example demonstrates how to configure Weaver live-checking
+# directly in your TOML test files.
+
+[meta]
+name = "weaver_validation_example"
+version = "1.0.0"
+description = "Example test with Weaver live-checking enabled"
+
+# Weaver live-checking configuration
+[weaver]
+enabled = true                    # Enable Weaver validation
+registry_path = "registry"        # Path to Weaver schema registry
+otlp_port = 0                     # 0 = auto-discover available port
+admin_port = 0                    # 0 = auto-discover available port
+output_dir = "./validation_output" # Output directory for reports
+stream = false                    # Disable streaming (batch mode)
+fail_fast = false                 # Collect all violations, don't stop early
+
+# OTEL configuration (automatically exports to Weaver when enabled)
+[otel]
+exporter = "otlp-http"
+endpoint = "http://localhost:4318"
+resources = {
+  "service.name" = "weaver_example",
+  "deployment.environment" = "test"
+}
+
+# Service definition
+[service.test_service]
+plugin = "generic_container"
+image = "alpine:latest"
+
+# Test scenario
+[[scenario]]
+name = "validate_telemetry"
+service = "test_service"
+run = "echo 'This will emit telemetry to Weaver for validation'"
+artifacts.collect = ["spans:default"]
+
+# Expectations for telemetry validation
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+
+[expect.counts]
+spans_total = { gte = 1 }
+

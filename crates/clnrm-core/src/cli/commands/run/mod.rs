@@ -413,22 +413,101 @@ async fn run_tests_impl_with_report(
     use crate::telemetry::weaver_controller::{WeaverConfig, WeaverController};
 
     // ========================================
-    // STEP 1: START WEAVER FIRST (Weaver-first pattern)
+    // STEP 1: CHECK FOR WEAVER CONFIG IN TOML FILES
     // ========================================
-    let weaver_controller = if config.validate {
-        // Resolve registry path (CRITICAL: must be absolute, not relative)
-        let registry_path = resolve_registry_path()?;
+    // Discover Weaver config from test files (if any have [weaver] section)
+    // We'll check all discovered test files later, but for now check input paths
+    let mut weaver_config_from_toml: Option<crate::config::WeaverConfig> = None;
+    
+    // Helper to check a single file for Weaver config
+    let check_file_for_weaver = |path: &PathBuf| -> Result<Option<crate::config::WeaverConfig>> {
+        if path.is_file() {
+            let ext = path.extension().unwrap_or_default();
+            if ext == "toml" || path.to_string_lossy().contains(".clnrm.toml") {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if let Ok(test_config) = crate::config::parse_toml_config(&content) {
+                        if let Some(ref weaver) = test_config.weaver {
+                            if weaver.enabled {
+                                return Ok(Some(weaver.clone()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(None)
+    };
+    
+    // Check input paths first
+    for path in paths {
+        if let Ok(Some(weaver)) = check_file_for_weaver(path) {
+            weaver_config_from_toml = Some(weaver);
+            info!("📋 Found Weaver config in TOML: {}", path.display());
+            break; // Use first enabled Weaver config found
+        }
+    }
 
-        let weaver_config = WeaverConfig {
-            registry_path, // ✅ Absolute path, works from any directory
-            otlp_port: 0, // 0 = auto-discover
-            admin_port: 0, // 0 = auto-discover
-            output_dir: PathBuf::from("./validation_output"),
-            stream: false,
+    // ========================================
+    // STEP 2: START WEAVER FIRST (Weaver-first pattern)
+    // ========================================
+    // Enable Weaver if: CLI flag set OR TOML config has enabled=true
+    let should_enable_weaver = config.validate || weaver_config_from_toml.is_some();
+    
+    let weaver_controller = if should_enable_weaver {
+        // Resolve registry path (CRITICAL: must be absolute, not relative)
+        let registry_path = if let Some(ref toml_weaver) = weaver_config_from_toml {
+            // Use registry path from TOML if provided, otherwise resolve default
+            if toml_weaver.registry_path.starts_with('/') {
+                PathBuf::from(&toml_weaver.registry_path)
+            } else {
+                // Resolve relative path from installation or current dir
+                resolve_registry_path()?
+            }
+        } else {
+            resolve_registry_path()?
+        };
+
+        // Build Weaver config: TOML config overrides CLI defaults
+        let weaver_config = if let Some(ref toml_weaver) = weaver_config_from_toml {
+            // Validate TOML config
+            toml_weaver.validate()?;
+            
+            // Convert TOML config to telemetry WeaverConfig
+            let mut telemetry_config = toml_weaver.to_telemetry_config()?;
+            
+            // Override registry_path with resolved absolute path
+            telemetry_config.registry_path = registry_path;
+            
+            // Use TOML ports if specified (0 = auto-discover)
+            if toml_weaver.otlp_port > 0 {
+                telemetry_config.otlp_port = toml_weaver.otlp_port;
+            }
+            if toml_weaver.admin_port > 0 {
+                telemetry_config.admin_port = toml_weaver.admin_port;
+            }
+            
+            telemetry_config.stream = toml_weaver.stream;
+            
+            telemetry_config
+        } else {
+            // Default Weaver config from CLI
+            WeaverConfig {
+                registry_path, // ✅ Absolute path, works from any directory
+                otlp_port: 0, // 0 = auto-discover
+                admin_port: 0, // 0 = auto-discover
+                output_dir: PathBuf::from("./validation_output"),
+                stream: false,
+            }
         };
 
         let mut controller = WeaverController::new(weaver_config);
-        info!("🔍 Starting Weaver validation (Weaver-first pattern)");
+        
+        let source = if weaver_config_from_toml.is_some() {
+            "TOML configuration"
+        } else {
+            "CLI flag"
+        };
+        info!("🔍 Starting Weaver validation from {} (Weaver-first pattern)", source);
 
         // Start Weaver and get coordination metadata
         let coordination = controller.start_and_coordinate().map_err(|e| {
@@ -447,9 +526,9 @@ async fn run_tests_impl_with_report(
     // STEP 2: INITIALIZE OTEL WITH WEAVER COORDINATION
     // ========================================
     // CRITICAL: Guard must live until the end of the function to ensure telemetry export completes
-    let _otel_guard = if otel_exporter != "none" || config.validate {
+    let _otel_guard = if otel_exporter != "none" || should_enable_weaver {
         // If Weaver is enabled, ALWAYS use its coordinated port
-        let export = if config.validate {
+        let export = if should_enable_weaver {
             let weaver = weaver_controller.as_ref().ok_or_else(|| {
                 crate::error::CleanroomError::internal_error("Weaver controller not initialized")
                     .with_context("Weaver validation was requested but controller is not available")

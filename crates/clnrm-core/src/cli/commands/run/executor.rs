@@ -47,7 +47,11 @@ pub async fn run_tests_sequential_with_results(
                 if let Some(container_id) = container_id_opt {
                     let container_info = crate::telemetry::test_execution::ContainerInfo::new(
                         container_id,
-                        "alpine:latest".to_string(), // TODO: Get actual image from config
+                        // Get image from cleanroom config or use default
+                        crate::config::load_cleanroom_config()
+                            .ok()
+                            .and_then(|cfg| Some(cfg.containers.default_image))
+                            .unwrap_or_else(|| "alpine:latest".to_string())
                     );
                     builder = builder.container(container_info);
                 }
@@ -160,7 +164,11 @@ pub async fn run_tests_parallel_with_results(
                 if let Some(container_id) = container_id_opt {
                     let container_info = crate::telemetry::test_execution::ContainerInfo::new(
                         container_id,
-                        "alpine:latest".to_string(), // TODO: Get actual image from config
+                        // Get image from cleanroom config or use default
+                        crate::config::load_cleanroom_config()
+                            .ok()
+                            .and_then(|cfg| Some(cfg.containers.default_image))
+                            .unwrap_or_else(|| "alpine:latest".to_string())
                     );
                     builder = builder.container(container_info);
                 }

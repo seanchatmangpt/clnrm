@@ -149,6 +149,9 @@ pub struct TestConfig {
     /// OTEL propagators (v0.6.0)
     #[serde(default)]
     pub otel_propagators: Option<OtelPropagatorsConfig>,
+    /// Weaver live-checking configuration (v1.3.0)
+    #[serde(default)]
+    pub weaver: Option<super::weaver::WeaverConfig>,
 }
 
 /// Meta configuration (v0.6.0 - simplified metadata section)
@@ -428,6 +431,13 @@ impl TestConfig {
                     "Meta version cannot be empty",
                 ));
             }
+        }
+
+        // Validate Weaver config if present
+        if let Some(ref weaver) = self.weaver {
+            weaver.validate().map_err(|e| {
+                CleanroomError::validation_error(format!("Weaver config: {}", e))
+            })?;
         }
 
         Ok(())

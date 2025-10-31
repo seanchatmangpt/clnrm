@@ -78,7 +78,7 @@ jobs:
       run: |
         # Set registry path for CI environment
         export CLNRM_REGISTRY_PATH="${PWD}/registry"
-        ./tests/e2e/v1_2_1_validation.sh || echo "E2E validation warnings acceptable"
+        ./tests/e2e/v1_2_1_validation.sh
 
   security:
     name: Security Audit

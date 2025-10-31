@@ -264,7 +264,7 @@ fn render(glob:&str, name:&str, user_vars:HashMap<String,String>)->String{
 ```toml
 [meta]                  # name, version, description
 [otel]                  # exporter("stdout"|"otlp"), endpoint?, protocol?, sample_ratio, resources={...}
-[service.<id>]          # plugin="generic_container", image, args=[...], env={...}, wait_for_span="..."
+[service.<id>]          # type="generic_container", image, args=[...], env={...}, wait_for_span="..."
 [[scenario]]            # name, service, run, artifacts.collect=["spans:<handle>"]
 ```
 
@@ -318,7 +318,7 @@ resources={ "service.name"="{{ svc }}","env"="{{ env }}" }
 {% if token != "" %}Authorization="Bearer {{ token }}"{% endif %}
 
 [service.clnrm]
-plugin="generic_container"
+type="generic_container"
 image="{{ image }}"
 args=["self-test","--otel-exporter","{{ exporter }}","--otel-endpoint","{{ endpoint }}"]
 env={ "OTEL_TRACES_EXPORTER"="{{ exporter }}","OTEL_EXPORTER_OTLP_ENDPOINT"="{{ endpoint }}" }

@@ -17,6 +17,7 @@ pub mod otel;
 pub mod project;
 pub mod services;
 pub mod types;
+pub mod weaver;
 
 // Re-export commonly used types for backward compatibility
 pub use types::{
@@ -39,5 +40,7 @@ pub use project::{
     ContainerConfig, ObservabilityConfig, PerformanceConfig, PluginConfig, ProjectConfig,
     ReportingConfig, SecurityConfig, ServiceDefaultsConfig, TestExecutionConfig,
 };
+
+pub use weaver::WeaverConfig;
 
 pub use loader::{load_config_from_file, parse_toml_config};

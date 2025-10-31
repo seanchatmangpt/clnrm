@@ -86,7 +86,7 @@ jobs:
         CLNRM_REGISTRY_PATH: ${{ github.workspace }}/registry
       run: |
         # Run clnrm with validation enabled
-        timeout 120 ./target/release/clnrm run tests/ --validate || echo "Validation completed"
+        timeout 120 ./target/release/clnrm run tests/ --validate
 
     - name: Check Weaver validation report
       run: |

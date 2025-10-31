@@ -14,5 +14,6 @@ pub mod execution;
 pub mod file_ops;
 pub mod reporting;
 pub mod services;
+pub mod toml_features;
 pub mod trace_analysis;
 
