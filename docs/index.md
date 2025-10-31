@@ -1,136 +1,127 @@
-# Cleanroom Testing Framework
+# Documentation Index
 
-**🚀 Production Ready:** Hermetic integration testing that actually works end-to-end.
-
-## What is Cleanroom?
-
-Cleanroom is a **framework self-testing platform** that enables reliable, hermetic integration testing with container-based isolation and plugin architecture. Version 1.0.0 delivers **simplified templating** with no-prefix variables and Rust-based precedence resolution.
-
-## ✨ Key Features
-
-- **🔒 Hermetic Isolation** - Complete isolation in fresh containers per test
-- **📦 Plugin Ecosystem** - Service plugins for containers, databases, network tools
-- **⚡ Performance** - Change-aware runs, parallel execution, container reuse
-- **📊 Built-in Observability** - Automatic OTEL tracing and metrics collection
-- **🎛️ Professional CLI** - Core commands with watch mode, dry-run, formatting
-- **📋 Simplified Templating** - No-prefix variables with Rust precedence resolution
-- **🔍 OTEL Validation** - Span validation, graph analysis, hermeticity checking
-- **📈 Multi-Format Reports** - JSON, JUnit XML, SHA-256 digests
-
-## 🎯 No-Prefix Variables Innovation
-
-Cleanroom v1.0.0 introduces **no-prefix variables** - clean `{{ svc }}`, `{{ endpoint }}` syntax with variables resolved in Rust:
-
-```toml
-[vars]  # Template variables override ENV and defaults
-svc = "my-api"
-endpoint = "https://otel.enterprise.com"
-
-[meta]
-name = "{{ svc }}_test"  # Uses "my-api"
-
-[otel]
-endpoint = "{{ endpoint }}"  # Uses template var (highest priority)
-```
-
-**Precedence Chain:**
-1. **Template variables** (highest priority)
-2. **Environment variables** (`$SERVICE_NAME`, `$OTEL_ENDPOINT`)
-3. **Defaults** (lowest priority)
-
-## 🚀 Quick Start
-
-### 1. Install
-
-```bash
-# Via Homebrew
-brew tap seanchatmangpt/clnrm
-brew install clnrm
-
-# Via Cargo
-cargo install clnrm
-```
-
-### 2. Initialize Project
-
-```bash
-clnrm init my-tests
-cd my-tests
-```
-
-### 3. Generate Template
-
-```bash
-# Generate OTEL validation template
-clnrm template otel > tests/integration.clnrm.toml
-```
-
-### 4. Run Tests
-
-```bash
-# Run tests (change-aware by default)
-clnrm run
-
-# Development mode with hot reload
-clnrm dev --watch
-
-# Format and validate
-clnrm fmt && clnrm validate tests/
-```
-
-## 📚 Documentation
-
-- **[Quick Start Guide](./docs/quick-start)** - Get started in 5 minutes
-- **[No-Prefix Variables](./docs/variables)** - Variable resolution system
-- **[TOML Reference](./docs/toml-reference)** - Complete configuration guide
-- **[CLI Commands](./docs/cli-guide)** - Command reference
-- **[API Reference](./api/)** - Plugin and validator APIs
-
-## 🤝 Philosophy
-
-Cleanroom follows the **"eat your own dog food"** principle - the framework validates itself through comprehensive self-testing:
-
-- **Framework Self-Testing** - clnrm tests clnrm using clnrm
-- **Plugin Ecosystem** - Tested via service plugins (containers, network tools)
-- **Container Management** - Validated via lifecycle and isolation testing
-- **Template System** - Verified via Tera rendering with no-prefix variables
-- **CLI Interface** - Tested via command execution and output validation
-
-## 📈 Performance
-
-- **Change-Aware Execution** - SHA-256 scenario hashing (10x faster iteration)
-- **Hot Reload** - <3s latency from save to test results
-- **Parallel Execution** - Multi-worker support with dependency resolution
-- **Container Reuse** - 10-50x performance improvement with smart caching
-
-## 🛠️ CI/CD Integration
-
-Cleanroom provides ready-to-use GitHub Actions workflows:
-
-```yaml
-name: Cleanroom Tests
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run Cleanroom Tests
-        run: clnrm run tests/ --parallel --workers 4 --format junit > test-results.xml
-      - uses: actions/upload-artifact@v3
-        with:
-          name: test-results
-          path: test-results.xml
-```
-
-## 🎉 What's Next
-
-- **Plugin Marketplace** - Community-contributed service plugins
-- **AI-Powered Testing** - Intelligent test generation and optimization
-- **Advanced Analytics** - Performance profiling and optimization insights
-- **Multi-Cloud Support** - AWS, Azure, GCP container orchestration
+**Navigation hub for clnrm documentation**
 
 ---
 
-**Built with ❤️ for reliable, hermetic integration testing.**
+## Core Guides
+
+### Getting Started
+- [Quick Start Guide](quick-start.md) - Get up and running quickly
+- [Usage Examples](USAGE_EXAMPLES.md) - Practical examples and patterns
+
+### Validation & Testing
+- [Validation Guide](VALIDATION_GUIDE.md) - Complete Weaver validation guide
+- [Documentation Validation Guide](DOCUMENTATION_VALIDATION_GUIDE.md) - Documentation quality standards
+- [Production Validation Guide](PRODUCTION_VALIDATION_GUIDE.md) - Production deployment validation
+- [Testing Guide](TESTING.md) - Comprehensive testing approach
+
+### Integration & Configuration
+- [OpenTelemetry Integration Guide](OPENTELEMETRY_INTEGRATION_GUIDE.md) - OTEL setup and configuration
+- [Schema Writing Guide](SCHEMA_WRITING_GUIDE.md) - Authoring telemetry schemas
+- [OTLP Quick Start](OTLP_QUICK_START.md) - Quick OTLP setup
+
+### Reference Documentation
+- [Weaver User Guide](weaver/WEAVER_USER_GUIDE.md) - Weaver integration reference
+- [Weaver Quick Reference](weaver/QUICK_REFERENCE.md) - Quick Weaver commands
+- [Weaver Live Check Reference](weaver/WEAVER_LIVE_CHECK_REFERENCE.md) - Live check usage
+- [Validator Quick Reference](VALIDATOR_QUICK_REFERENCE.md) - Validation commands
+
+---
+
+## By Topic
+
+### Architecture
+- [Architecture Overview](architecture/) - System architecture documentation
+- [Docker Architecture](architecture/DOCKER_TESTCONTAINERS_WEAVER_ARCHITECTURE.md)
+- [Weaver Integration Design](architecture/WEAVER_INTEGRATION_DESIGN.md)
+
+### Backend
+- [Backend Documentation](backend/) - Backend implementation details
+- [OTLP Setup](backend/OTLP_SETUP_COMPLETE.md)
+- [Port Management](backend/PORT_MANAGEMENT.md)
+
+### Testing
+- [Testing Documentation](testing/) - Testing guides and references
+- [Live Check Test Guide](testing/LIVE_CHECK_TEST_GUIDE.md)
+- [Quick Start Live Check Tests](testing/QUICK_START_LIVE_CHECK_TESTS.md)
+
+### Weaver
+- [Weaver Documentation](weaver/) - Complete Weaver integration docs
+- [Weaver Advisors](weaver-advisors/) - Advisor implementation
+
+### Validation
+- [Validation Documentation](validation/) - Validation guides and tools
+- [Validation Results Guide](validation/VALIDATION_RESULTS_GUIDE.md)
+
+### Runbooks
+- [Production Runbooks](runbooks/) - Operational guides
+- [CI/CD Integration](runbooks/CICD_INTEGRATION.md)
+- [Docker Deployment](runbooks/DOCKER_DEPLOYMENT.md)
+- [Kubernetes Deployment](runbooks/KUBERNETES_DEPLOYMENT.md)
+
+### Scripts
+- [Script Documentation](scripts/) - Automation scripts reference
+
+---
+
+## Reference Materials
+
+### Configuration
+- [Cargo Make Guide](CARGO_MAKE_GUIDE.md) - Build automation
+- [Cargo Make Migration Guide](CARGO_MAKE_MIGRATION_GUIDE.md)
+- [Cargo Make Quick Reference](CARGO_MAKE_QUICK_REFERENCE.md)
+- [Makefile Guide](MAKEFILE_GUIDE.md) - Makefile usage
+
+### Advanced Topics
+- [Behavior Coverage](BEHAVIOR_COVERAGE_DESIGN.md) - Coverage design
+- [Behavior Coverage Quickstart](BEHAVIOR_COVERAGE_QUICKSTART.md)
+- [Fake Green Detection](FAKE_GREEN_DETECTION_USER_GUIDE.md) - User guide
+- [Fake Green Detection Dev Guide](FAKE_GREEN_DETECTION_DEV_GUIDE.md) - Developer guide
+- [Failure Modes and Recovery](FAILURE_MODES_AND_RECOVERY.md)
+- [Performance Benchmarking](PERFORMANCE_BENCHMARKING.md)
+- [Performance Quick Reference](PERFORMANCE_QUICK_REFERENCE.md)
+
+### Implementation Guides
+- [Docker Container Execution](DOCKER_CONTAINER_EXECUTION_IMPLEMENTATION.md)
+- [Docker Validation](DOCKER_VALIDATION.md)
+- [Environment Variable Resolution](ENV_VARIABLE_RESOLUTION.md)
+- [Instrumentation Quick Reference](INSTRUMENTATION_QUICK_REFERENCE.md)
+- [OTEL Instrumentation](OTEL_INSTRUMENTATION.md)
+- [OTEL Stdout Exporter](OTEL_STDOUT_EXPORTER.md)
+- [Template Generators Reference](TEMPLATE_GENERATORS_REFERENCE.md)
+- [Troubleshooting Guide](TROUBLESHOOTING.md)
+
+---
+
+## Historical Documentation
+
+Historical analysis reports, completion summaries, and archived documentation are available in:
+- [Archive Directory](archive/) - Historical documentation archive
+
+**Archive Categories:**
+- [Completion Reports](archive/completion-reports/) - Historical completion summaries
+- [Release Documentation](archive/releases/) - Version-specific documentation
+- [Analysis Reports](archive/analysis/) - Historical analysis documents
+- [Implementation History](archive/implementation-history/) - Historical implementation docs
+- [Swarm Reports](archive/swarm-reports/) - Agent swarm analysis reports
+
+---
+
+## Project Documentation
+
+- [PRD v1](PRD-v1.md) - Product Requirements Document
+- [Definition of Done v1](DEFINITION_OF_DONE_V1.md)
+- [Documentation Consolidation Summary](DOCUMENTATION_CONSOLIDATION_SUMMARY.md) - Recent consolidation results
+
+---
+
+## Maintenance
+
+- [FIXME](FIXME.md) - Known issues and fixes needed
+- [Documentation Validation Guide](DOCUMENTATION_VALIDATION_GUIDE.md) - Quality standards
+
+---
+
+**Last Updated:** 2025-10-30
+**Status:** Active documentation for clnrm v1.1.0+

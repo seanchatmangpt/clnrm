@@ -53,7 +53,7 @@ pub async fn reproduce_baseline(
     output: Option<&PathBuf>,
 ) -> Result<()> {
     use crate::cli::commands::run::run_tests_sequential_with_results;
-    use crate::cli::commands::v0_7_0::record::{BaselineRecord, BaselineTestResult};
+    use crate::cli::commands::record::{BaselineRecord, BaselineTestResult};
     use crate::cli::types::{CliConfig, OutputFormat};
 
     info!(

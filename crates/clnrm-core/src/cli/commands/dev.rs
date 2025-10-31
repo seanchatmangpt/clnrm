@@ -1,4 +1,4 @@
-//! Development mode command with file watching (v0.7.0)
+//! Development mode command with file watching
 //!
 //! Provides hot reload functionality for `.toml.tera` template files,
 //! enabling instant feedback (<3s) when developers save changes.
@@ -43,7 +43,7 @@ pub struct DevWatcher;
 /// # Example
 ///
 /// ```no_run
-/// use clnrm_core::cli::commands::v0_7_0::dev::run_dev_mode_with_filters;
+/// use clnrm_core::cli::commands::dev::run_dev_mode_with_filters;
 /// use clnrm_core::cli::types::CliConfig;
 /// use std::path::PathBuf;
 ///

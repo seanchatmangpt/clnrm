@@ -37,7 +37,7 @@ pub fn render_template_with_vars(
         .map_err(|e| CleanroomError::io_error(format!("Failed to read template: {}", e)))?;
 
     // Use the PRD v1.0 template rendering system
-    let rendered = crate::template::render_template(&template_content, user_vars.clone())?;
+    let rendered = crate::render_template(&template_content, user_vars.clone())?;
 
     // Show resolved variables if requested
     if show_vars {

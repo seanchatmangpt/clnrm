@@ -5,7 +5,7 @@
 //! This module provides the public API for baseline reproduction.
 //! The actual implementation is in the prd_commands module.
 
-use crate::cli::commands::v0_7_0::prd_commands::reproduce_baseline as reproduce_baseline_impl;
+use crate::cli::commands::prd_commands::reproduce_baseline as reproduce_baseline_impl;
 use crate::error::Result;
 use std::path::Path;
 

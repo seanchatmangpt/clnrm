@@ -21,13 +21,58 @@ class Clnrm < Formula
   depends_on "rust" => :build
 
   def install
-    cd "crates/clnrm" do
-      system "cargo", "install", *std_cargo_args
-    end
+    # Build with OTEL features enabled
+    system "cargo", "build", "--release", "--features", "otel"
+    bin.install "target/release/clnrm"
+
+    # Install registry to share/clnrm/registry
+    # The registry contains OpenTelemetry Weaver schemas that validate
+    # the framework's telemetry output at runtime. This is critical for
+    # the framework's false-positive detection capabilities.
+    #
+    # Installation layout:
+    #   #{share}/clnrm/registry/registry_manifest.yaml  (registry metadata)
+    #   #{share}/clnrm/registry/core/                   (core span schemas)
+    #   #{share}/clnrm/registry/metrics/                (metric definitions)
+    #   #{share}/clnrm/registry/events/                 (event definitions)
+    #   #{share}/clnrm/registry/cli/                    (CLI operation schemas)
+    (share/"clnrm/registry").mkpath
+    (share/"clnrm/registry").install Dir["registry/*"]
   end
 
   def test
+    # Test version output
     assert_match "clnrm", shell_output("#{bin}/clnrm --version")
+
+    # Test help output
     assert_match "Hermetic integration testing platform", shell_output("#{bin}/clnrm --help")
+
+    # Test that registry was installed correctly
+    assert_predicate share/"clnrm/registry/registry_manifest.yaml", :exist?,
+                     "Registry manifest not found - registry installation failed"
+    assert_predicate share/"clnrm/registry/core", :directory?,
+                     "Registry core schemas not found"
+    assert_predicate share/"clnrm/registry/metrics", :directory?,
+                     "Registry metrics not found"
+    assert_predicate share/"clnrm/registry/events", :directory?,
+                     "Registry events not found"
+
+    # Test basic functionality - initialize a test project
+    test_dir = testpath/"test-project"
+    test_dir.mkpath
+
+    system "#{bin}/clnrm", "init", "test-project"
+    assert_predicate testpath/"test-project/cleanroom.toml", :exist?
+    assert_predicate testpath/"test-project/tests", :directory?
+
+    # Test validation command
+    system "#{bin}/clnrm", "validate", testpath/"test-project/cleanroom.toml"
+
+    # Test plugins command
+    assert_match "Available plugins", shell_output("#{bin}/clnrm plugins")
+
+    # Test that self-test can find the registry
+    # This validates the fix for the registry path bug
+    system "#{bin}/clnrm", "self-test", "--suite", "basic"
   end
 end

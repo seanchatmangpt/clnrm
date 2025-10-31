@@ -349,7 +349,7 @@ pub async fn run_cli() -> Result<()> {
             baseline,
             verify_digest,
             output,
-        } => reproduce_baseline(&baseline, verify_digest, output.as_ref()).await,
+        } => reproduce_baseline(&baseline, verify_digest, output.as_ref().map(|p| p.as_path())).await,
 
         Commands::RedGreen {
             paths,
@@ -371,7 +371,25 @@ pub async fn run_cli() -> Result<()> {
             map,
             output,
             show_vars,
-        } => render_template_with_vars(&template, &map, output.as_ref(), show_vars),
+        } => {
+            // Join map Vec<String> into JSON string format
+            let map_str = if map.is_empty() {
+                "{}".to_string()
+            } else {
+                // Convert Vec<String> of "key=value" pairs to JSON object
+                let mut json_map = std::collections::HashMap::new();
+                for pair in &map {
+                    if let Some((key, value)) = pair.split_once('=') {
+                        json_map.insert(key.to_string(), serde_json::Value::String(value.to_string()));
+                    }
+                }
+                serde_json::to_string(&json_map).map_err(|e| {
+                    crate::error::CleanroomError::serialization_error(format!("Failed to serialize map: {}", e))
+                })?
+            };
+            render_template_with_vars(&template, &map_str, output.as_ref().map(|p| p.as_path()), show_vars)?;
+            Ok(())
+        },
 
         Commands::Spans {
             trace,
@@ -396,7 +414,7 @@ pub async fn run_cli() -> Result<()> {
         },
 
         Commands::Analyze { test_file, traces } => {
-            use crate::cli::commands::v0_7_0::analyze::analyze_traces;
+            use crate::cli::commands::analyze::analyze_traces;
 
             match analyze_traces(&test_file, traces.as_deref()) {
                 Ok(report) => {

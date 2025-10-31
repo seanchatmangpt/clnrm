@@ -859,8 +859,9 @@ mod tests {
     #[test]
     fn test_weaver_config_defaults() {
         let config = WeaverConfig::default();
-        assert_eq!(config.otlp_port, 4317);
-        assert_eq!(config.admin_port, 8080);
+        // Default config uses 0 for auto-discovery, not hardcoded ports
+        assert_eq!(config.otlp_port, 0); // 0 = auto-discover available port
+        assert_eq!(config.admin_port, 0); // 0 = auto-discover available port
         assert_eq!(config.registry_path, PathBuf::from("registry"));
         assert!(!config.stream);
     }
@@ -868,7 +869,8 @@ mod tests {
     #[test]
     fn test_validation_report_default() {
         let report = ValidationReport::default();
-        assert_eq!(report.status, ValidationStatus::Success);
+        // Default status is Failure (no telemetry = failed validation)
+        assert_eq!(report.status, ValidationStatus::Failure);
         assert_eq!(report.violations, 0);
         assert_eq!(report.improvements, 0);
         assert_eq!(report.information, 0);

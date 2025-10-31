@@ -5,7 +5,7 @@
 //! This module provides the public API for red/green TDD validation.
 //! The actual implementation is in the redgreen_impl module.
 
-use crate::cli::commands::v0_7_0::redgreen_impl::run_red_green_validation as run_red_green_validation_impl;
+use crate::cli::commands::redgreen_impl::run_red_green_validation as run_red_green_validation_impl;
 use crate::cli::types::TddState;
 use crate::error::Result;
 use std::path::PathBuf;

@@ -25,7 +25,7 @@ use crate::error::{CleanroomError, Result};
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::telemetry::spans;
 
@@ -46,6 +46,106 @@ pub use scenario::execute_scenario;
 
 // Re-export watch functionality
 pub use watch::watch_and_run;
+
+/// Resolve registry path relative to clnrm installation
+///
+/// This function resolves the registry path in the following order:
+/// 1. CLNRM_REGISTRY_PATH environment variable (for development)
+/// 2. Executable-relative path (/usr/local/bin/clnrm → /usr/local/share/clnrm/registry)
+/// 3. Error if neither is available
+///
+/// # Architecture
+///
+/// The registry MUST be resolved relative to the **installation directory**, not the
+/// **current working directory**. This ensures `clnrm run --validate` works from any
+/// directory, not just the project root.
+///
+/// # Installation Paths
+///
+/// - Homebrew: `/usr/local/bin/clnrm` → `/usr/local/share/clnrm/registry`
+/// - Custom: `/opt/clnrm/bin/clnrm` → `/opt/clnrm/share/clnrm/registry`
+/// - Development: Set `CLNRM_REGISTRY_PATH=/path/to/dev/registry`
+///
+/// # Example
+///
+/// ```no_run
+/// # use clnrm_core::cli::commands::run::resolve_registry_path;
+/// let registry_path = resolve_registry_path().expect("Failed to resolve registry");
+/// println!("Registry at: {}", registry_path.display());
+/// ```
+fn resolve_registry_path() -> Result<PathBuf> {
+    // Option 1: Check CLNRM_REGISTRY_PATH environment variable (development override)
+    if let Ok(path) = std::env::var("CLNRM_REGISTRY_PATH") {
+        let registry_path = PathBuf::from(&path);
+
+        // Validate that the path exists
+        if registry_path.exists() {
+            info!("📂 Using registry from CLNRM_REGISTRY_PATH: {}", registry_path.display());
+            return Ok(registry_path);
+        } else {
+            warn!(
+                "⚠️ CLNRM_REGISTRY_PATH set to '{}' but path does not exist. Falling back to installation path.",
+                registry_path.display()
+            );
+        }
+    }
+
+    // Option 2: Resolve relative to executable installation directory
+    let exe_path = std::env::current_exe().map_err(|e| {
+        CleanroomError::internal_error(format!("Failed to get executable path: {}", e))
+    })?;
+
+    debug!("📍 Executable path: {}", exe_path.display());
+
+    // /usr/local/bin/clnrm → /usr/local
+    let install_dir = exe_path
+        .parent() // /usr/local/bin
+        .and_then(|bin| bin.parent()) // /usr/local
+        .ok_or_else(|| {
+            CleanroomError::internal_error(format!(
+                "Invalid installation path: cannot resolve parent directory of executable at {}",
+                exe_path.display()
+            ))
+        })?;
+
+    // /usr/local → /usr/local/share/clnrm/registry
+    let registry_path = install_dir.join("share").join("clnrm").join("registry");
+
+    debug!("📂 Resolved registry path: {}", registry_path.display());
+
+    // Validate that the registry exists
+    if !registry_path.exists() {
+        return Err(CleanroomError::validation_error(format!(
+            "Registry not found at {}. \n\
+             \n\
+             Possible causes:\n\
+             - Incomplete installation (Homebrew formula may not have installed registry)\n\
+             - Custom installation without registry setup\n\
+             \n\
+             Solutions:\n\
+             - For development, set CLNRM_REGISTRY_PATH environment variable\n\
+             - For Homebrew, reinstall with: brew reinstall --build-from-source clnrm\n\
+             - Ensure 'registry/' directory is copied to installation location\n\
+             \n\
+             Expected location: {}",
+            registry_path.display(),
+            registry_path.display()
+        )));
+    }
+
+    // Validate that registry_manifest.yaml exists
+    let manifest_path = registry_path.join("registry_manifest.yaml");
+    if !manifest_path.exists() {
+        return Err(CleanroomError::validation_error(format!(
+            "Registry found at {} but registry_manifest.yaml is missing. \n\
+             Registry may be corrupted or incomplete.",
+            registry_path.display()
+        )));
+    }
+
+    info!("✅ Registry found at: {}", registry_path.display());
+    Ok(registry_path)
+}
 
 /// Run tests from TOML files with cache support (legacy, no sharding)
 ///
@@ -316,8 +416,11 @@ async fn run_tests_impl_with_report(
     // STEP 1: START WEAVER FIRST (Weaver-first pattern)
     // ========================================
     let weaver_controller = if config.validate {
+        // Resolve registry path (CRITICAL: must be absolute, not relative)
+        let registry_path = resolve_registry_path()?;
+
         let weaver_config = WeaverConfig {
-            registry_path: PathBuf::from("registry"),
+            registry_path, // ✅ Absolute path, works from any directory
             otlp_port: 0, // 0 = auto-discover
             admin_port: 0, // 0 = auto-discover
             output_dir: PathBuf::from("./validation_output"),
@@ -347,7 +450,10 @@ async fn run_tests_impl_with_report(
     let _otel_guard = if otel_exporter != "none" || config.validate {
         // If Weaver is enabled, ALWAYS use its coordinated port
         let export = if config.validate {
-            let weaver = weaver_controller.as_ref().unwrap();
+            let weaver = weaver_controller.as_ref().ok_or_else(|| {
+                crate::error::CleanroomError::internal_error("Weaver controller not initialized")
+                    .with_context("Weaver validation was requested but controller is not available")
+            })?;
             let otlp_port = weaver.get_otlp_port();
             let endpoint = format!("http://localhost:{}", otlp_port);
             // Convert to static string by leaking (acceptable for CLI setup)
@@ -634,6 +740,10 @@ async fn run_tests_impl_with_report(
                  Check OTEL configuration and ensure tests emit telemetry.",
             ));
         }
+
+        // Log success metrics (structured logging)
+        info!("✅ Weaver received {} telemetry samples", report.sample_count);
+        info!("📊 Registry coverage: {:.1}%", report.registry_coverage * 100.0);
 
         // Print validation summary
         println!("\n=== Weaver Validation Report ===");

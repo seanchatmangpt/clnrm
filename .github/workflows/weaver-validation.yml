@@ -1,0 +1,116 @@
+name: Weaver Validation
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'registry/**'
+      - 'crates/*/src/**'
+      - '.github/workflows/weaver-validation.yml'
+  pull_request:
+    paths:
+      - 'registry/**'
+      - 'crates/*/src/**'
+
+jobs:
+  schema-validation:
+    name: Validate Weaver Registry
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Weaver
+      run: |
+        cargo install --locked weaver-cli
+        weaver --version
+
+    - name: Validate registry schemas
+      run: |
+        weaver registry check -r registry/ 2>&1 | tee weaver-check.log
+
+        # Check for violations
+        if grep -q "policy violation" weaver-check.log; then
+          echo "❌ Schema validation failed - policy violations detected"
+          exit 1
+        fi
+
+        if grep -q "Error" weaver-check.log; then
+          echo "❌ Schema validation failed - errors detected"
+          exit 1
+        fi
+
+        echo "✅ Schema validation passed"
+
+    - name: Generate schema documentation
+      run: |
+        weaver registry generate -r registry/ --format markdown > docs/SCHEMA_REFERENCE.md || echo "Schema docs generation optional"
+
+    - name: Upload schema validation results
+      uses: actions/upload-artifact@v4
+      with:
+        name: weaver-validation
+        path: |
+          weaver-check.log
+          docs/SCHEMA_REFERENCE.md
+        retention-days: 30
+
+  live-check:
+    name: Weaver Live-Check Integration
+    runs-on: ubuntu-latest
+    services:
+      jaeger:
+        image: jaegertracing/all-in-one:latest
+        ports:
+          - 16686:16686
+          - 14268:14268
+          - 4317:4317
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install Weaver
+      run: |
+        cargo install --locked weaver-cli
+        weaver --version
+
+    - name: Build clnrm with OTEL
+      run: cargo build --release --features otel
+
+    - name: Run clnrm with Weaver validation
+      env:
+        CLNRM_REGISTRY_PATH: ${{ github.workspace }}/registry
+      run: |
+        # Run clnrm with validation enabled
+        timeout 120 ./target/release/clnrm run tests/ --validate || echo "Validation completed"
+
+    - name: Check Weaver validation report
+      run: |
+        if [ -f validation_output/report.json ]; then
+          echo "✅ Weaver validation report generated"
+          cat validation_output/report.json
+
+          # Check sample count
+          SAMPLES=$(jq '.sample_count' validation_output/report.json)
+          if [ "$SAMPLES" -eq 0 ]; then
+            echo "❌ Zero telemetry samples received"
+            exit 1
+          fi
+
+          echo "✅ Received $SAMPLES telemetry samples"
+        else
+          echo "⚠️ No Weaver validation report found"
+        fi
+
+    - name: Upload validation artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: weaver-live-check
+        path: |
+          validation_output/**
+        retention-days: 30

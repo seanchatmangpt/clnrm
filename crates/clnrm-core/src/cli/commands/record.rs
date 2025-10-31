@@ -1,4 +1,4 @@
-//! Baseline recording command (v0.7.0)
+//! Baseline recording command
 //!
 //! Records test execution as a baseline for future comparisons.
 //! This is the MVP implementation focusing on the 80/20 principle:

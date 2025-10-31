@@ -273,7 +273,7 @@ pub enum Commands {
         verbose: bool,
     },
 
-    /// Development mode with file watching (v0.7.0)
+    /// Development mode with file watching
     Dev {
         /// Test files or directories to watch
         paths: Option<Vec<PathBuf>>,
@@ -295,7 +295,7 @@ pub enum Commands {
         timebox: Option<u64>,
     },
 
-    /// Dry-run validation without execution (v0.7.0)
+    /// Dry-run validation without execution
     DryRun {
         /// Files to validate
         #[arg(required = true)]
@@ -306,7 +306,7 @@ pub enum Commands {
         verbose: bool,
     },
 
-    /// Format Tera templates (v0.7.0)
+    /// Format Tera templates
     Fmt {
         /// Files to format
         files: Vec<PathBuf>,
@@ -320,7 +320,7 @@ pub enum Commands {
         verify: bool,
     },
 
-    /// Lint TOML test configurations (v0.7.0)
+    /// Lint TOML test configurations
     Lint {
         /// Files to lint
         #[arg(required = true)]
@@ -335,7 +335,7 @@ pub enum Commands {
         deny_warnings: bool,
     },
 
-    /// Diff OpenTelemetry traces (v0.7.0)
+    /// Diff OpenTelemetry traces
     Diff {
         /// First trace file or test run
         baseline: PathBuf,
@@ -352,7 +352,7 @@ pub enum Commands {
         only_changes: bool,
     },
 
-    /// Record baseline for test runs (v0.7.0)
+    /// Record baseline for test runs
     Record {
         /// Test files or directories to record (default: discover all)
         paths: Option<Vec<PathBuf>>,
@@ -472,7 +472,7 @@ pub enum Commands {
         command: CollectorCommands,
     },
 
-    /// Analyze OTEL traces against test expectations (v0.7.0)
+    /// Analyze OTEL traces against test expectations
     ///
     /// REQUIRES SETUP: OpenTelemetry Collector must be installed and running.
     /// See docs/OPENTELEMETRY_INTEGRATION_GUIDE.md for complete setup instructions.

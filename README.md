@@ -1,9 +1,9 @@
 # Cleanroom Testing Framework (clnrm)
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **✅ PRODUCTION READY: v1.1.0 - Complete Implementation**
+> **✅ PRODUCTION READY: v1.3.0 - Complete Implementation**
 >
 > Hermetic integration testing framework with comprehensive OpenTelemetry validation, Tera templating, and production-ready tooling.
 > See the honest feature matrix below for actual capabilities.
@@ -20,7 +20,7 @@ Previous versions of this README (archived at `docs/FALSE_README.md`) contained 
 
 ---
 
-## ✅ Actually Working Features (v1.1.0)
+## ✅ Actually Working Features (v1.3.0)
 
 These features have been verified to work through code inspection and testing:
 
@@ -452,7 +452,14 @@ This project is under active development. Thank you for understanding the curren
 
 ## 📊 Change Log
 
-### v1.1.0 (Current)
+### v1.3.0 (Current)
+- Removed v0_7_0 namespace - all commands now in main namespace
+- Fixed unwrap/expect usage with proper error handling
+- Updated CLI help text to remove version labels
+- Improved error handling throughout CLI commands
+- All v0_7_0 commands (fmt, dry-run, dev, lint, diff, record, analyze, graph, repro, redgreen, render, spans, pull, collector) now mainline
+
+### v1.1.0
 - TOML configuration parsing
 - Host command execution
 - Regex validation
@@ -465,8 +472,8 @@ See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ---
 
-**Last Updated:** 2025-10-30
-**Status:** Foundation Stage - Many Features In Progress
+**Last Updated:** 2025-01-17
+**Status:** v1.3.0 - Production Ready
 **False Claims Rate:** 0% (honest documentation)
 
 ---

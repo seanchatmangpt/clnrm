@@ -1,0 +1,8 @@
+[test.metadata]
+name = "simple_validation_test"
+description = "Simple test for sample validation"
+
+[[steps]]
+name = "echo_step"
+command = ["echo", "Hello v1.2.1"]
+expected_exit_code = 0

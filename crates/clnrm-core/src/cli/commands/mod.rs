@@ -2,17 +2,32 @@
 //!
 //! Exports all CLI command implementations with their associated functionality.
 
+pub mod analyze;
+pub mod collector;
 pub mod collector_noun_verb;
+pub mod dev;
+pub mod diff;
+pub mod dry_run;
+pub mod fmt;
+pub mod graph;
 pub mod health;
 pub mod init;
+pub mod lint;
 pub mod plugins;
+pub mod prd_commands;
+pub mod pull;
+pub mod record;
+pub mod redgreen;
+pub mod redgreen_impl;
+pub mod render;
 pub mod report;
+pub mod repro;
 pub mod run;
 pub mod self_test;
 pub mod services;
 pub mod services_noun_verb;
+pub mod spans;
 pub mod template;
-pub mod v0_7_0;
 pub mod validate;
 
 // Re-export all public functions for easy access
@@ -40,18 +55,18 @@ pub use self_test::run_self_tests;
 
 pub use health::system_health_check;
 
-// Re-export v0.7.0 commands
-pub use v0_7_0::dev::{run_dev_mode, run_dev_mode_with_filters};
-pub use v0_7_0::diff::diff_traces;
-pub use v0_7_0::dry_run::{dry_run_validate, ValidationResult as DryRunValidationResult};
-pub use v0_7_0::fmt::format_files;
-pub use v0_7_0::graph::visualize_graph;
-pub use v0_7_0::lint::lint_files;
-pub use v0_7_0::record::run_record;
-
-// Re-export PRD v1.0 additional commands (stubs)
-pub use v0_7_0::prd_commands::{
-    filter_spans, pull_images, render_template_with_vars, reproduce_baseline,
-    run_red_green_validation, show_collector_logs, show_collector_status, start_collector,
-    stop_collector,
-};
+// Re-export commands
+pub use analyze::analyze_traces;
+pub use collector::{show_collector_logs, show_collector_status, start_collector, stop_collector};
+pub use dev::{run_dev_mode, run_dev_mode_with_filters};
+pub use diff::diff_traces;
+pub use dry_run::{dry_run_validate, ValidationResult as DryRunValidationResult};
+pub use fmt::format_files;
+pub use graph::visualize_graph;
+pub use lint::lint_files;
+pub use pull::pull_images;
+pub use record::run_record;
+pub use redgreen::run_red_green_validation;
+pub use render::render_template_with_vars;
+pub use repro::reproduce_baseline;
+pub use spans::filter_spans;

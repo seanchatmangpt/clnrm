@@ -1,4 +1,4 @@
-//! TOML formatting command for Cleanroom v0.7.0
+//! TOML formatting command for Cleanroom
 //!
 //! Provides deterministic TOML formatting with --check mode for CI integration.
 
