@@ -22,8 +22,11 @@
 - [OTLP Quick Start](OTLP_QUICK_START.md) - Quick OTLP setup
 
 ### Reference Documentation
-- [Weaver User Guide](weaver/README.md) - Weaver integration reference
-- [Weaver Quick Reference](weaver/QUICK_REFERENCE.md) - Quick Weaver commands
+- [Weaver User Guide](WEAVER_USER_GUIDE.md) - Using Weaver validation with clnrm
+- [Weaver Best Practices](WEAVER_BEST_PRACTICES.md) - Schema design and usage patterns
+- [Weaver TOML Configuration](WEAVER_TOML_CONFIGURATION.md) - TOML-based Weaver configuration
+- [Weaver Code Generation Guide](WEAVER_CODEGEN_GUIDE.md) - Code generation from schemas
+- [Weaver Documentation](weaver/README.md) - Complete Weaver integration reference
 - [Weaver Live Check Reference](weaver/WEAVER_LIVE_CHECK_REFERENCE.md) - Live check usage
 - [Validator Quick Reference](VALIDATOR_QUICK_REFERENCE.md) - Validation commands
 

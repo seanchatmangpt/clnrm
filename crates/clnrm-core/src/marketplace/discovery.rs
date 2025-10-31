@@ -28,8 +28,9 @@ impl PluginDiscovery {
     /// Search for plugins by query string
     pub async fn search_plugins(&self, query: &str) -> Result<Vec<PluginMetadata>> {
         // TODO: Implement actual search against remote registries
-        // For now, return mock results for demonstration
-
+        // For now, return mock results for demonstration purposes
+        
+        // Note: This is experimental/mock functionality
         let mock_plugins = self.generate_mock_plugins();
 
         if query.is_empty() {
@@ -76,7 +77,7 @@ impl PluginDiscovery {
     /// Get plugin metadata from remote registry
     pub async fn get_plugin_metadata(&self, name: &str) -> Result<PluginMetadata> {
         // TODO: Fetch from remote registry
-        // For now, search in mock data
+        // For now, search in mock data (experimental functionality)
         let plugins = self.search_plugins(name).await?;
 
         plugins

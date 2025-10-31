@@ -12,7 +12,7 @@
 - [Overview](advanced-patterns/README.md)
 - [Multi-Service Orchestration](advanced-patterns/multi-service-orchestration.md)
 - [Chaos Engineering](advanced-patterns/chaos-engineering.md)
-- [Weaver Schema Validation (v1.2.0)](advanced-patterns/weaver-validation.md)
+- [Weaver Schema Validation (v1.2.1)](advanced-patterns/weaver-validation.md)
 - [80/20 Validation Strategy](advanced-patterns/80-20-validation.md)
 - [False Positive Detection](advanced-patterns/false-positive-detection.md)
 - [OTEL Validation (Legacy)](advanced-patterns/otel-validation.md)
@@ -33,5 +33,5 @@
 # Reference
 - [CLI Reference](reference/cli-reference.md)
 - [TOML Schema](reference/toml-schema.md)
-- [Weaver Schemas (v1.2.0)](reference/weaver-schemas.md)
+- [Weaver Schemas (v1.2.1)](reference/weaver-schemas.md)
 - [Error Handling](reference/error-handling.md)

@@ -46,7 +46,7 @@ impl PluginInstaller {
             }
 
             tracing::info!("Installing dependency: {}", dep_name);
-            // TODO: Actually install dependency
+            unimplemented!("Dependency installation: needs package download, extraction, and registration")
         }
 
         // Create installation directory
@@ -169,8 +169,8 @@ impl PluginInstaller {
                 continue;
             }
 
-            // TODO: Fetch dependency metadata and resolve recursively
-            // For now, just add to resolved list
+            // TODO: Recursive dependency resolution not fully implemented
+            // Currently just adds to resolved list without fetching metadata
             if !resolved.contains(&dep.name) {
                 resolved.push(dep.name.clone());
             }
@@ -187,10 +187,7 @@ impl PluginInstaller {
         _metadata: &PluginMetadata,
         _install_path: &PathBuf,
     ) -> Result<()> {
-        // TODO: Implement actual download from registry
-        // For now, create a placeholder file
-        tracing::info!("Downloading plugin package (simulated)");
-        Ok(())
+        unimplemented!("Plugin download: needs HTTP fetch from registry, progress tracking, and file verification")
     }
 
     /// Validate plugin installation
@@ -205,15 +202,14 @@ impl PluginInstaller {
         // - Check for required files
         // - Validate plugin manifest
         // - Verify checksums
-
+        
+        // Basic validation passes (directory exists)
         Ok(())
     }
 
     /// Check for plugin updates
     pub async fn check_updates(&self, _current: &PluginMetadata) -> Result<Option<PluginMetadata>> {
-        // TODO: Check remote registry for newer versions
-        // For now, return None (no updates)
-        Ok(None)
+        unimplemented!("Update checking: needs version comparison against remote registry")
     }
 
     /// Get plugin dependencies
@@ -230,14 +226,12 @@ impl PluginInstaller {
         _plugin_name: &str,
         _installed_plugins: &[PluginMetadata],
     ) -> Result<bool> {
-        // TODO: Check if other plugins depend on this one
-        Ok(true)
+        unimplemented!("Dependency checking: needs reverse dependency graph traversal")
     }
 
     /// Verify plugin integrity
     pub async fn verify_integrity(&self, _metadata: &PluginMetadata) -> Result<bool> {
-        // TODO: Verify checksums and signatures
-        Ok(true)
+        unimplemented!("Integrity verification: needs checksum validation and cryptographic signature verification")
     }
 }
 

@@ -13,9 +13,9 @@ clnrm integrates with major CI/CD platforms:
 
 ## GitHub Actions Integration
 
-### Weaver Validation Gate (v1.2.0 - RECOMMENDED)
+### Weaver Validation Gate (v1.2.1 - RECOMMENDED)
 
-**Production-ready workflow with Weaver schema validation:**
+**Production-ready workflow with Weaver schema validation and health checks:**
 
 ```yaml
 # .github/workflows/weaver-validation.yml
@@ -51,10 +51,28 @@ jobs:
           $WEAVER_PATH registry live-check \
             --registry registry/ \
             --otlp-grpc-port 4316 \
+            --admin-port 8080 \
             --format json \
             --output validation_output &
           echo $! > weaver.pid
-          sleep 5
+          
+          # Wait for Weaver health check (v1.2.1: replaces hardcoded sleep)
+          max_wait=30
+          elapsed=0
+          while [ $elapsed -lt $max_wait ]; do
+            if curl -sf http://localhost:8080/health >/dev/null 2>&1; then
+              echo "✅ Weaver is ready"
+              break
+            fi
+            echo -n "."
+            sleep 1
+            elapsed=$((elapsed + 1))
+          done
+          
+          if [ $elapsed -ge $max_wait ]; then
+            echo "❌ Weaver did not become ready within ${max_wait}s"
+            exit 1
+          fi
 
       - name: Run tests with OTEL
         run: |
@@ -76,6 +94,18 @@ jobs:
             exit 1
           fi
 
+          # CRITICAL: Check sample count (v1.2.1: prevents false positives)
+          sample_count=$(cat validation_output/live_check.json | \
+            jq -r '.sample_count // 0')
+          
+          if [ "$sample_count" -eq 0 ]; then
+            echo "❌ CRITICAL: Zero telemetry samples received"
+            echo "❌ Weaver validation FAILED: no telemetry captured"
+            exit 1
+          fi
+          
+          echo "✅ Telemetry captured: ${sample_count} samples"
+
           # Check coverage
           coverage=$(cat validation_output/live_check.json | \
             jq -r '.statistics.registry_coverage')
@@ -87,6 +117,7 @@ jobs:
 
           echo "✅ Weaver validation PASSED"
           echo "📊 Schema coverage: $coverage%"
+          echo "📊 Samples received: $sample_count"
 
       - name: Upload validation report
         uses: actions/upload-artifact@v3

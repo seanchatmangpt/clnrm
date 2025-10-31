@@ -1,6 +1,6 @@
 # 80/20 Validation Strategy
 
-The **80/20 Rule** (Pareto Principle) states that 80% of effects come from 20% of causes. In clnrm v1.2.0, **4 critical attributes prove 80% of functionality**. This chapter explains the 80/20 validation strategy.
+The **80/20 Rule** (Pareto Principle) states that 80% of effects come from 20% of causes. In clnrm v1.2.1, **4 critical attributes prove 80% of functionality**. This chapter explains the 80/20 validation strategy.
 
 ## The Core Principle
 

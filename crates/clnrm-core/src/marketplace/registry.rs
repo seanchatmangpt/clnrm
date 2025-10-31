@@ -393,8 +393,7 @@ impl PluginRegistry {
 
     /// Fetch plugin catalog from remote registry
     async fn fetch_registry_catalog(&self, _registry_url: &str) -> Result<Vec<PluginMetadata>> {
-        // TODO: Implement actual HTTP fetch from remote registry
-        // For now, return empty list
+        unimplemented!("Registry fetch: needs HTTP client, authentication, caching, and error handling")
         Ok(Vec::new())
     }
 }

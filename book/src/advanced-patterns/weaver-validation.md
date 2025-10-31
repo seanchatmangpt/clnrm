@@ -1,6 +1,6 @@
-# Weaver Schema Validation (v1.2.0)
+# Weaver Schema Validation (v1.2.1)
 
-**OpenTelemetry Weaver** is the source of truth for validation in clnrm v1.2.0. This chapter explains schema-first validation and how to use Weaver live-check to prevent false positives.
+**OpenTelemetry Weaver** is the source of truth for validation in clnrm v1.2.1. This chapter explains schema-first validation and how to use Weaver live-check with proper health checks to prevent false positives.
 
 ## The Problem: False Positives in Traditional Testing
 
@@ -123,6 +123,24 @@ kill -SIGHUP $WEAVER_PID
 cat validation_output/live_check.json
 ```
 
+### Health Check Integration (v1.2.1)
+
+WeaverController now uses proper HTTP health checks instead of hardcoded sleeps:
+
+```rust
+// WeaverController.wait_for_weaver_ready()
+// - Polls http://localhost:{admin_port}/health
+// - Exponential backoff (100ms → 1000ms)
+// - 30 second timeout
+// - Verifies actual readiness, not just process existence
+```
+
+**Benefits:**
+- ✅ Faster startup (detects readiness immediately)
+- ✅ No arbitrary delays (responds to actual state)
+- ✅ Proper error handling (timeout if Weaver fails to start)
+- ✅ Production-ready reliability
+
 ### Automated Validation Script
 
 Use the production-ready script:
@@ -133,17 +151,22 @@ Use the production-ready script:
 
 This script:
 1. Starts Weaver live-check listener
-2. Runs Docker integration tests
-3. Stops Weaver with SIGHUP
-4. Parses validation report
-5. Exits with code 0 (pass) or 1 (violations)
+2. Waits for health check to pass (via WeaverController)
+3. Runs Docker integration tests
+4. Stops Weaver with SIGHUP
+5. Validates sample count > 0 (prevents false positives)
+6. Parses validation report
+7. Exits with code 0 (pass) or 1 (violations)
 
 ## Understanding Weaver Reports
 
-### Zero Coverage (False Positive Detected)
+### Zero Coverage (False Positive Detected) - v1.2.1
+
+**CRITICAL:** v1.2.1 now explicitly fails validation when `sample_count == 0`:
 
 ```json
 {
+  "sample_count": 0,
   "statistics": {
     "registry_coverage": 0.0,
     "total_entities": 0,
@@ -152,11 +175,13 @@ This script:
       "test.isolated": 0,
       "test.duration_ms": 0
     }
-  }
+  },
+  "status": "failure"
 }
 ```
 
 **Interpretation:** Tests may pass, but **NO telemetry emitted**. Features don't work.
+**Validation Result:** ❌ **FAILS** - Zero-sample validation prevents false positives.
 
 ### Partial Coverage (Missing Attributes)
 

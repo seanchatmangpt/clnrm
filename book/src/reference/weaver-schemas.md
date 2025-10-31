@@ -1,6 +1,6 @@
-# Weaver Schema Reference
+# Weaver Schema Reference (v1.2.1)
 
-This reference documents the schema structure in `registry/` and how to write new schemas for clnrm.
+This reference documents the schema structure in `registry/` and how to write new schemas for clnrm v1.2.1.
 
 ## Schema Registry Structure
 
@@ -21,7 +21,7 @@ registry/
 
 ```yaml
 registry_id: clnrm
-registry_version: 1.2.0
+registry_version: 1.2.1
 schemas:
   - core/test_execution.yaml
   - core/container_lifecycle.yaml

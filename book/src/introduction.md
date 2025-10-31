@@ -40,14 +40,15 @@ This guide follows FAANG-level quality standards established by the clnrm core t
 - ✅ **Descriptive naming** following conventions
 
 ### Documentation Standards
-- ✅ **Honest documentation** - only features that actually work in v1.0.1
+- ✅ **Honest documentation** - only features that actually work in v1.2.1
 - ✅ **Runnable examples** - every code sample can be executed
 - ✅ **Self-testing** - examples are validated by clnrm itself
 - ✅ **Verification commands** - clear steps to validate examples
+- ✅ **No false positives** - incomplete features use `unimplemented!()` with clear messages
 
-## What's New in v1.2.0: Schema-First Validation
+## What's New in v1.2.1: Production-Ready Schema Validation
 
-**clnrm v1.2.0** introduces a revolutionary approach to testing: **Weaver-based schema validation as the source of truth**. This solves the false positive problem that plagues traditional testing.
+**clnrm v1.2.1** delivers a production-ready approach to testing: **Weaver-based schema validation as the source of truth**. This solves the false positive problem that plagues traditional testing with complete implementation of health checks, test coverage, and validation gates.
 
 ### 🎯 The False Positive Problem
 
@@ -56,29 +57,34 @@ Traditional Testing:
   Test passes ✅ → Assumes feature works → FALSE POSITIVE ❌
   └─ Tests validate test code, not production behavior
 
-clnrm v1.2.0 with Weaver:
+clnrm v1.2.1 with Weaver:
   Test passes ✅ + Weaver validates schema ✅ → TRUE POSITIVE ✅
   └─ Schema validation proves actual runtime behavior
 ```
 
-### ✅ Production-Ready Features (v1.2.0)
+### ✅ Production-Ready Features (v1.2.1)
 
-- **Weaver Live-Check Integration**: Real-time schema validation of OTEL telemetry
-- **Schema Registry**: 64 validated attributes, 6 metrics, 3 span types
-- **False Positive Detection**: Tests can pass, but Weaver validates runtime behavior
+- **Weaver Live-Check Integration**: Real-time schema validation with HTTP health checks (replaces hardcoded sleeps)
+- **Schema Registry**: 207 validated schema files, comprehensive semantic conventions
+- **False Positive Detection**: Zero-sample validation prevents tests passing without telemetry
+- **Health Check Integration**: Proper HTTP health checks via admin port (exponential backoff, 30s timeout)
+- **Complete Test Coverage**: Phase 2 and Phase 3 coordination tests fully implemented
+- **CI/CD Reliability**: Removed test masking (`|| true` patterns), failures actually fail CI
+- **Config-Based Execution**: Dynamic image selection from cleanroom config (no hardcoded defaults)
 - **Plugin System**: Custom service plugins with container integration
 - **Template System**: Tera templates with macro library
 - **Container Execution**: Commands run in isolated containers with lifecycle tracking
 - **Multi-Service Testing**: Orchestrate multiple services with dependency management
 - **CI/CD Integration**: GitHub Actions gates with Weaver validation
 
-### 🚀 New in v1.2.0: Schema-First Approach
+### 🚀 Production-Ready Implementation (v1.2.1)
 
-- **WeaverController**: Manages live-check lifecycle during tests (588 lines, production-ready)
-- **Schema Registry**: `registry/` with 6 YAML schemas defining telemetry contracts
+- **WeaverController**: Complete implementation with health checks (900+ lines, production-ready)
+- **Schema Registry**: `registry/` with comprehensive semantic conventions
 - **80/20 Validation**: 4 critical attributes prove 80% of functionality
-- **Zero False Positives**: Schema validation prevents fake-green tests
-- **Live Telemetry Validation**: Runtime OTLP validation against schemas
+- **Zero False Positives**: Sample count validation prevents fake-green tests
+- **Live Telemetry Validation**: Runtime OTLP validation against schemas with proper coordination
+- **Test Coverage**: Phase 2 (coordination) and Phase 3 (OTEL integration) tests complete
 
 ### 📊 Validation Hierarchy
 
@@ -99,11 +105,12 @@ clnrm v1.2.0 with Weaver:
    └─ Validated by Weaver
 ```
 
-### ❌ Known Limitations (v1.2.0)
+### ❌ Known Limitations (v1.2.1)
 
 - **AI Features**: Available in experimental `clnrm-ai` crate only
 - **Hot Reload**: Planned for future versions
-- **Weaver Code Generation**: Infrastructure complete, code-gen in progress
+- **Marketplace Features**: Experimental, uses `unimplemented!()` for incomplete operations
+- **Phase 4 E2E Tests**: Docker integration tests stubbed (require Docker environment)
 
 ## How to Use This Guide
 

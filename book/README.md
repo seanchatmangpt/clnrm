@@ -64,7 +64,8 @@ This book follows FAANG-level quality standards:
 - ✅ Proper error handling with CleanroomError
 - ✅ OTEL instrumentation in examples
 - ✅ AAA pattern in test examples
-- ✅ Honest documentation (only v1.0.1 features)
+- ✅ Honest documentation (only v1.2.1 features)
+- ✅ No false positives (incomplete features use `unimplemented!()`)
 
 ## Links
 

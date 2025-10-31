@@ -1,8 +1,8 @@
 # OTEL Validation (Legacy)
 
-**⚠️ IMPORTANT: This chapter describes the v1.0.x approach to OTEL validation. For v1.2.0+, see [Weaver Schema Validation](weaver-validation.md) which is now the recommended approach.**
+**⚠️ IMPORTANT: This chapter describes the v1.0.x approach to OTEL validation. For v1.2.1+, see [Weaver Schema Validation](weaver-validation.md) which is now the recommended approach.**
 
-OTEL (OpenTelemetry) validation in v1.0.x used TOML-based span expectations. v1.2.0 replaces this with **Weaver live-check** for schema-driven validation that prevents false positives.
+OTEL (OpenTelemetry) validation in v1.0.x used TOML-based span expectations. v1.2.1 replaces this with **Weaver live-check** with health checks for schema-driven validation that prevents false positives.
 
 ## Overview
 

@@ -173,8 +173,7 @@ impl SecurityValidator {
         _metadata: &PluginMetadata,
         _validation: &mut SecurityValidation,
     ) -> Result<()> {
-        // TODO: Implement actual signature verification
-        // For now, just log that we would verify
+        unimplemented!("Signature verification: needs cryptographic signature validation using public keys")
         tracing::debug!("Signature verification would occur here");
         Ok(())
     }
@@ -295,9 +294,7 @@ impl PluginSandbox {
         F: FnOnce() -> Result<T> + Send + 'static,
         T: Send + 'static,
     {
-        // TODO: Implement actual sandboxing using containers or process isolation
-        // For now, just execute directly
-        tracing::warn!("Sandboxing not fully implemented, executing directly");
+        unimplemented!("Sandboxing: needs container or process isolation for secure plugin execution")
 
         tokio::task::spawn_blocking(_f).await.map_err(|e| {
             CleanroomError::internal_error(format!("Sandbox execution failed: {}", e))
@@ -306,8 +303,7 @@ impl PluginSandbox {
 
     /// Check sandbox resource usage
     pub async fn check_resource_usage(&self, _plugin_name: &str) -> Result<ResourceUsage> {
-        // TODO: Implement actual resource monitoring
-        Ok(ResourceUsage::default())
+        unimplemented!("Resource monitoring: needs CPU, memory, and network usage tracking for plugin execution")
     }
 }
 

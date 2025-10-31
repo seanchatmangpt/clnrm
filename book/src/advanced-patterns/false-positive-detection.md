@@ -1,6 +1,6 @@
 # False Positive Detection
 
-**False positives** are tests that pass even when features don't work. clnrm v1.2.0 solves this problem using Weaver schema validation. This chapter explains false positive detection and prevention.
+**False positives** are tests that pass even when features don't work. clnrm v1.2.1 solves this problem using Weaver schema validation with zero-sample detection. This chapter explains false positive detection and prevention.
 
 ## The False Positive Problem
 
@@ -366,8 +366,12 @@ jobs:
 ```rust
 // ❌ FALSE POSITIVE: Always returns success
 pub fn validate_config(&self) -> Result<()> {
-    // TODO: Implement validation
-    Ok(()) // Fake success
+    Ok(()) // Fake success - no actual validation
+}
+
+// ✅ CORRECT: Honest about incomplete implementation
+pub fn validate_config(&self) -> Result<()> {
+    unimplemented!("validate_config: needs schema parsing, attribute validation, and error reporting")
 }
 ```
 
