@@ -25,16 +25,19 @@
 //! // Validate spans against expectations
 //! ```
 
-use once_cell::sync::Lazy;
 use opentelemetry_sdk::trace::SpanData;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, OnceLock, RwLock};
 
 /// Global span storage for validation
 ///
 /// Thread-safe storage using `RwLock` to allow concurrent reads and exclusive writes.
-/// Uses `Lazy` for lazy initialization on first access.
-static SPAN_STORAGE: Lazy<Arc<RwLock<Vec<SpanData>>>> =
-    Lazy::new(|| Arc::new(RwLock::new(Vec::new())));
+/// Uses `OnceLock` for lazy initialization on first access.
+static SPAN_STORAGE: OnceLock<Arc<RwLock<Vec<SpanData>>>> = OnceLock::new();
+
+/// Get or initialize the span storage
+fn get_storage() -> &'static Arc<RwLock<Vec<SpanData>>> {
+    SPAN_STORAGE.get_or_init(|| Arc::new(RwLock::new(Vec::new())))
+}
 
 /// Store a span for later validation
 ///
@@ -49,7 +52,7 @@ static SPAN_STORAGE: Lazy<Arc<RwLock<Vec<SpanData>>>> =
 ///
 /// Panics if the lock is poisoned (should never happen in practice)
 pub fn store_span(span: SpanData) {
-    SPAN_STORAGE
+    get_storage()
         .write()
         .expect("SPAN_STORAGE lock poisoned")
         .push(span);
@@ -68,7 +71,7 @@ pub fn store_span(span: SpanData) {
 ///
 /// Panics if the lock is poisoned (should never happen in practice)
 pub fn get_collected_spans() -> Vec<SpanData> {
-    SPAN_STORAGE
+    get_storage()
         .read()
         .expect("SPAN_STORAGE lock poisoned")
         .clone()
@@ -83,7 +86,7 @@ pub fn get_collected_spans() -> Vec<SpanData> {
 ///
 /// Panics if the lock is poisoned (should never happen in practice)
 pub fn clear_collected_spans() {
-    SPAN_STORAGE
+    get_storage()
         .write()
         .expect("SPAN_STORAGE lock poisoned")
         .clear();
@@ -102,7 +105,7 @@ pub fn clear_collected_spans() {
 ///
 /// Panics if the lock is poisoned (should never happen in practice)
 pub fn span_count() -> usize {
-    SPAN_STORAGE
+    get_storage()
         .read()
         .expect("SPAN_STORAGE lock poisoned")
         .len()

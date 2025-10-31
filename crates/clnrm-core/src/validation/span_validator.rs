@@ -256,8 +256,6 @@ impl SpanValidator {
 
     /// Convert OpenTelemetry SpanData to validator SpanData
     fn convert_otel_span(span: &opentelemetry_sdk::trace::SpanData) -> SpanData {
-        use opentelemetry::trace::TraceContextExt;
-
         // Convert attributes
         let mut attributes = std::collections::HashMap::new();
         for kv in &span.attributes {
@@ -272,13 +270,13 @@ impl SpanValidator {
             attributes.insert(key, value);
         }
 
-        // Convert span kind
+        // Convert span kind (use opentelemetry::trace::SpanKind from opentelemetry crate)
         let kind = match span.span_kind {
-            opentelemetry_sdk::trace::SpanKind::Internal => Some(SpanKind::Internal),
-            opentelemetry_sdk::trace::SpanKind::Server => Some(SpanKind::Server),
-            opentelemetry_sdk::trace::SpanKind::Client => Some(SpanKind::Client),
-            opentelemetry_sdk::trace::SpanKind::Producer => Some(SpanKind::Producer),
-            opentelemetry_sdk::trace::SpanKind::Consumer => Some(SpanKind::Consumer),
+            opentelemetry::trace::SpanKind::Internal => Some(SpanKind::Internal),
+            opentelemetry::trace::SpanKind::Server => Some(SpanKind::Server),
+            opentelemetry::trace::SpanKind::Client => Some(SpanKind::Client),
+            opentelemetry::trace::SpanKind::Producer => Some(SpanKind::Producer),
+            opentelemetry::trace::SpanKind::Consumer => Some(SpanKind::Consumer),
         };
 
         // Convert events

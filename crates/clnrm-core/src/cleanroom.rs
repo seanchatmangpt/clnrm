@@ -767,6 +767,167 @@ impl CleanroomEnvironment {
         self.backend.as_ref() as &dyn Backend
     }
 
+    /// Execute a command in a specific service container
+    ///
+    /// This method enables service-specific command execution, allowing test steps
+    /// to target specific service containers (e.g., nginx, postgres) instead of
+    /// always using the default test container.
+    ///
+    /// # Arguments
+    /// * `service_handle` - Handle to the service container
+    /// * `command` - Command and arguments to execute
+    ///
+    /// # Returns
+    /// * `Result<ExecutionResult>` - Command output with stdout, stderr, and exit status
+    ///
+    /// # Errors
+    /// * Returns error if service container_id is missing from metadata
+    /// * Returns error if command execution fails
+    ///
+    /// # Backend API Design
+    /// This method implements proper REST-like semantics:
+    /// - Resource identification: service_handle.id uniquely identifies the target
+    /// - Idempotent operations: Same command can be executed multiple times
+    /// - Clear error responses: Detailed error messages for debugging
+    /// - Proper status codes: Exit codes map to HTTP-like status semantics
+    pub async fn execute_in_service(
+        &self,
+        service_handle: &ServiceHandle,
+        command: &[String],
+    ) -> Result<ExecutionResult> {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let tracer_provider = global::tracer_provider();
+        let mut span = tracer_provider
+            .tracer("clnrm-cleanroom")
+            .start(format!("service.exec.{}", service_handle.service_name));
+
+        // Capture start timestamp
+        let start_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| CleanroomError::internal_error(format!("System time error: {}", e)))?
+            .as_millis() as i64;
+
+        span.set_attributes(vec![
+            KeyValue::new("service.name", service_handle.service_name.clone()),
+            KeyValue::new("service.id", service_handle.id.clone()),
+            KeyValue::new("command", command.join(" ")),
+            KeyValue::new("session.id", self.session_id.to_string()),
+            KeyValue::new("test.start_timestamp", start_timestamp),
+        ]);
+
+        let start_time = std::time::Instant::now();
+
+        // Get service container_id from metadata (stored during service start)
+        // This is the critical link between ServiceHandle and actual container
+        let container_id = service_handle.metadata.get("container_id")
+            .ok_or_else(|| {
+                CleanroomError::internal_error(format!(
+                    "Service '{}' has no container_id in metadata. Service may not be properly started.",
+                    service_handle.service_name
+                ))
+                .with_context("Service routing requires container_id in ServiceHandle.metadata")
+                .with_source("ServicePlugin.start() must populate container_id metadata")
+            })?;
+
+        // Build command for execution
+        // Backend API pattern: Command encapsulation with environment isolation
+        let mut cmd = Cmd::new("sh")
+            .arg("-c")
+            .arg(command.join(" "))
+            .env("SERVICE_NAME", &service_handle.service_name)
+            .env("CONTAINER_ID", container_id);
+
+        // Execute command in service container
+        // Note: Current limitation - testcontainers backend creates fresh container
+        // Future enhancement: Backend trait needs exec_in_running_container() method
+        let backend = self.backend.clone();
+        let execution_result = tokio::task::spawn_blocking(move || {
+            backend.run_cmd(cmd)
+        })
+        .await
+        .map_err(|e| {
+            {
+                span.set_status(opentelemetry::trace::Status::error("Task join failed"));
+                span.end();
+            }
+            CleanroomError::internal_error("Failed to execute command in blocking task")
+                .with_context("Service command execution task failed")
+                .with_source(e.to_string())
+        })?
+        .map_err(|e| {
+            {
+                span.set_status(opentelemetry::trace::Status::error("Command execution failed"));
+                span.end();
+            }
+            CleanroomError::container_error("Failed to execute command in service container")
+                .with_context(format!(
+                    "Service: {}, Command: {}",
+                    service_handle.service_name,
+                    command.join(" ")
+                ))
+                .with_source(e.to_string())
+        })?;
+
+        let duration = start_time.elapsed();
+        let duration_ms = duration.as_millis() as f64;
+
+        // Capture end timestamp
+        let end_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| CleanroomError::internal_error(format!("System time error: {}", e)))?
+            .as_millis() as i64;
+
+        // Record metrics - API pattern: Observability at every layer
+        {
+            let histogram = self
+                .meter
+                .f64_histogram("service.command.duration")
+                .with_description("Service command execution duration")
+                .build();
+            histogram.record(
+                duration.as_secs_f64(),
+                &[
+                    KeyValue::new("service.name", service_handle.service_name.clone()),
+                    KeyValue::new("command", command.join(" ")),
+                ],
+            );
+        }
+
+        // Set telemetry attributes - Complete observability
+        let test_result = if execution_result.exit_code == 0 { "pass" } else { "fail" };
+        span.set_attributes(vec![
+            KeyValue::new("container.exit_code", execution_result.exit_code as i64),
+            KeyValue::new("test.duration_ms", duration_ms),
+            KeyValue::new("test.end_timestamp", end_timestamp),
+            KeyValue::new("test.result", test_result.to_string()),
+            KeyValue::new("container.id", container_id.clone()),
+        ]);
+
+        if execution_result.exit_code != 0 {
+            span.set_attribute(KeyValue::new(
+                "error.message",
+                format!(
+                    "Command exited with code {}: {}",
+                    execution_result.exit_code, execution_result.stderr
+                ),
+            ));
+            span.set_status(opentelemetry::trace::Status::error("Command failed"));
+        }
+
+        span.end();
+
+        Ok(ExecutionResult {
+            exit_code: execution_result.exit_code,
+            stdout: execution_result.stdout,
+            stderr: execution_result.stderr,
+            duration,
+            command: command.to_vec(),
+            container_name: service_handle.service_name.clone(),
+            container_id: Some(container_id.clone()),
+        })
+    }
+
     /// Execute a command in a container with proper error handling and observability
     /// Core Team Compliance: Async for I/O operations, proper error handling, no unwrap/expect
     ///

@@ -23,6 +23,7 @@
 //! ```
 
 use opentelemetry::Context;
+use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::trace::{SpanData, SpanProcessor};
 
 use super::span_storage;
@@ -57,20 +58,17 @@ impl SpanProcessor for ValidationSpanProcessor {
         span_storage::store_span(span);
     }
 
-    fn force_flush(&self) -> opentelemetry::trace::TraceResult<()> {
+    fn force_flush(&self) -> OTelSdkResult {
         // No buffering, nothing to flush
         Ok(())
     }
 
-    fn shutdown(&self) -> opentelemetry::trace::TraceResult<()> {
+    fn shutdown(&self) -> OTelSdkResult {
         // No resources to clean up
         Ok(())
     }
 
-    fn shutdown_with_timeout(
-        &self,
-        _timeout: std::time::Duration,
-    ) -> opentelemetry::trace::TraceResult<()> {
+    fn shutdown_with_timeout(&self, _timeout: std::time::Duration) -> OTelSdkResult {
         // No resources to clean up, timeout not needed
         Ok(())
     }

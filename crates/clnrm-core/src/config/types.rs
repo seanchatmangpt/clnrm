@@ -156,6 +156,9 @@ pub struct TestConfig {
     /// This field exists to catch unsupported config and provide clear error messages
     #[serde(default)]
     pub performance: Option<PerformanceTestConfig>,
+    /// Chaos engineering configuration (v1.3.0)
+    #[serde(default)]
+    pub chaos: Option<ChaosConfigSection>,
 }
 
 /// Performance testing configuration (NOT YET IMPLEMENTED)
@@ -171,6 +174,126 @@ pub struct PerformanceTestConfig {
     /// Enable regression detection
     #[serde(default)]
     pub regression_detection: Option<bool>,
+}
+
+/// Chaos engineering configuration (v1.3.0)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ChaosConfigSection {
+    /// Enable chaos engineering experiments
+    pub enabled: bool,
+    /// List of chaos experiments to run
+    #[serde(default)]
+    pub experiments: Vec<ChaosExperiment>,
+}
+
+/// Individual chaos experiment configuration
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ChaosExperiment {
+    /// Experiment type (network_latency, container_kill, cpu_stress, memory_stress, disk_fill)
+    #[serde(rename = "type")]
+    pub experiment_type: String,
+    /// Target service to inject chaos into
+    pub target_service: String,
+    /// Network latency in milliseconds (for network_latency)
+    #[serde(default)]
+    pub latency_ms: Option<u64>,
+    /// Experiment duration in seconds
+    #[serde(default)]
+    pub duration_seconds: Option<u64>,
+    /// CPU stress percentage (for cpu_stress)
+    #[serde(default)]
+    pub cpu_percent: Option<u8>,
+    /// Memory stress in megabytes (for memory_stress)
+    #[serde(default)]
+    pub memory_mb: Option<u64>,
+    /// Disk fill in megabytes (for disk_fill)
+    #[serde(default)]
+    pub fill_mb: Option<u64>,
+    /// Timing strategy (random, periodic) (for container_kill)
+    #[serde(default)]
+    pub timing: Option<String>,
+    /// Number of times to execute (for container_kill)
+    #[serde(default)]
+    pub count: Option<u32>,
+}
+
+impl ChaosConfigSection {
+    /// Validate chaos configuration
+    pub fn validate(&self) -> Result<()> {
+        if self.enabled && self.experiments.is_empty() {
+            return Err(CleanroomError::validation_error(
+                "Chaos is enabled but no experiments defined",
+            ));
+        }
+
+        for (i, exp) in self.experiments.iter().enumerate() {
+            exp.validate()
+                .map_err(|e| CleanroomError::validation_error(format!("Chaos experiment {}: {}", i, e)))?;
+        }
+
+        Ok(())
+    }
+}
+
+impl ChaosExperiment {
+    /// Validate chaos experiment configuration
+    pub fn validate(&self) -> Result<()> {
+        if self.target_service.trim().is_empty() {
+            return Err(CleanroomError::validation_error(
+                "Chaos experiment target_service cannot be empty",
+            ));
+        }
+
+        // Validate experiment type
+        match self.experiment_type.as_str() {
+            "network_latency" => {
+                if self.latency_ms.is_none() {
+                    return Err(CleanroomError::validation_error(
+                        "network_latency experiment requires latency_ms parameter",
+                    ));
+                }
+            }
+            "cpu_stress" => {
+                if self.cpu_percent.is_none() {
+                    return Err(CleanroomError::validation_error(
+                        "cpu_stress experiment requires cpu_percent parameter",
+                    ));
+                }
+                if let Some(cpu) = self.cpu_percent {
+                    if cpu > 100 {
+                        return Err(CleanroomError::validation_error(
+                            "cpu_percent must be between 0 and 100",
+                        ));
+                    }
+                }
+            }
+            "memory_stress" => {
+                if self.memory_mb.is_none() {
+                    return Err(CleanroomError::validation_error(
+                        "memory_stress experiment requires memory_mb parameter",
+                    ));
+                }
+            }
+            "disk_fill" => {
+                if self.fill_mb.is_none() {
+                    return Err(CleanroomError::validation_error(
+                        "disk_fill experiment requires fill_mb parameter",
+                    ));
+                }
+            }
+            "container_kill" | "network_partition" | "cascading_failures" => {
+                // Valid but no specific parameter requirements
+            }
+            _ => {
+                return Err(CleanroomError::validation_error(format!(
+                    "Unknown chaos experiment type: {}. Valid types: network_latency, container_kill, cpu_stress, memory_stress, disk_fill, network_partition, cascading_failures",
+                    self.experiment_type
+                )))
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Meta configuration (v0.6.0 - simplified metadata section)
@@ -465,6 +588,13 @@ impl TestConfig {
                 "Performance testing features ([test.performance] section with sample_size, baseline_name, regression_detection) are not yet implemented. \
                  Remove the [test.performance] section to run this test."
             ));
+        }
+
+        // Validate chaos config if present
+        if let Some(ref chaos) = self.chaos {
+            chaos.validate().map_err(|e| {
+                CleanroomError::validation_error(format!("Chaos config: {}", e))
+            })?;
         }
 
         Ok(())

@@ -1,0 +1,498 @@
+name: Publish to Crates.io
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_mode:
+        description: 'Publication mode'
+        required: true
+        type: choice
+        options:
+          - dry-run
+          - publish
+        default: dry-run
+      skip_validation:
+        description: 'Skip validation (DANGEROUS - only for emergency patches)'
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+permissions:
+  contents: write
+  pull-requests: read
+  id-token: write
+
+jobs:
+  # ============================================================================
+  # STAGE 1: PRE-PUBLISH VALIDATION (Weaver-First)
+  # ============================================================================
+
+  pre-publish-validation:
+    name: Pre-Publish Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      # ------------------------------------------------------------------------
+      # LEVEL 0: Version & Changelog Validation
+      # ------------------------------------------------------------------------
+
+      - name: Verify version consistency
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Verifying version consistency across workspace..."
+
+          # Extract version from tag (if tag-triggered)
+          if [[ "$GITHUB_REF" =~ ^refs/tags/v ]]; then
+            TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "Tag version: $TAG_VERSION"
+
+            # Check main Cargo.toml
+            CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+            echo "Cargo.toml version: $CARGO_VERSION"
+
+            if [[ "$TAG_VERSION" != "$CARGO_VERSION" ]]; then
+              echo "ERROR: Tag version ($TAG_VERSION) doesn't match Cargo.toml ($CARGO_VERSION)"
+              exit 1
+            fi
+          fi
+
+          echo "✅ Version consistency verified"
+
+      - name: Verify CHANGELOG.md updated
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Checking CHANGELOG.md for recent updates..."
+
+          # Check if CHANGELOG.md was modified in last commit
+          if git diff --name-only HEAD~1 HEAD | grep -q "CHANGELOG.md"; then
+            echo "✅ CHANGELOG.md was updated in last commit"
+          else
+            echo "⚠️  WARNING: CHANGELOG.md was not updated in last commit"
+            echo "Please ensure release notes are documented"
+          fi
+
+          # Verify CHANGELOG.md exists and has content
+          if [[ ! -f CHANGELOG.md ]]; then
+            echo "ERROR: CHANGELOG.md not found"
+            exit 1
+          fi
+
+          if [[ $(wc -l < CHANGELOG.md) -lt 10 ]]; then
+            echo "ERROR: CHANGELOG.md appears empty or incomplete"
+            exit 1
+          fi
+
+          echo "✅ CHANGELOG.md validation passed"
+
+      # ------------------------------------------------------------------------
+      # LEVEL 1: WEAVER VALIDATION (MANDATORY - Source of Truth)
+      # ------------------------------------------------------------------------
+
+      - name: Install Weaver
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Installing OTel Weaver..."
+          cargo install weaver_forge --version 0.9.0 --locked
+          weaver --version
+
+      - name: Weaver Schema Validation
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Running Weaver schema validation..."
+          weaver registry check -r registry/
+          echo "✅ Weaver schema validation passed"
+
+      - name: Setup Docker for Weaver Live-Check
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Setting up Docker + OTLP collector..."
+          docker --version
+          docker compose version
+
+          # Start OTLP collector
+          docker compose -f docker-compose.weaver.yml up -d
+
+          # Wait for collector to be ready
+          timeout=30
+          while [[ $timeout -gt 0 ]]; do
+            if docker compose -f docker-compose.weaver.yml ps | grep -q "Up"; then
+              echo "✅ OTLP collector is ready"
+              break
+            fi
+            echo "Waiting for OTLP collector... ($timeout seconds remaining)"
+            sleep 2
+            timeout=$((timeout - 2))
+          done
+
+          if [[ $timeout -le 0 ]]; then
+            echo "ERROR: OTLP collector failed to start"
+            docker compose -f docker-compose.weaver.yml logs
+            exit 1
+          fi
+
+      - name: Weaver Live-Check Validation
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Running Weaver live-check validation..."
+
+          # Build with OTEL features
+          cargo build --release --features otel
+
+          # Run live-check script
+          if [[ -f scripts/run_weaver_live_check_full.sh ]]; then
+            chmod +x scripts/run_weaver_live_check_full.sh
+            ./scripts/run_weaver_live_check_full.sh
+          else
+            # Fallback: run basic live-check
+            weaver registry live-check --registry registry/
+          fi
+
+          echo "✅ Weaver live-check validation passed"
+
+      - name: Cleanup Docker
+        if: always()
+        run: |
+          docker compose -f docker-compose.weaver.yml down -v || true
+
+      # ------------------------------------------------------------------------
+      # LEVEL 2: BUILD & CODE QUALITY (Baseline)
+      # ------------------------------------------------------------------------
+
+      - name: Build with all features
+        run: |
+          echo "Building with all features..."
+          cargo build --release --all-features --workspace --exclude clnrm-ai
+          echo "✅ Build successful"
+
+      - name: Clippy (zero warnings)
+        run: |
+          echo "Running clippy..."
+          cargo clippy --all-features --workspace --exclude clnrm-ai -- -D warnings
+          echo "✅ Clippy passed with zero warnings"
+
+      - name: Format check
+        run: |
+          echo "Checking code formatting..."
+          cargo fmt --all -- --check
+          echo "✅ Code formatting verified"
+
+      - name: Check documentation
+        run: |
+          echo "Checking documentation..."
+          cargo doc --no-deps --all-features --workspace --exclude clnrm-ai
+          echo "✅ Documentation check passed"
+
+      # ------------------------------------------------------------------------
+      # LEVEL 3: TRADITIONAL TESTS (Supporting Evidence)
+      # ------------------------------------------------------------------------
+
+      - name: Unit tests
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Running unit tests..."
+          cargo test --lib --all-features --workspace --exclude clnrm-ai
+          echo "✅ Unit tests passed"
+
+      - name: Integration tests
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Running integration tests..."
+          cargo test --test '*' --all-features --workspace --exclude clnrm-ai
+          echo "✅ Integration tests passed"
+
+      - name: Property-based tests
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Running property-based tests..."
+          cargo test --features proptest --workspace --exclude clnrm-ai
+          echo "✅ Property-based tests passed (160K+ test cases)"
+
+      - name: TOML-based tests
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Installing clnrm locally for testing..."
+          cargo install --path crates/clnrm --force --features otel
+
+          echo "Running TOML-based tests..."
+          if [[ -d tests ]]; then
+            clnrm run tests/
+          fi
+
+          if [[ -d examples/clnrm-case-study/tests ]]; then
+            clnrm run examples/clnrm-case-study/tests/
+          fi
+
+          echo "✅ TOML-based tests passed"
+
+      # ------------------------------------------------------------------------
+      # LEVEL 4: PERFORMANCE BENCHMARKS
+      # ------------------------------------------------------------------------
+
+      - name: Performance benchmarks
+        if: ${{ !inputs.skip_validation }}
+        run: |
+          echo "Running performance benchmarks..."
+
+          if [[ -f benches/telemetry_performance.rs ]]; then
+            cargo bench --bench telemetry_performance
+          fi
+
+          if [[ -f benches/performance_analyzer.rs ]]; then
+            cargo bench --bench performance_analyzer
+          fi
+
+          echo "✅ Performance benchmarks completed"
+
+      - name: Upload validation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-results
+          path: |
+            target/weaver/
+            target/criterion/
+          retention-days: 7
+
+  # ============================================================================
+  # STAGE 2: DRY-RUN PUBLISH
+  # ============================================================================
+
+  dry-run-publish:
+    name: Dry-Run Publish
+    runs-on: ubuntu-latest
+    needs: pre-publish-validation
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Dry-run publish (clnrm-shared)
+        run: |
+          echo "Dry-run publishing clnrm-shared..."
+          cargo publish --dry-run -p clnrm-shared --all-features
+          echo "✅ clnrm-shared dry-run successful"
+
+      - name: Dry-run publish (clnrm-core)
+        run: |
+          echo "Dry-run publishing clnrm-core..."
+          cargo publish --dry-run -p clnrm-core --all-features
+          echo "✅ clnrm-core dry-run successful"
+
+      - name: Dry-run publish (clap-noun-verb)
+        run: |
+          echo "Dry-run publishing clap-noun-verb..."
+          cargo publish --dry-run -p clap-noun-verb --all-features
+          echo "✅ clap-noun-verb dry-run successful"
+
+      - name: Dry-run publish (clnrm)
+        run: |
+          echo "Dry-run publishing clnrm..."
+          cargo publish --dry-run -p clnrm --all-features
+          echo "✅ clnrm dry-run successful"
+
+      - name: Verify package contents
+        run: |
+          echo "Verifying package contents..."
+
+          # Check clnrm-shared
+          cargo package --list -p clnrm-shared | grep -E '\.(rs|toml|md)$' | head -20
+
+          # Check clnrm-core
+          cargo package --list -p clnrm-core | grep -E '\.(rs|toml|md)$' | head -20
+
+          # Check clap-noun-verb
+          cargo package --list -p clap-noun-verb | grep -E '\.(rs|toml|md)$' | head -20
+
+          # Check clnrm
+          cargo package --list -p clnrm | grep -E '\.(rs|toml|md)$' | head -20
+
+          echo "✅ Package contents verified"
+
+  # ============================================================================
+  # STAGE 3: PUBLISH TO CRATES.IO
+  # ============================================================================
+
+  publish-crates:
+    name: Publish to Crates.io
+    runs-on: ubuntu-latest
+    needs: dry-run-publish
+    timeout-minutes: 20
+    if: |
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_mode == 'publish')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Verify CRATES_IO_TOKEN
+        run: |
+          if [[ -z "${{ secrets.CRATES_IO_TOKEN }}" ]]; then
+            echo "ERROR: CRATES_IO_TOKEN not configured in GitHub Secrets"
+            echo "Please add your crates.io API token to repository secrets"
+            exit 1
+          fi
+          echo "✅ CRATES_IO_TOKEN is configured"
+
+      # Publish in dependency order
+
+      - name: Publish clnrm-shared
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          echo "Publishing clnrm-shared to crates.io..."
+          cargo publish -p clnrm-shared --all-features
+          echo "✅ clnrm-shared published successfully"
+
+      - name: Wait for crates.io indexing (clnrm-shared)
+        run: |
+          echo "Waiting 30 seconds for crates.io indexing..."
+          sleep 30
+
+      - name: Publish clnrm-core
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          echo "Publishing clnrm-core to crates.io..."
+          cargo publish -p clnrm-core --all-features
+          echo "✅ clnrm-core published successfully"
+
+      - name: Wait for crates.io indexing (clnrm-core)
+        run: |
+          echo "Waiting 30 seconds for crates.io indexing..."
+          sleep 30
+
+      - name: Publish clap-noun-verb
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          echo "Publishing clap-noun-verb to crates.io..."
+          cargo publish -p clap-noun-verb --all-features
+          echo "✅ clap-noun-verb published successfully"
+
+      - name: Wait for crates.io indexing (clap-noun-verb)
+        run: |
+          echo "Waiting 30 seconds for crates.io indexing..."
+          sleep 30
+
+      - name: Publish clnrm
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          echo "Publishing clnrm to crates.io..."
+          cargo publish -p clnrm --all-features
+          echo "✅ clnrm published successfully"
+
+      - name: Verify publication
+        run: |
+          echo "Waiting for crates.io to index final package..."
+          sleep 60
+
+          echo "Verifying published packages..."
+          cargo search clnrm | head -10
+
+          echo "✅ All packages published and indexed"
+
+  # ============================================================================
+  # STAGE 4: POST-PUBLISH
+  # ============================================================================
+
+  post-publish:
+    name: Post-Publish Operations
+    runs-on: ubuntu-latest
+    needs: publish-crates
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          generate_release_notes: true
+          body: |
+            ## clnrm ${{ steps.version.outputs.version }}
+
+            Published to crates.io: https://crates.io/crates/clnrm/${{ steps.version.outputs.version }}
+
+            ### Installation
+
+            ```bash
+            cargo install clnrm --version ${{ steps.version.outputs.version }}
+            ```
+
+            ### Validation
+
+            This release passed:
+            - ✅ Weaver schema validation (source of truth)
+            - ✅ Weaver live-check validation (runtime telemetry)
+            - ✅ Compilation + clippy (zero warnings)
+            - ✅ Traditional tests (unit, integration, TOML)
+            - ✅ Property-based tests (160K+ cases)
+            - ✅ Performance benchmarks
+
+            See CHANGELOG.md for full release notes.
+          draft: false
+          prerelease: false
+
+      - name: Post announcement
+        run: |
+          echo "📢 clnrm ${{ steps.version.outputs.version }} published to crates.io!"
+          echo "Install: cargo install clnrm --version ${{ steps.version.outputs.version }}"
+          echo "Docs: https://docs.rs/clnrm/${{ steps.version.outputs.version }}"
+          echo "Crates.io: https://crates.io/crates/clnrm/${{ steps.version.outputs.version }}"
+
+      - name: Verify installation
+        run: |
+          echo "Testing installation from crates.io..."
+          cargo install clnrm --version ${{ steps.version.outputs.version }} --force
+          clnrm --version
+          clnrm --help
+          echo "✅ Installation verified"

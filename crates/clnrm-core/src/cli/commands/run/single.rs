@@ -115,25 +115,79 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
         let _command_guard = command_span.enter();
 
         let stdout = {
-            // Execute command in a fresh container for proper isolation
-            // Core Team Compliance: Use async for I/O, proper error handling, no unwrap/expect
-            let container_name = format!("test-{}-step-{}", test_name, step.name);
-            let execution_result = environment
-                .execute_in_container(
-                    &container_name,
-                    &rendered_command,
-                    step.workdir.as_deref(),
-                    step.env.as_ref(),
-                )
-                .await
-                .map_err(|e| {
-                    CleanroomError::container_error(format!(
-                        "Failed to execute command '{}' in container '{}': {}",
-                        rendered_command.join(" "),
-                        container_name,
-                        e
-                    ))
-                })?;
+            // Backend API pattern: Route command to appropriate container
+            // - If step.service is specified → execute in service container
+            // - Otherwise → execute in default test container (hermetic isolation)
+            let execution_result = if let Some(service_name) = &step.service {
+                // Service-specific execution: Route to named service container
+                info!("🎯 Executing in service: {}", service_name);
+
+                // Validate service exists and retrieve handle
+                let service_handle = service_handles.get(service_name)
+                    .ok_or_else(|| {
+                        // REST-like error: 404 Not Found for missing resource
+                        let available_services: Vec<&str> = service_handles
+                            .keys()
+                            .map(|k| k.as_str())
+                            .collect();
+
+                        CleanroomError::validation_error(format!(
+                            "Step '{}' references unknown service '{}'\n\
+                            Available services: {}\n\
+                            Hint: Check [service.{}] or [services.{}] section in TOML config",
+                            step.name,
+                            service_name,
+                            if available_services.is_empty() {
+                                "(none)".to_string()
+                            } else {
+                                available_services.join(", ")
+                            },
+                            service_name,
+                            service_name
+                        ))
+                    })?;
+
+                // Execute in service container with full observability
+                environment
+                    .execute_in_service(service_handle, &rendered_command)
+                    .await
+                    .map_err(|e| {
+                        // Backend API pattern: Detailed error context
+                        CleanroomError::container_error(format!(
+                            "Service execution failed for '{}'\n\
+                            Service: {}\n\
+                            Command: {}\n\
+                            Error: {}",
+                            step.name,
+                            service_name,
+                            rendered_command.join(" "),
+                            e
+                        ))
+                        .with_context("Service command routing failed")
+                        .with_source(format!("service={}, step={}", service_name, step.name))
+                    })?
+            } else {
+                // Default execution: Fresh container for hermetic isolation
+                info!("🐳 Executing in default container");
+
+                let container_name = format!("test-{}-step-{}", test_name, step.name);
+                environment
+                    .execute_in_container(
+                        &container_name,
+                        &rendered_command,
+                        step.workdir.as_deref(),
+                        step.env.as_ref(),
+                    )
+                    .await
+                    .map_err(|e| {
+                        CleanroomError::container_error(format!(
+                            "Failed to execute command '{}' in container '{}': {}",
+                            rendered_command.join(" "),
+                            container_name,
+                            e
+                        ))
+                    })?
+            };
 
             let stdout = &execution_result.stdout;
             let stderr = &execution_result.stderr;
