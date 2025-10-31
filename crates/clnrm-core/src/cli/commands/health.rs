@@ -4,7 +4,7 @@
 
 use crate::cleanroom::CleanroomEnvironment;
 use crate::error::{CleanroomError, Result};
-use crate::telemetry::cli_helpers::CliHealthSpanBuilder;
+use crate::telemetry::cli_helpers::{CliHealthSpanBuilder, HealthCheckResult};
 // Note: AIIntelligenceService moved to clnrm-ai crate
 use std::time::Instant;
 use tracing::info;
@@ -273,19 +273,19 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
         None
     };
 
-    span.finish(
+    span.finish(HealthCheckResult {
         success,
-        overall_status,
-        total_checks,
-        health_score,
-        total_checks - health_score,
+        overall: overall_status.to_string(),
+        checks_total: total_checks,
+        checks_passed: health_score,
+        checks_failed: total_checks - health_score,
         docker_available,
         docker_version,
         docker_type,
         weaver_available,
         weaver_version,
-        error_info,
-    );
+        error: error_info,
+    });
 
     // Return success if health is acceptable
     if health_percentage >= 70 {

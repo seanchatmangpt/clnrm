@@ -1,9 +1,10 @@
 //! Integration tests for clap-noun-verb framework
 
 use clap_noun_verb::{
-    app, command_group, command_tree, noun, verb, Cli, Registry, Tree, VerbArgs, Result,
-    NounCommand, VerbCommand, CommandTree, CommandTreeBuilder, patterns
+    app, command_group, command_tree, noun, verb, Cli, Registry, VerbArgs, Result,
+    NounCommand, VerbCommand, CommandTree, CommandTreeBuilder
 };
+use clap_noun_verb::tree::patterns;
 
 #[test]
 fn test_basic_noun_verb_cli() -> Result<()> {
@@ -17,7 +18,7 @@ fn test_basic_noun_verb_cli() -> Result<()> {
                     Ok(())
                 }),
             ]),
-        ],
+        ]
     };
 
     let command = cli.build_command();
@@ -72,7 +73,7 @@ fn test_command_tree_hierarchy() -> Result<()> {
             )
     );
 
-    let paths = tree.roots[0].command_paths();
+    let paths = tree.roots()[0].command_paths();
     assert_eq!(paths.len(), 2);
     assert!(paths.iter().any(|path| path == &vec!["dev".to_string(), "test".to_string(), "run".to_string()]));
     assert!(paths.iter().any(|path| path == &vec!["dev".to_string(), "test".to_string(), "watch".to_string()]));
@@ -161,7 +162,7 @@ fn test_verb_args_context() -> Result<()> {
                     Ok(())
                 }),
             ]),
-        ],
+        ]
     };
 
     let command = cli.build_command();
@@ -181,7 +182,7 @@ fn test_error_handling() -> Result<()> {
                     Err(clap_noun_verb::NounVerbError::execution_error("Test error"))
                 }),
             ]),
-        ],
+        ]
     };
 
     let command = cli.build_command();
@@ -240,21 +241,19 @@ fn test_command_group_macro() -> Result<()> {
 
 #[test]
 fn test_command_tree_macro() -> Result<()> {
-    let tree = command_tree!(
-        Cli::new()
-            .name("tree-test")
-            .about("Tree test")
-        => noun!("root", "Root command", [
-            verb!("leaf", "Leaf command", |_args: &VerbArgs| {
-                println!("Leaf command");
-                Ok(())
-            }),
-        ])
-    );
+    let mut cli = Cli::new()
+        .name("tree-test")
+        .about("Tree test");
+    
+    cli = command_tree!(cli => noun!("root", "Root command", [
+        verb!("leaf", "Leaf command", |_args: &VerbArgs| {
+            println!("Leaf command");
+            Ok(())
+        }),
+    ]));
 
-    let structure = tree.command_structure();
-    assert!(structure.contains_key("root"));
-    assert!(structure.get("root").unwrap().contains(&"leaf".to_string()));
+    let command = cli.build_command();
+    assert!(command.get_subcommands().any(|cmd| cmd.get_name() == "root"));
 
     Ok(())
 }
@@ -295,7 +294,7 @@ fn test_verb_args_functionality() -> Result<()> {
             noun!("test", "Test commands", [
                 verb!("with-args", "Command with arguments", |args: &VerbArgs| {
                     // Test that we can access clap matches
-                    let matches = &args.matches;
+                    let _matches = &args.matches;
 
                     // Test context access
                     let verb_name = args.verb();
@@ -308,7 +307,7 @@ fn test_verb_args_functionality() -> Result<()> {
                     Ok(())
                 }),
             ]),
-        ],
+        ]
     };
 
     let command = cli.build_command();

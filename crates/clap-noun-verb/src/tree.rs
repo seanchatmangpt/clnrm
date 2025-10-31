@@ -65,6 +65,11 @@ impl CommandTree {
         self
     }
 
+    /// Get all root commands
+    pub fn roots(&self) -> &[TreeNode] {
+        &self.roots
+    }
+
     /// Get all root command names
     pub fn root_names(&self) -> Vec<&str> {
         self.roots.iter().map(|n| n.name.as_str()).collect()
@@ -142,6 +147,21 @@ impl TreeNode {
             children: Vec::new(),
             handler: None,
         }
+    }
+
+    /// Get the node name
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the node description
+    pub fn about(&self) -> &str {
+        &self.about
+    }
+
+    /// Get the node's children
+    pub fn children(&self) -> &[TreeNode] {
+        &self.children
     }
 
     /// Add a child command

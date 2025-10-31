@@ -33,6 +33,9 @@ pub mod cli_helpers;
 pub mod span_storage;
 pub mod validation_processor;
 
+// Live-check integration for Weaver validation
+pub mod live_check;
+
 use {
     opentelemetry::{
         global, propagation::TextMapCompositePropagator, trace::TracerProvider, KeyValue,

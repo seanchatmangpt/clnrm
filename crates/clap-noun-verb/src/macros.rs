@@ -78,12 +78,42 @@ macro_rules! noun {
 }
 
 /// Helper macro to create a verb command
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use clap_noun_verb::{verb, VerbArgs};
+///
+/// // Simple verb without arguments
+/// let _status_verb = verb!("status", "Show status", |_args: &VerbArgs| {
+///     println!("Status: running");
+///     Ok::<(), clap_noun_verb::NounVerbError>(())
+/// });
+///
+/// // Verb with arguments (using clap::Arg)
+/// let _logs_verb = verb!("logs", "Show logs", |args: &VerbArgs| {
+///     let service = args.get_one_str("service").unwrap();
+///     let lines = args.get_one_opt::<usize>("lines").unwrap_or(50);
+///     println!("Logs for {} ({} lines)", service, lines);
+///     Ok::<(), clap_noun_verb::NounVerbError>(())
+/// }, args: [
+///     clap::Arg::new("service").required(true),
+///     clap::Arg::new("lines").short('n').long("lines").default_value("50"),
+/// ]);
+/// ```
 #[macro_export]
 macro_rules! verb {
+    // Verb without additional arguments
     ($name:expr, $about:expr, $handler:expr) => {
+        $crate::verb!($name, $about, $handler, args: [])
+    };
+    
+    // Verb with additional arguments
+    ($name:expr, $about:expr, $handler:expr, args: [$($arg:expr),* $(,)?]) => {
         {
             struct VerbImpl<F> {
                 handler: F,
+                args: Vec<clap::Arg>,
             }
             
             impl<F> $crate::VerbCommand for VerbImpl<F>
@@ -101,10 +131,23 @@ macro_rules! verb {
                 fn run(&self, args: &$crate::VerbArgs) -> $crate::Result<()> {
                     (self.handler)(args)
                 }
+                
+                fn build_command(&self) -> clap::Command {
+                    let mut cmd = clap::Command::new(self.name()).about(self.about());
+                    for arg in &self.args {
+                        cmd = cmd.arg(arg.clone());
+                    }
+                    cmd
+                }
+                
+                fn additional_args(&self) -> Vec<clap::Arg> {
+                    self.args.clone()
+                }
             }
             
             VerbImpl {
                 handler: $handler,
+                args: vec![$($arg),*],
             }
         }
     };
@@ -138,7 +181,7 @@ macro_rules! command_tree {
 /// ```rust
 /// use clap_noun_verb::{app, noun, verb, VerbArgs, Result};
 ///
-/// app! {
+/// let cli = app! {
 ///     name: "myapp",
 ///     about: "My awesome CLI application",
 ///     commands: [
@@ -154,12 +197,13 @@ macro_rules! command_tree {
 ///                 Ok(())
 ///             }),
 ///         ]),
-///     ],
-/// }
+///     ]
+/// };
 /// ```
 #[macro_export]
 macro_rules! app {
-    (name: $name:expr, about: $about:expr, commands: [$($command:expr),* $(,)?]) => {
+    // Match without trailing comma
+    (name: $name:expr, about: $about:expr, commands: [$($command:expr),*]) => {
         {
             let mut builder = $crate::CliBuilder::new()
                 .name($name)
@@ -171,5 +215,9 @@ macro_rules! app {
 
             builder
         }
+    };
+    // Match with trailing comma
+    (name: $name:expr, about: $about:expr, commands: [$($command:expr),*,]) => {
+        $crate::app!(name: $name, about: $about, commands: [$($command),*])
     };
 }

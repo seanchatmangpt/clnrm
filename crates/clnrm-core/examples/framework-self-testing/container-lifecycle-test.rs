@@ -46,6 +46,8 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
                 "echo".to_string(),
                 "Container started successfully".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
     assert_eq!(result.exit_code, 0);
@@ -59,6 +61,8 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
                 "echo 'Testing command execution' && sleep 0.1 && echo 'Command completed'"
                     .to_string(),
             ],
+            None,
+            None,
         )
         .await?;
     assert_eq!(result.exit_code, 0);
@@ -72,6 +76,8 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
                 "-c".to_string(),
                 "echo 'test data' > /tmp/test.txt && cat /tmp/test.txt".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
     assert_eq!(result.exit_code, 0);
@@ -152,7 +158,9 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
             "-c".to_string(),
             "echo 'data-a' > /tmp/shared.txt".to_string(),
         ],
-    )
+            None,
+            None,
+        )
     .await?;
     env.execute_in_container(
         &container_b,
@@ -161,7 +169,9 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
             "-c".to_string(),
             "echo 'data-b' > /tmp/shared.txt".to_string(),
         ],
-    )
+            None,
+            None,
+        )
     .await?;
 
     // Verify isolation - each container should have its own data
@@ -169,12 +179,16 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
         .execute_in_container(
             &container_a,
             &["cat".to_string(), "/tmp/shared.txt".to_string()],
+            None,
+            None,
         )
         .await?;
     let result_b = env
         .execute_in_container(
             &container_b,
             &["cat".to_string(), "/tmp/shared.txt".to_string()],
+            None,
+            None,
         )
         .await?;
 

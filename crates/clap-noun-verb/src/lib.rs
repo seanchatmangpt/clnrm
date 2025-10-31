@@ -13,6 +13,18 @@
 //! - **Extensible Traits**: Traits that can be easily extended and customized
 //! - **Hierarchical Command Support**: Support for complex nested command structures
 //! - **Type-Safe Composition**: Compile-time verification of command structure
+//!
+//! ## API Stability
+//!
+//! This crate follows [Semantic Versioning](https://semver.org/). Version 1.0.0 and above
+//! provide API stability guarantees:
+//!
+//! - **Public APIs** are stable and will not change in a breaking way within the same major version
+//! - **Breaking changes** will only occur in major version bumps (2.0.0, 3.0.0, etc.)
+//! - **Deprecations** will be announced at least one minor version before removal
+//! - **Private APIs** (non-pub items) are not subject to stability guarantees
+//!
+//! All public types, traits, and functions documented in this crate are considered stable.
 
 pub mod builder;
 pub mod error;
@@ -24,9 +36,9 @@ pub mod tree;
 pub mod verb;
 
 // Core framework types
-pub use builder::{CliBuilder, run_cli, run_cli_with_args};
+pub use builder::{CliBuilder, run_cli, run_cli_with_args, build_cli};
 pub use error::{NounVerbError, Result};
-pub use noun::{NounCommand, NounContext};
+pub use noun::{NounCommand, NounContext, CompoundNounCommand};
 pub use registry::CommandRegistry;
 pub use router::CommandRouter;
 pub use tree::{CommandTree, CommandTreeBuilder};

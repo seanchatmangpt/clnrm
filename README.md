@@ -1,7 +1,9 @@
 # Cleanroom Testing Framework
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/seanchatmangpt/clnrm)
+[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/clnrm.svg)](https://crates.io/crates/clnrm)
+[![Release](https://img.shields.io/github/v/release/seanchatmangpt/clnrm)](https://github.com/seanchatmangpt/clnrm/releases)
 
 A hermetic integration testing framework that executes tests in isolated Docker containers with OpenTelemetry validation. Define tests declaratively using TOML configuration files and validate runtime behavior with Weaver schema validation.
 

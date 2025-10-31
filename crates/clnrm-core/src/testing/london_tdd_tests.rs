@@ -17,7 +17,7 @@
 
 #![cfg(test)]
 
-use crate::error::{CleanroomError, Result};
+use crate::error::Result;
 
 // NOTE: These imports will be uncommented once mocks are generated
 // use crate::telemetry::generated::mocks::*;

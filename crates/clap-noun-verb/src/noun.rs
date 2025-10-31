@@ -36,6 +36,44 @@ impl NounContext {
 }
 
 /// Trait for defining noun commands (e.g., "services", "collector")
+///
+/// # Examples
+///
+/// Implementing `NounCommand` directly:
+///
+/// ```rust
+/// use clap_noun_verb::{NounCommand, VerbCommand, VerbArgs, Result};
+///
+/// struct ServicesCommand;
+///
+/// impl NounCommand for ServicesCommand {
+///     fn name(&self) -> &'static str { "services" }
+///     fn about(&self) -> &'static str { "Manage services" }
+///     fn verbs(&self) -> Vec<Box<dyn VerbCommand>> {
+///         vec![Box::new(StatusCommand)]
+///     }
+/// }
+///
+/// struct StatusCommand;
+///
+/// impl VerbCommand for StatusCommand {
+///     fn name(&self) -> &'static str { "status" }
+///     fn about(&self) -> &'static str { "Show status" }
+///     fn run(&self, _args: &VerbArgs) -> Result<()> {
+///         Ok(())
+///     }
+/// }
+/// ```
+///
+/// Using the `noun!` macro (recommended):
+///
+/// ```rust
+/// use clap_noun_verb::{noun, verb, VerbArgs};
+///
+/// let services = noun!("services", "Manage services", [
+///     verb!("status", "Show status", |_args: &VerbArgs| { Ok(()) }),
+/// ]);
+/// ```
 pub trait NounCommand: Send + Sync {
     /// The name of the noun command
     fn name(&self) -> &'static str;
@@ -56,7 +94,7 @@ pub trait NounCommand: Send + Sync {
         let mut cmd = Command::new(self.name())
             .about(self.about());
 
-        // Add verb subcommands
+        // Add verb subcommands (build_command already includes additional_args)
         for verb in self.verbs() {
             cmd = cmd.subcommand(verb.build_command());
         }

@@ -3,8 +3,9 @@
 use clap_noun_verb::{run_cli, noun, verb, VerbArgs, Result};
 
 fn main() -> Result<()> {
-    run_cli("collector", |cli| {
-        cli.about("OpenTelemetry Collector Management")
+    run_cli(|cli| {
+        cli.name("collector")
+            .about("OpenTelemetry Collector Management")
             .noun(noun!("collector", "Manage OpenTelemetry collector", [
                 verb!("up", "Start the collector", |_args: &VerbArgs| {
                     println!("Starting OpenTelemetry Collector...");
@@ -38,6 +39,7 @@ fn main() -> Result<()> {
             ]))
     })
 }
+
 
 
 

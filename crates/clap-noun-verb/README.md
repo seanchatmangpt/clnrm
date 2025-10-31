@@ -2,6 +2,17 @@
 
 A framework for building composable CLI patterns on top of clap. This crate provides the foundation for creating command-line interfaces with the `noun verb` pattern (e.g., `services status`, `collector up`), similar to how Python's Typer provides a simpler interface over Click.
 
+## Version 1.0.0 - Stable API
+
+This crate has reached version 1.0.0, which means:
+
+- **API Stability**: All public APIs are stable and guaranteed within the same major version
+- **Semantic Versioning**: Breaking changes will only occur in major version bumps
+- **Production Ready**: Suitable for use in production applications
+- **Documentation**: Comprehensive documentation with examples for all features
+
+For API stability details, see the [API Reference](#api-reference) section.
+
 ## Framework Philosophy
 
 **clap-noun-verb** is designed as a **framework** rather than a library of specific compositions. Instead of providing pre-built CLI patterns, it provides the tools and APIs that allow you to compose your own CLI patterns in flexible, extensible ways.
@@ -23,6 +34,12 @@ A framework for building composable CLI patterns on top of clap. This crate prov
 - **Type-safe command routing** - Compile-time verification of command structure
 - **Zero-cost abstractions** - Thin wrapper over clap with no runtime overhead
 - **Convenience macros** - Reduce boilerplate with `noun!` and `verb!` macros
+- **Argument extraction helpers** - Type-safe argument extraction from `VerbArgs` with helper methods
+- **Verb argument support** - Define arguments directly in verb macros
+- **Command structure validation** - Validate command structure for duplicate names and conflicts
+- **Global arguments access** - Verbs can access global arguments like `--verbose` and `--config` from parent commands
+- **PathBuf convenience methods** - Specialized helpers for `PathBuf` argument extraction
+- **Auto-validation option** - Optional automatic structure validation on build/run
 
 ## Quick Start
 
@@ -112,7 +129,97 @@ fn main() -> Result<()> {
 }
 ```
 
-### Method 4: Command Tree (For Hierarchical Composition)
+### Method 4: Verbs with Arguments
+
+You can define arguments for verbs using the `args` parameter:
+
+```rust
+use clap_noun_verb::{run_cli, noun, verb, VerbArgs, Result};
+use clap::Arg;
+
+fn main() -> Result<()> {
+    run_cli(|cli| {
+        cli.name("myapp")
+            .noun(noun!("services", "Manage services", [
+                verb!("logs", "Show logs for a service", |args: &VerbArgs| {
+                    let service = args.get_one_str("service")?;
+                    let lines = args.get_one_opt::<usize>("lines").unwrap_or(50);
+                    println!("Showing {} lines of logs for {}", lines, service);
+                    Ok(())
+                }, args: [
+                    Arg::new("service").required(true),
+                    Arg::new("lines").short('n').long("lines").default_value("50"),
+                ]),
+            ]))
+    })
+}
+```
+
+#### Argument Extraction Helpers
+
+The `VerbArgs` type provides type-safe helpers for extracting arguments:
+
+**Basic Argument Extraction:**
+- `get_one_str(name)` - Get required string argument
+- `get_one_str_opt(name)` - Get optional string argument
+- `get_one<T>(name)` - Get required typed argument (usize, PathBuf, etc.)
+- `get_one_opt<T>(name)` - Get optional typed argument
+- `get_many<T>(name)` - Get required multiple values (returns `Result<Vec<T>>`)
+- `get_many_opt<T>(name)` - Get optional multiple values (returns `Vec<T>`)
+
+**PathBuf Convenience Methods:**
+- `get_path(name)` - Get required PathBuf argument (convenience for `get_one::<PathBuf>`)
+- `get_path_opt(name)` - Get optional PathBuf argument (convenience for `get_one_opt::<PathBuf>`)
+
+**Flag Access:**
+- `is_flag_set(name)` - Check if flag is set (boolean)
+- `get_flag_count(name)` - Get flag count (for -v, -vv, -vvv patterns, returns u8)
+
+**Context Access:**
+- `verb()` - Get the verb name (`&str`)
+- `noun()` - Get the noun name (`Option<&str>`)
+- `get_context(key)` - Get context data by key
+
+**Utility:**
+- `arg_names()` - Get all argument names (`Vec<String>`)
+
+Example:
+```rust
+verb!("restart", "Restart a service", |args: &VerbArgs| {
+    // Basic argument extraction
+    let service = args.get_one_str("service")?;
+    let force = args.is_flag_set("force");
+    let ports = args.get_many_opt::<u16>("ports");
+    
+    // PathBuf convenience
+    let config_path = args.get_path_opt("config");
+    
+    // Context access
+    let verb_name = args.verb();
+    let noun_name = args.noun();
+    
+    println!("Restarting {} via {} {}", service, noun_name.unwrap_or("root"), verb_name);
+    
+    if force {
+        println!("Force restart enabled");
+    }
+    if let Some(path) = config_path {
+        println!("Using config: {}", path.display());
+    }
+    if !ports.is_empty() {
+        println!("Ports: {:?}", ports);
+    }
+    
+    Ok(())
+}, args: [
+    Arg::new("service").required(true),
+    Arg::new("force").short('f').long("force"),
+    Arg::new("config").long("config").value_name("FILE"),
+    Arg::new("ports").short('p').long("ports").num_args(1..),
+]),
+```
+
+### Method 5: Command Tree (For Hierarchical Composition)
 
 ```rust
 use clap_noun_verb::{CommandTree, CommandTreeBuilder, patterns, VerbArgs, Result};
@@ -153,6 +260,101 @@ myapp
 ```
 
 ## Advanced Usage
+
+### Global Arguments
+
+Global arguments are available to all verbs. Use `get_global*` methods to access them:
+
+**Global Argument Methods:**
+- `get_global<T>(name)` - Get global argument of any type (`Option<T>`)
+- `get_global_str(name)` - Get global string argument (`Option<String>`)
+- `is_global_flag_set(name)` - Check if global flag is set (boolean)
+- `get_global_flag_count(name)` - Get global flag count (for -v, -vv, -vvv patterns, returns u8)
+
+```rust
+use clap::Arg;
+
+run_cli(|cli| {
+    cli.global_args(vec![
+        Arg::new("verbose")
+            .short('v')
+            .long("verbose")
+            .action(clap::ArgAction::Count),
+        Arg::new("config")
+            .short('c')
+            .long("config")
+            .value_name("FILE"),
+    ])
+    .noun(noun!("services", "Manage services", [
+        verb!("logs", "Show logs", |args: &VerbArgs| {
+            // Access global args
+            let verbose = args.get_global_flag_count("verbose");
+            let config = args.get_global_str("config");
+            let debug = args.is_global_flag_set("debug");
+            
+            // Access verb-specific args
+            let service = args.get_one_str("service")?;
+            
+            if debug {
+                println!("[DEBUG] Verbose level: {}", verbose);
+            } else if verbose > 0 {
+                println!("[Verbose level: {}] Showing logs for {}", verbose, service);
+            }
+            if let Some(config_file) = config {
+                println!("Using config: {}", config_file);
+            }
+            
+            Ok(())
+        }, args: [
+            Arg::new("service").required(true),
+        ]),
+    ]))
+})
+```
+
+### Auto-Validation
+
+Enable automatic validation of command structure to catch errors early:
+
+```rust
+use clap::Arg;
+
+run_cli(|cli| {
+    cli.name("myapp")
+        .about("My application")
+        .auto_validate(true)  // Enable auto-validation
+        .global_args(vec![
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .action(clap::ArgAction::Count),
+        ])
+        .noun(noun!("services", "Manage services", [
+            verb!("status", "Show status", |_args: &VerbArgs| {
+                println!("Services are running");
+                Ok(())
+            }),
+        ]))
+})
+```
+
+When enabled, validation checks:
+- Duplicate noun names
+- Empty nouns (no verbs or sub-nouns)
+- Duplicate verb names within a noun
+- Duplicate sub-noun names within a noun
+- Verb/sub-noun name conflicts
+
+You can also manually validate:
+
+```rust
+let registry = CommandRegistry::new()
+    .name("myapp")
+    .noun(/* ... */);
+
+// Manual validation
+registry.validate()?;  // Returns Result<()>
+```
 
 ### Nested Noun-Verb Commands
 
@@ -268,30 +470,44 @@ impl VerbCommand for StatusCommand {
 
 ### Accessing Command Arguments
 
-The `VerbArgs` struct provides access to parsed arguments:
+The `VerbArgs` struct provides access to parsed arguments and context:
 
 ```rust
 use clap_noun_verb::{verb, VerbArgs};
 
 verb!("logs", "Show logs for a service", |args: &VerbArgs| {
-    // Access context data
+    // Access context (verb/noun names)
+    let verb_name = args.verb();  // "logs"
+    let noun_name = args.noun();  // Some("services")
+    
+    // Access context data (if set via add_context)
     if let Some(service) = args.get_context("service") {
         println!("Showing logs for service: {}", service);
     }
     
-    // Access clap matches for custom arguments
+    // Use helper methods (recommended)
+    let service = args.get_one_str("service")?;
+    let follow = args.is_flag_set("follow");
+    
+    // Direct access to clap matches (advanced usage)
     if args.matches.get_flag("follow") {
         println!("Following logs...");
     }
     
+    println!("Executing {} command for {}", verb_name, noun_name.unwrap_or("root"));
+    
     Ok(())
-})
+}, args: [
+    clap::Arg::new("service").required(true),
+    clap::Arg::new("follow").short('f').long("follow"),
+])
 ```
 
 ## Framework Examples
 
 The crate includes examples demonstrating different composition approaches:
 
+- **Arguments Example** (`examples/arguments.rs`) - Complete demonstration of argument extraction, global args, PathBuf, and all VerbArgs methods
 - **Framework Example** (`examples/framework.rs`) - Demonstrates all composition methods (declarative, builder, registry, tree)
 - **Basic Example** (`examples/basic.rs`) - Simple noun-verb CLI with services and collector commands
 - **Services Example** (`examples/services.rs`) - More detailed services management CLI
@@ -301,6 +517,10 @@ The crate includes examples demonstrating different composition approaches:
 Run the examples:
 
 ```bash
+# Argument extraction and global args demonstration
+cargo run --example arguments -- services logs my-service --lines 100
+cargo run --example arguments -- -vv --config config.toml services deploy my-service --image nginx:latest
+
 # Framework composition examples
 cargo run --example framework
 
@@ -318,14 +538,43 @@ cargo run --example nested -- ai orchestrate predict
 
 ### Framework Types
 
-- **`Cli`** - Main builder for creating composable CLI applications
-- **`Registry`** - Central registry for dynamic command composition
-- **`Tree`** - Tree-based structure for hierarchical command organization
+- **`Cli` / `CliBuilder`** - Main builder for creating composable CLI applications
+- **`Registry` / `CommandRegistry`** - Central registry for dynamic command composition
+- **`Tree` / `CommandTree`** - Tree-based structure for hierarchical command organization
 - **`NounCommand`** - Trait for defining noun commands (composable units)
 - **`VerbCommand`** - Trait for defining verb commands (actions on nouns)
 - **`NounContext`** - Context information passed to noun commands
 - **`VerbContext`** - Context information passed to verb commands
 - **`VerbArgs`** - Arguments and context passed to verb commands
+
+### CliBuilder Methods
+
+- `new()` - Create a new CLI builder
+- `name(name)` - Set application name
+- `about(description)` - Set application description
+- `version(version)` - Set application version
+- `global_args(args)` - Add global arguments available to all commands
+- `auto_validate(enable)` - Enable/disable automatic structure validation
+- `noun(noun)` - Add a noun command
+- `nouns(nouns)` - Add multiple noun commands
+- `run()` - Run the CLI with process arguments
+- `run_with_args(args)` - Run the CLI with custom arguments
+- `build_command()` - Build the clap Command for manual execution
+
+### CommandRegistry Methods
+
+- `new()` - Create a new command registry
+- `name(name)` - Set application name
+- `about(description)` - Set application description
+- `version(version)` - Set application version
+- `global_args(args)` - Add global arguments
+- `auto_validate(enable)` - Enable/disable auto-validation
+- `register_noun(noun)` - Register a noun command
+- `register_nouns(nouns)` - Register multiple noun commands
+- `validate()` - Manually validate command structure (returns `Result<()>`)
+- `build_command()` - Build the clap Command
+- `run()` - Run the CLI
+- `run_with_args(args)` - Run with custom arguments
 
 ### Composition Methods
 

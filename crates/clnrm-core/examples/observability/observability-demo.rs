@@ -36,12 +36,16 @@ async fn test_observability_framework_self_test() -> Result<()> {
         .execute_in_container(
             &container,
             &["echo".to_string(), "trace-test-1".to_string()],
+            None,
+            None,
         )
         .await?;
     let _result2 = env
         .execute_in_container(
             &container,
             &["echo".to_string(), "trace-test-2".to_string()],
+            None,
+            None,
         )
         .await?;
 
@@ -118,6 +122,8 @@ async fn test_observability_framework_self_test() -> Result<()> {
         .execute_in_container(
             &_simple_container,
             &["echo".to_string(), "zero-config-test".to_string()],
+            None,
+            None,
         )
         .await?;
 
@@ -184,6 +190,8 @@ async fn test_comprehensive_observability() -> Result<()> {
                         "-c".to_string(),
                         "echo 'perf work' && sleep 0.05".to_string(),
                     ],
+                    None,
+                    None,
                 )
                 .await?;
             Ok::<_, clnrm_core::CleanroomError>((container, result))

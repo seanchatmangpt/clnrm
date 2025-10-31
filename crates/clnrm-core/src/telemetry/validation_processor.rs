@@ -81,23 +81,24 @@ impl SpanProcessor for ValidationSpanProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use opentelemetry::trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState};
-    use opentelemetry_sdk::trace::{SpanEvents, SpanKind, SpanLinks};
+    use opentelemetry::trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState, SpanKind};
+    use opentelemetry_sdk::trace::{SpanEvents, SpanLinks};
     use std::borrow::Cow;
     use std::time::SystemTime;
 
     fn create_test_span(name: &str) -> SpanData {
         SpanData {
             span_context: SpanContext::new(
-                TraceId::from_u128(1),
-                SpanId::from_u64(1),
+                TraceId::from_bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
+                SpanId::from_bytes([0, 0, 0, 0, 0, 0, 0, 1]),
                 TraceFlags::default(),
                 false,
                 TraceState::default(),
             ),
             parent_span_id: SpanId::INVALID,
+            parent_span_is_remote: false,
             span_kind: SpanKind::Internal,
-            name: Cow::Borrowed(name),
+            name: Cow::Owned(name.to_string()),
             start_time: SystemTime::now(),
             end_time: SystemTime::now(),
             attributes: Vec::new(),

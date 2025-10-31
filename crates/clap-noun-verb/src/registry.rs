@@ -35,6 +35,8 @@ pub struct RegistryConfig {
     pub version: Option<String>,
     /// Global arguments available to all commands
     pub global_args: Vec<clap::Arg>,
+    /// Auto-validate command structure on build/run
+    pub auto_validate: bool,
 }
 
 impl Default for RegistryConfig {
@@ -44,6 +46,7 @@ impl Default for RegistryConfig {
             about: "A command-line application".to_string(),
             version: None,
             global_args: Vec::new(),
+            auto_validate: false,
         }
     }
 }
@@ -86,6 +89,12 @@ impl CommandRegistry {
     /// Add global arguments available to all commands
     pub fn global_args(mut self, args: Vec<clap::Arg>) -> Self {
         self.config.global_args = args;
+        self
+    }
+
+    /// Enable automatic validation of command structure
+    pub fn auto_validate(mut self, enable: bool) -> Self {
+        self.config.auto_validate = enable;
         self
     }
 
@@ -148,10 +157,82 @@ impl CommandRegistry {
         structure
     }
 
+    /// Validate the command registry structure
+    pub fn validate(&self) -> Result<()> {
+        // Check for duplicate noun names
+        let mut seen_nouns = std::collections::HashSet::new();
+        for noun_name in self.nouns.keys() {
+            if !seen_nouns.insert(noun_name) {
+                return Err(NounVerbError::invalid_structure(format!(
+                    "Duplicate noun name: '{}'",
+                    noun_name
+                )));
+            }
+        }
+
+        // Validate each noun structure
+        for (noun_name, noun) in &self.nouns {
+            // Check for empty nouns (no verbs or sub-nouns)
+            if noun.verbs().is_empty() && noun.sub_nouns().is_empty() {
+                return Err(NounVerbError::invalid_structure(format!(
+                    "Noun '{}' has no verbs or sub-nouns",
+                    noun_name
+                )));
+            }
+
+            // Check for duplicate verb names within a noun
+            let mut seen_verbs = std::collections::HashSet::new();
+            for verb in noun.verbs() {
+                let verb_name = verb.name();
+                if !seen_verbs.insert(verb_name) {
+                    return Err(NounVerbError::invalid_structure(format!(
+                        "Duplicate verb name '{}' in noun '{}'",
+                        verb_name, noun_name
+                    )));
+                }
+            }
+
+            // Check for duplicate sub-noun names within a noun
+            let mut seen_sub_nouns = std::collections::HashSet::new();
+            for sub_noun in noun.sub_nouns() {
+                let sub_noun_name = sub_noun.name();
+                if !seen_sub_nouns.insert(sub_noun_name) {
+                    return Err(NounVerbError::invalid_structure(format!(
+                        "Duplicate sub-noun name '{}' in noun '{}'",
+                        sub_noun_name, noun_name
+                    )));
+                }
+            }
+
+            // Check for verb/sub-noun name conflicts
+            let verb_names: std::collections::HashSet<_> = noun.verbs().iter().map(|v| v.name()).collect();
+            for sub_noun in noun.sub_nouns() {
+                let sub_noun_name = sub_noun.name();
+                if verb_names.contains(sub_noun_name) {
+                    return Err(NounVerbError::invalid_structure(format!(
+                        "Verb and sub-noun cannot have the same name '{}' in noun '{}'",
+                        sub_noun_name, noun_name
+                    )));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Build the complete clap command structure
     pub fn build_command(&self) -> Command {
+        // Auto-validate if enabled
+        if self.config.auto_validate {
+            if let Err(e) = self.validate() {
+                // Log validation error but continue building for API compatibility
+                eprintln!("Warning: Command structure validation failed: {}", e);
+            }
+        }
+        
         // Clone to owned strings and convert to static lifetime for clap
         // Note: This leaks memory but is acceptable for CLI construction (happens once per run)
+        // The leaked strings live for the duration of the program which is fine for CLI apps
         let name: &'static str = Box::leak(self.config.name.clone().into_boxed_str());
         let about: &'static str = Box::leak(self.config.about.clone().into_boxed_str());
         let mut cmd = Command::new(name)
@@ -185,26 +266,27 @@ impl CommandRegistry {
         let noun = self.nouns.get(noun_name)
             .ok_or_else(|| NounVerbError::command_not_found(noun_name))?;
 
-        // Route the command recursively
-        self.route_recursive(noun.as_ref(), noun_name, noun_matches)
+        // Route the command recursively with root matches for global args access
+        self.route_recursive(noun.as_ref(), noun_name, noun_matches, matches)
     }
 
     /// Recursively route commands through nested noun-verb structure
     #[allow(clippy::only_used_in_recursion)]
-    fn route_recursive(&self, noun: &dyn NounCommand, noun_name: &str, matches: &ArgMatches) -> Result<()> {
+    fn route_recursive(&self, noun: &dyn NounCommand, noun_name: &str, matches: &ArgMatches, root_matches: &ArgMatches) -> Result<()> {
         // Check if there's a subcommand (either verb or sub-noun)
         if let Some((sub_name, sub_matches)) = matches.subcommand() {
             // First check if it's a verb
             if let Some(verb) = noun.verbs().iter().find(|v| v.name() == sub_name) {
-                // Execute the verb
+                // Execute the verb with root matches for global args access
                 let context = VerbContext::new(sub_name).with_noun(noun_name);
                 let args = VerbArgs::new(sub_matches.clone())
+                    .with_parent(root_matches.clone())
                     .with_context(context);
 
                 verb.run(&args)
             } else if let Some(sub_noun) = noun.sub_nouns().iter().find(|n| n.name() == sub_name) {
-                // Recursively route to sub-noun
-                self.route_recursive(sub_noun.as_ref(), sub_name, sub_matches)
+                // Recursively route to sub-noun, passing root matches for global args
+                self.route_recursive(sub_noun.as_ref(), sub_name, sub_matches, root_matches)
             } else {
                 // Neither verb nor sub-noun found
                 Err(NounVerbError::verb_not_found(noun_name, sub_name))
@@ -221,6 +303,11 @@ impl CommandRegistry {
 
     /// Run the CLI with the current process arguments
     pub fn run(self) -> Result<()> {
+        // Auto-validate if enabled
+        if self.config.auto_validate {
+            self.validate()?;
+        }
+        
         let cmd = self.build_command();
         let matches = cmd.try_get_matches()
             .map_err(|e| NounVerbError::argument_error(e.to_string()))?;

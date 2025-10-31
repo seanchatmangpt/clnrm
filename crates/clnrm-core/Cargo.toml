@@ -68,10 +68,11 @@ rand = "0.8"
 semver = "1.0"
 glob = "0.3"
 url = "2.5"
+which = "6.0"
 
-# Unix signal handling for Weaver controller
+# Unix signal handling and file locking for Weaver controller and port allocator
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.27", features = ["signal"] }
+nix = { version = "0.27", features = ["signal", "fs"] }
 
 # Template rendering - Full-featured template engine for test configuration
 clnrm-template = { path = "../clnrm-template" }

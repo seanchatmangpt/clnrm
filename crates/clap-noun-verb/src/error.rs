@@ -66,10 +66,18 @@ impl NounVerbError {
             message: message.into(),
         }
     }
+
+    /// Create a missing argument error (helper for common case)
+    pub fn missing_argument(name: impl Into<String>) -> Self {
+        Self::ArgumentError {
+            message: format!("Required argument '{}' is missing", name.into()),
+        }
+    }
 }
 
 /// Result type alias for noun-verb operations
 pub type Result<T> = std::result::Result<T, NounVerbError>;
+
 
 
 

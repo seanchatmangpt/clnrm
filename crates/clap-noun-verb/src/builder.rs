@@ -1,4 +1,7 @@
 //! Builder pattern API for composable CLI applications
+//!
+//! The `CliBuilder` provides a fluent interface for constructing CLI applications
+//! using the noun-verb pattern.
 
 use crate::error::Result;
 use crate::noun::NounCommand;
@@ -6,6 +9,26 @@ use crate::registry::CommandRegistry;
 use clap::Command;
 
 /// Main builder for creating composable CLI applications
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use clap_noun_verb::{CliBuilder, noun, verb, VerbArgs, Result};
+///
+/// fn main() -> Result<()> {
+///     let cli = CliBuilder::new()
+///         .name("myapp")
+///         .about("My application")
+///         .noun(noun!("services", "Manage services", [
+///             verb!("status", "Show status", |_args: &VerbArgs| {
+///                 println!("Services are running");
+///                 Ok(())
+///             }),
+///         ]));
+///
+///     cli.run()
+/// }
+/// ```
 pub struct CliBuilder {
     registry: CommandRegistry,
 }
@@ -39,6 +62,12 @@ impl CliBuilder {
     /// Add global arguments available to all commands
     pub fn global_args(mut self, args: Vec<clap::Arg>) -> Self {
         self.registry = self.registry.global_args(args);
+        self
+    }
+
+    /// Enable automatic validation of command structure
+    pub fn auto_validate(mut self, enable: bool) -> Self {
+        self.registry = self.registry.auto_validate(enable);
         self
     }
 
@@ -139,7 +168,7 @@ where
 /// ```rust
 /// use clap_noun_verb::{cli_builder, noun, verb, VerbArgs, Result};
 ///
-/// cli_builder! {
+/// let cli = cli_builder! {
 ///     name: "myapp",
 ///     about: "My awesome CLI application",
 ///     nouns: [
@@ -149,8 +178,8 @@ where
 ///                 Ok(())
 ///             }),
 ///         ]),
-///     ],
-/// }
+///     ]
+/// };
 /// ```
 #[macro_export]
 macro_rules! cli_builder {

@@ -3,8 +3,9 @@
 use clap_noun_verb::{run_cli, noun, verb, VerbArgs, Result};
 
 fn main() -> Result<()> {
-    run_cli("nested-demo", |cli| {
-        cli.about("Demonstrates nested noun-verb CLI patterns")
+    run_cli(|cli| {
+        cli.name("nested-demo")
+            .about("Demonstrates nested noun-verb CLI patterns")
             .noun(noun!("dev", "Development tools", {
                 noun!("test", "Testing utilities", [
                     verb!("run", "Run tests", |_args: &VerbArgs| {

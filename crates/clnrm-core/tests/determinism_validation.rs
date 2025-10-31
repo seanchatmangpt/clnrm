@@ -47,6 +47,7 @@ fn test_deterministic_random_seed() -> Result<()> {
         args: vec!["-c".to_string(), "echo $RANDOM".to_string()],
         env: Default::default(),
         workdir: None,
+        policy: Default::default(),
     };
 
     // Run 5 times
@@ -93,6 +94,7 @@ fn test_deterministic_random_seed_different_values() -> Result<()> {
         args: vec!["-c".to_string(), "echo $RANDOM".to_string()],
         env: Default::default(),
         workdir: None,
+        policy: Default::default(),
     };
 
     let result1 = backend1.run_cmd(cmd.clone())?;
@@ -129,6 +131,7 @@ fn test_deterministic_ports_env() -> Result<()> {
         ],
         env: Default::default(),
         workdir: None,
+        policy: Default::default(),
     };
 
     // Run 5 times
@@ -272,6 +275,7 @@ fn test_clock_freezing() -> Result<()> {
         args: vec!["-c".to_string(), "date +%s".to_string()],
         env: Default::default(),
         workdir: None,
+        policy: Default::default(),
     };
 
     // Run 5 times

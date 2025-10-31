@@ -34,26 +34,27 @@ impl CommandRouter {
         let noun = self.nouns.get(noun_name)
             .ok_or_else(|| NounVerbError::command_not_found(noun_name))?;
 
-        // Route the command recursively
-        self.route_recursive(noun.as_ref(), noun_name, noun_matches)
+        // Route the command recursively with root matches for global args
+        self.route_recursive(noun.as_ref(), noun_name, noun_matches, matches)
     }
 
     /// Recursively route commands through nested noun-verb structure
     #[allow(clippy::only_used_in_recursion)]
-    fn route_recursive(&self, noun: &dyn NounCommand, noun_name: &str, matches: &ArgMatches) -> Result<()> {
+    fn route_recursive(&self, noun: &dyn NounCommand, noun_name: &str, matches: &ArgMatches, root_matches: &ArgMatches) -> Result<()> {
         // Check if there's a subcommand (either verb or sub-noun)
         if let Some((sub_name, sub_matches)) = matches.subcommand() {
             // First check if it's a verb
             if let Some(verb) = noun.verbs().iter().find(|v| v.name() == sub_name) {
-                // Execute the verb
+                // Execute the verb with root matches for global args access
                 let context = VerbContext::new(sub_name).with_noun(noun_name);
                 let args = VerbArgs::new(sub_matches.clone())
+                    .with_parent(root_matches.clone())
                     .with_context(context);
 
                 verb.run(&args)
             } else if let Some(sub_noun) = noun.sub_nouns().iter().find(|n| n.name() == sub_name) {
-                // Recursively route to sub-noun
-                self.route_recursive(sub_noun.as_ref(), sub_name, sub_matches)
+                // Recursively route to sub-noun, passing root matches for global args
+                self.route_recursive(sub_noun.as_ref(), sub_name, sub_matches, root_matches)
             } else {
                 // Neither verb nor sub-noun found
                 Err(NounVerbError::verb_not_found(noun_name, sub_name))

@@ -1,13 +1,16 @@
 [package]
 name = "clap-noun-verb"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 license = "MIT"
 authors = ["Sean Chatman <seanchatmangpt@gmail.com>"]
 repository = "https://github.com/seanchatmangpt/clnrm"
+documentation = "https://docs.rs/clap-noun-verb"
+homepage = "https://github.com/seanchatmangpt/clnrm"
 description = "A high-level, ergonomic API for building noun-verb CLI patterns on top of clap"
 keywords = ["cli", "clap", "noun-verb", "command-line", "typer"]
 categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
 
 [lib]
 name = "clap_noun_verb"
@@ -32,6 +35,11 @@ path = "examples/services.rs"
 [[example]]
 name = "collector"
 path = "examples/collector.rs"
+
+[[example]]
+name = "arguments"
+path = "examples/arguments.rs"
+
 
 
 

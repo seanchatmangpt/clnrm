@@ -71,7 +71,10 @@ async fn main() -> Result<()> {
         .execute_in_container(
             &service_handle.service_name,
             &["echo", "Plugin system executing commands successfully"]
-                .iter()
+                .iter(,
+            None,
+            None,
+        )
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>(),
         )

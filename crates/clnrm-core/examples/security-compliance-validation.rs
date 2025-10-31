@@ -217,6 +217,8 @@ async fn validate_access_control() -> Result<String, CleanroomError> {
 
     // Check that containers run as non-root users
     let user_check = env
+        None,
+        None,
         .execute_in_container(&user_container, &["id".to_string()])
         .await?;
 
@@ -273,6 +275,8 @@ async fn validate_compliance_requirements() -> Result<String, CleanroomError> {
                 "-c".to_string(),
                 "echo 'Compliance audit operation' && date && whoami".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 
@@ -293,6 +297,8 @@ async fn validate_compliance_requirements() -> Result<String, CleanroomError> {
                 "-c".to_string(),
                 "find /tmp -name '*audit*' -type f | wc -l".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 
@@ -341,6 +347,8 @@ async fn perform_vulnerability_assessment() -> Result<String, CleanroomError> {
                         cve, description
                     ),
                 ],
+                None,
+                None,
             )
             .await?;
 
@@ -360,6 +368,8 @@ async fn perform_vulnerability_assessment() -> Result<String, CleanroomError> {
                 "-c".to_string(),
                 "echo 'Configuration security check' && echo 'SECURE_CONFIG'".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 

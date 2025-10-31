@@ -5,9 +5,10 @@
 //! build their own CLI frameworks on top of it.
 
 use clap_noun_verb::{
-    app, command_group, command_tree, noun, verb, Cli, Registry, Tree, VerbArgs, Result,
-    NounCommand, VerbCommand, CommandTree, CommandTreeBuilder, patterns
+    app, noun, verb, Cli, Registry, VerbArgs, Result,
+    NounCommand, CommandTree, CommandTreeBuilder
 };
+use clap_noun_verb::tree::patterns;
 
 fn main() -> Result<()> {
     // Method 1: Using the declarative app! macro
@@ -64,7 +65,7 @@ fn main() -> Result<()> {
                     Ok(())
                 }),
             ]),
-        ],
+        ]
     };
 
     println!("Built CLI structure: {:?}", cli.command_structure());
@@ -105,14 +106,22 @@ fn main() -> Result<()> {
                         "lint",
                         "Code linting",
                         vec![
-                            ("check".to_string(), "Check code style".to_string(), Box::new(|_args: &VerbArgs| {
-                                println!("Checking code style...");
-                                Ok(())
-                            })),
-                            ("fix".to_string(), "Auto-fix issues".to_string(), Box::new(|_args: &VerbArgs| {
-                                println!("Auto-fixing linting issues...");
-                                Ok(())
-                            })),
+                            (
+                                "check".to_string(),
+                                "Check code style".to_string(),
+                                Box::new(|_args: &VerbArgs| {
+                                    println!("Checking code style...");
+                                    Ok(())
+                                }) as Box<dyn Fn(&VerbArgs) -> Result<()> + Send + Sync>,
+                            ),
+                            (
+                                "fix".to_string(),
+                                "Auto-fix issues".to_string(),
+                                Box::new(|_args: &VerbArgs| {
+                                    println!("Auto-fixing linting issues...");
+                                    Ok(())
+                                }) as Box<dyn Fn(&VerbArgs) -> Result<()> + Send + Sync>,
+                            ),
                         ]
                     ),
                 ]
@@ -128,7 +137,7 @@ fn main() -> Result<()> {
     );
 
     println!("Tree structure:");
-    for path in tree.roots[0].command_paths() {
+    for path in tree.roots()[0].command_paths() {
         println!("  {}", path.join(" "));
     }
 
@@ -253,6 +262,7 @@ fn custom_collector_command() -> impl NounCommand {
         }),
     ])
 }
+
 
 
 

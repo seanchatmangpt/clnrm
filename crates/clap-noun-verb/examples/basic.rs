@@ -3,13 +3,14 @@
 use clap_noun_verb::{run_cli, noun, verb, VerbArgs, Result};
 
 fn main() -> Result<()> {
-    run_cli("myapp", |cli| {
-        cli.noun(noun!("services", "Manage application services", [
+    run_cli(|cli| {
+        cli.name("myapp")
+            .noun(noun!("services", "Manage application services", [
             verb!("status", "Show status of all services", |_args: &VerbArgs| {
                 println!("All services are running");
                 Ok(())
             }),
-            verb!("logs", "Show logs for a service", |args: &VerbArgs| {
+            verb!("logs", "Show logs for a service", |_args: &VerbArgs| {
                 println!("Showing logs for service");
                 Ok(())
             }),
@@ -34,6 +35,7 @@ fn main() -> Result<()> {
         ]))
     })
 }
+
 
 
 

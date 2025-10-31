@@ -2,8 +2,9 @@
 
 use clap_noun_verb::{
     noun, verb, Cli, Registry, VerbArgs, Result, NounCommand, VerbCommand,
-    NounContext, VerbContext, CommandTree, CommandTreeBuilder, patterns
+    NounContext, VerbContext, CommandTree, CommandTreeBuilder
 };
+use clap_noun_verb::tree::patterns;
 
 #[test]
 fn test_noun_command_trait() -> Result<()> {
@@ -99,7 +100,7 @@ fn test_registry_configuration() -> Result<()> {
 
     let command = registry.build_command();
     assert_eq!(command.get_name(), "test-app");
-    assert_eq!(command.get_about().unwrap(), "Test application");
+    assert_eq!(command.get_about().unwrap().to_string(), "Test application");
     assert_eq!(command.get_version().unwrap(), "1.0.0");
 
     Ok(())
@@ -213,7 +214,7 @@ fn test_command_tree_nested() -> Result<()> {
     assert_eq!(tree.root_names().len(), 1);
     assert_eq!(tree.root_names()[0], "dev");
 
-    let paths = tree.roots[0].command_paths();
+    let paths = tree.roots()[0].command_paths();
     assert_eq!(paths.len(), 1);
     assert_eq!(paths[0], vec!["dev", "test", "run"]);
 
@@ -228,7 +229,7 @@ fn test_cli_builder_basic() -> Result<()> {
 
     let command = cli.build_command();
     assert_eq!(command.get_name(), "test-cli");
-    assert_eq!(command.get_about().unwrap(), "Test CLI");
+    assert_eq!(command.get_about().unwrap().to_string(), "Test CLI");
 
     Ok(())
 }
@@ -345,7 +346,9 @@ fn test_patterns_helper() -> Result<()> {
 
     assert_eq!(pattern.name(), "test-noun");
     assert_eq!(pattern.about(), "Test noun pattern");
-    assert_eq!(pattern.verbs().len(), 2);
+    // Note: TreeNode doesn't have verbs() - it's a tree structure, not a noun-verb command
+    // This test should check children() or command_paths() instead
+    assert_eq!(pattern.children().len(), 2);
 
     Ok(())
 }
@@ -361,7 +364,7 @@ fn test_build_cli_function() -> Result<()> {
     });
 
     assert_eq!(command.get_name(), "build-test");
-    assert_eq!(command.get_about().unwrap(), "Build test CLI");
+    assert_eq!(command.get_about().unwrap().to_string(), "Build test CLI");
     assert_eq!(structure.len(), 1);
     assert!(structure.contains_key("test"));
 
