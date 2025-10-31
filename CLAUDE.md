@@ -138,7 +138,32 @@ cargo test              # Tests can pass with broken features
 clnrm self-test         # Framework testing itself is circular
 validation agents       # Agents can hallucinate validation
 README validation       # Documentation can claim features work when they don't
+clnrm <command> --help  # Help text can exist for non-functional commands
 ```
+
+### 🚨 CRITICAL: Help Text ≠ Working Feature
+
+**Running `--help` proves NOTHING about functionality:**
+
+```bash
+# ❌ FALSE POSITIVE VALIDATION
+clnrm dev --help        # Returns help text
+# ❌ CONCLUSION: "dev command works"  ← WRONG!
+# ✅ REALITY: Help text exists, but command may call unimplemented!()
+
+# ✅ CORRECT VALIDATION
+clnrm dev tests/ --watch  # Actually execute the command
+# Check: Does it watch files and re-run tests?
+# Check: Does it emit proper telemetry?
+# Check: Does Weaver validation pass?
+```
+
+**Help text validation rules:**
+1. `--help` only proves the command is registered in CLI
+2. `--help` does NOT prove the command does anything
+3. Commands can have help text but call `unimplemented!()`
+4. ALWAYS execute the actual command with real arguments
+5. ONLY trust Weaver validation of runtime behavior
 
 **Why Weaver is Different:**
 - Schema-first: Code must conform to declared telemetry schema
@@ -540,6 +565,13 @@ Before ANY code is production-ready, ALL must be true:
 - [ ] All claimed OTEL spans/metrics/logs defined in schema
 - [ ] Schema documents exact telemetry behavior
 - [ ] Live telemetry matches schema declarations
+
+### Functional Validation (MANDATORY - Must Actually Execute)
+- [ ] **Command executed with REAL arguments** (not just `--help`)
+- [ ] **Command produces expected output/behavior**
+- [ ] **Command emits proper telemetry** (validated by Weaver)
+- [ ] **End-to-end workflow tested** (not just unit tests)
+- [ ] **Integration tested in production environment** (Homebrew installation)
 
 ### Traditional Testing (Supporting Evidence Only)
 - [ ] `cargo test` passes completely
