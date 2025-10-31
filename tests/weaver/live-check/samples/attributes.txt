@@ -1,0 +1,6 @@
+test.name=stream_test_001
+test.suite=stdin_validation
+test.result=pass
+test.duration_ms=500
+service.name=clnrm-test
+deployment.environment=test

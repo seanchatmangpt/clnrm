@@ -39,6 +39,9 @@ pub use policy::{Policy, SecurityLevel, SecurityPolicy};
 pub use scenario::scenario;
 
 pub use telemetry::{Export, OtelConfig, OtelGuard};
+pub use telemetry::weaver_controller::{
+    ValidationReport as WeaverValidationReport, ValidationStatus, WeaverConfig, WeaverController,
+};
 
 pub use assertions::{cache, database, email_service, UserAssertions};
 pub use cache::{Cache, CacheManager, CacheStats, FileCache, MemoryCache};

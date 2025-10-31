@@ -1,0 +1,117 @@
+@startuml live-check-integration-architecture
+!theme plain
+title Weaver Live-Check Integration Architecture\nAll JTBD Patterns
+
+' Define components
+package "Development Environment" as dev {
+  component [VS Code / IDE] as ide
+  component [Local Dev\nPattern] as local_dev
+  component [Quick Validate\nPattern] as quick
+}
+
+package "Git Integration" as git {
+  component [Pre-Commit\nHook] as precommit
+  component [Git Commit] as commit
+}
+
+package "CI/CD Pipeline" as cicd {
+  component [GitHub Actions] as gha
+  component [CI/CD\nPattern] as ci_pattern
+  component [PR Comment\nBot] as pr_bot
+}
+
+package "Metrics & Monitoring" as metrics {
+  component [Coverage\nTracking] as coverage
+  component [Dashboard\nPython] as dashboard
+  component [Prometheus\nExporter] as prometheus
+}
+
+package "Production" as prod {
+  component [Production\nMonitoring] as prod_monitor
+  component [Kubernetes\nCronJob] as k8s
+  component [Alert\nManager] as alerts
+}
+
+' Weaver Core
+package "Weaver Core" as weaver_core {
+  component [Weaver\nLive-Check] as weaver
+  database [OTel Registry\nSchemas] as registry
+}
+
+' clnrm Application
+package "clnrm Application" as app {
+  component [Test Suite\nOTEL Enabled] as tests
+  component [Production\nApplication] as prod_app
+}
+
+' Development flow
+ide --> local_dev : "Start validation\n./scripts/dev_live_check.sh"
+local_dev --> weaver : "gRPC 4317\nreal-time"
+tests --> weaver : "OTLP export"
+ide --> quick : "Quick check\n./scripts/quick_validate.sh"
+quick --> weaver : "gRPC 4317\n<30s"
+
+' Git flow
+commit --> precommit : "git commit"
+precommit --> weaver : "gRPC 4317\nchanged files"
+tests --> precommit : "Run affected tests"
+
+' CI/CD flow
+commit --> gha : "Push/PR"
+gha --> ci_pattern : "Workflow trigger"
+ci_pattern --> weaver : "gRPC 4317\nfull suite"
+tests --> ci_pattern : "All tests"
+ci_pattern --> pr_bot : "Results"
+pr_bot --> gha : "Comment on PR"
+
+' Metrics flow
+coverage --> weaver : "gRPC 4317\nfull suite"
+tests --> coverage : "Comprehensive run"
+coverage --> dashboard : "History JSON"
+dashboard --> prometheus : "Metrics"
+
+' Production flow
+prod_app --> prod_monitor : "Telemetry sample"
+k8s --> prod_monitor : "Schedule (15min)"
+prod_monitor --> weaver : "Validate sample"
+prod_monitor --> alerts : "Violations found"
+
+' Weaver validation
+weaver --> registry : "Validate against\nschemas"
+registry --> weaver : "Violations\nWarnings\nCoverage"
+
+' Result flows
+weaver --> local_dev : "Real-time\nviolations"
+weaver --> quick : "Summary\n<30s"
+weaver --> precommit : "Pass/Fail\nblock commit"
+weaver --> ci_pattern : "Quality gate\nblock merge"
+weaver --> coverage : "Coverage %\nhistory"
+weaver --> prod_monitor : "Alert on\nviolations"
+
+' Legend
+note bottom of weaver_core
+  **Validation Levels:**
+  1. Real-time (Local Dev)
+  2. Pre-commit (<30s)
+  3. CI/CD (2-5 min)
+  4. Coverage (5-10 min)
+  5. Production (continuous)
+end note
+
+note right of registry
+  **Registry Contents:**
+  - 14 OTel schemas
+  - Spans, Metrics, Events
+  - Semantic conventions
+  - Requirement levels
+end note
+
+note left of alerts
+  **Alert Channels:**
+  - Slack
+  - PagerDuty
+  - Email
+  - Prometheus
+end note
+
+@enduml

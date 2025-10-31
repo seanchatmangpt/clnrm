@@ -4,25 +4,47 @@
 //! structure creation.
 
 use crate::error::{CleanroomError, Result};
+use crate::telemetry::cli_helpers::CliInitSpanBuilder;
 
 /// Initialize a new test project in the current directory
 pub fn init_project(force: bool, with_config: bool) -> Result<()> {
-    println!("🚀 Initializing cleanroom test project in current directory");
+    // Get absolute project path for telemetry
+    let project_path = std::env::current_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| ".".to_string());
 
     // Check if already initialized
     let tests_dir = std::path::Path::new("tests");
     let scenarios_dir = std::path::Path::new("scenarios");
     let basic_test_file = tests_dir.join("basic.clnrm.toml");
 
-    if tests_dir.exists() && scenarios_dir.exists() && basic_test_file.exists() {
+    let exists_before = tests_dir.exists() && scenarios_dir.exists() && basic_test_file.exists();
+
+    // Start telemetry span
+    let span = CliInitSpanBuilder::new(project_path, exists_before, force).start();
+
+    println!("🚀 Initializing cleanroom test project in current directory");
+
+    if exists_before {
         if !force {
-            return Err(
-                CleanroomError::validation_error("Project already initialized")
-                    .with_context("Use --force to reinitialize"),
+            let error = CleanroomError::validation_error("Project already initialized")
+                .with_context("Use --force to reinitialize");
+
+            span.finish(
+                false,
+                false,
+                None,
+                0,
+                Some(("ConfigAlreadyExists".to_string(), error.to_string())),
             );
+
+            return Err(error);
         }
         println!("Reinitializing existing project (--force flag used)");
     }
+
+    // Track created files for telemetry
+    let mut files_created = 0;
 
     // Create directory structure
     std::fs::create_dir_all(tests_dir)?;
@@ -53,7 +75,10 @@ command = ["sh", "-c", "echo 'Test environment ready' && uname -a"]
 expected_output_regex = "Test environment ready"
 "#;
 
-    std::fs::write(basic_test_file, test_content)?;
+    std::fs::write(&basic_test_file, test_content)?;
+    files_created += 1;
+
+    let config_path = basic_test_file.to_string_lossy().to_string();
 
     // Create README
     let readme_content = r#"# Cleanroom Test Project
@@ -86,6 +111,7 @@ This project demonstrates the cleanroom framework testing itself through the "ea
 "#;
 
     std::fs::write("README.md", readme_content)?;
+    files_created += 1;
 
     // Create cleanroom.toml if requested
     if with_config {
@@ -109,12 +135,16 @@ version = "0.1.0"
 # See docs for all options: https://docs.cleanroom.dev/config
 "#;
         std::fs::write("cleanroom.toml", config_content)?;
+        files_created += 1;
         println!("✅ Project initialized successfully with configuration");
         println!("📁 Created: tests/basic.clnrm.toml, cleanroom.toml, README.md");
     } else {
         println!("✅ Project initialized successfully (zero-config)");
         println!("📁 Created: tests/basic.clnrm.toml, README.md");
     }
+
+    // Finish telemetry span with success
+    span.finish(true, true, Some(config_path), files_created, None);
 
     Ok(())
 }

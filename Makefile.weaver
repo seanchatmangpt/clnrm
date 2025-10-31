@@ -1,0 +1,145 @@
+# Makefile.weaver
+# Weaver live-check integration targets
+# Usage: make -f Makefile.weaver <target>
+
+.PHONY: help validate-dev validate-quick validate-ci install-hooks track-coverage coverage-dashboard validate-prod export-metrics clean-weaver
+
+# Default target
+help:
+	@echo "Weaver Live-Check Integration Targets"
+	@echo "======================================"
+	@echo ""
+	@echo "Development:"
+	@echo "  validate-dev       - Interactive development validation"
+	@echo "  validate-quick     - Fast validation for current changes"
+	@echo ""
+	@echo "Git Integration:"
+	@echo "  install-hooks      - Install pre-commit validation hooks"
+	@echo ""
+	@echo "Coverage Tracking:"
+	@echo "  track-coverage     - Track coverage over time"
+	@echo "  coverage-dashboard - Show coverage trends"
+	@echo ""
+	@echo "CI/CD:"
+	@echo "  validate-ci        - Full CI validation"
+	@echo ""
+	@echo "Production:"
+	@echo "  validate-prod      - Validate production telemetry"
+	@echo "  export-metrics     - Export metrics to Prometheus"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  clean-weaver       - Clean up validation outputs"
+
+# Development validation targets
+validate-dev:
+	@echo "🔍 Starting development validation..."
+	@./scripts/dev_live_check.sh
+
+validate-quick:
+	@echo "⚡ Quick validation..."
+	@./scripts/quick_validate.sh "cargo test --features otel"
+
+validate-quick-test:
+	@echo "⚡ Quick validation for specific test..."
+	@read -p "Test name: " test; \
+	./scripts/quick_validate.sh "cargo test $$test --features otel"
+
+# Git hooks
+install-hooks:
+	@echo "📦 Installing pre-commit hooks..."
+	@./scripts/install_hooks.sh
+
+uninstall-hooks:
+	@echo "🗑️  Uninstalling pre-commit hooks..."
+	@rm -f .git/hooks/pre-commit
+	@echo "✅ Hooks removed"
+
+# Coverage tracking
+track-coverage:
+	@echo "📊 Tracking coverage..."
+	@./scripts/track_coverage.sh
+
+track-coverage-upload:
+	@echo "📊 Tracking coverage with upload..."
+	@./scripts/track_coverage.sh --upload
+
+coverage-dashboard:
+	@echo "📈 Showing coverage dashboard..."
+	@python3 scripts/coverage_dashboard.py
+
+coverage-dashboard-week:
+	@echo "📈 Showing coverage dashboard (7 days)..."
+	@python3 scripts/coverage_dashboard.py --days 7
+
+# CI/CD validation
+validate-ci:
+	@echo "🤖 Running CI validation..."
+	@./scripts/quick_validate.sh "cargo test --all --features otel"
+
+# Production validation
+validate-prod:
+	@echo "🚀 Validating production telemetry..."
+	@./scripts/validate_production_telemetry.sh
+
+validate-prod-file:
+	@echo "🚀 Validating production telemetry from file..."
+	@read -p "Sample file path: " file; \
+	./scripts/validate_production_telemetry.sh --source "$$file"
+
+# Metrics export
+export-metrics:
+	@echo "📊 Starting Prometheus metrics exporter..."
+	@python3 scripts/export_validation_metrics.py
+
+export-metrics-dev:
+	@echo "📊 Starting Prometheus metrics exporter (development)..."
+	@python3 scripts/export_validation_metrics.py \
+		--environment development \
+		--output-dir .weaver/dev
+
+# Maintenance
+clean-weaver:
+	@echo "🧹 Cleaning Weaver outputs..."
+	@rm -rf .weaver/dev_*
+	@rm -rf .weaver/quick_*
+	@rm -rf /tmp/weaver_precommit_*
+	@echo "✅ Cleaned temporary validation outputs"
+
+clean-weaver-all:
+	@echo "🧹 Cleaning all Weaver outputs..."
+	@read -p "This will delete all validation history. Continue? [y/N] " confirm; \
+	if [ "$$confirm" = "y" ]; then \
+		rm -rf .weaver; \
+		echo "✅ All Weaver outputs removed"; \
+	else \
+		echo "❌ Cancelled"; \
+	fi
+
+# Show validation status
+status:
+	@echo "📊 Weaver Validation Status"
+	@echo "=========================="
+	@echo ""
+	@if [ -f .weaver/coverage/history/*.json ]; then \
+		echo "Latest Coverage:"; \
+		jq -r '"  Coverage: \(.coverage_percent)%\n  Violations: \(.violations)\n  Warnings: \(.warnings)\n  Timestamp: \(.timestamp)"' \
+			$$(ls -t .weaver/coverage/history/*.json | head -1); \
+	else \
+		echo "No coverage data available"; \
+		echo "Run: make track-coverage"; \
+	fi
+	@echo ""
+	@if [ -f .git/hooks/pre-commit ]; then \
+		echo "✅ Pre-commit hook installed"; \
+	else \
+		echo "❌ Pre-commit hook not installed"; \
+		echo "   Run: make install-hooks"; \
+	fi
+
+# Convenience aliases
+dev: validate-dev
+quick: validate-quick
+ci: validate-ci
+prod: validate-prod
+dashboard: coverage-dashboard
+hooks: install-hooks

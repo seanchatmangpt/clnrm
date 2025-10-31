@@ -49,6 +49,9 @@ pub async fn run_cli() -> Result<()> {
             shard,
             digest,
             report_junit,
+            validate,
+            otel_exporter,
+            otel_endpoint,
         } => {
             let config = crate::cli::types::CliConfig {
                 parallel,
@@ -59,6 +62,7 @@ pub async fn run_cli() -> Result<()> {
                 verbose: cli.verbose,
                 force,
                 digest,
+                validate,
             };
 
             // If no paths provided, discover all test files automatically
@@ -69,7 +73,7 @@ pub async fn run_cli() -> Result<()> {
                 vec![PathBuf::from(".")]
             };
 
-            run_tests_with_shard_and_report(&paths_to_run, &config, shard, report_junit.as_deref())
+            run_tests_with_shard_and_report(&paths_to_run, &config, shard, report_junit.as_deref(), &otel_exporter, otel_endpoint.as_deref())
                 .await
         }
 

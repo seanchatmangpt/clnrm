@@ -3,6 +3,7 @@
 //! Handles framework self-testing with comprehensive validation, reporting, and OpenTelemetry export.
 
 use crate::error::{CleanroomError, Result};
+use crate::telemetry::cli_helpers::CliSelfTestSpanBuilder;
 use tracing::{info, span, Level};
 
 use crate::telemetry::{init_otel, Export, OtelConfig, OtelGuard};
@@ -30,9 +31,13 @@ pub async fn run_self_tests(
         None
     };
 
+    // Start CLI telemetry span (always emitted, even if OTEL disabled)
+    let cli_span = CliSelfTestSpanBuilder::new(suite.clone()).start();
+
     // Use tracing instead of println for internal operations
     info!("Starting framework self-tests");
 
+    // Legacy OTEL span for backwards compatibility
     let _root_span = if otel_exporter != "none" {
         span!(
             Level::INFO,
@@ -56,11 +61,21 @@ pub async fn run_self_tests(
                 _root_span.record("error.type", "validation_error");
             }
 
-            return Err(CleanroomError::validation_error(format!(
+            let error = CleanroomError::validation_error(format!(
                 "Invalid test suite '{}'. Valid suites: {}",
                 suite_name,
                 VALID_SUITES.join(", ")
-            )));
+            ));
+
+            cli_span.finish(
+                false,
+                0,
+                0,
+                0,
+                Some(("ValidationError".to_string(), error.to_string())),
+            );
+
+            return Err(error);
         }
     }
 
@@ -72,9 +87,19 @@ pub async fn run_self_tests(
     let test_results = run_framework_tests_by_suite(suite.as_deref())
         .await
         .map_err(|e| {
-            CleanroomError::internal_error("Framework self-tests failed")
+            let error = CleanroomError::internal_error("Framework self-tests failed")
                 .with_context("Failed to execute framework test suite")
-                .with_source(e.to_string())
+                .with_source(e.to_string());
+
+            cli_span.finish(
+                false,
+                0,
+                0,
+                0,
+                Some(("TestExecutionError".to_string(), error.to_string())),
+            );
+
+            error
         })?;
 
     // Display results (CLI output is acceptable for user-facing messages)
@@ -100,6 +125,28 @@ pub async fn run_self_tests(
         }
         _root_span.record("total_tests", test_results.total_tests);
     }
+
+    // Finish CLI span with results
+    let success = test_results.failed_tests == 0;
+    let error_info = if !success {
+        Some((
+            "TestsFailed".to_string(),
+            format!(
+                "{} test(s) failed out of {}",
+                test_results.failed_tests, test_results.total_tests
+            ),
+        ))
+    } else {
+        None
+    };
+
+    cli_span.finish(
+        success,
+        test_results.total_tests as usize,
+        test_results.passed_tests as usize,
+        test_results.failed_tests as usize,
+        error_info,
+    );
 
     // Return proper error with context
     if test_results.failed_tests > 0 {

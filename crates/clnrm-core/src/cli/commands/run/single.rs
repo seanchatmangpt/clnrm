@@ -14,8 +14,12 @@ use tracing::{debug, info, warn};
 use super::{scenario, services};
 
 /// Run a single test file
+///
+/// Returns: Ok(Some(container_id)) on success with container ID for telemetry,
+///          Ok(None) if no container was used,
+///          Err on failure
 #[tracing::instrument(name = "clnrm.test", skip(_config), fields(test.hermetic = true))]
-pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> {
+pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Option<String>> {
     let content = std::fs::read_to_string(path).map_err(|e| {
         CleanroomError::config_error(format!("Failed to read config file: {}", e))
     })?;
@@ -63,6 +67,9 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
                 .with_context("Test execution requires cleanroom environment")
                 .with_source(e.to_string())
         })?;
+
+    // Track first container ID for telemetry (CRITICAL proof attribute)
+    let mut first_container_id: Option<String> = None;
 
     // Load services from config (support both v0.4.x [services] and v1.0 [service] formats)
     let service_handles = if let Some(services) = &test_config.services {
@@ -117,6 +124,11 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
 
             let stdout = &execution_result.stdout;
             let stderr = &execution_result.stderr;
+
+            // Capture container ID for telemetry (first one wins)
+            if first_container_id.is_none() {
+                first_container_id = execution_result.container_id.clone();
+            }
 
             if !stderr.is_empty() {
                 warn!("⚠️  Stderr: {}", stderr.trim());
@@ -184,5 +196,7 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<()> 
 
     info!("🎉 Test '{}' completed successfully!", test_name);
     info!("🎉 Test '{}' completed successfully!", test_name);
-    Ok(())
+
+    // Return container ID for telemetry emission
+    Ok(first_container_id)
 }

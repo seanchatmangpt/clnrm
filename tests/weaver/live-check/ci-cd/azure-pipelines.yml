@@ -1,0 +1,129 @@
+# Azure DevOps Pipeline Integration Example
+# Demonstrates Weaver live-check for Azure Pipelines
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318'
+  OTEL_SERVICE_NAME: 'clnrm-azure'
+
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildJob
+        steps:
+          - task: Bash@3
+            displayName: 'Build application'
+            inputs:
+              targetType: 'inline'
+              script: |
+                cargo build --release --features otel
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: 'target/release/clnrm'
+              artifactName: 'clnrm-binary'
+
+  - stage: Validate
+    dependsOn: Build
+    jobs:
+      - job: WeaverValidation
+        services:
+          otel-collector:
+            image: otel/opentelemetry-collector:latest
+            ports:
+              - 4317:4317
+              - 4318:4318
+
+        steps:
+          - task: DownloadBuildArtifacts@1
+            inputs:
+              buildType: 'current'
+              artifactName: 'clnrm-binary'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: Bash@3
+            displayName: 'Install Weaver'
+            inputs:
+              targetType: 'inline'
+              script: |
+                curl -sSL https://github.com/open-telemetry/weaver/releases/latest/download/weaver-linux-amd64 -o /usr/local/bin/weaver
+                chmod +x /usr/local/bin/weaver
+                weaver --version
+
+          - task: Bash@3
+            displayName: 'Start application with OTLP export'
+            inputs:
+              targetType: 'inline'
+              script: |
+                chmod +x $(System.ArtifactsDirectory)/clnrm-binary/clnrm
+                $(System.ArtifactsDirectory)/clnrm-binary/clnrm self-test --suite otel &
+                echo $! > app.pid
+                sleep 5
+
+          - task: Bash@3
+            displayName: 'Run Weaver live-check'
+            inputs:
+              targetType: 'inline'
+              script: |
+                weaver registry live-check \
+                  --registry registry/ \
+                  --otlp-http http://localhost:4318 \
+                  --timeout 60s \
+                  --output json > $(Build.ArtifactStagingDirectory)/weaver-results.json || true
+
+          - task: Bash@3
+            displayName: 'Analyze validation results'
+            inputs:
+              targetType: 'inline'
+              script: |
+                violations=$(jq -r '.violations | length' $(Build.ArtifactStagingDirectory)/weaver-results.json)
+                errors=$(jq -r '[.violations[] | select(.severity == "error")] | length' $(Build.ArtifactStagingDirectory)/weaver-results.json)
+                warnings=$(jq -r '[.violations[] | select(.severity == "warning")] | length' $(Build.ArtifactStagingDirectory)/weaver-results.json)
+
+                echo "Weaver Validation Results:"
+                echo "  Total violations: ${violations}"
+                echo "  Errors: ${errors}"
+                echo "  Warnings: ${warnings}"
+
+                if [ "${errors}" -gt 0 ]; then
+                  echo "##vso[task.logissue type=error]Schema validation FAILED: ${errors} error(s)"
+                  jq -r '.violations[] | select(.severity == "error")' $(Build.ArtifactStagingDirectory)/weaver-results.json
+                  exit 1
+                fi
+
+                if [ "${warnings}" -gt 0 ]; then
+                  echo "##vso[task.logissue type=warning]${warnings} warning(s) detected"
+                fi
+
+                echo "✅ Schema validation PASSED"
+
+          - task: Bash@3
+            displayName: 'Cleanup'
+            condition: always()
+            inputs:
+              targetType: 'inline'
+              script: |
+                if [ -f app.pid ]; then
+                  kill -SIGTERM $(cat app.pid) || true
+                fi
+
+          - task: PublishBuildArtifacts@1
+            condition: always()
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)/weaver-results.json'
+              artifactName: 'weaver-validation-report'
+
+          - task: PublishTestResults@2
+            condition: always()
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: '$(Build.ArtifactStagingDirectory)/weaver-results.json'
+              testRunTitle: 'Weaver Schema Validation'

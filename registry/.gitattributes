@@ -1,0 +1,8 @@
+# Schema files are code, not data
+*.yaml linguist-language=YAML linguist-detectable=true
+
+# Documentation
+*.md linguist-documentation=true
+
+# Scripts
+*.sh linguist-language=Shell

@@ -1,0 +1,36 @@
+# Docker Compose for Weaver Live-Check Testing
+# Provides OTLP Collector + Weaver validation environment
+
+version: '3.8'
+
+services:
+  # OTLP Collector (receives telemetry)
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+      - "8888:8888"  # Metrics endpoint
+      - "13133:13133" # Health check
+    networks:
+      - weaver-test-net
+
+  # Weaver Live-Check (validation service)
+  weaver-validator:
+    image: ghcr.io/open-telemetry/weaver:latest
+    command: ["registry", "live-check", "--registry", "/registry", "--otlp-http", "http://otel-collector:4318"]
+    volumes:
+      - ../../registry:/registry:ro
+    depends_on:
+      - otel-collector
+    networks:
+      - weaver-test-net
+    ports:
+      - "8080:8080"  # HTTP API for stop endpoint
+
+networks:
+  weaver-test-net:
+    driver: bridge

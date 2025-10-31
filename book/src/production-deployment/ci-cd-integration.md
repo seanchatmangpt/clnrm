@@ -13,9 +13,98 @@ clnrm integrates with major CI/CD platforms:
 
 ## GitHub Actions Integration
 
+### Weaver Validation Gate (v1.2.0 - RECOMMENDED)
+
+**Production-ready workflow with Weaver schema validation:**
+
+```yaml
+# .github/workflows/weaver-validation.yml
+name: Weaver Schema Validation
+
+on: [push, pull_request]
+
+jobs:
+  weaver-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Weaver
+        run: |
+          cd vendors/weaver
+          cargo build --release
+          echo "WEAVER_PATH=$(pwd)/target/release/weaver" >> $GITHUB_ENV
+
+      - name: Validate schemas
+        run: |
+          $WEAVER_PATH registry check --registry registry/
+          if [ $? -ne 0 ]; then
+            echo "❌ Schema validation failed"
+            exit 1
+          fi
+
+      - name: Start Weaver live-check
+        run: |
+          $WEAVER_PATH registry live-check \
+            --registry registry/ \
+            --otlp-grpc-port 4316 \
+            --format json \
+            --output validation_output &
+          echo $! > weaver.pid
+          sleep 5
+
+      - name: Run tests with OTEL
+        run: |
+          OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4316 \
+          cargo test --features otel --test docker_integration
+
+      - name: Stop Weaver and validate results
+        run: |
+          kill -SIGHUP $(cat weaver.pid)
+          wait $(cat weaver.pid) || true
+
+          # Check for violations
+          violations=$(cat validation_output/live_check.json | \
+            jq -r '.statistics.advice_level_counts.violation // 0')
+
+          if [ "$violations" -gt 0 ]; then
+            echo "❌ Weaver validation FAILED: $violations violations"
+            cat validation_output/live_check.json | jq '.advices'
+            exit 1
+          fi
+
+          # Check coverage
+          coverage=$(cat validation_output/live_check.json | \
+            jq -r '.statistics.registry_coverage')
+
+          if (( $(echo "$coverage < 80.0" | bc -l) )); then
+            echo "❌ Coverage $coverage% < 80%"
+            exit 1
+          fi
+
+          echo "✅ Weaver validation PASSED"
+          echo "📊 Schema coverage: $coverage%"
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: weaver-validation-report
+          path: validation_output/
+```
+
+**Why this workflow matters:**
+- ✅ Detects false positives (tests pass, features broken)
+- ✅ Requires 80%+ schema coverage to merge
+- ✅ Validates actual runtime telemetry
+- ✅ Prevents shipping broken code
+
 ### Basic GitHub Actions Workflow
 
-Simple workflow for running clnrm tests:
+Simple workflow for running clnrm tests (v1.0.x style):
 
 ```yaml
 # .github/workflows/clnrm-tests.yml

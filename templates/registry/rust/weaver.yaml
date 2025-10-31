@@ -1,0 +1,35 @@
+# Weaver Template Configuration for Rust Code Generation
+# Generates type-safe telemetry builders from semantic convention schemas
+
+templates:
+  - pattern: "spans.rs.j2"
+    filter: "semconv_grouped_spans"
+    application_mode: single
+    file_name: "generated/spans.rs"
+
+  - pattern: "metrics.rs.j2"
+    filter: "semconv_grouped_metrics"
+    application_mode: single
+    file_name: "generated/metrics.rs"
+
+  - pattern: "mocks.rs.j2"
+    filter: "semconv_grouped_spans"
+    application_mode: single
+    file_name: "generated/mocks.rs"
+
+  - pattern: "events.rs.j2"
+    filter: "semconv_grouped_events"
+    application_mode: single
+    file_name: "generated/events.rs"
+
+# Whitespace control settings
+whitespace_control: "-"
+
+# Comment style
+comment_format: "//"
+
+# Output configuration
+output:
+  rust:
+    indent: 4
+    max_line_length: 100

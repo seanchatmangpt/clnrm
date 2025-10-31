@@ -1,0 +1,236 @@
+groups:
+- id: metric.clnrm.test.duration
+  type: metric
+  metric_name: clnrm.test.duration
+  brief: Histogram of test execution durations
+  instrument: histogram
+  unit: ms
+  note: 'Tracks distribution of test execution times.
+
+
+    VALIDATION USE:
+
+    - P50/P95/P99 prove consistent performance
+
+    - Outliers indicate flaky tests or resource issues
+
+    - Zero values indicate stub implementations
+
+    '
+  attributes:
+  - id: test.suite
+    type: string
+    brief: Test suite name
+    requirement_level: required
+    examples:
+    - integration
+    - unit
+    - otel_validation
+    stability: stable
+  - id: test.result
+    type: string
+    brief: Test result (pass/fail/error)
+    requirement_level: required
+    examples:
+    - pass
+    - fail
+    - error
+    stability: stable
+  - id: container.image
+    type: string
+    brief: Container image used
+    requirement_level: recommended
+    examples:
+    - alpine:latest
+    - postgres:15
+    stability: stable
+  stability: stable
+- id: metric.clnrm.test.count
+  type: metric
+  metric_name: clnrm.test.count
+  brief: Counter of tests executed
+  instrument: counter
+  unit: '{test}'
+  note: 'Counts total tests executed with result breakdown.
+
+
+    VALIDATION USE:
+
+    - pass_rate = pass / (pass + fail + error)
+
+    - Must track all three states to prove real execution
+
+    '
+  attributes:
+  - id: test.suite
+    type: string
+    brief: Test suite name
+    requirement_level: required
+    examples:
+    - integration
+    - unit
+    stability: stable
+  - id: test.result
+    type: string
+    brief: Test result
+    requirement_level: required
+    examples:
+    - pass
+    - fail
+    - error
+    stability: stable
+  stability: stable
+- id: metric.clnrm.container.count
+  type: metric
+  metric_name: clnrm.container.count
+  brief: Counter of containers created
+  instrument: counter
+  unit: '{container}'
+  note: 'Counts containers created by state.
+
+
+    VALIDATION USE:
+
+    - destroyed count MUST equal created count
+
+    - running count MUST be 0 after test suite completes
+
+    - Leaks show up as created > destroyed
+
+    '
+  attributes:
+  - id: container.state
+    type: string
+    brief: Container state
+    requirement_level: required
+    examples:
+    - created
+    - running
+    - destroyed
+    - error
+    stability: stable
+  - id: container.image
+    type: string
+    brief: Container image
+    requirement_level: required
+    examples:
+    - alpine:latest
+    - postgres:15
+    stability: stable
+  stability: stable
+- id: metric.clnrm.container.lifetime
+  type: metric
+  metric_name: clnrm.container.lifetime
+  brief: Histogram of container lifetime durations
+  instrument: histogram
+  unit: ms
+  note: 'Tracks how long containers exist from creation to destruction.
+
+
+    VALIDATION USE:
+
+    - Long lifetimes indicate leaks
+
+    - Very short lifetimes indicate startup failures
+
+    - Distribution should match test.duration distribution
+
+    '
+  attributes:
+  - id: container.image
+    type: string
+    brief: Container image
+    requirement_level: required
+    examples:
+    - alpine:latest
+    - postgres:15
+    stability: stable
+  - id: cleanup.success
+    type: boolean
+    brief: Whether cleanup succeeded
+    requirement_level: required
+    examples:
+    - true
+    - false
+    stability: stable
+  stability: stable
+- id: metric.clnrm.plugin.operations
+  type: metric
+  metric_name: clnrm.plugin.operations
+  brief: Counter of plugin operations by state
+  instrument: counter
+  unit: '{operation}'
+  note: 'Counts plugin operations (start, stop, health_check).
+
+
+    VALIDATION USE:
+
+    - start count should equal stop count
+
+    - health_check count proves health checking works
+
+    - errors indicate plugin reliability issues
+
+    '
+  attributes:
+  - id: plugin.name
+    type: string
+    brief: Plugin name
+    requirement_level: required
+    examples:
+    - postgres
+    - redis
+    - generic
+    stability: stable
+  - id: operation
+    type: string
+    brief: Operation performed
+    requirement_level: required
+    examples:
+    - start
+    - stop
+    - health_check
+    stability: stable
+  - id: operation.result
+    type: string
+    brief: Operation result
+    requirement_level: required
+    examples:
+    - success
+    - failure
+    - timeout
+    stability: stable
+  stability: stable
+- id: metric.clnrm.isolation.score
+  type: metric
+  metric_name: clnrm.isolation.score
+  brief: Gauge measuring isolation quality (0.0 to 1.0)
+  instrument: gauge
+  unit: '1'
+  note: 'Measures quality of test isolation.
+
+
+    CALCULATION:
+
+    - 1.0 = Perfect isolation (all tests in separate containers)
+
+    - 0.0 = No isolation (shared state detected)
+
+
+    VALIDATION USE:
+
+    - Must be 1.0 for clnrm tests
+
+    - Lower values indicate isolation violations
+
+    '
+  attributes:
+  - id: test.suite
+    type: string
+    brief: Test suite being measured
+    requirement_level: required
+    examples:
+    - integration
+    - unit
+    stability: stable
+  stability: stable

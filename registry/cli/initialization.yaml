@@ -1,0 +1,144 @@
+groups:
+- id: span.clnrm.cli.init
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents project initialization via 'clnrm init' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - config.path MUST exist as a file after span completes
+    - config.generated = true proves .clnrm.toml was created
+    - operation.duration_ms > 0 proves actual I/O occurred
+    - Cannot be faked - file creation requires real filesystem writes
+
+    This span proves that clnrm successfully initialized a project
+    by creating the required configuration structure.
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["init"]
+    note: Links this span to the CLI invocation
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: project.path
+    type: string
+    stability: stable
+    brief: Absolute path to the initialized project directory
+    requirement_level: required
+    note: Proves target location where initialization occurred
+    examples:
+    - /home/user/my-project
+    - /workspace/test-project
+
+  - id: project.exists_before
+    type: boolean
+    stability: stable
+    brief: Whether the project directory existed before initialization
+    requirement_level: required
+    note: Detects reinitialization scenarios
+    examples:
+    - true
+    - false
+
+  - id: config.generated
+    type: boolean
+    stability: stable
+    brief: Whether .clnrm.toml configuration file was created
+    requirement_level: required
+    note: CRITICAL PROOF - Must be true to prove config creation
+    examples:
+    - true
+
+  - id: config.path
+    type: string
+    stability: stable
+    brief: Absolute path to the generated configuration file
+    requirement_level: required
+    note: Cannot exist without actual file write operation
+    examples:
+    - /home/user/my-project/.clnrm.toml
+    - /workspace/test-project/.clnrm.toml
+
+  - id: force.used
+    type: boolean
+    stability: stable
+    brief: Whether --force flag was used to overwrite existing configuration
+    requirement_level: required
+    note: Tracks potentially destructive operations
+    examples:
+    - true
+    - false
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of initialization operation in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual execution occurred
+    examples:
+    - 125.5
+    - 45.2
+    - 230.8
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether initialization completed successfully
+    requirement_level: required
+    note: Final result - must be set to prove completion
+    examples:
+    - true
+    - false
+
+  - id: files.created
+    type: int
+    stability: stable
+    brief: Number of files created during initialization
+    requirement_level: recommended
+    note: Measures initialization scope (config, examples, templates, etc.)
+    examples:
+    - 1
+    - 5
+    - 10
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if initialization failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - FileSystemError
+    - PermissionDenied
+    - ConfigAlreadyExists
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if initialization failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Config file already exists at /path/.clnrm.toml (use --force to overwrite)
+    - Permission denied when creating directory
+
+  - id: exit.code
+    type: int
+    stability: stable
+    brief: Process exit code
+    requirement_level: recommended
+    note: Non-zero indicates failure
+    examples:
+    - 0
+    - 1
+    - 2

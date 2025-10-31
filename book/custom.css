@@ -1,0 +1,30 @@
+/* Custom CSS for clnrm Advanced Users Guide */
+
+/* Code blocks */
+.hljs {
+    overflow-x: auto;
+}
+
+/* Warning callouts */
+.warning {
+    border-left: 4px solid #ff9800;
+    padding: 1em;
+    margin: 1em 0;
+    background-color: #fff3e0;
+}
+
+/* Success callouts */
+.success {
+    border-left: 4px solid #4caf50;
+    padding: 1em;
+    margin: 1em 0;
+    background-color: #e8f5e9;
+}
+
+/* Note callouts */
+.note {
+    border-left: 4px solid #2196f3;
+    padding: 1em;
+    margin: 1em 0;
+    background-color: #e3f2fd;
+}

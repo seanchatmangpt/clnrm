@@ -1,0 +1,58 @@
+[
+  {
+    "span": {
+      "name": "clnrm.test_execution",
+      "kind": "internal"
+    },
+    "attributes": [
+      {
+        "name": "test.name",
+        "value": "test_long_strings",
+        "type": "string"
+      },
+      {
+        "name": "test.suite",
+        "value": "integration_tests",
+        "type": "string"
+      },
+      {
+        "name": "test.isolated",
+        "value": true,
+        "type": "boolean"
+      },
+      {
+        "name": "test.result",
+        "value": "error",
+        "type": "string"
+      },
+      {
+        "name": "test.duration_ms",
+        "value": 125.5,
+        "type": "double"
+      },
+      {
+        "name": "container.id",
+        "value": "550e8400-e29b-41d4-a716-446655440000",
+        "type": "string"
+      },
+      {
+        "name": "container.image.name",
+        "value": "alpine:latest",
+        "type": "string"
+      },
+      {
+        "name": "error.message",
+        "value": "This is an extremely long error message that exceeds 256 characters and should trigger a custom policy violation because it contains way too much information that should probably be stored in a separate log entry rather than as a span attribute which has size limitations and performance implications when querying and storing such large values in distributed tracing systems which need to process millions of spans per second.",
+        "type": "string"
+      },
+      {
+        "name": "test.cleanup_performed",
+        "value": true,
+        "type": "boolean"
+      }
+    ],
+    "resource_attributes": {
+      "service.name": "clnrm"
+    }
+  }
+]

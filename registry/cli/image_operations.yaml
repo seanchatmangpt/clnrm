@@ -1,0 +1,261 @@
+groups:
+- id: span.clnrm.cli.pull
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents Docker image pre-pulling via 'clnrm pull' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - images.pulled + images.failed + images.skipped MUST equal images.discovered
+    - operation.duration_ms > 0 proves actual pull operations occurred
+    - Child spans (clnrm.cli.pull.image) prove per-image operations
+    - parallel.jobs proves concurrent execution (when parallel.enabled = true)
+
+    This span proves that clnrm successfully pre-pulled Docker images
+    from test configurations to avoid pull delays during test execution.
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["pull"]
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: images.discovered
+    type: int
+    stability: stable
+    brief: Number of unique images found in test configurations
+    requirement_level: required
+    note: VALIDATION - images.pulled + images.failed + images.skipped should equal this
+    examples:
+    - 5
+    - 10
+    - 25
+
+  - id: images.pulled
+    type: int
+    stability: stable
+    brief: Number of images successfully pulled
+    requirement_level: required
+    note: PROOF - Images actually downloaded from registry
+    examples:
+    - 5
+    - 8
+    - 20
+
+  - id: images.failed
+    type: int
+    stability: stable
+    brief: Number of images that failed to pull
+    requirement_level: required
+    examples:
+    - 0
+    - 2
+    - 3
+
+  - id: images.skipped
+    type: int
+    stability: stable
+    brief: Number of images skipped (already present locally)
+    requirement_level: recommended
+    examples:
+    - 0
+    - 5
+    - 10
+
+  - id: parallel.enabled
+    type: boolean
+    stability: stable
+    brief: Whether --parallel flag was used for concurrent pulls
+    requirement_level: required
+    examples:
+    - true
+    - false
+
+  - id: parallel.jobs
+    type: int
+    stability: stable
+    brief: Number of parallel pull workers
+    requirement_level:
+      conditionally_required: Only when parallel.enabled is true
+    note: PROOF - Proves concurrent execution configuration
+    examples:
+    - 4
+    - 8
+    - 16
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Total duration of all pull operations in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual pulls occurred
+    examples:
+    - 15250.5
+    - 45000.8
+    - 120000.2
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether pull operation completed successfully overall
+    requirement_level: required
+    note: Can be true even if some individual pulls failed
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if operation failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - RegistryConnectionError
+    - AuthenticationFailed
+    - AllPullsFailed
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if operation failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Failed to connect to Docker registry
+
+- id: span.clnrm.cli.pull.image
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents individual Docker image pull operation (child of clnrm.cli.pull)
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - image.digest proves actual image download (SHA256 hash)
+    - pull.duration_ms > 0 proves actual pull occurred
+    - image.size_bytes > 0 proves image was downloaded
+    - image.layers proves layer-by-layer pull tracking
+
+    This span proves that clnrm successfully pulled a specific Docker image
+    including verification of digest, size, and layer count.
+
+  attributes:
+  - id: image.name
+    type: string
+    stability: stable
+    brief: Full Docker image name
+    requirement_level: required
+    examples:
+    - alpine:latest
+    - postgres:15
+    - redis:7.0-alpine
+
+  - id: image.registry
+    type: string
+    stability: stable
+    brief: Registry hostname
+    requirement_level: recommended
+    examples:
+    - docker.io
+    - gcr.io
+    - ghcr.io
+
+  - id: image.repository
+    type: string
+    stability: stable
+    brief: Repository name
+    requirement_level: required
+    examples:
+    - library/alpine
+    - postgres
+    - redis
+
+  - id: image.tag
+    type: string
+    stability: stable
+    brief: Image tag
+    requirement_level: required
+    examples:
+    - latest
+    - "15.2"
+    - 7.0-alpine
+
+  - id: image.digest
+    type: string
+    stability: stable
+    brief: SHA256 digest of the pulled image
+    requirement_level: recommended
+    note: PROOF - Cannot exist without actual pull and verification
+    examples:
+    - sha256:9c6f0724472873bb50a2ae67a9e7adcb57673a183cea8b06eb778dca859181b5
+    - sha256:5d41402abc4b2a76b9719d911017c592
+
+  - id: image.size_bytes
+    type: int
+    stability: stable
+    brief: Total size of the image in bytes
+    requirement_level: recommended
+    note: PROOF - Must be > 0 if image was actually pulled
+    examples:
+    - 5242880
+    - 314572800
+    - 1073741824
+
+  - id: image.layers
+    type: int
+    stability: stable
+    brief: Number of layers in the image
+    requirement_level: recommended
+    examples:
+    - 3
+    - 8
+    - 15
+
+  - id: pull.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of this image pull in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual pull occurred
+    examples:
+    - 3250.5
+    - 12450.8
+    - 45000.2
+
+  - id: pull.success
+    type: boolean
+    stability: stable
+    brief: Whether this image pull succeeded
+    requirement_level: required
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if pull failed
+    requirement_level:
+      conditionally_required: Only when pull.success is false
+    examples:
+    - ImageNotFound
+    - RegistryTimeout
+    - DigestMismatch
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if pull failed
+    requirement_level:
+      conditionally_required: Only when pull.success is false
+    examples:
+    - Image not found in registry - alpine:invalid-tag

@@ -1,0 +1,416 @@
+groups:
+- id: span.clnrm.cli.fmt
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents template formatting via 'clnrm fmt' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - files.formatted + files.unchanged + files.errors MUST equal files.input.length
+    - operation.duration_ms > 0 proves actual formatting occurred
+    - idempotency.verified = true proves re-formatting produces same result
+    - Cannot be faked - file modifications require real I/O
+
+    This span proves that clnrm successfully formatted template files
+    and optionally verified idempotency (re-formatting produces same output).
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["fmt"]
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: files.input_count
+    type: int
+    stability: stable
+    brief: Number of input files to format
+    requirement_level: required
+    note: VALIDATION - files.formatted + files.unchanged + files.errors should equal this
+    examples:
+    - 5
+    - 10
+    - 25
+
+  - id: files.formatted
+    type: int
+    stability: stable
+    brief: Number of files that were actually formatted (modified)
+    requirement_level: required
+    note: Proves files were changed
+    examples:
+    - 3
+    - 8
+    - 15
+
+  - id: files.unchanged
+    type: int
+    stability: stable
+    brief: Number of files already correctly formatted
+    requirement_level: required
+    note: Files that didn't need changes
+    examples:
+    - 2
+    - 5
+    - 10
+
+  - id: files.errors
+    type: int
+    stability: stable
+    brief: Number of files with formatting errors
+    requirement_level: required
+    note: Files that failed to format
+    examples:
+    - 0
+    - 1
+    - 2
+
+  - id: check_mode.enabled
+    type: boolean
+    stability: stable
+    brief: Whether --check flag was used (check-only mode, no writes)
+    requirement_level: required
+    examples:
+    - true
+    - false
+
+  - id: verify_mode.enabled
+    type: boolean
+    stability: stable
+    brief: Whether --verify flag was used (idempotency check)
+    requirement_level: required
+    examples:
+    - true
+    - false
+
+  - id: idempotency.verified
+    type: boolean
+    stability: stable
+    brief: Result of idempotency check (re-formatting produces same output)
+    requirement_level: recommended
+    note: Only set when verify_mode.enabled = true
+    examples:
+    - true
+    - false
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of formatting operation in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual formatting occurred
+    examples:
+    - 125.5
+    - 340.2
+    - 55.8
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether formatting completed successfully
+    requirement_level: required
+    note: Can be true even if some files had errors
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if operation failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - FileNotFound
+    - SyntaxError
+    - PermissionDenied
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if operation failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Failed to parse template file at /path/template.tera
+
+- id: span.clnrm.cli.render
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents Tera template rendering via 'clnrm render' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - template.exists MUST be true (proves template file found)
+    - variables.count proves variable parsing occurred
+    - output.size_bytes > 0 proves actual rendering (when not show-vars mode)
+    - operation.duration_ms > 0 proves actual work occurred
+
+    This span proves that clnrm successfully rendered a Tera template
+    with provided variables and produced output.
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["render"]
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: template.path
+    type: string
+    stability: stable
+    brief: Path to the template file being rendered
+    requirement_level: required
+    examples:
+    - /workspace/templates/api.tera
+    - ./templates/config.toml.tera
+
+  - id: template.exists
+    type: boolean
+    stability: stable
+    brief: Whether template file exists at specified path
+    requirement_level: required
+    note: PROOF - Must be true for rendering to succeed
+    examples:
+    - true
+    - false
+
+  - id: variables.count
+    type: int
+    stability: stable
+    brief: Number of variables provided for rendering
+    requirement_level: required
+    note: Proves variable parsing occurred
+    examples:
+    - 5
+    - 10
+    - 25
+
+  - id: variables.used
+    type: int
+    stability: stable
+    brief: Number of variables actually used in the template
+    requirement_level: recommended
+    note: Helps detect unused variables
+    examples:
+    - 5
+    - 8
+    - 20
+
+  - id: output.path
+    type: string
+    stability: stable
+    brief: Path to output file (if not stdout)
+    requirement_level: recommended
+    examples:
+    - /output/rendered.txt
+    - ./generated/config.toml
+
+  - id: output.size_bytes
+    type: int
+    stability: stable
+    brief: Size of rendered output in bytes
+    requirement_level: recommended
+    note: PROOF - Must be > 0 if rendering produced output
+    examples:
+    - 1024
+    - 5120
+    - 102400
+
+  - id: show_vars.enabled
+    type: boolean
+    stability: stable
+    brief: Whether --show-vars flag was used (list variables instead of rendering)
+    requirement_level: required
+    examples:
+    - true
+    - false
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of rendering operation in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual rendering occurred
+    examples:
+    - 45.3
+    - 125.7
+    - 230.5
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether rendering completed successfully
+    requirement_level: required
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if rendering failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - TemplateNotFound
+    - RenderError
+    - VariableMissing
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if rendering failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Template variable 'api_key' is undefined
+
+- id: span.clnrm.cli.record
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents baseline recording via 'clnrm record' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - tests.recorded <= tests.discovered (cannot record more than found)
+    - baseline.path MUST exist as a file after span completes
+    - baseline.digest proves actual baseline content (SHA-256 hash)
+    - telemetry.spans_captured > 0 proves actual OTEL capture
+
+    This span proves that clnrm successfully executed tests and captured
+    their telemetry output as a baseline for reproducibility validation.
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["record"]
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: tests.discovered
+    type: int
+    stability: stable
+    brief: Number of tests discovered to record
+    requirement_level: required
+    note: Total tests found in test suite
+    examples:
+    - 10
+    - 25
+    - 50
+
+  - id: tests.recorded
+    type: int
+    stability: stable
+    brief: Number of tests successfully recorded
+    requirement_level: required
+    note: VALIDATION - Must be <= tests.discovered
+    examples:
+    - 10
+    - 23
+    - 48
+
+  - id: baseline.path
+    type: string
+    stability: stable
+    brief: Path to the baseline file created
+    requirement_level: required
+    note: PROOF - File must exist after recording completes
+    examples:
+    - /workspace/.clnrm/baselines/test_suite.baseline.json
+    - ./baselines/integration_tests.json
+
+  - id: baseline.digest
+    type: string
+    stability: stable
+    brief: SHA-256 digest of the baseline file
+    requirement_level: required
+    note: PROOF - Cannot be faked without actual file content
+    examples:
+    - 5d41402abc4b2a76b9719d911017c592
+    - e99a18c428cb38d5f260853678922e03
+
+  - id: telemetry.spans_captured
+    type: int
+    stability: stable
+    brief: Number of OTEL spans captured in baseline
+    requirement_level: recommended
+    note: PROOF - Must be > 0 if telemetry capture worked
+    examples:
+    - 150
+    - 500
+    - 1200
+
+  - id: telemetry.size_bytes
+    type: int
+    stability: stable
+    brief: Size of baseline file in bytes
+    requirement_level: recommended
+    examples:
+    - 10240
+    - 51200
+    - 204800
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of recording operation in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual recording occurred
+    examples:
+    - 5230.5
+    - 12450.8
+    - 25000.2
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether recording completed successfully
+    requirement_level: required
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if recording failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - TestExecutionFailed
+    - TelemetryCaptureError
+    - FileWriteError
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if recording failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Failed to capture telemetry - OTEL collector not running

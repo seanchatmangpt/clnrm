@@ -1,0 +1,179 @@
+groups:
+- id: span.clnrm.container_lifecycle
+  type: span
+  brief: Tracks complete lifecycle of a test container from creation to destruction
+  note: 'This span proves the core promise of clnrm: hermetic container isolation.
+
+
+    VALIDATION STRATEGY:
+
+    - container.created_at proves creation happened
+
+    - container.destroyed_at proves cleanup happened
+
+    - container.state transitions prove lifecycle management
+
+    - Duration proves containers didn''t leak
+
+
+    Containers that aren''t cleaned up will show missing destroyed_at timestamps.
+
+    This catches resource leaks that test assertions miss.
+
+    '
+  attributes:
+  - id: container.id
+    type: string
+    brief: Unique container identifier
+    requirement_level: required
+    note: 'PRIMARY KEY for container tracking.
+
+      Must match container.id in test_execution spans.
+
+      '
+    examples:
+    - 550e8400-e29b-41d4-a716-446655440000
+    stability: stable
+  - id: container.image
+    type: string
+    brief: Full image name including registry and tag
+    requirement_level: required
+    examples:
+    - docker.io/library/alpine:latest
+    - postgres:15.2
+    - redis:7.0-alpine
+    stability: stable
+  - id: container.name
+    type: string
+    brief: Human-readable container name
+    requirement_level: recommended
+    examples:
+    - test_postgres_1234
+    - clnrm_redis_worker
+    stability: stable
+  - id: container.state
+    type:
+      allow_custom_values: false
+      members:
+      - id: creating
+        value: creating
+        brief: Container is being created
+        stability: stable
+      - id: running
+        value: running
+        brief: Container is running
+        stability: stable
+      - id: stopped
+        value: stopped
+        brief: Container stopped gracefully
+        stability: stable
+      - id: error
+        value: error
+        brief: Container encountered an error
+        stability: stable
+      - id: destroyed
+        value: destroyed
+        brief: Container was destroyed and cleaned up
+        stability: stable
+    brief: Current state of the container
+    requirement_level: required
+    note: Final state MUST be 'destroyed' for proper cleanup
+    stability: stable
+  - id: container.created_at
+    type: string
+    brief: ISO 8601 timestamp when container was created
+    requirement_level: required
+    note: Proves container actually started
+    examples:
+    - '2025-10-30T14:23:45.123Z'
+    stability: stable
+  - id: container.started_at
+    type: string
+    brief: ISO 8601 timestamp when container started running
+    requirement_level: required
+    note: Time between created_at and started_at measures startup performance
+    examples:
+    - '2025-10-30T14:23:46.456Z'
+    stability: stable
+  - id: container.destroyed_at
+    type: string
+    brief: ISO 8601 timestamp when container was destroyed
+    requirement_level: required
+    note: 'CRITICAL: Missing timestamp indicates resource leak.
+
+      Duration = destroyed_at - created_at proves full lifecycle completed.
+
+      '
+    examples:
+    - '2025-10-30T14:25:12.789Z'
+    stability: stable
+  - id: container.exit_code
+    type: int
+    brief: Container exit code
+    requirement_level: recommended
+    examples:
+    - 0
+    - 1
+    - 137
+    stability: stable
+  - id: container.runtime
+    type: string
+    brief: Container runtime used (docker, podman, etc)
+    requirement_level: recommended
+    examples:
+    - docker
+    - podman
+    - containerd
+    stability: stable
+  - id: container.backend
+    type: string
+    brief: Backend implementation used
+    requirement_level: required
+    examples:
+    - testcontainers
+    - bollard
+    - docker_api
+    stability: stable
+  - id: container.network.mode
+    type: string
+    brief: Network mode for container
+    requirement_level: recommended
+    examples:
+    - bridge
+    - host
+    - none
+    stability: stable
+  - id: container.ports
+    type: string[]
+    brief: Exposed ports mapping
+    requirement_level: recommended
+    examples:
+    - ["5432:5432", "6379:6379"]
+    - ["8080:8080"]
+    stability: stable
+  - id: container.volumes
+    type: string[]
+    brief: Volume mounts
+    requirement_level: recommended
+    examples:
+    - ["/tmp/data:/data", "/var/run/docker.sock:/var/run/docker.sock"]
+    - ["/data:/mnt/data"]
+    stability: stable
+  - id: cleanup.success
+    type: boolean
+    brief: Whether cleanup completed successfully
+    requirement_level: required
+    note: Must be true - false indicates resource leak
+    examples:
+    - true
+    stability: stable
+  - id: cleanup.orphaned_resources
+    type: int
+    brief: Number of resources that failed to clean up
+    requirement_level: recommended
+    note: Must be 0 for successful tests
+    examples:
+    - 0
+    stability: stable
+  stability: stable
+  span_kind: internal

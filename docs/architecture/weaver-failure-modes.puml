@@ -1,0 +1,480 @@
+@startuml Weaver Failure Modes and Recovery
+
+!define NORMAL_COLOR #2ECC71
+!define WARNING_COLOR #F39C12
+!define ERROR_COLOR #E74C3C
+!define RECOVERY_COLOR #3498DB
+
+title Weaver Live Check - Failure Modes and Recovery Strategies
+
+' ==================== NORMAL OPERATION ====================
+state "Normal Operation" as Normal #NORMAL_COLOR {
+    state "Weaver\nListening\n:4317" as Listening
+    state "Tests\nExporting\nOTLP" as Exporting
+    state "Advisors\nValidating" as Validating
+    state "Report\nGenerated" as Reporting
+
+    [*] --> Listening
+    Listening --> Exporting : Telemetry\narrives
+    Exporting --> Validating : Stream
+    Validating --> Reporting : All data\nprocessed
+    Reporting --> [*] : Exit 0/1
+}
+
+' ==================== FAILURE MODE 1 ====================
+state "Failure Mode 1:\nWeaver Not Started" as F1 #ERROR_COLOR {
+    state "Tests Run" as TestsRun
+    state "OTLP Export\nAttempts" as ExportAttempt
+    state "Connection\nRefused" as ConnRefused
+    state "Telemetry Lost" as Lost
+
+    [*] --> TestsRun
+    TestsRun --> ExportAttempt
+    ExportAttempt --> ConnRefused : No listener\non :4317
+    ConnRefused --> Lost : Export fails
+
+    note right of Lost
+        **Symptom:**
+        ```
+        Error: Connection refused (os error 61)
+        ```
+
+        **Cause:**
+        Weaver not started before tests
+
+        **Detection:**
+        - Tests log OTLP export errors
+        - No live_check.json generated
+        - No telemetry validated
+
+        **Impact:**
+        Tests pass but NO validation!
+        FALSE POSITIVES UNDETECTED!
+    end note
+}
+
+state "Recovery 1:\nPre-flight Check" as R1 #RECOVERY_COLOR {
+    note right
+        **Prevention:**
+        ```bash
+        # In CI/CD or validation script
+        weaver registry live-check &
+        WEAVER_PID=$!
+        sleep 3  # Wait for startup
+
+        # Verify Weaver is listening
+        if ! lsof -i :4317 > /dev/null; then
+            echo "❌ Weaver not listening"
+            kill $WEAVER_PID
+            exit 1
+        fi
+
+        # Now run tests
+        cargo test --features otel
+        ```
+
+        **Alternative: Health Check**
+        ```bash
+        until curl -f http://localhost:8080/health; do
+            sleep 1
+        done
+        ```
+    end note
+}
+
+' ==================== FAILURE MODE 2 ====================
+state "Failure Mode 2:\nTests Export to STDOUT" as F2 #ERROR_COLOR {
+    state "Tests Use\nStdoutNdjson" as Stdout
+    state "No Network\nExport" as NoNetwork
+    state "Weaver Receives\nNothing" as NoData
+    state "0% Coverage" as ZeroCoverage
+
+    [*] --> Stdout
+    Stdout --> NoNetwork : Export config\nwrong
+    NoNetwork --> NoData
+    NoData --> ZeroCoverage : Report shows\nzero samples
+
+    note right of ZeroCoverage
+        **Symptom:**
+        ```json
+        {
+          "samples": [],
+          "statistics": {
+            "registry_coverage": 0.0,
+            "seen_registry_attributes": {
+              "container.id": 0,
+              ...
+            }
+          }
+        }
+        ```
+
+        **Cause:**
+        ```rust
+        // WRONG:
+        export: Export::StdoutNdjson
+
+        // RIGHT:
+        export: Export::OtlpGrpc {
+            endpoint: "http://localhost:4317"
+        }
+        ```
+
+        **Impact:**
+        No validation occurs!
+        Same as Failure Mode 1!
+    end note
+}
+
+state "Recovery 2:\nEnvironment Variable" as R2 #RECOVERY_COLOR {
+    note right
+        **Solution:**
+        ```rust
+        fn init_test_otel() -> Result<OtelGuard> {
+            let export = if let Ok(endpoint) =
+                std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+            {
+                Export::OtlpGrpc {
+                    endpoint: Box::leak(endpoint.into_boxed_str())
+                }
+            } else {
+                Export::StdoutNdjson  // Local dev fallback
+            };
+
+            OtelConfig { export, ... }
+        }
+        ```
+
+        **Verification:**
+        ```bash
+        # Check report has data
+        SAMPLES=$(jq '.samples | length' \
+                  validation_output/live_check.json)
+
+        if [ "$SAMPLES" -eq 0 ]; then
+            echo "❌ No telemetry received"
+            echo "Check: Tests using OtlpGrpc export?"
+            exit 1
+        fi
+        ```
+    end note
+}
+
+' ==================== FAILURE MODE 3 ====================
+state "Failure Mode 3:\nDocker Not Running" as F3 #WARNING_COLOR {
+    state "Container Tests\nAttempt to Run" as ContainerTest
+    state "Docker Daemon\nUnavailable" as NoDaemon
+    state "Tests Fail" as TestFail
+
+    [*] --> ContainerTest
+    ContainerTest --> NoDaemon : Cannot connect\nto socket
+    NoDaemon --> TestFail
+
+    note right of TestFail
+        **Symptom:**
+        ```
+        Cannot connect to the Docker daemon at
+        unix:///var/run/docker.sock.
+        Is the docker daemon running?
+        ```
+
+        **Cause:**
+        Docker Desktop not started
+
+        **Impact:**
+        - Container tests fail (expected)
+        - No container.id telemetry
+        - Weaver reports missing attributes
+        - But this is CORRECT behavior!
+
+        **Note:**
+        This is actually working as designed.
+        Weaver detects missing container.id.
+    end note
+}
+
+state "Recovery 3:\nDocker Check" as R3 #RECOVERY_COLOR {
+    note right
+        **Pre-flight Check:**
+        ```bash
+        # Verify Docker is running
+        if ! docker ps > /dev/null 2>&1; then
+            echo "❌ Docker daemon not running"
+            echo "Start Docker Desktop first"
+            exit 1
+        fi
+
+        # Optionally: Start Docker automatically
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            open -a "Docker"
+            echo "Waiting for Docker..."
+            until docker ps > /dev/null 2>&1; do
+                sleep 2
+            done
+        fi
+        ```
+    end note
+}
+
+' ==================== FAILURE MODE 4 ====================
+state "Failure Mode 4:\nPort Already in Use" as F4 #ERROR_COLOR {
+    state "Weaver Start\nAttempt" as StartAttempt
+    state "Port 4317\nAlready Bound" as PortBound
+    state "Weaver Fails\nto Start" as WeaverFail
+
+    [*] --> StartAttempt
+    StartAttempt --> PortBound : Another process\nusing :4317
+    PortBound --> WeaverFail
+
+    note right of WeaverFail
+        **Symptom:**
+        ```
+        Error: Address already in use (os error 48)
+        ```
+
+        **Cause:**
+        - Previous Weaver not stopped
+        - Another OTLP collector running
+        - Tests using wrong port
+
+        **Detection:**
+        ```bash
+        lsof -i :4317
+        # Shows existing process
+        ```
+    end note
+}
+
+state "Recovery 4:\nPort Check and Kill" as R4 #RECOVERY_COLOR {
+    note right
+        **Pre-flight Check:**
+        ```bash
+        # Check if port is in use
+        if lsof -i :4317 > /dev/null; then
+            echo "⚠️  Port 4317 in use"
+
+            # Try to stop gracefully
+            EXISTING_PID=$(lsof -t -i :4317)
+            if [ -n "$EXISTING_PID" ]; then
+                echo "Stopping process $EXISTING_PID"
+                kill -HUP $EXISTING_PID
+                sleep 2
+            fi
+
+            # Force kill if needed
+            if lsof -i :4317 > /dev/null; then
+                echo "Force killing..."
+                kill -9 $EXISTING_PID
+            fi
+        fi
+
+        # Now start Weaver
+        weaver registry live-check --otlp-grpc-port 4317
+        ```
+
+        **Alternative: Use Different Port**
+        ```bash
+        weaver registry live-check --otlp-grpc-port 14317
+
+        # And configure tests:
+        export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:14317"
+        ```
+    end note
+}
+
+' ==================== FAILURE MODE 5 ====================
+state "Failure Mode 5:\nInactivity Timeout" as F5 #WARNING_COLOR {
+    state "Weaver\nWaiting" as Waiting
+    state "No Telemetry\nfor 10s" as NoTelem
+    state "Timeout\nExpires" as Timeout
+    state "Weaver\nExits" as Exit
+
+    [*] --> Waiting
+    Waiting --> NoTelem : Tests slow\nor hang
+    NoTelem --> Timeout : Default 10s
+    Timeout --> Exit : Auto-shutdown
+
+    note right of Exit
+        **Symptom:**
+        Weaver exits before tests complete
+
+        **Cause:**
+        - Tests take too long to start
+        - Long-running tests
+        - Tests hang
+
+        **Impact:**
+        Partial validation only
+
+        **Default timeout:** 10 seconds
+    end note
+}
+
+state "Recovery 5:\nTimeout Configuration" as R5 #RECOVERY_COLOR {
+    note right
+        **Solution:**
+        ```bash
+        # Increase timeout for slow tests
+        weaver registry live-check \
+            --inactivity-timeout 300  # 5 minutes
+
+        # Or disable timeout (use manual stop)
+        weaver registry live-check \
+            --inactivity-timeout 0
+
+        # Then stop manually:
+        kill -HUP $WEAVER_PID
+        # or
+        curl -X POST http://localhost:8080/stop
+        ```
+
+        **Best Practice:**
+        For CI/CD, use explicit stop:
+        ```bash
+        weaver ... &
+        PID=$!
+        cargo test
+        kill -HUP $PID
+        wait $PID
+        ```
+    end note
+}
+
+' ==================== COMPREHENSIVE VALIDATION SCRIPT ====================
+
+note as ComprehensiveScript #E5FFE5
+    **Comprehensive Validation Script:**
+    (Handles all failure modes)
+
+    ```bash
+    #!/bin/bash
+    set -e
+
+    REGISTRY="registry/"
+    OUTPUT="validation_output/"
+    OTLP_PORT=4317
+    ADMIN_PORT=8080
+
+    echo "🔍 Pre-flight checks..."
+
+    # 1. Check Docker
+    if ! docker ps > /dev/null 2>&1; then
+        echo "❌ Docker not running"
+        exit 1
+    fi
+
+    # 2. Check ports
+    if lsof -i :$OTLP_PORT > /dev/null; then
+        echo "⚠️  Port $OTLP_PORT in use, cleaning..."
+        kill -9 $(lsof -t -i :$OTLP_PORT) || true
+        sleep 1
+    fi
+
+    # 3. Validate registry
+    if ! weaver registry check --registry $REGISTRY; then
+        echo "❌ Registry validation failed"
+        exit 1
+    fi
+
+    echo "✅ Pre-flight checks passed"
+    echo ""
+    echo "🚀 Starting Weaver..."
+
+    # 4. Start Weaver
+    weaver registry live-check \
+        --registry $REGISTRY \
+        --otlp-grpc-port $OTLP_PORT \
+        --admin-port $ADMIN_PORT \
+        --format json \
+        --output $OUTPUT \
+        --inactivity-timeout 300 &
+
+    WEAVER_PID=$!
+    sleep 3
+
+    # 5. Verify Weaver started
+    if ! ps -p $WEAVER_PID > /dev/null; then
+        echo "❌ Weaver failed to start"
+        exit 1
+    fi
+
+    if ! lsof -i :$OTLP_PORT > /dev/null; then
+        echo "❌ Weaver not listening on :$OTLP_PORT"
+        kill $WEAVER_PID
+        exit 1
+    fi
+
+    echo "✅ Weaver listening on :$OTLP_PORT"
+    echo ""
+    echo "🧪 Running tests..."
+
+    # 6. Run tests with OTLP export
+    export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:$OTLP_PORT"
+    if ! cargo test --features otel; then
+        echo "❌ Tests failed"
+        kill -HUP $WEAVER_PID
+        wait $WEAVER_PID
+        exit 1
+    fi
+
+    echo "✅ Tests passed"
+    echo ""
+    echo "📊 Generating validation report..."
+
+    # 7. Stop Weaver and wait
+    kill -HUP $WEAVER_PID
+    wait $WEAVER_PID
+    WEAVER_EXIT=$?
+
+    # 8. Verify report generated
+    REPORT="$OUTPUT/live_check.json"
+    if [ ! -f "$REPORT" ]; then
+        echo "❌ No report generated"
+        exit 1
+    fi
+
+    # 9. Check for telemetry
+    SAMPLES=$(jq '.samples | length' $REPORT)
+    if [ "$SAMPLES" -eq 0 ]; then
+        echo "❌ No telemetry received"
+        echo "   Check: Tests using OtlpGrpc?"
+        exit 1
+    fi
+
+    # 10. Check violations
+    VIOLATIONS=$(jq '.statistics.advice_level_counts.violation // 0' $REPORT)
+    if [ "$VIOLATIONS" -gt 0 ]; then
+        echo "❌ $VIOLATIONS violations found"
+        jq '.statistics' $REPORT
+        exit 1
+    fi
+
+    # 11. Check coverage
+    COVERAGE=$(jq '.statistics.registry_coverage' $REPORT)
+    echo "✅ Validation passed"
+    echo "   Validated: $SAMPLES entities"
+    echo "   Coverage: $COVERAGE"
+    echo "   Violations: 0"
+
+    exit $WEAVER_EXIT
+    ```
+end note
+
+' ==================== STATE TRANSITIONS ====================
+
+F1 --> R1 : Implement
+R1 --> Normal : Fixed
+
+F2 --> R2 : Implement
+R2 --> Normal : Fixed
+
+F3 --> R3 : Implement
+R3 --> Normal : Fixed
+
+F4 --> R4 : Implement
+R4 --> Normal : Fixed
+
+F5 --> R5 : Implement
+R5 --> Normal : Fixed
+
+@enduml

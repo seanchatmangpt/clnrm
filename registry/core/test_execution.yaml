@@ -1,0 +1,226 @@
+groups:
+- id: span.clnrm.test_execution
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents a complete test execution in an isolated container
+  note: 'This span is the PRIMARY proof that clnrm works correctly.
+
+
+    CRITICAL VALIDATION POINTS:
+
+    - container.id MUST exist (proves container ran)
+
+    - test.isolated MUST be true (proves hermetic isolation)
+
+    - test.result MUST be set (proves execution completed)
+
+    - test.duration_ms MUST be > 0 (proves actual execution time)
+
+
+    A passing test method means NOTHING.
+
+    A span with these attributes means EVERYTHING.
+
+    '
+  attributes:
+  - id: test.name
+    type: string
+    stability: stable
+    brief: Name of the test being executed
+    requirement_level: required
+    examples:
+    - test_container_creation
+    - test_service_plugin_lifecycle
+  - id: test.suite
+    type: string
+    brief: Test suite or file containing this test
+    requirement_level: required
+    examples:
+    - integration_tests
+    - unit_tests
+    - otel_validation
+    stability: stable
+  - id: test.isolated
+    type: boolean
+    brief: Whether this test ran in complete isolation
+    requirement_level: required
+    note: 'CRITICAL: Must be true for clnrm tests.
+
+      This proves hermetic isolation actually worked.
+
+      Cannot be faked - requires actual container isolation.
+
+      '
+    examples:
+    - true
+    stability: stable
+  - id: test.result
+    type:
+      allow_custom_values: false
+      members:
+      - id: pass
+        value: pass
+        brief: Test passed all assertions
+        stability: stable
+      - id: fail
+        value: fail
+        brief: Test failed one or more assertions
+        stability: stable
+      - id: error
+        value: error
+        brief: Test encountered an execution error
+        stability: stable
+    brief: The final result of test execution
+    requirement_level: required
+    note: Must be set after test completes, proving execution finished
+    stability: stable
+  - id: test.duration_ms
+    type: double
+    brief: Test execution duration in milliseconds
+    requirement_level: required
+    note: 'Must be > 0, proving actual execution occurred.
+
+      Stub implementations return 0 or don''t track time.
+
+      '
+    examples:
+    - 125.5
+    - 2341.7
+    - 45.2
+    stability: stable
+  - id: test.start_timestamp
+    type: int
+    brief: Unix timestamp (milliseconds since epoch) when test started
+    requirement_level: required
+    note: 'CRITICAL PROOF: Start timestamp proves test execution began at specific time.
+
+      Must be set before test execution begins.
+
+      '
+    examples:
+    - 1730250000000
+    - 1730250123456
+    stability: stable
+  - id: test.end_timestamp
+    type: int
+    brief: Unix timestamp (milliseconds since epoch) when test completed
+    requirement_level: required
+    note: 'CRITICAL PROOF: End timestamp proves test execution completed.
+
+      Must be set after test finishes.
+
+      end_timestamp - start_timestamp should equal duration_ms.
+
+      '
+    examples:
+    - 1730250125500
+    - 1730252465156
+    stability: stable
+  - id: container.id
+    type: string
+    brief: Unique identifier of the container where test ran
+    requirement_level: required
+    note: 'CRITICAL PROOF: This attribute CANNOT exist without a real container.
+
+      Presence of this ID proves:
+
+      - Container was actually created
+
+      - Test ran inside container
+
+      - Backend integration works
+
+      '
+    examples:
+    - 550e8400-e29b-41d4-a716-446655440000
+    stability: stable
+  - id: container.image.name
+    type: string
+    brief: Docker/OCI image name used for the container
+    requirement_level: required
+    examples:
+    - alpine:latest
+    - postgres:15
+    - redis:7
+    stability: stable
+  - id: container.image.tag
+    type: string
+    brief: Image tag used
+    requirement_level: recommended
+    examples:
+    - latest
+    - '15.2'
+    - 7.0-alpine
+    stability: stable
+  - id: container.exit_code
+    type: int
+    brief: Exit code from container execution
+    requirement_level: required
+    note: 'CRITICAL PROOF: Exit code proves container actually executed and exited.
+
+      - 0 = success
+
+      - Non-zero = failure/error
+
+      Must be captured from actual container execution.
+
+      '
+    examples:
+    - 0
+    - 1
+    - 127
+    - 130
+    stability: stable
+  - id: test.assertion_count
+    type: int
+    brief: Number of assertions executed in this test
+    requirement_level: recommended
+    examples:
+    - 5
+    - 12
+    - 3
+    stability: stable
+  - id: test.cleanup_performed
+    type: boolean
+    brief: Whether cleanup was performed after test
+    requirement_level: required
+    note: Must be true, proving container lifecycle management works
+    examples:
+    - true
+    stability: stable
+  - id: error.type
+    type: string
+    brief: Type of error if test.result is 'error'
+    requirement_level:
+      conditionally_required: Only when test.result is 'error'
+    examples:
+    - ContainerCreationError
+    - TimeoutError
+    - AssertionError
+    stability: stable
+  - id: error.message
+    type: string
+    brief: Error message if test failed or errored
+    requirement_level:
+      conditionally_required: Only when test.result is 'fail' or 'error'
+    examples:
+    - Container failed to start within timeout
+    - Expected output not found
+    stability: stable
+  - id: plugin.execution_time_ms
+    type: double
+    brief: Time spent in plugin execution (subset of total test duration)
+    requirement_level: recommended
+    note: 'Tracks plugin-specific execution time for performance analysis.
+
+      Must be <= test.duration_ms.
+
+      Useful for identifying plugin bottlenecks.
+
+      '
+    examples:
+    - 85.3
+    - 1234.5
+    - 42.1
+    stability: stable

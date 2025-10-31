@@ -68,3 +68,27 @@ test_cucumber.rs
 
 # Build script coverage
 build_rs_cov.profraw
+
+# Vendor dependencies
+/vendors/
+
+# Hive Mind session artifacts
+.hive-mind/sessions/
+.hive-mind/*.db-wal
+.hive-mind/*.db-shm
+.swarm/memory.db-wal
+.swarm/memory.db-shm
+
+# Documentation build artifacts
+book/output/
+book/book/
+
+# Agent-generated deliverables (archived)
+.archive/
+
+# Claude artifacts
+.clnrm/artifacts/
+
+# Test outputs
+test_output/
+validation_output/

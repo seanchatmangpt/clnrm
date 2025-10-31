@@ -1,0 +1,323 @@
+groups:
+- id: span.clnrm.cli.services
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents service status and management via 'clnrm services' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - services.running + services.stopped + services.error should equal services.total
+    - service.operation determines which conditional attributes are required
+    - logs.lines > 0 proves actual log retrieval (when operation=logs)
+    - operation.duration_ms > 0 proves actual service interaction
+
+    This span proves that clnrm successfully interacted with running services
+    to show status, retrieve logs, or perform lifecycle operations.
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["services"]
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: service.operation
+    type:
+      allow_custom_values: false
+      members:
+      - id: status
+        value: status
+        brief: Show service status
+        stability: stable
+      - id: logs
+        value: logs
+        brief: Retrieve service logs
+        stability: stable
+      - id: restart
+        value: restart
+        brief: Restart a service
+        stability: stable
+    stability: stable
+    brief: The service operation being performed
+    requirement_level: required
+    note: Determines which conditional attributes are required
+
+  - id: service.name
+    type: string
+    stability: stable
+    brief: Name of the specific service (for logs/restart operations)
+    requirement_level:
+      conditionally_required: Only when service.operation is 'logs' or 'restart'
+    examples:
+    - postgres
+    - redis
+    - surrealdb
+
+  - id: services.total
+    type: int
+    stability: stable
+    brief: Total number of services found
+    requirement_level: recommended
+    note: VALIDATION - Should equal sum of running + stopped + error
+    examples:
+    - 3
+    - 5
+    - 10
+
+  - id: services.running
+    type: int
+    stability: stable
+    brief: Number of services in running state
+    requirement_level: recommended
+    examples:
+    - 2
+    - 5
+    - 8
+
+  - id: services.stopped
+    type: int
+    stability: stable
+    brief: Number of services in stopped state
+    requirement_level: recommended
+    examples:
+    - 0
+    - 1
+    - 2
+
+  - id: services.error
+    type: int
+    stability: stable
+    brief: Number of services in error state
+    requirement_level: recommended
+    examples:
+    - 0
+    - 1
+    - 2
+
+  - id: logs.lines
+    type: int
+    stability: stable
+    brief: Number of log lines retrieved
+    requirement_level:
+      conditionally_required: Only when service.operation is 'logs'
+    note: PROOF - Must be > 0 if logs were successfully retrieved
+    examples:
+    - 50
+    - 100
+    - 500
+
+  - id: logs.tail_lines
+    type: int
+    stability: stable
+    brief: Number of lines requested via --tail flag
+    requirement_level: recommended
+    examples:
+    - 50
+    - 100
+    - 1000
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of service operation in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual operation occurred
+    examples:
+    - 45.2
+    - 125.8
+    - 250.3
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether service operation completed successfully
+    requirement_level: required
+    note: Final result - must be set
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if operation failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - ServiceNotFound
+    - ServiceNotRunning
+    - OperationTimeout
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if operation failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Service 'postgres' not found in running services
+
+- id: span.clnrm.cli.collector
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents OTEL collector lifecycle management via 'clnrm collector' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - collector.operation determines which attributes are required
+    - collector.http_port and collector.grpc_port prove actual port binding (for 'up')
+    - collector.running = true proves collector is actually running (for 'status')
+    - operation.duration_ms > 0 proves actual operation occurred
+
+    This span proves that clnrm successfully managed the OTEL collector
+    lifecycle for development and testing workflows.
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["collector"]
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: collector.operation
+    type:
+      allow_custom_values: false
+      members:
+      - id: up
+        value: up
+        brief: Start OTEL collector
+        stability: stable
+      - id: down
+        value: down
+        brief: Stop OTEL collector
+        stability: stable
+      - id: status
+        value: status
+        brief: Show collector status
+        stability: stable
+      - id: logs
+        value: logs
+        brief: Retrieve collector logs
+        stability: stable
+    stability: stable
+    brief: The collector operation being performed
+    requirement_level: required
+    note: Determines which conditional attributes are required
+
+  - id: collector.image
+    type: string
+    stability: stable
+    brief: Docker image name for the collector
+    requirement_level:
+      conditionally_required: Only when collector.operation is 'up'
+    examples:
+    - otel/opentelemetry-collector:latest
+    - otel/opentelemetry-collector:0.88.0
+
+  - id: collector.http_port
+    type: int
+    stability: stable
+    brief: HTTP port for OTLP receiver
+    requirement_level:
+      conditionally_required: Only when collector.operation is 'up'
+    note: Proves actual port binding occurred
+    examples:
+    - 4318
+    - 4320
+
+  - id: collector.grpc_port
+    type: int
+    stability: stable
+    brief: gRPC port for OTLP receiver
+    requirement_level:
+      conditionally_required: Only when collector.operation is 'up'
+    note: Proves actual port binding occurred
+    examples:
+    - 4317
+    - 4319
+
+  - id: collector.detached
+    type: boolean
+    stability: stable
+    brief: Whether collector was started in detached mode
+    requirement_level:
+      conditionally_required: Only when collector.operation is 'up'
+    examples:
+    - true
+    - false
+
+  - id: collector.running
+    type: boolean
+    stability: stable
+    brief: Whether collector is currently running
+    requirement_level: recommended
+    note: PROOF - True only if collector process is actually running
+    examples:
+    - true
+    - false
+
+  - id: collector.container_id
+    type: string
+    stability: stable
+    brief: Container ID of the running collector
+    requirement_level: recommended
+    examples:
+    - a3b8c9d2e1f4
+    - collector-dev-12345
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of collector operation in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual operation occurred
+    examples:
+    - 1250.5
+    - 85.3
+    - 340.7
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether collector operation completed successfully
+    requirement_level: required
+    note: Final result - must be set
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if operation failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - CollectorStartupFailed
+    - PortAlreadyInUse
+    - ImagePullFailed
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if operation failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Failed to start collector - port 4318 already in use

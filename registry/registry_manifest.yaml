@@ -1,0 +1,48 @@
+# CLNRM Telemetry Schema Registry
+# This registry defines the COMPLETE telemetry contract for the Cleanroom Testing Framework
+# All validation MUST go through Weaver live-check against these schemas
+
+name: clnrm
+description: |
+  Cleanroom Testing Framework Telemetry Schema Registry
+
+  PURPOSE: Eliminate false positives by validating actual runtime behavior
+  METHOD: Live telemetry checking against semantic conventions
+
+  Every span, metric, and event in this registry represents a PROVABLE
+  runtime behavior that cannot be faked by stub implementations.
+
+semconv_version: 1.0.0
+schema_base_url: https://github.com/seanchatmangpt/clnrm/schemas/
+
+# Dependencies on OpenTelemetry semantic conventions
+dependencies:
+  - name: otel
+    registry_path: https://github.com/open-telemetry/semantic-conventions/archive/refs/tags/v1.34.0.zip[model]
+
+# Schema groups
+groups:
+  - id: core
+    type: span
+    brief: Core test execution and container lifecycle spans
+    prefix: clnrm
+
+  - id: metrics
+    type: metric
+    brief: Runtime metrics for test execution and resource usage
+    prefix: clnrm
+
+  - id: events
+    type: event
+    brief: Test lifecycle events
+    prefix: clnrm
+
+# Validation strategy
+validation:
+  strategy: live_check
+  purpose: Prove actual runtime behavior, not test method success
+  critical_attributes:
+    - container.id          # Proves container actually ran
+    - test.isolated         # Proves hermetic isolation
+    - test.result           # Proves test executed to completion
+    - container.destroyed_at # Proves cleanup happened

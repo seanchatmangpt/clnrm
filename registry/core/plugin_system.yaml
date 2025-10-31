@@ -1,0 +1,249 @@
+groups:
+- id: span.clnrm.plugin_execution
+  type: span
+  brief: Tracks plugin lifecycle and service management
+  note: 'Proves the plugin system actually works by tracking:
+
+    - Plugin registration
+
+    - Service startup
+
+    - Health checks
+
+    - Service shutdown
+
+
+    VALIDATION: plugin.state transitions prove real plugin execution.
+
+    Cannot be faked - requires actual service lifecycle.
+
+    '
+  attributes:
+  - id: plugin.name
+    type: string
+    brief: Name of the plugin
+    requirement_level: required
+    examples:
+    - postgres
+    - redis
+    - generic_container
+    - surrealdb
+    stability: stable
+  - id: plugin.type
+    type: string
+    brief: Plugin type or category
+    requirement_level: required
+    examples:
+    - database
+    - cache
+    - generic
+    - llm
+    stability: stable
+  - id: plugin.version
+    type: string
+    brief: Plugin version
+    requirement_level: recommended
+    examples:
+    - 1.0.0
+    - 2.3.1
+    stability: stable
+  - id: plugin.state
+    type:
+      allow_custom_values: false
+      members:
+      - id: registered
+        value: registered
+        brief: Plugin registered with framework
+        stability: stable
+      - id: starting
+        value: starting
+        brief: Plugin service is starting
+        stability: stable
+      - id: running
+        value: running
+        brief: Plugin service is running
+        stability: stable
+      - id: healthy
+        value: healthy
+        brief: Plugin passed health check
+        stability: stable
+      - id: stopping
+        value: stopping
+        brief: Plugin service is stopping
+        stability: stable
+      - id: stopped
+        value: stopped
+        brief: Plugin service stopped
+        stability: stable
+      - id: error
+        value: error
+        brief: Plugin encountered error
+        stability: stable
+    brief: Current state of the plugin
+    requirement_level: required
+    note: State transitions prove plugin lifecycle management works
+    stability: stable
+  - id: service.name
+    type: string
+    brief: Name of the service managed by this plugin
+    requirement_level: required
+    examples:
+    - test_postgres
+    - cache_redis
+    - llm_ollama
+    stability: stable
+  - id: service.type
+    type: string
+    brief: Type of service
+    requirement_level: required
+    examples:
+    - database
+    - cache
+    - message_queue
+    - llm
+    stability: stable
+  - id: container.id
+    type: string
+    brief: ID of container running the service
+    requirement_level: required
+    note: Links plugin execution to container lifecycle
+    examples:
+    - 550e8400-e29b-41d4-a716-446655440000
+    stability: stable
+  - id: plugin.health_check.performed
+    type: boolean
+    brief: Whether health check was performed
+    requirement_level: required
+    note: Proves health checking actually happened
+    examples:
+    - true
+    stability: stable
+  - id: plugin.health_check.passed
+    type: boolean
+    brief: Whether health check passed
+    requirement_level: required
+    examples:
+    - true
+    - false
+    stability: stable
+  - id: plugin.health_check.duration_ms
+    type: double
+    brief: Duration of health check in milliseconds
+    requirement_level: recommended
+    examples:
+    - 25.3
+    - 150.7
+    stability: stable
+  - id: plugin.startup_duration_ms
+    type: double
+    brief: Time taken for plugin to reach running state
+    requirement_level: recommended
+    examples:
+    - 1234.5
+    - 567.8
+    stability: stable
+  - id: plugin.config
+    type: string
+    brief: Plugin configuration as JSON string
+    requirement_level: recommended
+    examples:
+    - '{"port": 5432, "database": "test"}'
+    stability: stable
+  - id: error.type
+    type: string
+    brief: Type of error if plugin.state is error
+    requirement_level:
+      conditionally_required: Only when plugin.state is 'error'
+    examples:
+    - StartupTimeout
+    - HealthCheckFailed
+    - ConfigurationError
+    stability: stable
+  - id: error.message
+    type: string
+    brief: Error message if plugin failed
+    requirement_level:
+      conditionally_required: Only when plugin.state is 'error'
+    examples:
+    - Service failed to respond to health check within 30s
+    stability: stable
+  stability: stable
+  span_kind: internal
+- id: span.clnrm.service_command
+  type: span
+  brief: Tracks command execution within a service container
+  note: 'Proves that commands can actually execute inside containers.
+
+
+    VALIDATION:
+
+    - command.exit_code proves command ran
+
+    - command.output proves we captured results
+
+    - Duration proves actual execution time
+
+    '
+  attributes:
+  - id: service.name
+    type: string
+    brief: Service where command executed
+    requirement_level: required
+    examples:
+    - test_postgres
+    - cache_redis
+    stability: stable
+  - id: container.id
+    type: string
+    brief: Container where command executed
+    requirement_level: required
+    examples:
+    - 550e8400-e29b-41d4-a716-446655440000
+    stability: stable
+  - id: command
+    type: string[]
+    brief: Command and arguments executed
+    requirement_level: required
+    examples:
+    - - psql
+      - -c
+      - SELECT 1
+    - - redis-cli
+      - PING
+    stability: stable
+  - id: command.exit_code
+    type: int
+    brief: Exit code from command
+    requirement_level: required
+    note: Proves command actually ran
+    examples:
+    - 0
+    - 1
+    - 127
+    stability: stable
+  - id: command.output
+    type: string
+    brief: Stdout from command
+    requirement_level: recommended
+    examples:
+    - PONG
+    - 1 row returned
+    stability: stable
+  - id: command.error
+    type: string
+    brief: Stderr from command
+    requirement_level: recommended
+    examples:
+    - connection refused
+    - command not found
+    stability: stable
+  - id: command.duration_ms
+    type: double
+    brief: Duration of command execution in milliseconds
+    requirement_level: required
+    examples:
+    - 45.2
+    - 123.7
+    stability: stable
+  stability: stable
+  span_kind: internal

@@ -1,0 +1,59 @@
+[
+  {
+    "span": {
+      "name": "clnrm.test_execution",
+      "kind": "internal"
+    },
+    "attributes": [
+      {
+        "name": "test.name",
+        "value": "test_container_creation",
+        "type": "string"
+      },
+      {
+        "name": "test.suite",
+        "value": "integration_tests",
+        "type": "string"
+      },
+      {
+        "name": "test.isolated",
+        "value": true,
+        "type": "boolean"
+      },
+      {
+        "name": "test.result",
+        "value": "pass",
+        "type": "string"
+      },
+      {
+        "name": "test.duration_ms",
+        "value": 125.5,
+        "type": "double"
+      },
+      {
+        "name": "container.id",
+        "value": "550e8400-e29b-41d4-a716-446655440000",
+        "type": "string"
+      },
+      {
+        "name": "container.image.name",
+        "value": "alpine:latest",
+        "type": "string"
+      },
+      {
+        "name": "container.image.tag",
+        "value": "latest",
+        "type": "string"
+      },
+      {
+        "name": "test.cleanup_performed",
+        "value": true,
+        "type": "boolean"
+      }
+    ],
+    "resource_attributes": {
+      "service.name": "clnrm",
+      "service.version": "1.2.0"
+    }
+  }
+]

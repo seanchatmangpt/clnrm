@@ -1,0 +1,46 @@
+# OTLP Collector Configuration for Weaver Testing
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 10
+
+exporters:
+  # Forward to Weaver for validation
+  otlphttp:
+    endpoint: http://weaver-validator:4318
+    tls:
+      insecure: true
+
+  # Debug output
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp, logging]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp, logging]
+
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp, logging]
+
+  telemetry:
+    logs:
+      level: debug

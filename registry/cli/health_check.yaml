@@ -1,0 +1,189 @@
+groups:
+- id: span.clnrm.cli.health
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents system health check via 'clnrm health' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - health.checks_passed + health.checks_failed MUST equal health.checks_total
+    - docker.available = true proves Docker/Podman is accessible
+    - operation.duration_ms > 0 proves actual checks were performed
+    - health.overall result proves aggregation logic works
+
+    This span proves that clnrm successfully validated system prerequisites
+    including container runtime, Rust toolchain, and optional tools.
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["health"]
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: health.overall
+    type:
+      allow_custom_values: false
+      members:
+      - id: healthy
+        value: healthy
+        brief: All critical checks passed
+        stability: stable
+      - id: degraded
+        value: degraded
+        brief: Some non-critical checks failed
+        stability: stable
+      - id: unhealthy
+        value: unhealthy
+        brief: Critical checks failed, system unusable
+        stability: stable
+    stability: stable
+    brief: Overall health status of the system
+    requirement_level: required
+    note: Aggregated result of all health checks
+
+  - id: health.checks_total
+    type: int
+    stability: stable
+    brief: Total number of health checks performed
+    requirement_level: required
+    note: VALIDATION - Must equal checks_passed + checks_failed
+    examples:
+    - 5
+    - 8
+    - 12
+
+  - id: health.checks_passed
+    type: int
+    stability: stable
+    brief: Number of health checks that passed
+    requirement_level: required
+    note: VALIDATION - checks_passed + checks_failed = checks_total
+    examples:
+    - 5
+    - 6
+    - 12
+
+  - id: health.checks_failed
+    type: int
+    stability: stable
+    brief: Number of health checks that failed
+    requirement_level: required
+    note: VALIDATION - checks_passed + checks_failed = checks_total
+    examples:
+    - 0
+    - 2
+    - 3
+
+  - id: docker.available
+    type: boolean
+    stability: stable
+    brief: Whether Docker or Podman is available and accessible
+    requirement_level: required
+    note: CRITICAL CHECK - clnrm requires container runtime
+    examples:
+    - true
+    - false
+
+  - id: docker.version
+    type: string
+    stability: stable
+    brief: Docker/Podman version string
+    requirement_level: recommended
+    examples:
+    - "Docker version 24.0.5"
+    - "podman version 4.6.1"
+
+  - id: docker.type
+    type: string
+    stability: stable
+    brief: Container runtime type
+    requirement_level: recommended
+    examples:
+    - docker
+    - podman
+
+  - id: rust.version
+    type: string
+    stability: stable
+    brief: Rust toolchain version
+    requirement_level: recommended
+    examples:
+    - "rustc 1.75.0"
+    - "rustc 1.70.0"
+
+  - id: weaver.available
+    type: boolean
+    stability: stable
+    brief: Whether OTel Weaver CLI is available
+    requirement_level: recommended
+    note: Required for schema validation workflows
+    examples:
+    - true
+    - false
+
+  - id: weaver.version
+    type: string
+    stability: stable
+    brief: Weaver CLI version
+    requirement_level: recommended
+    examples:
+    - "weaver 0.4.0"
+    - "weaver 0.3.0"
+
+  - id: verbose.enabled
+    type: boolean
+    stability: stable
+    brief: Whether --verbose flag was used for detailed output
+    requirement_level: required
+    examples:
+    - true
+    - false
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of health check in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual checks were performed
+    examples:
+    - 85.3
+    - 145.7
+    - 220.1
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether health check completed successfully
+    requirement_level: required
+    note: Can be true even if some checks failed (degraded state)
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if health check failed to execute
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - DockerConnectionError
+    - PermissionDenied
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if health check failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Failed to connect to Docker daemon

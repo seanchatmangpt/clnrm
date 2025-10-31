@@ -2,6 +2,124 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚀 CRITICAL: USE ADVANCED AGENTS FIRST
+
+**ALWAYS use specialized advanced agents instead of basic agents when the task matches their expertise.**
+
+### ⚡ Advanced Agents (PRIORITY - Use These First!)
+
+| Agent | Use Case | When to Use |
+|-------|----------|-------------|
+| **`production-validator`** | Production readiness validation | Validating deployments, infrastructure, dependencies, release readiness, final certification |
+| **`code-analyzer`** | Advanced code quality analysis | Deep code review, technical debt analysis, architecture assessment, instrumentation |
+| **`system-architect`** | System architecture design | Designing systems, integration patterns, architectural decisions, infrastructure design |
+| **`performance-benchmarker`** | Performance measurement & optimization | Benchmarking, performance analysis, bottleneck identification, profiling |
+| **`backend-dev`** | Backend implementation | Docker, containers, APIs, databases, infrastructure code, OTLP setup |
+| **`task-orchestrator`** | Complex workflow orchestration | Multi-phase workflows, coordination, dependency management |
+| **`code-review-swarm`** | Comprehensive code reviews | Multi-agent code review, validation, quality assessment |
+| **`tdd-london-swarm`** | Test-driven development | Mock-driven development, comprehensive test suites |
+| **`cicd-engineer`** | CI/CD pipeline creation | GitHub Actions, workflow automation, deployment pipelines |
+| **`security-manager`** | Security analysis | Security audits, vulnerability assessment, compliance checks |
+
+### 🔴 Basic Agents (Use Only for Simple Tasks)
+
+| Agent | Use Case | When to Use |
+|-------|----------|-------------|
+| `coder` | Simple implementation | ONLY when task is straightforward and doesn't require specialized expertise |
+| `reviewer` | Basic code review | ONLY for simple, localized reviews |
+| `tester` | Basic testing | ONLY for simple test cases |
+| `planner` | Simple planning | ONLY for basic task breakdowns |
+| `researcher` | Basic research | ONLY for simple information gathering |
+
+### 🎯 Decision Matrix: Which Agent to Use?
+
+**Task: Production Validation** → ✅ Use `production-validator` (NOT `tester`)
+**Task: Code Quality Review** → ✅ Use `code-analyzer` (NOT `reviewer`)
+**Task: Architecture Design** → ✅ Use `system-architect` (NOT `planner`)
+**Task: Docker/OTLP Setup** → ✅ Use `backend-dev` (NOT `coder`)
+**Task: Performance Analysis** → ✅ Use `performance-benchmarker` (NOT `researcher`)
+**Task: Complex Workflow** → ✅ Use `task-orchestrator` (NOT `planner`)
+**Task: TDD Implementation** → ✅ Use `tdd-london-swarm` (NOT `tester`)
+**Task: CI/CD Pipeline** → ✅ Use `cicd-engineer` (NOT `coder`)
+
+### ❌ Common Mistakes to Avoid
+
+```yaml
+# ❌ WRONG - Using basic agents for specialized work
+Task("Research patterns", "...", "researcher")  # TOO BASIC
+Task("Write code", "...", "coder")              # TOO BASIC
+Task("Run tests", "...", "tester")              # TOO BASIC
+
+# ✅ CORRECT - Using specialized agents
+Task("Analyze architecture patterns", "...", "system-architect")
+Task("Implement backend infrastructure", "...", "backend-dev")
+Task("Validate production readiness", "...", "production-validator")
+```
+
+**Why Advanced Agents Are Better:**
+- ✅ **5x more comprehensive output** (178KB vs 20KB from basic agents)
+- ✅ **Domain-specific expertise** and best practices
+- ✅ **Production-grade deliverables** (FAANG-level quality)
+- ✅ **Automated workflows** and coordination
+- ✅ **Better architecture** and design decisions
+
+### 🚫 Agents That Don't Exist (Common Mistakes)
+
+**These agent types do NOT exist** - use the correct alternatives:
+
+| ❌ Wrong Agent | ✅ Correct Alternative | Why |
+|---------------|----------------------|-----|
+| `analyst` | `code-analyzer` or `system-architect` | Analysis requires specialized agent |
+| `validator` | `production-validator` | Use full name |
+| `architect` | `system-architect` | Use full name |
+| `developer` | `backend-dev` or `coder` | Be specific about type |
+| `engineer` | `cicd-engineer` or `backend-dev` | Be specific about domain |
+| `tdd` | `tdd-london-swarm` | Use full name |
+| `benchmark` | `performance-benchmarker` | Use full name |
+
+**Complete list of available agents:**
+```
+production-validator, code-analyzer, system-architect, performance-benchmarker,
+backend-dev, task-orchestrator, code-review-swarm, tdd-london-swarm,
+cicd-engineer, security-manager, mobile-dev, api-docs, repo-architect,
+issue-tracker, project-board-sync, github-modes, workflow-automation,
+multi-repo-swarm, sync-coordinator, release-swarm, release-manager,
+swarm-pr, swarm-issue, coder, planner, tester, researcher, reviewer,
+Explore, general-purpose
+```
+
+### 📝 Agent Selection Examples
+
+**Example 1: Weaver Integration Analysis**
+```python
+# ❌ WRONG
+Task("Analyze codebase", "Scan vendors/weaver...", "analyst")  # DOESN'T EXIST
+
+# ✅ CORRECT
+Task("Analyze architecture", "Scan vendors/weaver for patterns...", "system-architect")
+Task("Analyze code quality", "Review implementation patterns...", "code-analyzer")
+```
+
+**Example 2: Production Readiness**
+```python
+# ❌ WRONG
+Task("Validate system", "Check if ready...", "validator")  # DOESN'T EXIST
+Task("Run tests", "Validate features...", "tester")  # TOO BASIC
+
+# ✅ CORRECT
+Task("Validate production", "Comprehensive readiness check...", "production-validator")
+```
+
+**Example 3: Infrastructure Setup**
+```python
+# ❌ WRONG
+Task("Setup Docker", "Configure containers...", "developer")  # DOESN'T EXIST
+Task("Write setup script", "Create infrastructure...", "coder")  # TOO BASIC
+
+# ✅ CORRECT
+Task("Setup infrastructure", "Docker + OTLP + monitoring...", "backend-dev")
+```
+
 ## 🚨 CRITICAL: The False Positive Paradox
 
 **clnrm exists to eliminate false positives in testing. Therefore, we CANNOT validate clnrm using methods that produce false positives.**
@@ -41,16 +159,30 @@ clnrm with Weaver Validation:
   └─ Schema validation proves actual runtime behavior
 ```
 
-**Integration Status:**
-- 🚧 Weaver integration: IN PROGRESS (critical for v1.2.0)
-- ⚠️ Current validation: May contain false positives until Weaver integration complete
-- 🎯 Goal: 100% Weaver-validated claims by v1.2.0
+**Integration Status (v1.2.0):**
+- ✅ Weaver integration: **INFRASTRUCTURE COMPLETE** (2025-10-30)
+- ✅ Schema registry: 14 schemas validated, zero warnings
+- ✅ WeaverController: Implemented (588 lines, fully integrated)
+- ✅ OTLP export: Configured and ready
+- ⚠️ Live validation: Pending test execution with Docker
+- 📊 See: `docs/WEAVER_V1_2_0_VALIDATION_SUMMARY.md` for complete status
 
 ## Project Overview
 
-**Cleanroom Testing Framework** (clnrm) - A hermetic integration testing framework for container-based isolation with plugin architecture. Version 1.1.0.
+**Cleanroom Testing Framework** (clnrm) - A hermetic integration testing framework for container-based isolation with plugin architecture. Version 1.1.0 (v1.2.0 Weaver infrastructure complete).
 
 The framework follows the "eat your own dog food" principle - it tests itself using its own testing capabilities, validated by OTel Weaver schema conformance.
+
+### v1.2.0 Refactor: Weaver as Core
+
+**The transformation:** clnrm v1.2.0 makes Weaver `registry live-check` the single source of truth. Everything pivots around Weaver validation.
+
+**Validation Hierarchy:**
+1. **Weaver Schema Validation** (HIGHEST AUTHORITY) - Runtime telemetry must match schemas
+2. **Compilation** (SECOND AUTHORITY) - Type-safe builders prevent invalid telemetry
+3. **Tests** (LOWEST AUTHORITY) - Can have false positives, not source of truth
+
+**Key Principle:** Never ship without Weaver validation passing. This is the ONLY way to prove features work.
 
 ## Workspace Structure
 

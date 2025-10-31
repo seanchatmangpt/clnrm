@@ -1,0 +1,295 @@
+groups:
+- id: event.clnrm.test.started
+  type: event
+  name: clnrm.test.started
+  brief: Emitted when a test begins execution
+  note: 'Marks the start of test execution.
+
+
+    VALIDATION USE:
+
+    - Every started event must have corresponding completed/failed event
+
+    - Orphaned started events indicate crashes or hangs
+
+    '
+  attributes:
+  - id: test.name
+    type: string
+    brief: Test name
+    requirement_level: required
+    examples:
+    - test_container_creation
+    stability: stable
+  - id: test.suite
+    type: string
+    brief: Test suite
+    requirement_level: required
+    examples:
+    - integration_tests
+    stability: stable
+  - id: container.id
+    type: string
+    brief: Container ID assigned for this test
+    requirement_level: required
+    examples:
+    - 550e8400-e29b-41d4-a716-446655440000
+    stability: stable
+  - id: timestamp
+    type: string
+    brief: ISO 8601 timestamp when test started
+    requirement_level: required
+    examples:
+    - '2025-10-30T14:23:45.123Z'
+    stability: stable
+  stability: stable
+- id: event.clnrm.test.completed
+  type: event
+  name: clnrm.test.completed
+  brief: Emitted when a test completes successfully
+  note: 'Marks successful test completion.
+
+
+    VALIDATION USE:
+
+    - Must have matching test.started event
+
+    - Duration = completed.timestamp - started.timestamp
+
+    - Proves test ran to completion
+
+    '
+  attributes:
+  - id: test.name
+    type: string
+    brief: Test name
+    requirement_level: required
+    examples:
+    - test_container_creation
+    stability: stable
+  - id: test.suite
+    type: string
+    brief: Test suite
+    requirement_level: required
+    examples:
+    - integration_tests
+    stability: stable
+  - id: container.id
+    type: string
+    brief: Container ID used for this test
+    requirement_level: required
+    examples:
+    - 550e8400-e29b-41d4-a716-446655440000
+    stability: stable
+  - id: test.result
+    type: string
+    brief: Test result
+    requirement_level: required
+    examples:
+    - pass
+    - fail
+    stability: stable
+  - id: test.assertions_passed
+    type: int
+    brief: Number of assertions that passed
+    requirement_level: recommended
+    examples:
+    - 5
+    - 12
+    stability: stable
+  - id: test.assertions_failed
+    type: int
+    brief: Number of assertions that failed
+    requirement_level: recommended
+    examples:
+    - 0
+    - 2
+    stability: stable
+  - id: timestamp
+    type: string
+    brief: ISO 8601 timestamp when test completed
+    requirement_level: required
+    examples:
+    - '2025-10-30T14:23:47.456Z'
+    stability: stable
+  stability: stable
+- id: event.clnrm.test.failed
+  type: event
+  name: clnrm.test.failed
+  brief: Emitted when a test fails or errors
+  note: 'Marks test failure or error.
+
+
+    VALIDATION USE:
+
+    - Must have matching test.started event
+
+    - error.type and error.message required
+
+    - Proves failure detection works
+
+    '
+  attributes:
+  - id: test.name
+    type: string
+    brief: Test name
+    requirement_level: required
+    examples:
+    - test_container_creation
+    stability: stable
+  - id: test.suite
+    type: string
+    brief: Test suite
+    requirement_level: required
+    examples:
+    - integration_tests
+    stability: stable
+  - id: container.id
+    type: string
+    brief: Container ID (if assigned before failure)
+    requirement_level: recommended
+    examples:
+    - 550e8400-e29b-41d4-a716-446655440000
+    stability: stable
+  - id: error.type
+    type: string
+    brief: Type of error or failure
+    requirement_level: required
+    examples:
+    - AssertionError
+    - TimeoutError
+    - ContainerCreationError
+    stability: stable
+  - id: error.message
+    type: string
+    brief: Error message
+    requirement_level: required
+    examples:
+    - Expected output not found in container logs
+    stability: stable
+  - id: error.stack_trace
+    type: string
+    brief: Stack trace if available
+    requirement_level: recommended
+    examples:
+    - "Error: Test failed\n  at test_function (test.rs:42:5)\n  at main (main.rs:10:1)"
+    - "thread 'main' panicked at 'assertion failed', src/lib.rs:100:9"
+    stability: stable
+  - id: timestamp
+    type: string
+    brief: ISO 8601 timestamp when test failed
+    requirement_level: required
+    examples:
+    - '2025-10-30T14:23:46.789Z'
+    stability: stable
+  stability: stable
+- id: event.clnrm.container.leaked
+  type: event
+  name: clnrm.container.leaked
+  brief: Emitted when a container is detected as leaked (not cleaned up)
+  note: 'CRITICAL EVENT: Indicates resource leak.
+
+
+    VALIDATION USE:
+
+    - Should NEVER occur in passing tests
+
+    - Presence indicates cleanup failure
+
+    - Tracks containers that outlive their tests
+
+    '
+  attributes:
+  - id: container.id
+    type: string
+    brief: ID of leaked container
+    requirement_level: required
+    examples:
+    - 550e8400-e29b-41d4-a716-446655440000
+    stability: stable
+  - id: container.image
+    type: string
+    brief: Image of leaked container
+    requirement_level: required
+    examples:
+    - postgres:15
+    stability: stable
+  - id: test.name
+    type: string
+    brief: Test that created the container
+    requirement_level: required
+    examples:
+    - test_postgres_plugin
+    stability: stable
+  - id: container.age_seconds
+    type: int
+    brief: How long container has been running
+    requirement_level: required
+    examples:
+    - 300
+    - 1800
+    stability: stable
+  - id: timestamp
+    type: string
+    brief: ISO 8601 timestamp when leak detected
+    requirement_level: required
+    examples:
+    - '2025-10-30T14:28:45.123Z'
+    stability: stable
+  stability: stable
+- id: event.clnrm.isolation.violation
+  type: event
+  name: clnrm.isolation.violation
+  brief: Emitted when isolation between tests is violated
+  note: 'CRITICAL EVENT: Indicates hermetic isolation failure.
+
+
+    VALIDATION USE:
+
+    - Should NEVER occur in clnrm
+
+    - Indicates shared state between tests
+
+    - Proves isolation system failed
+
+    '
+  attributes:
+  - id: test.name
+    type: string
+    brief: Test that detected violation
+    requirement_level: required
+    examples:
+    - test_isolation
+    stability: stable
+  - id: violation.type
+    type: string
+    brief: Type of isolation violation
+    requirement_level: required
+    examples:
+    - shared_state
+    - leaked_container
+    - network_conflict
+    stability: stable
+  - id: violation.description
+    type: string
+    brief: Description of what was shared or leaked
+    requirement_level: required
+    examples:
+    - Container from previous test still running
+    stability: stable
+  - id: affected_tests
+    type: string[]
+    brief: Other tests affected by this violation
+    requirement_level: recommended
+    examples:
+    - - test_a
+      - test_b
+    stability: stable
+  - id: timestamp
+    type: string
+    brief: ISO 8601 timestamp when violation detected
+    requirement_level: required
+    examples:
+    - '2025-10-30T14:23:50.000Z'
+    stability: stable
+  stability: stable

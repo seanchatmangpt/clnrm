@@ -72,6 +72,18 @@ pub enum Commands {
         /// Generate JUnit XML report to file
         #[arg(long, value_name = "FILE")]
         report_junit: Option<PathBuf>,
+
+        /// Validate telemetry with Weaver live-check (requires Weaver installed)
+        #[arg(long)]
+        validate: bool,
+
+        /// OTEL exporter type (none, stdout, otlp-http, otlp-grpc)
+        #[arg(long, default_value = "none")]
+        otel_exporter: String,
+
+        /// OTEL endpoint (for otlp-http/otlp-grpc)
+        #[arg(long)]
+        otel_endpoint: Option<String>,
     },
 
     /// Initialize a new test project
@@ -669,6 +681,8 @@ pub struct CliConfig {
     pub force: bool,
     /// Generate SHA-256 digest for reproducibility
     pub digest: bool,
+    /// Validate telemetry with Weaver
+    pub validate: bool,
 }
 
 impl Default for CliConfig {
@@ -682,6 +696,7 @@ impl Default for CliConfig {
             verbose: 0,
             force: false,
             digest: false,
+            validate: false,
         }
     }
 }

@@ -69,6 +69,10 @@ semver = "1.0"
 glob = "0.3"
 url = "2.5"
 
+# Unix signal handling for Weaver controller
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.27", features = ["signal"] }
+
 # Template rendering - Full-featured template engine for test configuration
 clnrm-template = { path = "../clnrm-template" }
 sha2 = "0.10"                                   # Still needed for other modules
@@ -86,6 +90,12 @@ tokio = { workspace = true }
 
 # Serial testing for global state
 serial_test = "3.2"
+
+# Integration testing dependencies
+futures-util = { workspace = true }
+
+# London TDD mocking
+mockall = { workspace = true }
 
 [[bench]]
 name = "hot_reload_critical_path"

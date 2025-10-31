@@ -1,0 +1,75 @@
+# Docker Compose for clnrm Weaver Validation Infrastructure
+# Purpose: OTLP collector + Jaeger backend for live-check validation
+# Usage: docker-compose -f docker-compose.weaver.yml up
+
+services:
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.112.0
+    container_name: clnrm-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+      - otel-logs:/var/log/otel
+    ports:
+      # OTLP gRPC receiver (dynamic port support via env var)
+      - "${WEAVER_OTLP_GRPC_PORT:-4317}:4317"
+      # OTLP HTTP receiver (dynamic port support via env var)
+      - "${WEAVER_OTLP_HTTP_PORT:-4318}:4318"
+      # Health check
+      - "${WEAVER_HEALTH_PORT:-13133}:13133"
+      # Metrics
+      - "${WEAVER_METRICS_PORT:-8888}:8888"
+      # pprof
+      - "${WEAVER_PPROF_PORT:-1777}:1777"
+      # zpages
+      - "${WEAVER_ZPAGES_PORT:-55679}:55679"
+    environment:
+      - GOMEMLIMIT=400MiB
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - weaver-network
+    depends_on:
+      - jaeger
+
+  # Jaeger all-in-one (backend for trace storage and UI)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: clnrm-jaeger
+    ports:
+      # Jaeger UI
+      - "16686:16686"
+      # OTLP gRPC receiver
+      - "4317"
+      # Jaeger native receiver (not used, but exposed)
+      - "14268:14268"
+      # Health check
+      - "14269:14269"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+      - MEMORY_MAX_TRACES=50000
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - weaver-network
+
+volumes:
+  otel-logs:
+    driver: local
+
+networks:
+  weaver-network:
+    driver: bridge
+    name: clnrm-weaver-network

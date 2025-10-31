@@ -10,6 +10,21 @@ pub mod config;
 pub mod exporters;
 pub mod init;
 pub mod testing;
+pub mod validation_analyzer;
+pub mod weaver_controller;
+
+// Weaver innovation modules
+pub mod weaver_stats;
+pub mod weaver_emit;
+
+// Weaver-generated telemetry code (type-safe builders from schemas)
+pub mod generated;
+
+// Test execution telemetry - schema-compliant attribute emission
+pub mod test_execution;
+
+// CLI command telemetry helpers - schema-compliant builders
+pub mod cli_helpers;
 
 use {
     opentelemetry::{
@@ -91,12 +106,46 @@ pub struct OtelGuard {
 
 impl Drop for OtelGuard {
     fn drop(&mut self) {
-        let _ = self.tracer_provider.shutdown();
-        if let Some(mp) = self.meter_provider.take() {
-            let _ = mp.shutdown();
+        use std::time::Duration;
+
+        // CRITICAL: Force flush ALL batched telemetry data before shutdown
+        // This ensures batch exporters send buffered spans/metrics/logs to collectors
+        // Without this, buffered data is lost when the provider drops
+
+        // Flush traces with timeout
+        if let Err(e) = self.tracer_provider.force_flush() {
+            tracing::error!("Failed to flush traces during shutdown: {}", e);
         }
+
+        // Give async exports time to complete (batch processor uses async)
+        // OTLP HTTP/gRPC exporters need time to send buffered data
+        std::thread::sleep(Duration::from_millis(500));
+
+        // Shutdown tracer provider after flush completes
+        if let Err(e) = self.tracer_provider.shutdown() {
+            tracing::error!("Failed to shutdown tracer provider: {}", e);
+        }
+
+        // Flush and shutdown metrics provider
+        if let Some(mp) = self.meter_provider.take() {
+            if let Err(e) = mp.force_flush() {
+                tracing::error!("Failed to flush metrics during shutdown: {}", e);
+            }
+            std::thread::sleep(Duration::from_millis(100));
+            if let Err(e) = mp.shutdown() {
+                tracing::error!("Failed to shutdown meter provider: {}", e);
+            }
+        }
+
+        // Flush and shutdown logger provider
         if let Some(lp) = self.logger_provider.take() {
-            let _ = lp.shutdown();
+            if let Err(e) = lp.force_flush() {
+                tracing::error!("Failed to flush logs during shutdown: {}", e);
+            }
+            std::thread::sleep(Duration::from_millis(100));
+            if let Err(e) = lp.shutdown() {
+                tracing::error!("Failed to shutdown logger provider: {}", e);
+            }
         }
     }
 }
@@ -357,6 +406,24 @@ pub mod metrics {
 
         counter.add(1, &attributes);
     }
+}
+
+/// Flush all telemetry providers and wait for export to complete
+///
+/// This function ensures all pending telemetry data is exported before the program exits.
+/// It must be called before the OtelGuard is dropped to ensure async exports complete.
+pub fn flush_telemetry_and_wait() {
+    use std::thread;
+    use std::time::Duration;
+
+    // Note: OpenTelemetry 0.31+ doesn't have shutdown_tracer_provider() in global
+    // The shutdown is handled by the OtelGuard Drop implementation
+    // We just wait for pending exports to complete
+
+    // Wait for async export operations to complete
+    // OTLP exporters use batch processing with async HTTP/gRPC clients
+    // 500ms should be sufficient for local exports
+    thread::sleep(Duration::from_millis(500));
 }
 
 /// Add OTel logs layer for tracing events -> OTel LogRecords

@@ -1,0 +1,128 @@
+@startuml validation-hierarchy
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam handwritten false
+skinparam shadowing false
+skinparam defaultFontName "SF Pro Display"
+
+title clnrm Validation Hierarchy\nWeaver as Source of Truth
+
+package "Level 1: Schema Definition (Highest Authority)" #LightGreen {
+    [weaver registry check] as check
+    database "registry/*.yaml" as schemas
+    note right of check
+      **Source of Truth**
+      Validates schema syntax
+      and structure.
+
+      Exit 0 = schemas valid
+      Exit 1 = syntax errors
+    end note
+}
+
+package "Level 2: Live-Check Capabilities (Infrastructure)" #LightBlue {
+    [test_live_check_comprehensive.sh] as tests
+    [10 Test Functions] as testfuncs
+    note right of tests
+      **Infrastructure Validation**
+      Proves live-check tooling
+      works correctly.
+
+      Tests ALL live-check
+      capabilities before
+      relying on them.
+    end note
+}
+
+package "Level 3: Runtime Telemetry Validation (Integration)" #LightYellow {
+    [weaver registry live-check] as livecheck
+    [OTLP Collector] as otlp
+    [clnrm telemetry] as telemetry
+    note right of livecheck
+      **Runtime Validation**
+      Validates actual telemetry
+      from running clnrm tests
+      against schemas.
+
+      This is THE validation that
+      proves features work.
+    end note
+}
+
+package "Level 4: Traditional Tests (Supporting Evidence)" #LightGray {
+    [cargo test --features otel] as cargotests
+    [clnrm self-test --suite otel] as selftest
+    note right of cargotests
+      **Supporting Evidence**
+      Traditional tests can have
+      false positives.
+
+      ONLY Weaver validation
+      proves features work.
+    end note
+}
+
+' Flow
+check --> tests : schemas valid ↓
+tests --> livecheck : live-check works ↓
+livecheck --> cargotests : runtime validated ↓
+
+' Level 2 details
+tests --> testfuncs : runs
+testfuncs --> livecheck : validates tool
+
+' Level 3 details
+telemetry --> otlp : exports OTLP
+otlp --> livecheck : ingests
+livecheck --> schemas : validates against
+
+' Level 4 details
+cargotests --> telemetry : generates
+selftest --> telemetry : generates
+
+' The Critical Path
+rectangle "**The Golden Path to Production**" {
+    (1) Developer edits schemas
+    (1) --> (2) : git commit
+    (2) weaver registry check passes
+    (2) --> (3) : CI triggered
+    (3) Live-Check tests pass
+    (3) --> (4) : infrastructure OK
+    (4) cargo test generates telemetry
+    (4) --> (5) : telemetry exported
+    (5) weaver live-check validates
+    (5) --> (6) : ✅ VALIDATED
+    (6) Deploy to production
+}
+
+legend right
+  |= Level |= Authority |= Purpose |= Can Have False Positives? |
+  | 1 | **HIGHEST** | Schema syntax | **NO** - Syntax is definitive |
+  | 2 | **HIGH** | Tool validation | **NO** - Tests tool itself |
+  | 3 | **PROOF** | Runtime behavior | **NO** - Validates actual telemetry |
+  | 4 | SUPPORTING | Code tests | **YES** - Tests can lie |
+
+  **Key Insight**: Traditional tests (Level 4) can pass
+  even when features don't work. Only Weaver validation
+  (Levels 1-3) proves runtime behavior matches schemas.
+
+  **This Test Suite (Level 2)**: Validates that the
+  live-check tooling works correctly before relying
+  on it for Level 3 validation.
+endlegend
+
+note bottom
+  **Why This Hierarchy Matters**
+
+  Traditional Testing (What We Replace):
+    Test passes ✅ → Assume feature works → ❌ FALSE POSITIVE
+
+  clnrm with Weaver:
+    Schema validates runtime telemetry ✅ → Feature proven → ✅ TRUE POSITIVE
+
+  **The Meta-Problem**: clnrm eliminates false positives,
+  so we can't use methods that produce false positives to validate clnrm.
+  We MUST use Weaver schema validation as the source of truth.
+end note
+
+@enduml

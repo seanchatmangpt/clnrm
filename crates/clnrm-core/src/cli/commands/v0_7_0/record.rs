@@ -111,6 +111,7 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
         verbose: 0,
         force: true,  // Force run all tests for baseline
         digest: true, // Generate digest for baseline
+        validate: false, // No validation for baseline recording
     };
 
     let results = run_tests_sequential_with_results(&all_test_files, &config).await?;

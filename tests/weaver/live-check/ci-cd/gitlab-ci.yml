@@ -1,0 +1,94 @@
+# GitLab CI/CD Integration Example
+# Demonstrates Weaver live-check for pipeline quality gates
+
+stages:
+  - build
+  - test
+  - validate
+
+variables:
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  OTEL_SERVICE_NAME: clnrm-gitlab-ci
+
+# OTLP Collector service
+services:
+  - name: otel/opentelemetry-collector:latest
+    alias: otel-collector
+
+build:
+  stage: build
+  image: rust:1.70
+  script:
+    - cargo build --release --features otel
+  artifacts:
+    paths:
+      - target/release/clnrm
+    expire_in: 1 hour
+
+test:
+  stage: test
+  image: rust:1.70
+  script:
+    - cargo test --features otel --lib
+    - cargo test --features otel --test '*'
+
+weaver-validation:
+  stage: validate
+  image: ubuntu:22.04
+  dependencies:
+    - build
+  before_script:
+    # Install Weaver
+    - apt-get update && apt-get install -y curl jq
+    - curl -sSL https://github.com/open-telemetry/weaver/releases/latest/download/weaver-linux-amd64 -o /usr/local/bin/weaver
+    - chmod +x /usr/local/bin/weaver
+    - weaver --version
+
+    # Verify OTLP Collector is ready
+    - until curl -f http://otel-collector:13133/; do sleep 2; done
+
+  script:
+    # Start application with OTLP export in background
+    - ./target/release/clnrm self-test --suite otel &
+    - APP_PID=$!
+
+    # Run Weaver live-check validation
+    - |
+      weaver registry live-check \
+        --registry registry/ \
+        --otlp-http http://otel-collector:4318 \
+        --timeout 60s \
+        --output json > weaver-results.json || true
+
+    # Stop application
+    - kill -SIGTERM ${APP_PID} || true
+    - wait ${APP_PID} || true
+
+    # Analyze results
+    - violations=$(jq -r '.violations | length' weaver-results.json)
+    - errors=$(jq -r '[.violations[] | select(.severity == "error")] | length' weaver-results.json)
+    - warnings=$(jq -r '[.violations[] | select(.severity == "warning")] | length' weaver-results.json)
+
+    - echo "Weaver Validation Results:"
+    - echo "  Total violations - ${violations}"
+    - echo "  Errors - ${errors}"
+    - echo "  Warnings - ${warnings}"
+
+    # Fail pipeline if errors detected
+    - |
+      if [ "${errors}" -gt 0 ]; then
+        echo "Schema validation FAILED"
+        jq -r '.violations[] | select(.severity == "error")' weaver-results.json
+        exit 1
+      fi
+
+    - echo "Schema validation PASSED"
+
+  artifacts:
+    reports:
+      junit: weaver-results.json
+    paths:
+      - weaver-results.json
+    expire_in: 30 days
+
+  allow_failure: false

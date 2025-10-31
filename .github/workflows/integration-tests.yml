@@ -256,7 +256,7 @@ jobs:
 
       - name: Run tests with nextest
         run: |
-          cargo nextest run --all-features --no-fail-fast || true
+          cargo nextest run --all-features --no-fail-fast
 
       - name: Generate JUnit report
         run: |

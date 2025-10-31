@@ -1,0 +1,121 @@
+# GitHub Actions CI/CD Integration Example
+# Demonstrates Weaver live-check integration for automated quality gates
+
+name: Weaver Live Validation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  weaver-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      # OTLP Collector for telemetry ingestion
+      otel-collector:
+        image: otel/opentelemetry-collector:latest
+        ports:
+          - 4317:4317  # gRPC
+          - 4318:4318  # HTTP
+        options: >-
+          --health-cmd "curl -f http://localhost:13133/"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Weaver
+        run: |
+          curl -sSL https://github.com/open-telemetry/weaver/releases/latest/download/weaver-linux-amd64 -o /usr/local/bin/weaver
+          chmod +x /usr/local/bin/weaver
+          weaver --version
+
+      - name: Build and test application
+        run: |
+          cargo build --release --features otel
+          cargo test --features otel
+
+      - name: Start application with OTLP export
+        env:
+          OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4318
+          OTEL_SERVICE_NAME: clnrm-ci
+        run: |
+          ./target/release/clnrm self-test --suite otel &
+          APP_PID=$!
+          echo "APP_PID=${APP_PID}" >> $GITHUB_ENV
+
+      - name: Run Weaver live-check validation
+        timeout-minutes: 2
+        run: |
+          weaver registry live-check \
+            --registry registry/ \
+            --otlp-http http://localhost:4318 \
+            --timeout 60s \
+            --output json > weaver-results.json
+
+      - name: Stop application
+        if: always()
+        run: |
+          kill -SIGTERM ${{ env.APP_PID }} || true
+
+      - name: Analyze validation results
+        run: |
+          # Parse results
+          violations=$(jq -r '.violations | length' weaver-results.json)
+          errors=$(jq -r '[.violations[] | select(.severity == "error")] | length' weaver-results.json)
+          warnings=$(jq -r '[.violations[] | select(.severity == "warning")] | length' weaver-results.json)
+
+          echo "Weaver Validation Results:"
+          echo "  Total violations: ${violations}"
+          echo "  Errors: ${errors}"
+          echo "  Warnings: ${warnings}"
+
+          # Fail on errors, warn on warnings
+          if [ "${errors}" -gt 0 ]; then
+            echo "❌ Schema validation FAILED: ${errors} error(s) detected"
+            jq -r '.violations[] | select(.severity == "error")' weaver-results.json
+            exit 1
+          fi
+
+          if [ "${warnings}" -gt 0 ]; then
+            echo "⚠️  Warning: ${warnings} warning(s) detected"
+            jq -r '.violations[] | select(.severity == "warning")' weaver-results.json
+          fi
+
+          echo "✅ Schema validation PASSED"
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: weaver-validation-report
+          path: weaver-results.json
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('weaver-results.json', 'utf8'));
+            const violations = results.violations.length;
+            const errors = results.violations.filter(v => v.severity === 'error').length;
+
+            const body = errors === 0
+              ? `✅ **Weaver Validation Passed**\n\nNo schema violations detected.`
+              : `❌ **Weaver Validation Failed**\n\n${errors} error(s), ${violations} total violations.\n\nSee workflow artifacts for details.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

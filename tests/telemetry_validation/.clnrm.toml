@@ -1,0 +1,44 @@
+# Telemetry Validation Test
+# Purpose: Exercise full test lifecycle to emit complete OpenTelemetry data
+# This test validates that all 9 required attributes are emitted and validated by Weaver
+
+[test.metadata]
+name = "telemetry_validation_test"
+description = "Full lifecycle test to validate OpenTelemetry emission with all required attributes"
+version = "1.0.0"
+
+[services.alpine_container]
+type = "generic_container"
+image = "alpine:latest"
+description = "Simple Alpine container for telemetry validation"
+
+[[steps]]
+name = "simple_echo_command"
+description = "Execute echo command to trigger full test lifecycle"
+command = ["echo", "telemetry_validation_success"]
+expected_output_regex = "telemetry_validation_success"
+service = "alpine_container"
+timeout_seconds = 10
+
+[[steps]]
+name = "verify_container_state"
+description = "Verify container is running and healthy"
+command = ["whoami"]
+expected_output_regex = "root"
+service = "alpine_container"
+timeout_seconds = 5
+
+[assertions]
+container_should_have_executed_commands = 2
+execution_should_be_hermetic = true
+
+# This test will emit telemetry with all required attributes:
+# - test.name: "telemetry_validation_test"
+# - test.result: "pass" or "fail"
+# - container.id: Container ID from testcontainers
+# - test.start_timestamp: Test start time
+# - test.end_timestamp: Test completion time
+# - test.duration: Calculated duration in seconds
+# - test.step.name: Step names ("simple_echo_command", "verify_container_state")
+# - error.message: Present if test fails
+# - error.type: Present if test fails

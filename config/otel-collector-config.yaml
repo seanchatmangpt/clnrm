@@ -1,0 +1,116 @@
+# OpenTelemetry Collector Configuration for clnrm v1.2.0
+# Purpose: Receive OTLP telemetry from clnrm and export to Jaeger for Weaver validation
+# Usage: docker-compose -f docker-compose.weaver.yml up
+
+receivers:
+  # OTLP receiver for gRPC (port 4317) and HTTP (port 4318)
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "*"
+
+processors:
+  # Batch processor for efficient export
+  batch:
+    timeout: 1s
+    send_batch_size: 512
+    send_batch_max_size: 2048
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Resource processor to ensure service attributes
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: testing
+        action: upsert
+      - key: telemetry.sdk.name
+        value: opentelemetry
+        action: upsert
+
+  # Attributes processor for data enrichment
+  attributes:
+    actions:
+      - key: collector.name
+        value: clnrm-weaver-collector
+        action: upsert
+      - key: collector.version
+        value: 0.112.0
+        action: upsert
+
+exporters:
+  # Jaeger exporter for trace visualization
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # Logging exporter for debugging
+  logging:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # File exporter for persistent telemetry (useful for Weaver validation)
+  file:
+    path: /var/log/otel/traces.json
+    rotation:
+      max_megabytes: 100
+      max_days: 7
+      max_backups: 3
+
+service:
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [otlp/jaeger, logging, file]
+
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [logging, file]
+
+    # Logs pipeline
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [logging, file]
+
+  # Telemetry configuration for collector itself
+  telemetry:
+    logs:
+      level: info
+      development: false
+      encoding: json
+      output_paths:
+        - stdout
+        - /var/log/otel/collector.log
+      error_output_paths:
+        - stderr
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888
+
+  # Extensions
+  extensions: []
+
+# Health check configuration
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679

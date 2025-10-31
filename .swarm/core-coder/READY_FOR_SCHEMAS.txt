@@ -1,0 +1,44 @@
+CORE CODER STATUS: READY FOR SCHEMAS
+=====================================
+
+✅ COMPLETED:
+- Analyzed all manual span locations (6 total)
+- Documented refactor requirements
+- Created comprehensive analysis documents
+- Defined London TDD workflow
+- Identified all schema requirements
+
+⏸️ BLOCKED ON:
+Schema Architect must deliver 12 schema files to:
+  /Users/sac/clnrm/registry/
+
+Required schemas:
+  1. registry/registry_manifest.yaml
+  2. registry/core/test_execution.yaml
+  3. registry/core/container_command.yaml
+  4. registry/core/clnrm_run.yaml
+  5. registry/core/clnrm_step.yaml
+  6. registry/core/clnrm_test.yaml
+  7. registry/core/plugin_lifecycle.yaml
+  8. registry/core/container_lifecycle.yaml
+  9. registry/core/command_execution.yaml
+  10. registry/core/assertion_validation.yaml
+  11. registry/metrics/test_metrics.yaml
+  12. registry/metrics/container_metrics.yaml
+
+📋 NEXT STEPS (after schemas):
+1. Generate mocks from schemas
+2. Write contract tests using mocks
+3. Refactor TestEngine against mocks
+4. Generate real builders with Weaver
+5. Swap mocks for real implementation
+6. Configure OTLP export
+7. Validate with Weaver live-check
+
+⏱️ ETA AFTER UNBLOCK: 2.5 days
+
+📄 DETAILED DOCS:
+- .swarm/core-coder/analysis-manual-spans.md
+- .swarm/core-coder/refactor-status.md
+
+🤖 Core Coder - Standing By

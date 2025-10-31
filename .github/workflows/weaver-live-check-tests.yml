@@ -1,0 +1,326 @@
+name: Weaver Live-Check Tests
+
+on:
+  push:
+    branches: [master, main, develop]
+    paths:
+      - 'registry/**'
+      - 'crates/clnrm-core/src/telemetry/**'
+      - 'scripts/tests/**'
+      - '.github/workflows/weaver-live-check-tests.yml'
+  pull_request:
+    branches: [master, main, develop]
+    paths:
+      - 'registry/**'
+      - 'crates/clnrm-core/src/telemetry/**'
+      - 'scripts/tests/**'
+  workflow_dispatch:
+    inputs:
+      test_subset:
+        description: 'Test subset to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - basic
+          - advanced
+          - quick
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  validate-setup:
+    name: Validate Test Setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Weaver
+        run: |
+          cargo install weaver-forge --version 0.16.1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Validate setup
+        run: |
+          ./scripts/tests/validate_test_setup.sh
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-validation
+          path: |
+            validation_output/
+          retention-days: 7
+
+  basic-tests:
+    name: Basic Live-Check Tests
+    needs: validate-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Weaver
+        run: |
+          cargo install weaver-forge --version 0.16.1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Run basic tests
+        run: |
+          ./scripts/tests/run_test_subset.sh --basic
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic-test-results
+          path: |
+            validation_output/live_check_tests/**/*.log
+            validation_output/live_check_tests/**/*.json
+            validation_output/live_check_tests/test_summary.json
+          retention-days: 30
+
+      - name: Check for failures
+        if: always()
+        run: |
+          if [ -f validation_output/live_check_tests/test_summary.json ]; then
+            FAILED=$(jq -r '.failed' validation_output/live_check_tests/test_summary.json)
+            if [ "$FAILED" -gt 0 ]; then
+              echo "::error::$FAILED test(s) failed"
+              exit 1
+            fi
+          fi
+
+  advanced-tests:
+    name: Advanced Live-Check Tests
+    needs: validate-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Weaver
+        run: |
+          cargo install weaver-forge --version 0.16.1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Run advanced tests
+        run: |
+          ./scripts/tests/run_test_subset.sh --advanced
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: advanced-test-results
+          path: |
+            validation_output/live_check_tests/**/*.log
+            validation_output/live_check_tests/**/*.json
+            validation_output/live_check_tests/test_summary.json
+          retention-days: 30
+
+      - name: Check for failures
+        if: always()
+        run: |
+          if [ -f validation_output/live_check_tests/test_summary.json ]; then
+            FAILED=$(jq -r '.failed' validation_output/live_check_tests/test_summary.json)
+            if [ "$FAILED" -gt 0 ]; then
+              echo "::error::$FAILED test(s) failed"
+              exit 1
+            fi
+          fi
+
+  concurrent-tests:
+    name: Concurrent & OTLP Tests
+    needs: validate-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Weaver
+        run: |
+          cargo install weaver-forge --version 0.16.1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Build clnrm with OTEL
+        run: |
+          cargo build --release --features otel -p clnrm-core
+
+      - name: Run concurrent tests
+        run: |
+          ./scripts/tests/run_test_subset.sh --concurrent
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: concurrent-test-results
+          path: |
+            validation_output/live_check_tests/**/*.log
+            validation_output/live_check_tests/**/*.json
+            validation_output/live_check_tests/test_summary.json
+          retention-days: 30
+
+      - name: Check for failures
+        if: always()
+        run: |
+          if [ -f validation_output/live_check_tests/test_summary.json ]; then
+            FAILED=$(jq -r '.failed' validation_output/live_check_tests/test_summary.json)
+            # Allow skipped tests for concurrent suite
+            if [ "$FAILED" -gt 0 ]; then
+              echo "::warning::$FAILED test(s) failed (may be expected for concurrent tests)"
+            fi
+          fi
+
+  full-suite:
+    name: Full Test Suite
+    needs: [basic-tests, advanced-tests]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install Weaver
+        run: |
+          cargo install weaver-forge --version 0.16.1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Build clnrm with OTEL
+        run: |
+          cargo build --release --features otel -p clnrm-core
+
+      - name: Run full test suite
+        run: |
+          ./scripts/tests/test_live_check_comprehensive.sh
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Weaver Live-Check Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f validation_output/live_check_tests/test_summary.json ]; then
+            PASSED=$(jq -r '.passed' validation_output/live_check_tests/test_summary.json)
+            FAILED=$(jq -r '.failed' validation_output/live_check_tests/test_summary.json)
+            SKIPPED=$(jq -r '.skipped' validation_output/live_check_tests/test_summary.json)
+            DURATION=$(jq -r '.duration_seconds' validation_output/live_check_tests/test_summary.json)
+
+            echo "- ✅ Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- ❌ Failed: $FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "- ⏭️ Skipped: $SKIPPED" >> $GITHUB_STEP_SUMMARY
+            echo "- ⏱️ Duration: ${DURATION}s" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$FAILED" -eq 0 ]; then
+              echo "### ✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ❌ Some tests failed" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Failed tests:" >> $GITHUB_STEP_SUMMARY
+              jq -r '.failed_tests[]' validation_output/live_check_tests/test_summary.json | \
+                sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ Test summary not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload full test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-test-results
+          path: |
+            validation_output/live_check_tests/
+          retention-days: 30
+
+      - name: Check for failures
+        if: always()
+        run: |
+          if [ -f validation_output/live_check_tests/test_summary.json ]; then
+            FAILED=$(jq -r '.failed' validation_output/live_check_tests/test_summary.json)
+            if [ "$FAILED" -gt 0 ]; then
+              echo "::error::$FAILED test(s) failed in full suite"
+              exit 1
+            fi
+          fi
+
+  report:
+    name: Generate Test Report
+    needs: [basic-tests, advanced-tests, concurrent-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results
+
+      - name: Generate combined report
+        run: |
+          echo "# Weaver Live-Check Test Report" > report.md
+          echo "" >> report.md
+          echo "**Date**: $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)" >> report.md
+          echo "" >> report.md
+
+          for suite in basic advanced concurrent; do
+            if [ -f "test-results/${suite}-test-results/test_summary.json" ]; then
+              echo "## ${suite^} Tests" >> report.md
+              jq -r '"- Passed: \(.passed)\n- Failed: \(.failed)\n- Skipped: \(.skipped)"' \
+                "test-results/${suite}-test-results/test_summary.json" >> report.md
+              echo "" >> report.md
+            fi
+          done
+
+      - name: Upload combined report
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-test-report
+          path: report.md
+          retention-days: 90

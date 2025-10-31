@@ -1,0 +1,10 @@
+# Weaver output directories
+.weaver/
+validation_output/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Coverage history (track in git for trending)
+!.weaver/coverage/history/.gitkeep

@@ -1,0 +1,36 @@
+{
+  "resourceSpans": [{
+    "resource": {
+      "attributes": [{
+        "key": "service.name",
+        "value": { "stringValue": "clnrm-test" }
+      }]
+    },
+    "scopeSpans": [{
+      "scope": {
+        "name": "clnrm.test.execution"
+      },
+      "spans": [{
+        "traceId": "5b8aa5a2d2c872e8321cf37308d69df2",
+        "spanId": "051581bf3cb55c14",
+        "name": "test.execution",
+        "kind": 1,
+        "startTimeUnixNano": "1698672000000000000",
+        "endTimeUnixNano": "1698672001000000000",
+        "attributes": [{
+          "key": "test.name",
+          "value": { "stringValue": "invalid_test" }
+        }, {
+          "key": "test.result",
+          "value": { "stringValue": "INVALID_VALUE" }
+        }, {
+          "key": "test.duration_ms",
+          "value": { "stringValue": "not_a_number" }
+        }],
+        "status": {
+          "code": 1
+        }
+      }]
+    }]
+  }]
+}

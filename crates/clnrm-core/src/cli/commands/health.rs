@@ -4,12 +4,16 @@
 
 use crate::cleanroom::CleanroomEnvironment;
 use crate::error::{CleanroomError, Result};
+use crate::telemetry::cli_helpers::CliHealthSpanBuilder;
 // Note: AIIntelligenceService moved to clnrm-ai crate
 use std::time::Instant;
 use tracing::info;
 
 /// System health check command
 pub async fn system_health_check(verbose: bool) -> Result<()> {
+    // Start telemetry span
+    let span = CliHealthSpanBuilder::new(verbose).start();
+
     let start_time = Instant::now();
 
     info!("🏥 Starting Cleanroom System Health Check");
@@ -21,6 +25,9 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
     let mut total_checks = 0;
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
+    let mut docker_available = false;
+    let mut docker_version: Option<String> = None;
+    let mut docker_type: Option<String> = None;
 
     // 1. Core System Health
     println!("📊 Core System Status");
@@ -31,6 +38,8 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
         Ok(_env) => {
             println!("  ✅ Cleanroom Environment: Operational");
             health_score += 1;
+            docker_available = true; // If env created, Docker is available
+            docker_type = Some("docker".to_string()); // Default to docker
         }
         Err(e) => {
             println!("  ❌ Cleanroom Environment: Failed");
@@ -38,6 +47,19 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
                 "Cleanroom environment initialization failed: {}",
                 e
             ));
+        }
+    }
+
+    // Check Docker version if available
+    if docker_available {
+        if let Ok(output) = tokio::process::Command::new("docker")
+            .arg("--version")
+            .output()
+            .await
+        {
+            if let Ok(version_str) = String::from_utf8(output.stdout) {
+                docker_version = Some(version_str.trim().to_string());
+            }
         }
     }
 
@@ -210,6 +232,59 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
     println!(
         "\n✨ Health check completed in {:.2}s\n",
         elapsed.as_secs_f64()
+    );
+
+    // Determine overall health status
+    let overall_status = if health_percentage >= 90 {
+        "healthy"
+    } else if health_percentage >= 70 {
+        "degraded"
+    } else {
+        "unhealthy"
+    };
+
+    // Check if weaver is available
+    let weaver_available = tokio::process::Command::new("weaver")
+        .arg("--version")
+        .output()
+        .await
+        .is_ok();
+
+    let weaver_version = if weaver_available {
+        tokio::process::Command::new("weaver")
+            .arg("--version")
+            .output()
+            .await
+            .ok()
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+            .map(|s| s.trim().to_string())
+    } else {
+        None
+    };
+
+    // Finish telemetry span
+    let success = health_percentage >= 70;
+    let error_info = if !success {
+        Some((
+            "HealthCheckFailed".to_string(),
+            format!("System health below threshold: {}%", health_percentage),
+        ))
+    } else {
+        None
+    };
+
+    span.finish(
+        success,
+        overall_status,
+        total_checks,
+        health_score,
+        total_checks - health_score,
+        docker_available,
+        docker_version,
+        docker_type,
+        weaver_available,
+        weaver_version,
+        error_info,
     );
 
     // Return success if health is acceptable

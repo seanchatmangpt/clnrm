@@ -1,0 +1,115 @@
+groups:
+- id: span.clnrm.cli.plugins
+  type: span
+  span_kind: internal
+  stability: stable
+  brief: Represents plugin discovery and listing via 'clnrm plugins' command
+  note: |
+    CRITICAL VALIDATION POINTS:
+    - plugins.discovered MUST be >= 0 (proves discovery ran)
+    - plugins.builtin + plugins.custom should account for most plugins
+    - operation.duration_ms > 0 proves actual discovery occurred
+    - plugins.by_type JSON proves type classification works
+
+    This span proves that clnrm successfully discovered and categorized
+    all available service plugins (built-in and custom).
+
+  attributes:
+  - id: cli.command
+    type: string
+    stability: stable
+    brief: The CLI command name
+    requirement_level: required
+    examples: ["plugins"]
+
+  - id: cli.version
+    type: string
+    stability: stable
+    brief: clnrm version executing the command
+    requirement_level: recommended
+    examples: ["1.2.0", "1.1.0"]
+
+  - id: plugins.discovered
+    type: int
+    stability: stable
+    brief: Total number of plugins discovered
+    requirement_level: required
+    note: CRITICAL PROOF - Must be >= 0, proves discovery executed
+    examples:
+    - 7
+    - 12
+    - 20
+
+  - id: plugins.builtin
+    type: int
+    stability: stable
+    brief: Number of built-in plugins (shipped with clnrm)
+    requirement_level: recommended
+    note: Separates core plugins from custom plugins
+    examples:
+    - 5
+    - 7
+    - 10
+
+  - id: plugins.custom
+    type: int
+    stability: stable
+    brief: Number of custom user-defined plugins
+    requirement_level: recommended
+    note: Proves custom plugin loading works
+    examples:
+    - 0
+    - 2
+    - 5
+
+  - id: plugins.by_type
+    type: string
+    stability: stable
+    brief: JSON map of plugin type to count
+    requirement_level: recommended
+    note: |
+      Proves type classification works. Format: {"type": count}
+      Example: {"database": 2, "cache": 1, "llm": 3, "generic": 1}
+    examples:
+    - '{"database": 2, "cache": 1, "generic": 1, "llm": 3}'
+    - '{"generic": 5, "database": 1}'
+
+  - id: operation.duration_ms
+    type: double
+    stability: stable
+    brief: Duration of plugin discovery in milliseconds
+    requirement_level: required
+    note: Must be > 0, proving actual discovery occurred
+    examples:
+    - 25.3
+    - 45.7
+    - 85.2
+
+  - id: operation.success
+    type: boolean
+    stability: stable
+    brief: Whether plugin discovery completed successfully
+    requirement_level: required
+    note: Final result - must be set
+    examples:
+    - true
+    - false
+
+  - id: error.type
+    type: string
+    stability: stable
+    brief: Type of error if discovery failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - PluginLoadError
+    - InvalidPluginConfiguration
+
+  - id: error.message
+    type: string
+    stability: stable
+    brief: Detailed error message if discovery failed
+    requirement_level:
+      conditionally_required: Only when operation.success is false
+    examples:
+    - Failed to load plugin from path /plugins/custom.so

@@ -2,6 +2,7 @@
 
 use crate::cli::types::{CliConfig, CliTestResult};
 use crate::error::{CleanroomError, Result};
+use crate::telemetry::test_execution::{TestExecutionBuilder, TestResult};
 use std::path::PathBuf;
 use tracing::{debug, error, info};
 
@@ -22,11 +23,38 @@ pub async fn run_tests_sequential_with_results(
             .unwrap_or("unknown")
             .to_string();
 
+        // Determine test suite from path
+        let test_suite = path
+            .parent()
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown_suite")
+            .to_string();
+
+        // Create telemetry builder for this test execution
+        let telemetry_builder = TestExecutionBuilder::new(test_name.clone(), test_suite);
+
         let start_time = std::time::Instant::now();
         match run_single_test(path, config).await {
-            Ok(_) => {
+            Ok(container_id_opt) => {
                 let duration = start_time.elapsed().as_millis() as u64;
                 info!("Test passed: {}", path.display());
+
+                // Emit telemetry with all attributes
+                let mut builder = telemetry_builder.cleanup_done();
+
+                // Add container info if available (CRITICAL for validation)
+                if let Some(container_id) = container_id_opt {
+                    let container_info = crate::telemetry::test_execution::ContainerInfo::new(
+                        container_id,
+                        "alpine:latest".to_string(), // TODO: Get actual image from config
+                    );
+                    builder = builder.container(container_info);
+                }
+
+                // Finish and emit span
+                builder.finish(TestResult::Pass);
+
                 results.push(CliTestResult {
                     name: test_name,
                     passed: true,
@@ -37,11 +65,21 @@ pub async fn run_tests_sequential_with_results(
             Err(e) => {
                 let duration = start_time.elapsed().as_millis() as u64;
                 error!("Test failed: {} - {}", path.display(), e);
+
+                // Emit telemetry for failed test
+                let error_type = format!("{:?}", e); // Get error type from CleanroomError
+                let error_message = e.to_string();
+
+                telemetry_builder
+                    .error(error_type, error_message.clone())
+                    .cleanup_done()
+                    .finish(TestResult::Fail);
+
                 results.push(CliTestResult {
                     name: test_name,
                     passed: false,
                     duration_ms: duration,
-                    error: Some(e.to_string()),
+                    error: Some(error_message),
                 });
                 if config.fail_fast {
                     break;
@@ -95,18 +133,41 @@ pub async fn run_tests_parallel_with_results(
             .unwrap_or("unknown")
             .to_string();
 
+        let test_suite = path
+            .parent()
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown_suite")
+            .to_string();
+
         join_set.spawn(async move {
+            let telemetry_builder = TestExecutionBuilder::new(test_name.clone(), test_suite);
             let start_time = std::time::Instant::now();
             let result = run_single_test(&path_clone, &config_clone).await;
             let duration = start_time.elapsed().as_millis() as u64;
-            (test_name, result, duration)
+            (test_name, result, duration, telemetry_builder)
         });
     }
 
     // Collect results
     while let Some(result) = join_set.join_next().await {
         match result {
-            Ok((test_name, Ok(_), duration)) => {
+            Ok((test_name, Ok(container_id_opt), duration, telemetry_builder)) => {
+                // Emit telemetry with all attributes
+                let mut builder = telemetry_builder.cleanup_done();
+
+                // Add container info if available (CRITICAL for validation)
+                if let Some(container_id) = container_id_opt {
+                    let container_info = crate::telemetry::test_execution::ContainerInfo::new(
+                        container_id,
+                        "alpine:latest".to_string(), // TODO: Get actual image from config
+                    );
+                    builder = builder.container(container_info);
+                }
+
+                // Finish and emit span
+                builder.finish(TestResult::Pass);
+
                 results.push(CliTestResult {
                     name: test_name,
                     passed: true,
@@ -114,13 +175,23 @@ pub async fn run_tests_parallel_with_results(
                     error: None,
                 });
             }
-            Ok((test_name, Err(e), duration)) => {
+            Ok((test_name, Err(e), duration, telemetry_builder)) => {
                 error!("Test failed: {}", e);
+
+                // Emit telemetry for failed test
+                let error_type = format!("{:?}", e);
+                let error_message = e.to_string();
+
+                telemetry_builder
+                    .error(error_type, error_message.clone())
+                    .cleanup_done()
+                    .finish(TestResult::Fail);
+
                 results.push(CliTestResult {
                     name: test_name,
                     passed: false,
                     duration_ms: duration,
-                    error: Some(e.to_string()),
+                    error: Some(error_message),
                 });
                 if config.fail_fast {
                     join_set.abort_all();

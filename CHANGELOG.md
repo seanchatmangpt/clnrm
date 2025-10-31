@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - TBD
+
+### 🚨 MAJOR: Weaver Validation Integration
+
+**BREAKING CONCEPT:** clnrm now requires Weaver validation to ship features.
+
+Traditional tests are supporting evidence, but Weaver validation is the source of truth.
+
+#### Added
+- **Complete telemetry schema registry** - Defines all OTEL spans/metrics/logs
+- **Weaver live-check integration** - Runtime telemetry validation against schemas
+- **Type-safe telemetry builders** - Generated from schemas, enforce required attributes at compile time
+- **`--validate` flag** - Run tests with Weaver validation
+- **WeaverController** - Manages Weaver validation lifecycle
+- **Validation reporting** - JSON reports with violations and improvements
+- **Schema-first workflow** - Define schemas before implementation
+
+#### Changed
+- **Test execution** - Now exports comprehensive telemetry for validation
+- **Container operations** - Tracked with spans including container.id
+- **Plugin lifecycle** - Instrumented with plugin.id, state, health attributes
+- **CI/CD pipeline** - Blocks on Weaver validation failures
+- **Definition of Done** - Weaver validation now mandatory for release
+
+#### Documentation
+- **Weaver User Guide** - How to use Weaver validation with clnrm
+- **Schema Writing Guide** - Authoring telemetry schemas
+- **Migration Guide** - Migrating features to Weaver validation
+- **Updated README** - Weaver-centric approach explained
+- **Updated CLAUDE.md** - Development guidelines updated with Weaver hierarchy
+
+#### Validation
+- **Zero reliance on test passes** as proof of correctness
+- **Weaver validation required** for all feature releases
+- **Schema-first development** - Implementation follows schema
+- **No fake-green tests** - Telemetry proves actual behavior
+
+#### Why This Matters
+- **Eliminates false positives** - Tests can lie, schemas can't
+- **Proves features work** - Runtime telemetry matches declared contract
+- **Industry-standard approach** - Uses OpenTelemetry Weaver (official OTel tool)
+- **Schema-first enables:**
+  - Code generation (type-safe builders)
+  - Policy enforcement (required attributes)
+  - Automated validation (live-check)
+  - Documentation (schemas are contracts)
+
+#### Migration Path
+1. Existing tests still work (backward compatible)
+2. Add `--validate` flag to see current validation status
+3. Fix violations incrementally
+4. v1.2.0 requires zero violations for release
+
+See documentation:
+- [Weaver Integration Plan](docs/WEAVER_INTEGRATION_PLAN.md) - Full technical details
+- [Weaver User Guide](docs/WEAVER_USER_GUIDE.md) - Usage instructions
+- [Schema Writing Guide](docs/SCHEMA_WRITING_GUIDE.md) - Schema authoring
+- [Migration Guide](docs/MIGRATING_TO_WEAVER_VALIDATION.md) - Migration steps
+
 ## [1.1.0] - 2025-10-30
 
 ### 🚀 **Minor Release: False Positive Elimination & Architecture Enhancement**

@@ -460,23 +460,194 @@ See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ---
 
-## 🚨 CRITICAL: The Validation Paradox
+## 🚨 CRITICAL: Weaver Validation is Our Source of Truth
 
-**clnrm exists to eliminate false positives in testing. Therefore, we CANNOT validate clnrm using traditional tests that can produce false positives.**
+clnrm v1.2.0+ uses **OpenTelemetry Weaver schema validation** as the ONLY source of truth for feature validation.
 
-### Current Validation Status (v1.1.0)
-- ⚠️ **Current validation relies on traditional tests** (may contain false positives)
-- 🎯 **Target for v1.2.0:** OpenTelemetry Weaver schema validation (eliminates false positives)
+### Why Weaver?
 
-### Why This Matters
+Traditional tests can have false positives:
+- Tests pass but feature doesn't work
+- Mocks are incorrect
+- Test validates wrong thing
+- Test logic is flawed
+
+**Weaver validation proves behavior:**
+- Validates actual runtime telemetry
+- Telemetry must match schema exactly
+- Schema defines exact behavior contract
+- **Cannot pass with fake implementation**
+
+### Validation Flow
+
 ```
-Traditional Testing (What clnrm Replaces):
-  assert(test_passed) ✅ → FALSE POSITIVE
-  └─ Test can pass even when feature doesn't work
-
-clnrm with Weaver Validation (v1.2.0+):
-  Schema validation ✅ → TRUE POSITIVE
-  └─ Telemetry proves actual runtime behavior
+Define schema → Generate code → Write tests → Implement → Validate with Weaver
+     ↓              ↓             ↓            ↓              ↓
+  Contract      Type-safe     Interface   Implementation  Runtime
+  defined       builders      validated    complete      validated
 ```
 
-**See [Weaver Integration Plan](docs/WEAVER_INTEGRATION_PLAN.md) for details on how v1.2.0 will achieve 100% validated claims.**
+Traditional testing validates test logic. Weaver validates production behavior.
+
+### Running with Validation
+
+```bash
+# Run tests with Weaver validation
+clnrm run tests/ --validate
+
+# If validation passes:
+✅ Tests passed
+✅ Telemetry validated
+→ Feature proven to work
+
+# If validation fails:
+✓ Tests passed
+✗ Telemetry validation FAILED
+→ Feature may have false positives
+→ DO NOT SHIP
+```
+
+### LIVE-CHECK Compliance: How Weaver Validation Works
+
+**Weaver provides two validation commands that serve as our source of truth:**
+
+#### 1. Schema Validation (`weaver registry check`)
+
+**What it does:**
+- Validates schema definition syntax and structure
+- Checks attribute definitions, type consistency, and references
+- Ensures schema follows OpenTelemetry semantic conventions
+- Runs Rego policy validation
+
+**When to use:**
+- During schema development
+- In CI/CD before code generation
+- As pre-commit hook
+
+**Example:**
+```bash
+weaver registry check -r registry/
+
+# Success output:
+✅ Registry validation succeeded
+   • 14 schemas validated
+   • 0 warnings
+   • 0 policy violations
+```
+
+#### 2. Live Validation (`weaver registry live-check`)
+
+**What it does:**
+- Starts OTLP listener (gRPC on port 4317 by default)
+- Receives actual runtime telemetry from tests
+- Compares telemetry against schema definitions
+- Detects missing attributes, type mismatches, invalid values
+- Generates conformance report with violation/improvement/information advice
+
+**When to use:**
+- After running tests with OTLP export enabled
+- In CI/CD to validate test telemetry
+- For debugging instrumentation issues
+
+**Example:**
+```bash
+# Terminal 1: Start Weaver listener
+weaver registry live-check --registry registry/ --format json --output ./validation_report
+
+# Terminal 2: Run tests with OTLP export
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 cargo test --features otel
+
+# Terminal 1: Stop listener (CTRL+C or SIGHUP)
+# Check validation_report/ for results
+
+# Success criteria:
+✅ total_samples > 0          # Telemetry was actually emitted
+✅ highest_advice_level != "violation"  # No schema violations
+✅ registry_coverage > 0.0    # Some registry attributes were seen
+```
+
+#### Why Both Are Required
+
+| Validation Type | What It Proves | Can Have False Positives? |
+|-----------------|----------------|---------------------------|
+| **Traditional Tests** | Test logic works | ✅ YES - Tests can pass when features are broken |
+| **Schema Check** | Schema is valid | ❌ NO - But doesn't prove code emits telemetry |
+| **Live Check** | Runtime telemetry matches schema | ❌ NO - This is the source of truth |
+
+**The Problem Weaver Solves:**
+```rust
+// ❌ WRONG - Test passes but feature doesn't work
+#[test]
+fn test_span_creation() {
+    let result = create_span("test");
+    assert!(result.is_ok());  // ✅ Test passes
+    // But no telemetry was actually emitted!
+}
+
+// ✅ CORRECT - Weaver validates actual telemetry
+#[test]
+fn test_span_creation() {
+    // Run with OTLP export enabled
+    let result = create_span("test");
+    assert!(result.is_ok());
+    // Weaver verifies span was emitted and matches schema
+    // If no telemetry → Weaver reports zero samples → FAIL
+}
+```
+
+#### Current Blockers (v1.2.0)
+
+**Why we can't use Weaver validation yet:**
+
+1. **Port Configuration Fragmentation** - OTLP export hardcoded to wrong port
+   - **Impact**: Telemetry goes to Docker collector, not Weaver listener
+   - **Result**: Zero samples received, validation passes with no data
+
+2. **Silent Telemetry Loss** - Validation doesn't fail on zero samples
+   - **Impact**: Weaver generates report even with no telemetry
+   - **Result**: False confidence that validation passed
+
+3. **Test Failures Ignored** - CI uses `|| true` to ignore failures
+   - **Impact**: Tests fail but CI passes anyway
+   - **Result**: Broken features merge to main
+
+**These must be fixed before Weaver can be our source of truth.**
+
+#### Compliance Checklist
+
+- [ ] `weaver registry check -r registry/` passes (schema is valid)
+- [ ] `weaver registry live-check --registry registry/` receives telemetry (samples > 0)
+- [ ] No "violation" level advice in live-check report
+- [ ] Registry coverage > 0.0 (at least some attributes were seen)
+- [ ] Tests run with OTLP export to Weaver's listener
+- [ ] CI fails if Weaver validation fails
+- [ ] No `|| true` in CI to ignore test failures
+
+### Current Status (v1.2.0 - Infrastructure Complete, Validation Pending)
+
+**Infrastructure Status** (2025-10-30):
+- ✅ **WeaverController**: Implemented (588 lines, fully integrated)
+- ✅ **Schema Registry**: 14 schemas validated, zero warnings
+- ✅ **OTLP Export**: Configured and ready
+- ✅ **Type-Safe Builders**: Generated from schemas
+- ✅ **Docker Integration**: Testcontainers + OTLP collector working
+
+**Validation Status**:
+- 🔴 **Live validation BLOCKED**: 5 CRITICAL issues prevent Weaver validation
+- ⚠️ **Current validation**: Traditional tests only (may contain false positives)
+- 🎯 **Target for v1.2.0**: Resolve P0 blockers, enable Weaver validation
+
+**Known Issues** (see FIXME.md for details):
+1. **Port Configuration Fragmentation** (CRITICAL) - 6 sources of truth conflict
+2. **Silent Telemetry Loss** (CRITICAL) - Validation passes with zero samples
+3. **Test Failures Ignored** (CRITICAL) - CI uses `|| true` to ignore failures
+4. **Hardcoded Timeouts** (HIGH) - 8 timeout values prevent tuning
+5. **Missing Architecture Components** (HIGH) - Documented methods don't exist
+
+**Estimated Fix Time**: 4-6 hours for P0 blockers
+
+**See documentation:**
+- [FIXME.md](FIXME.md) - Detailed blocker analysis and fixes
+- [LIVE-CHECK.md](LIVE-CHECK.md) - Weaver compliance requirements
+- [Weaver User Guide](docs/WEAVER_USER_GUIDE.md) - How to use Weaver validation
+- [Schema Writing Guide](docs/SCHEMA_WRITING_GUIDE.md) - Authoring telemetry schemas

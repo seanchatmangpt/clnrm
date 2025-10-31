@@ -1,0 +1,43 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": { "stringValue": "clnrm" }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "clnrm-core"
+          },
+          "spans": [
+            {
+              "name": "clnrm.test_execution",
+              "kind": "SPAN_KIND_INTERNAL",
+              "startTimeUnixNano": "1698000000000000000",
+              "endTimeUnixNano": "1698000125500000000",
+              "attributes": [
+                {
+                  "key": "test.name",
+                  "value": { "stringValue": "test_stub_implementation" }
+                },
+                {
+                  "key": "test.suite",
+                  "value": { "stringValue": "fake_tests" }
+                },
+                {
+                  "key": "test.result",
+                  "value": { "stringValue": "pass" }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

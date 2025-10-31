@@ -122,6 +122,7 @@ pub async fn reproduce_baseline(
         verbose: 0,
         force: true,   // Force run all tests
         digest: false, // No digest needed for reproduction
+        validate: false, // No validation for baseline reproduction
     };
 
     let results = run_tests_sequential_with_results(&test_paths, &config).await?;

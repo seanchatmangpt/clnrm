@@ -257,6 +257,7 @@ pub async fn run_red_green_validation(
         verbose: 0,
         force: true,   // Force run all tests
         digest: false, // No digest needed for TDD validation
+        validate: false, // No validation for TDD validation
     };
 
     let results = run_tests_sequential_with_results(paths, &config).await?;
