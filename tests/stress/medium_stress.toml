@@ -1,0 +1,51 @@
+# Medium Stress Test Configuration
+#
+# This configuration runs a medium-intensity stress test suitable for
+# CI/CD pipelines and integration testing environments.
+
+# Container images to test - multiple containers for diversity
+containers = [
+    "alpine:latest",
+    "ubuntu:latest",
+    "debian:stable-slim"
+]
+
+# Number of test iterations per container
+test_count = 20
+
+# OTEL span depth (how many nested spans to generate)
+span_depth = 10
+
+# Parallel execution concurrency level
+concurrency = 4
+
+# Test timeout per execution (seconds)
+test_timeout = 180
+
+# Enable progress reporting
+progress_reporting = true
+
+# Enable graceful degradation on resource exhaustion
+graceful_degradation = true
+
+# Fail fast on first error
+fail_fast = false
+
+[limits]
+# Maximum number of concurrent containers
+max_containers = 15
+
+# Maximum memory usage in MB
+max_memory_mb = 3072
+
+# Maximum CPU cores to use
+max_cpu_cores = 4.0
+
+# Maximum total OTEL spans to generate
+max_spans = 20000
+
+# Container startup timeout (seconds)
+container_startup_timeout = 45
+
+# Pool cleanup timeout (seconds)
+pool_cleanup_timeout = 90

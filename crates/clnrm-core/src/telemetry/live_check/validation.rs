@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct ConformanceValidator {
     config: ValidationConfig,
     eighty_twenty_config: Option<EightyTwentyConfig>,
+    #[allow(dead_code)]
     complete_config: Option<Complete80_20Config>,
 }
 

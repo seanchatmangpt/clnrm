@@ -401,7 +401,7 @@ impl WeaverProcessManager {
             if let Some(ref mut stderr) = process.stderr {
                 let mut stderr_content = String::new();
                 let reader = BufReader::new(stderr);
-                for line in reader.lines().flatten() {
+                for line in reader.lines().map_while(|r| r.ok()) {
                     stderr_content.push_str(&line);
                     stderr_content.push('\n');
                 }

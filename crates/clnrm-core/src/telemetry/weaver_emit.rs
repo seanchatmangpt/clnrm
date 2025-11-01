@@ -361,10 +361,7 @@ impl EmitHandle {
 
     /// Check if process is still running
     pub fn is_running(&mut self) -> bool {
-        match self.process.try_wait() {
-            Ok(None) => true,
-            _ => false,
-        }
+        matches!(self.process.try_wait(), Ok(None))
     }
 
     /// Wait for process to finish (with timeout)

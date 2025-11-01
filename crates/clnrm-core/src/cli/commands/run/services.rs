@@ -5,7 +5,6 @@
 
 use crate::cleanroom::CleanroomEnvironment;
 use crate::error::{CleanroomError, Result};
-use crate::telemetry::spans;
 use std::collections::HashMap;
 use tracing::{debug, info};
 
@@ -92,7 +91,7 @@ pub async fn load_services_from_config(
         env.register_service(plugin).await?;
         info!("📦 Registered service plugin: {}", service_name);
 
-        let service_span = spans::service_start_span(service_name, &service_config.plugin);
+        let service_span = crate::telemetry::semantic_conventions::SpanBuilder::service_start(service_name, &service_config.plugin);
 
         let _service_guard = service_span.enter();
 

@@ -29,7 +29,6 @@ use std::thread;
 use std::time::Duration;
 use tracing::{debug, error, info, warn};
 
-use crate::telemetry::spans;
 
 // Re-export executor functions
 pub use executor::{
@@ -259,7 +258,7 @@ async fn run_tests_impl(
             .first()
             .and_then(|p| p.to_str())
             .unwrap_or("multiple_paths");
-        spans::run_span(config_path, paths.len())
+        crate::telemetry::semantic_conventions::SpanBuilder::clnrm_run(config_path, paths.len())
     };
 
     // Execute within span context
@@ -623,7 +622,7 @@ async fn run_tests_impl_with_report(
             .first()
             .and_then(|p| p.to_str())
             .unwrap_or("multiple_paths");
-        spans::run_span(config_path, paths.len())
+        crate::telemetry::semantic_conventions::SpanBuilder::clnrm_run(config_path, paths.len())
     };
 
     // Execute within span context

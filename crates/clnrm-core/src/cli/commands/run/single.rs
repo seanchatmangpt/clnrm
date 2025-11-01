@@ -7,7 +7,6 @@ use crate::cleanroom::CleanroomEnvironment;
 use crate::cli::types::CliConfig;
 use crate::error::{CleanroomError, Result};
 use crate::telemetry::span_storage;
-use crate::telemetry::spans;
 use crate::validation::span_validator::SpanValidator;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -151,7 +150,7 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
         info!("🔧 Executing: {}", rendered_command.join(" "));
         info!("🔧 Executing: {}", rendered_command.join(" "));
 
-        let command_span = spans::command_execute_span(&rendered_command.join(" "));
+        let command_span = crate::telemetry::semantic_conventions::SpanBuilder::command_execute(&rendered_command.join(" "));
 
         let _command_guard = command_span.enter();
 

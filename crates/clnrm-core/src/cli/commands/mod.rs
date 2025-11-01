@@ -28,6 +28,7 @@ pub mod self_test;
 pub mod services;
 pub mod services_noun_verb;
 pub mod spans;
+pub mod stress;
 pub mod template;
 pub mod validate;
 
@@ -74,3 +75,4 @@ pub use redgreen::run_red_green_validation;
 pub use render::render_template_with_vars;
 pub use repro::reproduce_baseline;
 pub use spans::filter_spans;
+pub use stress::{generate_stress_config_example, load_stress_config, run_stress_test};

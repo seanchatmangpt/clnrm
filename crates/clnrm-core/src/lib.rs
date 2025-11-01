@@ -24,6 +24,7 @@ pub mod policy;
 pub mod reporting;
 pub mod scenario;
 pub mod services;
+pub mod stress_test;
 pub mod telemetry;
 pub mod utils;
 pub mod validation;

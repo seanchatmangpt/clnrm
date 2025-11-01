@@ -79,7 +79,7 @@ colored = "2.1"  # For beautiful terminal output in diagnostic formatter
 nix = { version = "0.27", features = ["signal", "fs"] }
 
 # Template rendering - Full-featured template engine for test configuration
-clnrm-template = { path = "../clnrm-template" }
+clnrm-template = { path = "../clnrm-template", version = "1.3.0" }
 sha2 = "0.10"                                   # Still needed for other modules
 
 [dev-dependencies]
@@ -106,6 +106,11 @@ mockall = { workspace = true }
 name = "hot_reload_critical_path"
 harness = false
 path = "../../benches/hot_reload_critical_path.rs"
+
+[[bench]]
+name = "stress_capacity_benchmarks"
+harness = false
+path = "../../benches/stress_capacity_benchmarks.rs"
 
 [[example]]
 name = "status-validator-demo"

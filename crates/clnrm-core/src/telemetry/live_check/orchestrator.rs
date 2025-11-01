@@ -362,7 +362,7 @@ impl LiveCheckOrchestrator<Uninitialized> {
             .clone();
 
         match self.start_weaver().await {
-            Ok(running) => Ok(OrchestrationMode::LiveCheck(running)),
+            Ok(running) => Ok(OrchestrationMode::LiveCheck(Box::new(running))),
             Err(e) => {
                 warn!("Live-check failed to start: {}", e);
                 warn!("Falling back to registry check only");
@@ -804,7 +804,7 @@ impl Drop for LiveCheckGuard {
 /// graceful degradation when Weaver cannot be started.
 pub enum OrchestrationMode {
     /// Full live validation with running Weaver
-    LiveCheck(LiveCheckOrchestrator<WeaverRunning>),
+    LiveCheck(Box<LiveCheckOrchestrator<WeaverRunning>>),
 
     /// Fallback: static registry check only (Weaver unavailable)
     RegistryCheckOnly {
@@ -854,7 +854,7 @@ pub async fn run_with_graceful_fallback(
 
             // For full integration, caller would run tests here
             // For now, just stop and return report
-            let completed = running.stop_weaver().await?;
+            let completed = (*running).stop_weaver().await?;
 
             Ok(GracefulFallbackResult {
                 mode: FallbackMode::LiveCheck,

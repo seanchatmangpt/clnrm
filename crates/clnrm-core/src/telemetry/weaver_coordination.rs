@@ -322,17 +322,21 @@ impl WeaverController<Running> {
             let pid = Pid::from_raw(process.id() as i32);
             debug!("Sending SIGHUP to Weaver (PID: {})", pid);
 
-            kill(pid, Signal::SIGHUP).map_err(|e| {
-                CleanroomError::internal_error(format!("Failed to send SIGHUP: {}", e))
-            })?;
+            if let Err(e) = kill(pid, Signal::SIGHUP) {
+                warn!("Failed to send SIGHUP: {}, attempting cleanup", e);
+                let _ = process.wait(); // Prevent zombie process
+                return Err(CleanroomError::internal_error(format!("Failed to send SIGHUP: {}", e)));
+            }
         }
 
         #[cfg(not(unix))]
         {
             warn!("Graceful shutdown not supported on this platform, killing process");
-            process.kill().map_err(|e| {
-                CleanroomError::internal_error(format!("Failed to kill Weaver: {}", e))
-            })?;
+            if let Err(e) = process.kill() {
+                warn!("Failed to kill Weaver: {}, attempting cleanup", e);
+                let _ = process.wait(); // Prevent zombie process
+                return Err(CleanroomError::internal_error(format!("Failed to kill Weaver: {}", e)));
+            }
         }
 
         // FIX: Always wait for process, even on error, to prevent zombie processes

@@ -9,14 +9,7 @@
 
 use crate::config::TestConfig;
 use crate::error::{CleanroomError, Result};
-use crate::telemetry::live_check::orchestrator::{
-    LiveCheckOrchestrator, ValidationReport, ValidationStatus,
-};
-use crate::telemetry::{flush_telemetry_and_wait, init_otel, Export, OtelConfig};
 use std::path::PathBuf;
-use std::time::Duration;
-use tokio::time::sleep;
-use tracing::{debug, error, info};
 
 /// Execute tests with Weaver live-check validation
 ///
