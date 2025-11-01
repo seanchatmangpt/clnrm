@@ -266,8 +266,9 @@ async fn test_force_kill_cleanup() -> Result<()> {
         use nix::sys::signal::{kill, Signal};
         use nix::unistd::Pid;
 
-        // Sending signal 0 checks if process exists
-        let result = kill(Pid::from_raw(pid as i32), Signal::from_c_int(0).unwrap());
+        // Sending signal 0 (null signal) checks if process exists
+        // In nix 0.27+, we use None to represent signal 0
+        let result = kill(Pid::from_raw(pid as i32), None);
         assert!(result.is_err(), "Process should not exist after force kill");
     }
 
@@ -295,10 +296,11 @@ async fn test_drop_cleanup() -> Result<()> {
     // Assert: Process should be cleaned up by Drop
     #[cfg(unix)]
     {
-        use nix::sys::signal::{kill, Signal};
+        use nix::sys::signal::kill;
         use nix::unistd::Pid;
 
-        let result = kill(Pid::from_raw(pid as i32), Signal::from_c_int(0).unwrap());
+        // Sending signal 0 (null signal) checks if process exists
+        let result = kill(Pid::from_raw(pid as i32), None);
         assert!(result.is_err(), "Process should be cleaned up by Drop");
     }
 

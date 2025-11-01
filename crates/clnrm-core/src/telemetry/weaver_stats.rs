@@ -398,6 +398,22 @@ impl WeaverStats {
     }
 }
 
+impl Default for RegistryStatistics {
+    fn default() -> Self {
+        Self {
+            total_groups: 0,
+            total_attributes: 0,
+            required_attributes: 0,
+            recommended_attributes: 0,
+            optional_attributes: 0,
+            total_spans: 0,
+            total_metrics: 0,
+            total_events: 0,
+            required_coverage: 0.0,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -498,21 +514,5 @@ mod tests {
         assert_eq!(stats.parse_number("Total groups: 42").unwrap(), 42);
         assert_eq!(stats.parse_number("Required attributes: 89").unwrap(), 89);
         assert!(stats.parse_number("Invalid line").is_err());
-    }
-}
-
-impl Default for RegistryStatistics {
-    fn default() -> Self {
-        Self {
-            total_groups: 0,
-            total_attributes: 0,
-            required_attributes: 0,
-            recommended_attributes: 0,
-            optional_attributes: 0,
-            total_spans: 0,
-            total_metrics: 0,
-            total_events: 0,
-            required_coverage: 0.0,
-        }
     }
 }

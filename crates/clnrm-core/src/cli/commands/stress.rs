@@ -22,6 +22,7 @@ use tracing::info;
 /// # Errors
 ///
 /// Returns error if configuration is invalid or execution fails
+#[allow(clippy::too_many_arguments)] // Public API, uses builder internally
 pub async fn run_stress_test(
     containers: Vec<String>,
     test_count: usize,
@@ -75,12 +76,19 @@ pub async fn run_stress_test(
     // Print results
     println!("\n=== Stress Test Results ===");
     println!("Total Tests: {}", results.total_tests);
-    println!("Passed: {} ({:.2}%)", results.passed_tests, results.success_rate());
+    println!(
+        "Passed: {} ({:.2}%)",
+        results.passed_tests,
+        results.success_rate()
+    );
     println!("Failed: {}", results.failed_tests);
     println!("Skipped: {}", results.skipped_tests);
     println!("Total Duration: {}ms", results.total_duration_ms);
     println!("Avg Test Duration: {:.2}ms", results.avg_test_duration_ms);
-    println!("Peak Pool Utilization: {:.2}%", results.peak_pool_utilization);
+    println!(
+        "Peak Pool Utilization: {:.2}%",
+        results.peak_pool_utilization
+    );
     println!("Total Spans Generated: {}", results.total_spans_generated);
     println!("===========================\n");
 
@@ -94,7 +102,9 @@ pub async fn run_stress_test(
 
     // Write results to file if output dir specified
     if let Some(output_path) = results.executions.first().and_then(|_| {
-        output_dir.as_ref().map(|d| d.join("stress_test_results.json"))
+        output_dir
+            .as_ref()
+            .map(|d| d.join("stress_test_results.json"))
     }) {
         let json = serde_json::to_string_pretty(&results)?;
         std::fs::write(&output_path, json)?;
@@ -116,8 +126,9 @@ pub async fn run_stress_test(
 /// Load stress test configuration from file
 pub fn load_stress_config(path: &PathBuf) -> Result<StressTestConfig> {
     let contents = std::fs::read_to_string(path)?;
-    let config: StressTestConfig = toml::from_str(&contents)
-        .map_err(|e| crate::error::CleanroomError::validation_error(format!("Failed to parse TOML: {}", e)))?;
+    let config: StressTestConfig = toml::from_str(&contents).map_err(|e| {
+        crate::error::CleanroomError::validation_error(format!("Failed to parse TOML: {}", e))
+    })?;
     Ok(config)
 }
 
@@ -162,10 +173,10 @@ max_cpu_cores = 4.0
 # Maximum total OTEL spans to generate
 max_spans = 10000
 
-# Container startup timeout (seconds)
+# Container startup timeout (note: Duration fields use custom deserializer)
 container_startup_timeout = 30
 
-# Pool cleanup timeout (seconds)
+# Pool cleanup timeout
 pool_cleanup_timeout = 60
 "#
     .to_string()
@@ -178,7 +189,11 @@ mod tests {
     #[test]
     fn test_config_example_parses() {
         let example = generate_stress_config_example();
-        let parsed: Result<StressTestConfig, _> = toml::from_str(&example);
-        assert!(parsed.is_ok());
+        let parsed = toml::from_str::<StressTestConfig>(&example);
+        if let Err(e) = &parsed {
+            eprintln!("Parse error: {}", e);
+            eprintln!("Config:\n{}", example);
+        }
+        assert!(parsed.is_ok(), "Failed to parse config: {:?}", parsed.err());
     }
 }

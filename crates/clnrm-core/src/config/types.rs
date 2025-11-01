@@ -303,16 +303,35 @@ pub struct MetaConfig {
     /// Test name
     pub name: String,
     /// Version
+    #[serde(default = "default_version")]
     pub version: String,
     /// Test description
     pub description: Option<String>,
 }
 
-/// Test metadata section
+/// Default version for MetaConfig
+fn default_version() -> String {
+    "1.0".to_string()
+}
+
+/// Test metadata section (supports both [test.metadata] and [test] with direct fields)
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TestMetadataSection {
-    /// Test metadata
-    pub metadata: TestMetadata,
+#[serde(untagged)]
+pub enum TestMetadataSection {
+    /// Nested format: [test.metadata]
+    Nested { metadata: TestMetadata },
+    /// Flat format: [test] with direct fields (v1.4.0+)
+    Flat(TestMetadata),
+}
+
+impl TestMetadataSection {
+    /// Get the test metadata regardless of format
+    pub fn metadata(&self) -> &TestMetadata {
+        match self {
+            TestMetadataSection::Nested { metadata } => metadata,
+            TestMetadataSection::Flat(metadata) => metadata,
+        }
+    }
 }
 
 /// Test metadata configuration
@@ -474,10 +493,11 @@ impl TestConfig {
         if let Some(ref meta) = self.meta {
             Ok(meta.name.clone())
         } else if let Some(ref test) = self.test {
-            Ok(test.metadata.name.clone())
+            let metadata = test.metadata();
+            Ok(metadata.name.clone())
         } else {
             Err(CleanroomError::validation_error(
-                "Configuration must have either [meta] or [test.metadata] section",
+                "Configuration must have either [meta] or [test] section",
             ))
         }
     }
@@ -492,7 +512,8 @@ impl TestConfig {
         if let Some(ref meta) = self.meta {
             meta.description.clone()
         } else if let Some(ref test) = self.test {
-            test.metadata.description.clone()
+            let metadata = test.metadata();
+            metadata.description.clone()
         } else {
             None
         }

@@ -14,6 +14,10 @@ categories = ["development-tools"]
 name = "test_noun_verb"
 path = "src/bin/test_noun_verb.rs"
 
+[[bin]]
+name = "run_stress_test"
+path = "src/bin/run_stress_test.rs"
+
 [lib]
 name = "clnrm_core"
 path = "src/lib.rs"
@@ -27,6 +31,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
+async-trait = "0.1"
 
 # Container dependencies
 testcontainers = { workspace = true }
@@ -67,19 +72,21 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 hostname = { workspace = true }
 once_cell = { workspace = true }
+dashmap = { workspace = true }
 rand = "0.8"
 semver = "1.0"
 glob = "0.3"
 url = "2.5"
 which = "6.0"
 colored = "2.1"  # For beautiful terminal output in diagnostic formatter
+crossbeam = "0.8"  # Lock-free concurrent data structures (SegQueue)
 
 # Unix signal handling and file locking for Weaver controller and port allocator
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.27", features = ["signal", "fs"] }
 
 # Template rendering - Full-featured template engine for test configuration
-clnrm-template = { path = "../clnrm-template", version = "1.3.0" }
+clnrm-template = { path = "../clnrm-template", version = "1.4.1" }
 sha2 = "0.10"                                   # Still needed for other modules
 
 [dev-dependencies]
@@ -111,6 +118,11 @@ path = "../../benches/hot_reload_critical_path.rs"
 name = "stress_capacity_benchmarks"
 harness = false
 path = "../../benches/stress_capacity_benchmarks.rs"
+
+[[bench]]
+name = "v1_4_0_performance_validation"
+harness = false
+path = "../../benches/v1_4_0_performance_validation.rs"
 
 [[example]]
 name = "status-validator-demo"

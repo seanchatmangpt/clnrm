@@ -9,7 +9,10 @@
 //! - Port exhaustion handling
 
 use clnrm_core::error::Result;
-use clnrm_core::telemetry::live_check::{wait_for_service_ready, PortAllocator, PortRange};
+use clnrm_core::telemetry::live_check::port_allocator::{
+    wait_for_service_ready, PortAllocator, PortRange,
+};
+use futures_util::future;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Barrier;
@@ -86,7 +89,7 @@ async fn test_parallel_allocation_no_conflicts() -> Result<()> {
         }));
     }
 
-    let results: Vec<_> = futures::future::join_all(handles).await;
+    let results: Vec<_> = future::join_all(handles).await;
 
     // ASSERT - All should succeed
     let ports: Vec<u16> = results
@@ -135,7 +138,7 @@ async fn test_parallel_allocation_stress_test() -> Result<()> {
         }));
     }
 
-    let results: Vec<_> = futures::future::join_all(handles).await;
+    let results: Vec<_> = future::join_all(handles).await;
 
     // ASSERT - All should succeed (using primary + fallback ranges)
     let ports: Vec<u16> = results
@@ -303,7 +306,7 @@ async fn test_concurrent_allocation_and_release() -> Result<()> {
         }));
     }
 
-    let results: Vec<_> = futures::future::join_all(handles).await;
+    let results: Vec<_> = future::join_all(handles).await;
 
     // ASSERT - All should succeed
     for result in results {

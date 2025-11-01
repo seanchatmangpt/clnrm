@@ -739,6 +739,10 @@ pub struct CliConfig {
     pub digest: bool,
     /// Validate telemetry with Weaver
     pub validate: bool,
+    /// Enable container pooling for performance
+    pub enable_pooling: bool,
+    /// Maximum containers in pool
+    pub pool_max_size: usize,
 }
 
 impl Default for CliConfig {
@@ -753,6 +757,8 @@ impl Default for CliConfig {
             force: false,
             digest: false,
             validate: false,
+            enable_pooling: false,
+            pool_max_size: 10,
         }
     }
 }

@@ -69,6 +69,8 @@ pub enum ErrorKind {
     TemplateError,
     /// Feature not yet implemented
     NotImplementedError,
+    /// Invalid state transition or access
+    InvalidState,
 }
 
 impl CleanroomError {
@@ -203,6 +205,11 @@ impl CleanroomError {
     /// Create a not implemented error
     pub fn not_implemented(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::NotImplementedError, message)
+    }
+
+    /// Create an invalid state error
+    pub fn invalid_state(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::InvalidState, message)
     }
 }
 

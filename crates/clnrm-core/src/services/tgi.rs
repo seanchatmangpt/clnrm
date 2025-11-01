@@ -274,48 +274,40 @@ pub struct TgiTokenization {
     pub tokenizer_slow: Option<bool>,
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for TgiPlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        // Use tokio::task::block_in_place for async operations
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                // Test connection to TGI service
-                let health_check = async {
-                    match self.test_connection().await {
-                        Ok(_) => HealthStatus::Healthy,
-                        Err(_) => HealthStatus::Unhealthy,
-                    }
-                };
+    async fn start(&self) -> Result<ServiceHandle> {
+        // Test connection to TGI service
+        let health = match self.test_connection().await {
+            Ok(_) => HealthStatus::Healthy,
+            Err(_) => HealthStatus::Unhealthy,
+        };
 
-                let health = health_check.await;
+        let mut metadata = HashMap::new();
+        metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
+        metadata.insert("model_id".to_string(), self.config.model_id.clone());
+        metadata.insert(
+            "timeout_seconds".to_string(),
+            self.config.timeout_seconds.to_string(),
+        );
+        metadata.insert("health_status".to_string(), format!("{:?}", health));
 
-                let mut metadata = HashMap::new();
-                metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
-                metadata.insert("model_id".to_string(), self.config.model_id.clone());
-                metadata.insert(
-                    "timeout_seconds".to_string(),
-                    self.config.timeout_seconds.to_string(),
-                );
-                metadata.insert("health_status".to_string(), format!("{:?}", health));
+        if let Some(max_total_tokens) = self.config.max_total_tokens {
+            metadata.insert("max_total_tokens".to_string(), max_total_tokens.to_string());
+        }
 
-                if let Some(max_total_tokens) = self.config.max_total_tokens {
-                    metadata.insert("max_total_tokens".to_string(), max_total_tokens.to_string());
-                }
-
-                Ok(ServiceHandle {
-                    id: Uuid::new_v4().to_string(),
-                    service_name: self.name.clone(),
-                    metadata,
-                })
-            })
+        Ok(ServiceHandle {
+            id: Uuid::new_v4().to_string(),
+            service_name: self.name.clone(),
+            metadata,
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         // HTTP-based service, no cleanup needed beyond dropping the client
         Ok(())
     }

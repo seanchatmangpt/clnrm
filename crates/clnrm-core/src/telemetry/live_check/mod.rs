@@ -6,6 +6,7 @@
 pub mod config;
 pub mod diagnostics;
 pub mod orchestrator;
+pub mod port_allocator;
 pub mod stop_coordinator;
 pub mod validation;
 pub mod weaver_manager;
@@ -27,6 +28,7 @@ pub use orchestrator::{
     LiveCheckGuard, LiveCheckOrchestrator, OrchestrationMode, Uninitialized, ValidationDetail,
     ValidationReport, ValidationStatus, WeaverRunning,
 };
+pub use port_allocator::{PortAllocator, PortLock, PortRange};
 pub use stop_coordinator::{StopConfig, StopCoordinator, StopReason};
 pub use validation::{
     ConformanceReport, ConformanceValidator, CoverageBreakdown, ValidationResult, Violation,

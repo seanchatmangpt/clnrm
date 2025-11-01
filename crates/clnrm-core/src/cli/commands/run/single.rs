@@ -150,7 +150,9 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
         info!("🔧 Executing: {}", rendered_command.join(" "));
         info!("🔧 Executing: {}", rendered_command.join(" "));
 
-        let command_span = crate::telemetry::semantic_conventions::SpanBuilder::command_execute(&rendered_command.join(" "));
+        let command_span = crate::telemetry::semantic_conventions::SpanBuilder::command_execute(
+            &rendered_command.join(" "),
+        );
 
         let _command_guard = command_span.enter();
 

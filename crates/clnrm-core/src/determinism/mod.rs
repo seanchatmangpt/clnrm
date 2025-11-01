@@ -41,8 +41,8 @@ use std::sync::{Arc, Mutex};
 /// - Hash-based volume naming
 /// - Digest generation for trace verification
 pub struct DeterminismEngine {
-    /// Configuration for determinism features
-    config: DeterminismConfig,
+    /// Configuration for determinism features (Arc-wrapped for cheap clones)
+    config: Arc<DeterminismConfig>,
     /// Seeded random number generator (thread-safe)
     rng: Option<Arc<Mutex<Box<dyn RngCore + Send>>>>,
     /// Frozen timestamp
@@ -94,7 +94,7 @@ impl DeterminismEngine {
         };
 
         Ok(Self {
-            config,
+            config: Arc::new(config),
             rng,
             frozen_time,
             port_allocator,
@@ -328,10 +328,10 @@ impl Clone for DeterminismEngine {
     fn clone(&self) -> Self {
         // SAFETY: This cannot fail because:
         // 1. If config.freeze_clock exists, it was already validated in the original new() call
-        // 2. We're cloning the exact same config that was previously validated
+        // 2. We're cloning Arc (cheap reference clone), not the config itself
         // 3. The only error condition is invalid RFC3339 format, which we've already verified
         Self {
-            config: self.config.clone(),
+            config: Arc::clone(&self.config),
             rng: self
                 .config
                 .seed

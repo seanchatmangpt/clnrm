@@ -25,7 +25,8 @@ pub struct StressTestConfig {
     /// Parallel execution concurrency level
     pub concurrency: usize,
 
-    /// Test timeout per execution
+    /// Test timeout per execution (in seconds)
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
     pub test_timeout: Duration,
 
     /// Enable progress reporting
@@ -56,11 +57,22 @@ pub struct ResourceLimits {
     /// Maximum total OTEL spans to generate
     pub max_spans: Option<usize>,
 
-    /// Container startup timeout
+    /// Container startup timeout (in seconds)
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
     pub container_startup_timeout: Duration,
 
-    /// Pool cleanup timeout
+    /// Pool cleanup timeout (in seconds)
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
     pub pool_cleanup_timeout: Duration,
+}
+
+/// Custom deserializer for Duration from seconds
+fn deserialize_duration_seconds<'de, D>(deserializer: D) -> std::result::Result<Duration, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let seconds = u64::deserialize(deserializer)?;
+    Ok(Duration::from_secs(seconds))
 }
 
 impl Default for ResourceLimits {
@@ -189,25 +201,25 @@ impl StressTestConfigBuilder {
         // Validate configuration
         if self.config.containers.is_empty() {
             return Err(CleanroomError::validation_error(
-                "At least one container image must be specified"
+                "At least one container image must be specified",
             ));
         }
 
         if self.config.test_count == 0 {
             return Err(CleanroomError::validation_error(
-                "Test count must be greater than 0"
+                "Test count must be greater than 0",
             ));
         }
 
         if self.config.concurrency == 0 {
             return Err(CleanroomError::validation_error(
-                "Concurrency must be greater than 0"
+                "Concurrency must be greater than 0",
             ));
         }
 
         if self.config.concurrency > self.config.limits.max_containers {
             return Err(CleanroomError::validation_error(
-                "Concurrency cannot exceed max_containers limit"
+                "Concurrency cannot exceed max_containers limit",
             ));
         }
 

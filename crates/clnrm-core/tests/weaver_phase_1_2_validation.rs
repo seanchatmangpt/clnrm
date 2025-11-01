@@ -17,8 +17,8 @@ async fn test_phase_1_2_infrastructure_works() {
 
     // ACT Phase 1: Start Weaver
     println!("\n📍 Phase 1: Starting Weaver...");
-    let orchestrator = LiveCheckOrchestrator::new(config)
-        .expect("Failed to create LiveCheckOrchestrator");
+    let orchestrator =
+        LiveCheckOrchestrator::new(config).expect("Failed to create LiveCheckOrchestrator");
 
     let orchestrator = orchestrator
         .start_weaver()
@@ -63,8 +63,8 @@ async fn test_phase_1_2_infrastructure_works() {
 async fn test_orchestrator_handles_missing_weaver_binary() {
     // ARRANGE: Create orchestrator
     let config = LiveCheckConfig::default();
-    let orchestrator = LiveCheckOrchestrator::new(config)
-        .expect("Failed to create LiveCheckOrchestrator");
+    let orchestrator =
+        LiveCheckOrchestrator::new(config).expect("Failed to create LiveCheckOrchestrator");
 
     // ACT: Attempt to start Weaver (may fail if binary not found)
     let result = orchestrator.start_weaver().await;

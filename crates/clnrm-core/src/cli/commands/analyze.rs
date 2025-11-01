@@ -164,7 +164,7 @@ pub fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<An
         .meta
         .as_ref()
         .map(|m| m.name.clone())
-        .or_else(|| config.test.as_ref().map(|t| t.metadata.name.clone()))
+        .or_else(|| config.test.as_ref().map(|t| t.metadata().name.clone()))
         .unwrap_or_else(|| "unknown".to_string());
 
     // Compute digest of traces for reproducibility

@@ -7,7 +7,7 @@ use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{Semaphore, RwLock};
+use tokio::sync::{RwLock, Semaphore};
 use tracing::{debug, info, warn};
 
 /// Configuration for container pool
@@ -118,12 +118,7 @@ impl ContainerPool {
         let mut containers = Vec::new();
 
         for i in 0..count {
-            // Acquire semaphore permit
-            let _permit = self.semaphore.acquire().await.map_err(|e| {
-                CleanroomError::internal_error(format!("Failed to acquire semaphore: {}", e))
-            })?;
-
-            // Check if we've hit the pool limit
+            // Check if we've hit the pool limit (without acquiring semaphore)
             let current_count = *self.allocated_count.read().await;
             if current_count >= self.config.max_size {
                 warn!(
@@ -133,17 +128,31 @@ impl ContainerPool {
                 break;
             }
 
-            // Create backend
-            let mut backend = TestcontainerBackend::new(image)?
-                .with_startup_timeout(self.config.startup_timeout);
+            // Create backend - wrap in spawn_blocking to avoid runtime conflicts
+            let image_str = image.to_string();
+            let startup_timeout = self.config.startup_timeout;
+            let mem_limit = self.config.memory_limit;
+            let cpu_limit = self.config.cpu_limit;
 
-            if let Some(mem_limit) = self.config.memory_limit {
-                backend = backend.with_memory_limit(mem_limit);
-            }
+            let backend = tokio::task::spawn_blocking(move || {
+                let mut backend =
+                    TestcontainerBackend::new(image_str)?.with_startup_timeout(startup_timeout);
 
-            if let Some(cpu_limit) = self.config.cpu_limit {
-                backend = backend.with_cpu_limit(cpu_limit);
-            }
+                if let Some(mem_limit) = mem_limit {
+                    backend = backend.with_memory_limit(mem_limit);
+                }
+
+                if let Some(cpu_limit) = cpu_limit {
+                    backend = backend.with_cpu_limit(cpu_limit);
+                }
+
+                Ok::<TestcontainerBackend, CleanroomError>(backend)
+            })
+            .await
+            .map_err(|e| CleanroomError::internal_error(format!("Task join error: {}", e)))?
+            .map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to create backend: {}", e))
+            })?;
 
             let container = PooledContainer::new(image.to_string(), backend);
             containers.push(container);
@@ -185,29 +194,42 @@ impl ContainerPool {
         }
 
         // No available container, create new one if under limit
-        let _permit = self.semaphore.acquire().await.map_err(|e| {
+        let permit = self.semaphore.acquire().await.map_err(|e| {
             CleanroomError::internal_error(format!("Failed to acquire semaphore: {}", e))
         })?;
 
         let current_count = *self.allocated_count.read().await;
         if current_count >= self.config.max_size {
+            drop(permit); // Release permit before returning error
             return Err(CleanroomError::resource_limit_exceeded(format!(
                 "Container pool exhausted (max: {})",
                 self.config.max_size
             )));
         }
 
-        // Create new container
-        let mut backend = TestcontainerBackend::new(image)?
-            .with_startup_timeout(self.config.startup_timeout);
+        // Create new container - wrap in spawn_blocking to avoid runtime conflicts
+        let image_str = image.to_string();
+        let startup_timeout = self.config.startup_timeout;
+        let mem_limit = self.config.memory_limit;
+        let cpu_limit = self.config.cpu_limit;
 
-        if let Some(mem_limit) = self.config.memory_limit {
-            backend = backend.with_memory_limit(mem_limit);
-        }
+        let backend = tokio::task::spawn_blocking(move || {
+            let mut backend =
+                TestcontainerBackend::new(image_str)?.with_startup_timeout(startup_timeout);
 
-        if let Some(cpu_limit) = self.config.cpu_limit {
-            backend = backend.with_cpu_limit(cpu_limit);
-        }
+            if let Some(mem_limit) = mem_limit {
+                backend = backend.with_memory_limit(mem_limit);
+            }
+
+            if let Some(cpu_limit) = cpu_limit {
+                backend = backend.with_cpu_limit(cpu_limit);
+            }
+
+            Ok::<TestcontainerBackend, CleanroomError>(backend)
+        })
+        .await
+        .map_err(|e| CleanroomError::internal_error(format!("Task join error: {}", e)))?
+        .map_err(|e| CleanroomError::internal_error(format!("Failed to create backend: {}", e)))?;
 
         let mut container = PooledContainer::new(image.to_string(), backend);
         container.acquire();
@@ -224,6 +246,10 @@ impl ContainerPool {
             *count_guard += 1;
         }
 
+        // Release permit - semaphore controls concurrent creation, not usage
+        // The allocated_count already limits total containers
+        drop(permit);
+
         info!("Created new container: {}", container.id);
         Ok(container)
     }
@@ -236,6 +262,8 @@ impl ContainerPool {
             if let Some(container) = containers.iter_mut().find(|c| c.id == container_id) {
                 container.release();
                 debug!("Released container back to pool: {}", container_id);
+                // Semaphore permit will be released when this container is dropped/acquired again
+                // The semaphore controls allocation, not usage
                 return Ok(());
             }
         }

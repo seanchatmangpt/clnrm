@@ -109,7 +109,7 @@ pub enum ExecutionStatus {
 
 /// Stress test executor
 pub struct StressTestExecutor {
-    config: StressTestConfig,
+    config: Arc<StressTestConfig>,
     pool: Arc<ContainerPool>,
     metrics: Arc<RwLock<StressMetricsCollector>>,
     semaphore: Arc<Semaphore>,
@@ -123,7 +123,10 @@ impl StressTestExecutor {
             startup_timeout: config.limits.container_startup_timeout,
             cleanup_timeout: config.limits.pool_cleanup_timeout,
             memory_limit: Some(config.limits.max_memory_mb / config.limits.max_containers as u64),
-            cpu_limit: config.limits.max_cpu_cores.map(|c| c / config.limits.max_containers as f64),
+            cpu_limit: config
+                .limits
+                .max_cpu_cores
+                .map(|c| c / config.limits.max_containers as f64),
         };
 
         let pool = Arc::new(ContainerPool::new(pool_config));
@@ -131,7 +134,7 @@ impl StressTestExecutor {
         let semaphore = Arc::new(Semaphore::new(config.concurrency));
 
         Self {
-            config,
+            config: Arc::new(config),
             pool,
             metrics,
             semaphore,
@@ -178,9 +181,18 @@ impl StressTestExecutor {
         // Calculate results
         let total_duration_ms = start_time.elapsed().as_millis() as u64;
 
-        let passed_tests = executions.iter().filter(|e| e.status == ExecutionStatus::Passed).count();
-        let failed_tests = executions.iter().filter(|e| e.status == ExecutionStatus::Failed).count();
-        let skipped_tests = executions.iter().filter(|e| e.status == ExecutionStatus::Skipped).count();
+        let passed_tests = executions
+            .iter()
+            .filter(|e| e.status == ExecutionStatus::Passed)
+            .count();
+        let failed_tests = executions
+            .iter()
+            .filter(|e| e.status == ExecutionStatus::Failed)
+            .count();
+        let skipped_tests = executions
+            .iter()
+            .filter(|e| e.status == ExecutionStatus::Skipped)
+            .count();
 
         let avg_test_duration_ms = if !executions.is_empty() {
             executions.iter().map(|e| e.duration_ms).sum::<u64>() as f64 / executions.len() as f64
@@ -193,10 +205,7 @@ impl StressTestExecutor {
         let metrics_data = self.metrics.read().await;
         let peak_pool_utilization = metrics_data.peak_pool_utilization();
 
-        let errors = executions
-            .iter()
-            .filter_map(|e| e.error.clone())
-            .collect();
+        let errors = executions.iter().filter_map(|e| e.error.clone()).collect();
 
         Ok(StressTestResult {
             total_tests: executions.len(),
@@ -213,7 +222,10 @@ impl StressTestExecutor {
     }
 
     /// Execute permutations in parallel
-    async fn execute_parallel(&self, permutations: Vec<TestPermutation>) -> Result<Vec<TestExecution>> {
+    async fn execute_parallel(
+        &self,
+        permutations: Vec<TestPermutation>,
+    ) -> Result<Vec<TestExecution>> {
         let mut join_set = JoinSet::new();
         let executions = Arc::new(RwLock::new(Vec::new()));
 
@@ -250,7 +262,7 @@ impl StressTestExecutor {
         perm: TestPermutation,
         pool: Arc<ContainerPool>,
         metrics: Arc<RwLock<StressMetricsCollector>>,
-        config: StressTestConfig,
+        config: Arc<StressTestConfig>,
     ) -> TestExecution {
         let start_time = Instant::now();
 
@@ -311,11 +323,26 @@ impl StressTestExecutor {
             }
         };
 
-        // Execute test command in container
-        let cmd = Cmd::new("echo")
-            .arg(format!("Stress test: {}", perm.id));
+        // Execute test command in container - wrap in spawn_blocking to avoid runtime conflicts
+        let cmd = Cmd::new("echo").arg(format!("Stress test: {}", perm.id));
 
-        let exec_result = container.backend.run_cmd(cmd);
+        let backend_clone = container.backend.clone();
+        let exec_result =
+            match tokio::task::spawn_blocking(move || backend_clone.run_cmd(cmd)).await {
+                Ok(result) => result,
+                Err(e) => {
+                    return TestExecution {
+                        permutation_id: perm.id,
+                        container: perm.container,
+                        iteration: perm.iteration,
+                        span_depth: perm.span_depth,
+                        status: ExecutionStatus::Failed,
+                        duration_ms: start_time.elapsed().as_millis() as u64,
+                        spans_generated: span_stats.total_spans,
+                        error: Some(format!("Task join error: {}", e)),
+                    };
+                }
+            };
 
         // Release container back to pool
         let _ = pool.release(&container.id).await;

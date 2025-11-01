@@ -237,12 +237,13 @@ impl DatabaseServicePlugin {
     }
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for DatabaseServicePlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
+    async fn start(&self) -> Result<ServiceHandle> {
         // In a real implementation, this would start the database container
         // and return connection details
         Ok(ServiceHandle {
@@ -257,7 +258,7 @@ impl ServicePlugin for DatabaseServicePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         // In a real implementation, this would stop the database container
         Ok(())
     }
@@ -284,12 +285,13 @@ impl CacheServicePlugin {
     }
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for CacheServicePlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
+    async fn start(&self) -> Result<ServiceHandle> {
         Ok(ServiceHandle {
             id: format!("cache_{}", uuid::Uuid::new_v4()),
             service_name: self.name.clone(),
@@ -302,7 +304,7 @@ impl ServicePlugin for CacheServicePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         Ok(())
     }
 
@@ -327,12 +329,13 @@ impl MessageQueueServicePlugin {
     }
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for MessageQueueServicePlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
+    async fn start(&self) -> Result<ServiceHandle> {
         Ok(ServiceHandle {
             id: format!("mq_{}", uuid::Uuid::new_v4()),
             service_name: self.name.clone(),
@@ -345,7 +348,7 @@ impl ServicePlugin for MessageQueueServicePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         Ok(())
     }
 
@@ -370,12 +373,13 @@ impl WebServerServicePlugin {
     }
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for WebServerServicePlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
+    async fn start(&self) -> Result<ServiceHandle> {
         Ok(ServiceHandle {
             id: format!("web_{}", uuid::Uuid::new_v4()),
             service_name: self.name.clone(),
@@ -388,7 +392,7 @@ impl ServicePlugin for WebServerServicePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         Ok(())
     }
 

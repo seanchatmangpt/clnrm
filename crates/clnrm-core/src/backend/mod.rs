@@ -9,10 +9,12 @@ use std::path::PathBuf;
 
 // Module structure for backends
 pub mod mock;
+pub mod pool;
 pub mod testcontainer;
 pub mod volume;
 
 pub use mock::MockBackend;
+pub use pool::{ContainerPool, PoolConfig, PoolStats};
 pub use testcontainer::TestcontainerBackend;
 pub use volume::{VolumeMount, VolumeValidator};
 

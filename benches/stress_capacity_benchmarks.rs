@@ -11,7 +11,10 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use futures_util::future;
-use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
@@ -147,7 +150,11 @@ async fn simulate_otel_span_generation(span_count: usize, batch_size: usize) -> 
 }
 
 /// Simulate test execution with container and telemetry
-async fn simulate_test_execution(test_id: usize, container_count: usize, spans_per_test: usize) -> u64 {
+async fn simulate_test_execution(
+    test_id: usize,
+    container_count: usize,
+    spans_per_test: usize,
+) -> u64 {
     let start = Instant::now();
 
     // Container setup phase
@@ -182,9 +189,8 @@ fn benchmark_incremental_container_load(c: &mut Criterion) {
 
                     // Create containers in parallel
                     for i in 0..count {
-                        let handle = tokio::spawn(async move {
-                            simulate_container_creation(i, true).await
-                        });
+                        let handle =
+                            tokio::spawn(async move { simulate_container_creation(i, true).await });
                         handles.push(handle);
                     }
 
@@ -197,7 +203,8 @@ fn benchmark_incremental_container_load(c: &mut Criterion) {
 
                     let latencies: Vec<_> = results.iter().map(|(l, _)| *l).collect();
 
-                    let metrics = StressMetrics::calculate_from_latencies(&latencies, start.elapsed());
+                    let metrics =
+                        StressMetrics::calculate_from_latencies(&latencies, start.elapsed());
                     black_box(metrics);
                 });
             },
@@ -253,9 +260,10 @@ fn benchmark_parallel_test_execution(c: &mut Criterion) {
 
                     // Execute tests in parallel
                     for test_id in 0..count {
-                        let handle = tokio::spawn(async move {
-                            simulate_test_execution(test_id, 2, 20).await
-                        });
+                        let handle =
+                            tokio::spawn(
+                                async move { simulate_test_execution(test_id, 2, 20).await },
+                            );
                         handles.push(handle);
                     }
 
@@ -266,7 +274,8 @@ fn benchmark_parallel_test_execution(c: &mut Criterion) {
                         .map(|r| r.unwrap())
                         .collect();
 
-                    let metrics = StressMetrics::calculate_from_latencies(&results, start.elapsed());
+                    let metrics =
+                        StressMetrics::calculate_from_latencies(&results, start.elapsed());
                     black_box(metrics);
                 });
             },
@@ -321,8 +330,8 @@ fn benchmark_memory_growth_curves(c: &mut Criterion) {
                     future::join_all(container_handles).await;
                     span_handle.await.ok();
 
-                    let total_memory = container_memory.load(Ordering::Relaxed) +
-                                      span_memory.load(Ordering::Relaxed);
+                    let total_memory = container_memory.load(Ordering::Relaxed)
+                        + span_memory.load(Ordering::Relaxed);
                     let memory_mb = total_memory as f64 / (1024.0 * 1024.0);
 
                     let mut metrics = StressMetrics::new();
@@ -354,7 +363,8 @@ fn benchmark_container_lifecycle_distribution(c: &mut Criterion) {
                 latencies.push(latency);
             }
 
-            let metrics = StressMetrics::calculate_from_latencies(&latencies, Duration::from_secs(1));
+            let metrics =
+                StressMetrics::calculate_from_latencies(&latencies, Duration::from_secs(1));
             black_box(metrics);
         });
     });
@@ -487,7 +497,8 @@ fn benchmark_max_throughput_discovery(c: &mut Criterion) {
                         tokio::time::sleep(interval).await;
                     }
 
-                    let metrics = StressMetrics::calculate_from_latencies(&latencies, start.elapsed());
+                    let metrics =
+                        StressMetrics::calculate_from_latencies(&latencies, start.elapsed());
                     black_box(metrics);
                 });
             },
@@ -524,7 +535,8 @@ fn benchmark_sustained_load(c: &mut Criterion) {
                         let handle = tokio::spawn(async move {
                             let mut ops = 0;
                             while start.elapsed() < test_duration {
-                                let (_, is_success) = simulate_container_creation(worker_id * 1000 + ops, true).await;
+                                let (_, is_success) =
+                                    simulate_container_creation(worker_id * 1000 + ops, true).await;
                                 if is_success {
                                     success.fetch_add(1, Ordering::Relaxed);
                                 } else {

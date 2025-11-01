@@ -735,7 +735,7 @@ mod tests {
 
         // Validation might exceed the 1ms budget
         // Just check that the field is populated correctly
-        assert!(result.duration_ms >= 0);
+        assert!(result.duration_ms < u64::MAX);
     }
 
     #[test]

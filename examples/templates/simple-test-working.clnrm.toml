@@ -1,0 +1,18 @@
+# Simple working template with variable substitution
+[vars]
+service_name = "test_service"
+image_name = "alpine:latest"
+test_message = "Hello from template"
+
+[meta]
+name = "{{vars.service_name}}"
+description = "Template test with {{vars.image_name}}"
+
+[services.alpine]
+type = "generic_container"
+image = "{{vars.image_name}}"
+
+[[steps]]
+name = "echo_test"
+command = ["echo", "{{vars.test_message}}"]
+expected_output_regex = "Hello"

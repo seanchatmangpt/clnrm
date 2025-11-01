@@ -29,7 +29,6 @@ use std::thread;
 use std::time::Duration;
 use tracing::{debug, error, info, warn};
 
-
 // Re-export executor functions
 pub use executor::{
     run_tests_parallel, run_tests_parallel_with_results, run_tests_sequential,

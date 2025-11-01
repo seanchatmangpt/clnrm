@@ -181,11 +181,12 @@ impl Default for PortAllocator {
 impl Clone for PortAllocator {
     fn clone(&self) -> Self {
         // Clone creates a fresh allocator with the same available ports
+        // If lock is poisoned, create a new allocator with default ports
         let available = self
             .available_ports
             .lock()
-            .expect("Port allocator lock poisoned during clone")
-            .clone();
+            .map(|guard| guard.clone())
+            .unwrap_or_else(|_| DEFAULT_PORTS.to_vec());
 
         Self::with_ports(available)
     }

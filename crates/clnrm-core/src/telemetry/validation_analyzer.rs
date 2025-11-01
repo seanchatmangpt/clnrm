@@ -110,11 +110,7 @@ impl ValidationAnalysis {
 
         let missing_critical: Vec<String> = critical_attributes
             .iter()
-            .filter(|&&attr| {
-                !report
-                    .seen_registry_attributes
-                    .contains_key(attr)
-            })
+            .filter(|&&attr| !report.seen_registry_attributes.contains_key(attr))
             .map(|s| s.to_string())
             .collect();
 

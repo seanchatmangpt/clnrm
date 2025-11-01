@@ -109,9 +109,11 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
         fail_fast: false,
         watch: false,
         verbose: 0,
-        force: true,     // Force run all tests for baseline
-        digest: true,    // Generate digest for baseline
-        validate: false, // No validation for baseline recording
+        force: true,           // Force run all tests for baseline
+        digest: true,          // Generate digest for baseline
+        validate: false,       // No validation for baseline recording
+        enable_pooling: false, // Disable pooling for deterministic recording
+        pool_max_size: 10,
     };
 
     let results = run_tests_sequential_with_results(&all_test_files, &config).await?;

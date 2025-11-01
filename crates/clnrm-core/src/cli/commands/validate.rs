@@ -76,13 +76,8 @@ pub fn validate_single_config(path: &PathBuf) -> Result<()> {
         )));
     }
 
-    // Parse and validate TOML structure
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| CleanroomError::config_error(format!("Failed to read config file: {}", e)))?;
-
-    // Parse TOML configuration using the config structure
-    let test_config: crate::config::TestConfig = toml::from_str(&content)
-        .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
+    // Use the config loader which handles templates and variable extraction correctly
+    let test_config = crate::config::load_config_from_file(path)?;
 
     // Basic validation
     let test_name = test_config.get_name()?;

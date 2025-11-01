@@ -83,98 +83,89 @@ impl GenericContainerPlugin {
     }
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for GenericContainerPlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        // Use tokio::task::block_in_place for async operations
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                // Create container configuration
-                let image = GenericImage::new(self.image.clone(), self.tag.clone());
+    async fn start(&self) -> Result<ServiceHandle> {
+        // Create container configuration
+        let image = GenericImage::new(self.image.clone(), self.tag.clone());
 
-                // Build container request with environment variables and ports
-                let mut container_request: testcontainers::core::ContainerRequest<GenericImage> =
-                    image.into();
+        // Build container request with environment variables and ports
+        let mut container_request: testcontainers::core::ContainerRequest<GenericImage> =
+            image.into();
 
-                // Add environment variables
-                for (key, value) in &self.env_vars {
-                    container_request = container_request.with_env_var(key, value);
-                }
+        // Add environment variables
+        for (key, value) in &self.env_vars {
+            container_request = container_request.with_env_var(key, value);
+        }
 
-                // Add port mappings
-                for port in &self.ports {
-                    container_request = container_request
-                        .with_mapped_port(*port, testcontainers::core::ContainerPort::Tcp(*port));
-                }
+        // Add port mappings
+        for port in &self.ports {
+            container_request = container_request
+                .with_mapped_port(*port, testcontainers::core::ContainerPort::Tcp(*port));
+        }
 
-                // Add volume mounts
-                for mount in &self.volumes {
-                    use testcontainers::core::{AccessMode, Mount};
+        // Add volume mounts
+        for mount in &self.volumes {
+            use testcontainers::core::{AccessMode, Mount};
 
-                    let access_mode = if mount.is_read_only() {
-                        AccessMode::ReadOnly
-                    } else {
-                        AccessMode::ReadWrite
-                    };
+            let access_mode = if mount.is_read_only() {
+                AccessMode::ReadOnly
+            } else {
+                AccessMode::ReadWrite
+            };
 
-                    let bind_mount = Mount::bind_mount(
-                        mount.host_path().to_string_lossy().to_string(),
-                        mount.container_path().to_string_lossy().to_string(),
-                    )
-                    .with_access_mode(access_mode);
+            let bind_mount = Mount::bind_mount(
+                mount.host_path().to_string_lossy().to_string(),
+                mount.container_path().to_string_lossy().to_string(),
+            )
+            .with_access_mode(access_mode);
 
-                    container_request = container_request.with_mount(bind_mount);
-                }
+            container_request = container_request.with_mount(bind_mount);
+        }
 
-                // Start container
-                let node = container_request.start().await.map_err(|e| {
-                    CleanroomError::container_error("Failed to start generic container")
-                        .with_context("Container startup failed")
-                        .with_source(e.to_string())
-                })?;
+        // Start container
+        let node = container_request.start().await.map_err(|e| {
+            CleanroomError::container_error("Failed to start generic container")
+                .with_context("Container startup failed")
+                .with_source(e.to_string())
+        })?;
 
-                // Generate container ID
-                let container_id = format!("generic-{}", Uuid::new_v4());
+        // Generate container ID
+        let container_id = format!("generic-{}", Uuid::new_v4());
 
-                let mut metadata = HashMap::new();
-                metadata.insert("image".to_string(), format!("{}:{}", self.image, self.tag));
-                metadata.insert("container_type".to_string(), "generic".to_string());
-                metadata.insert("container_id".to_string(), container_id.clone());
+        let mut metadata = HashMap::new();
+        metadata.insert("image".to_string(), format!("{}:{}", self.image, self.tag));
+        metadata.insert("container_type".to_string(), "generic".to_string());
+        metadata.insert("container_id".to_string(), container_id.clone());
 
-                // Add port information
-                for port in &self.ports {
-                    if let Ok(host_port) = node.get_host_port_ipv4(*port).await {
-                        metadata.insert(format!("port_{}", port), host_port.to_string());
-                    }
-                }
+        // Add port information
+        for port in &self.ports {
+            if let Ok(host_port) = node.get_host_port_ipv4(*port).await {
+                metadata.insert(format!("port_{}", port), host_port.to_string());
+            }
+        }
 
-                // Store container reference
-                let mut container_guard = self.container_id.write().await;
-                *container_guard = Some(container_id);
+        // Store container reference
+        let mut container_guard = self.container_id.write().await;
+        *container_guard = Some(container_id);
 
-                Ok(ServiceHandle {
-                    id: Uuid::new_v4().to_string(),
-                    service_name: self.name.clone(),
-                    metadata,
-                })
-            })
+        Ok(ServiceHandle {
+            id: Uuid::new_v4().to_string(),
+            service_name: self.name.clone(),
+            metadata,
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        // Use tokio::task::block_in_place for async operations
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                let mut container_guard = self.container_id.write().await;
-                if container_guard.is_some() {
-                    *container_guard = None; // Drop triggers container cleanup
-                }
-                Ok(())
-            })
-        })
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        let mut container_guard = self.container_id.write().await;
+        if container_guard.is_some() {
+            *container_guard = None; // Drop triggers container cleanup
+        }
+        Ok(())
     }
 
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {

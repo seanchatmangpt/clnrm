@@ -38,7 +38,12 @@ pub struct TestPermutation {
 impl TestPermutation {
     /// Create a new test permutation
     pub fn new(container: String, iteration: usize, span_depth: usize) -> Self {
-        let id = format!("{}_{}_{}", container.replace(':', "_"), iteration, span_depth);
+        let id = format!(
+            "{}_{}_{}",
+            container.replace(':', "_"),
+            iteration,
+            span_depth
+        );
 
         let dimensions = vec![
             PermutationDimension::Container(container.clone()),
@@ -109,11 +114,8 @@ impl PermutationEngine {
         for container in &self.containers {
             for iteration in 1..=self.test_count {
                 for &span_depth in &self.span_depths {
-                    let permutation = TestPermutation::new(
-                        container.clone(),
-                        iteration,
-                        span_depth,
-                    );
+                    let permutation =
+                        TestPermutation::new(container.clone(), iteration, span_depth);
                     permutations.push(permutation);
                 }
             }
@@ -192,11 +194,7 @@ mod tests {
 
     #[test]
     fn test_batched_generation() {
-        let engine = PermutationEngine::new(
-            vec!["alpine:latest".to_string()],
-            10,
-            8,
-        );
+        let engine = PermutationEngine::new(vec!["alpine:latest".to_string()], 10, 8);
 
         let batches = engine.generate_batched(5).unwrap();
 

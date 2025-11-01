@@ -1,0 +1,133 @@
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 861 security advisories (from /Users/sac/.asdf/installs/rust/1.86.0/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (678 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m tokio-tar
+[0m[0m[1m[31mVersion:  [0m 0.3.1
+[0m[0m[1m[31mTitle:    [0m `tokio-tar` parses PAX extended headers incorrectly, allows file smuggling
+[0m[0m[1m[31mDate:     [0m 2025-10-21
+[0m[0m[1m[31mID:       [0m RUSTSEC-2025-0111
+[0m[0m[1m[31mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0111
+[0m[0m[1m[31mSolution: [0m No fixed upgrade is available!
+[0m[0m[1m[31mDependency tree:
+[0mtokio-tar 0.3.1
+└── testcontainers 0.25.0
+    ├── testcontainers-modules 0.13.0
+    │   └── clnrm-core 1.4.1
+    │       └── clnrm 1.4.1
+    └── clnrm-core 1.4.1
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+[0m[0m[1m[33mDependency tree:
+[0mpaste 1.0.15
+└── rmp 0.8.14
+    └── rmpv 1.3.0
+        └── surrealdb-core 2.3.10
+            └── surrealdb 2.3.10
+                └── clnrm-core 1.4.1
+                    └── clnrm 1.4.1
+
+[0m[0m[1m[33mCrate:    [0m unic-char-property
+[0m[0m[1m[33mVersion:  [0m 0.9.0
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m `unic-char-property` is unmaintained
+[0m[0m[1m[33mDate:     [0m 2025-10-18
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0081
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0081
+[0m[0m[1m[33mDependency tree:
+[0munic-char-property 0.9.0
+└── unic-ucd-segment 0.9.0
+    └── unic-segment 0.9.0
+        └── tera 1.20.0
+            └── clnrm-template 1.4.1
+                └── clnrm-core 1.4.1
+                    └── clnrm 1.4.1
+
+[0m[0m[1m[33mCrate:    [0m unic-char-range
+[0m[0m[1m[33mVersion:  [0m 0.9.0
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m `unic-char-range` is unmaintained
+[0m[0m[1m[33mDate:     [0m 2025-10-18
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0075
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0075
+[0m[0m[1m[33mDependency tree:
+[0munic-char-range 0.9.0
+├── unic-ucd-segment 0.9.0
+│   └── unic-segment 0.9.0
+│       └── tera 1.20.0
+│           └── clnrm-template 1.4.1
+│               └── clnrm-core 1.4.1
+│                   └── clnrm 1.4.1
+└── unic-char-property 0.9.0
+    └── unic-ucd-segment 0.9.0
+
+[0m[0m[1m[33mCrate:    [0m unic-common
+[0m[0m[1m[33mVersion:  [0m 0.9.0
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m `unic-common` is unmaintained
+[0m[0m[1m[33mDate:     [0m 2025-10-18
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0080
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0080
+[0m[0m[1m[33mDependency tree:
+[0munic-common 0.9.0
+└── unic-ucd-version 0.9.0
+    └── unic-ucd-segment 0.9.0
+        └── unic-segment 0.9.0
+            └── tera 1.20.0
+                └── clnrm-template 1.4.1
+                    └── clnrm-core 1.4.1
+                        └── clnrm 1.4.1
+
+[0m[0m[1m[33mCrate:    [0m unic-segment
+[0m[0m[1m[33mVersion:  [0m 0.9.0
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m `unic-segment` is unmaintained
+[0m[0m[1m[33mDate:     [0m 2025-10-18
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0074
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0074
+[0m[0m[1m[33mDependency tree:
+[0munic-segment 0.9.0
+└── tera 1.20.0
+    └── clnrm-template 1.4.1
+        └── clnrm-core 1.4.1
+            └── clnrm 1.4.1
+
+[0m[0m[1m[33mCrate:    [0m unic-ucd-segment
+[0m[0m[1m[33mVersion:  [0m 0.9.0
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m `unic-ucd-segment` is unmaintained
+[0m[0m[1m[33mDate:     [0m 2025-10-18
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0104
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0104
+[0m[0m[1m[33mDependency tree:
+[0munic-ucd-segment 0.9.0
+└── unic-segment 0.9.0
+    └── tera 1.20.0
+        └── clnrm-template 1.4.1
+            └── clnrm-core 1.4.1
+                └── clnrm 1.4.1
+
+[0m[0m[1m[33mCrate:    [0m unic-ucd-version
+[0m[0m[1m[33mVersion:  [0m 0.9.0
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m `unic-ucd-version` is unmaintained
+[0m[0m[1m[33mDate:     [0m 2025-10-18
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0098
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0098
+[0m[0m[1m[33mDependency tree:
+[0munic-ucd-version 0.9.0
+└── unic-ucd-segment 0.9.0
+    └── unic-segment 0.9.0
+        └── tera 1.20.0
+            └── clnrm-template 1.4.1
+                └── clnrm-core 1.4.1
+                    └── clnrm 1.4.1
+
+[0m[0m[1m[31merror:[0m 1 vulnerability found!
+[0m[0m[1m[33mwarning:[0m 7 allowed warnings found

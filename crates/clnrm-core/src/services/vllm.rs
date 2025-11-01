@@ -238,52 +238,44 @@ pub struct VllmModelData {
     pub owned_by: String,
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for VllmPlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        // Use tokio::task::block_in_place for async operations
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                // Test connection to vLLM service
-                let health_check = async {
-                    match self.test_connection().await {
-                        Ok(_) => HealthStatus::Healthy,
-                        Err(_) => HealthStatus::Unhealthy,
-                    }
-                };
+    async fn start(&self) -> Result<ServiceHandle> {
+        // Test connection to vLLM service
+        let health = match self.test_connection().await {
+            Ok(_) => HealthStatus::Healthy,
+            Err(_) => HealthStatus::Unhealthy,
+        };
 
-                let health = health_check.await;
+        let mut metadata = HashMap::new();
+        metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
+        metadata.insert("model".to_string(), self.config.model.clone());
+        metadata.insert(
+            "timeout_seconds".to_string(),
+            self.config.timeout_seconds.to_string(),
+        );
+        metadata.insert("health_status".to_string(), format!("{:?}", health));
 
-                let mut metadata = HashMap::new();
-                metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
-                metadata.insert("model".to_string(), self.config.model.clone());
-                metadata.insert(
-                    "timeout_seconds".to_string(),
-                    self.config.timeout_seconds.to_string(),
-                );
-                metadata.insert("health_status".to_string(), format!("{:?}", health));
+        if let Some(max_num_seqs) = self.config.max_num_seqs {
+            metadata.insert("max_num_seqs".to_string(), max_num_seqs.to_string());
+        }
 
-                if let Some(max_num_seqs) = self.config.max_num_seqs {
-                    metadata.insert("max_num_seqs".to_string(), max_num_seqs.to_string());
-                }
+        if let Some(max_model_len) = self.config.max_model_len {
+            metadata.insert("max_model_len".to_string(), max_model_len.to_string());
+        }
 
-                if let Some(max_model_len) = self.config.max_model_len {
-                    metadata.insert("max_model_len".to_string(), max_model_len.to_string());
-                }
-
-                Ok(ServiceHandle {
-                    id: Uuid::new_v4().to_string(),
-                    service_name: self.name.clone(),
-                    metadata,
-                })
-            })
+        Ok(ServiceHandle {
+            id: Uuid::new_v4().to_string(),
+            service_name: self.name.clone(),
+            metadata,
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         // HTTP-based service, no cleanup needed beyond dropping the client
         Ok(())
     }

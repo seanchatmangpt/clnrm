@@ -249,142 +249,136 @@ impl OtelCollectorPlugin {
     }
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for OtelCollectorPlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
+    async fn start(&self) -> Result<ServiceHandle> {
         use testcontainers::{runners::AsyncRunner, GenericImage, ImageExt};
 
-        // Use tokio::task::block_in_place for async operations within sync trait
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                // Build collector image with configuration
-                let image = GenericImage::new(
-                    self.config
-                        .image
-                        .split(':')
-                        .next()
-                        .unwrap_or("otel/opentelemetry-collector"),
-                    self.config.image.split(':').nth(1).unwrap_or("latest"),
-                );
+        // Build collector image with configuration
+        let image = GenericImage::new(
+            self.config
+                .image
+                .split(':')
+                .next()
+                .unwrap_or("otel/opentelemetry-collector"),
+            self.config.image.split(':').nth(1).unwrap_or("latest"),
+        );
 
-                // Build container request with ports and env vars
-                let mut container_request: testcontainers::core::ContainerRequest<GenericImage> =
-                    image.into();
+        // Build container request with ports and env vars
+        let mut container_request: testcontainers::core::ContainerRequest<GenericImage> =
+            image.into();
 
-                // Add environment variables
-                for (key, value) in &self.config.env_vars {
-                    container_request = container_request.with_env_var(key, value);
-                }
+        // Add environment variables
+        for (key, value) in &self.config.env_vars {
+            container_request = container_request.with_env_var(key, value);
+        }
 
-                // Start container
-                let node = container_request.start().await.map_err(|e| {
-                    CleanroomError::container_error("Failed to start OTEL Collector container")
-                        .with_context("Container startup failed")
+        // Start container
+        let node = container_request.start().await.map_err(|e| {
+            CleanroomError::container_error("Failed to start OTEL Collector container")
+                .with_context("Container startup failed")
+                .with_source(e.to_string())
+        })?;
+
+        // Get exposed ports
+        let mut metadata = HashMap::new();
+        metadata.insert("image".to_string(), self.config.image.clone());
+        metadata.insert("service_type".to_string(), "otel_collector".to_string());
+
+        if self.config.enable_otlp_grpc {
+            let grpc_port = node.get_host_port_ipv4(OTLP_GRPC_PORT).await.map_err(|e| {
+                CleanroomError::container_error("Failed to get OTLP gRPC port")
+                    .with_source(e.to_string())
+            })?;
+            metadata.insert("otlp_grpc_port".to_string(), grpc_port.to_string());
+            metadata.insert(
+                "otlp_grpc_endpoint".to_string(),
+                format!("http://127.0.0.1:{}", grpc_port),
+            );
+        }
+
+        if self.config.enable_otlp_http {
+            let http_port = node.get_host_port_ipv4(OTLP_HTTP_PORT).await.map_err(|e| {
+                CleanroomError::container_error("Failed to get OTLP HTTP port")
+                    .with_source(e.to_string())
+            })?;
+            metadata.insert("otlp_http_port".to_string(), http_port.to_string());
+            metadata.insert(
+                "otlp_http_endpoint".to_string(),
+                format!("http://127.0.0.1:{}", http_port),
+            );
+        }
+
+        if self.config.enable_health_check {
+            let health_port = node
+                .get_host_port_ipv4(HEALTH_CHECK_PORT)
+                .await
+                .map_err(|e| {
+                    CleanroomError::container_error("Failed to get health check port")
                         .with_source(e.to_string())
                 })?;
+            metadata.insert("health_check_port".to_string(), health_port.to_string());
+            metadata.insert(
+                "health_check_endpoint".to_string(),
+                format!("http://127.0.0.1:{}", health_port),
+            );
 
-                // Get exposed ports
-                let mut metadata = HashMap::new();
-                metadata.insert("image".to_string(), self.config.image.clone());
-                metadata.insert("service_type".to_string(), "otel_collector".to_string());
+            // Verify health endpoint is responding
+            self.verify_health(health_port).await?;
+        }
 
-                if self.config.enable_otlp_grpc {
-                    let grpc_port = node.get_host_port_ipv4(OTLP_GRPC_PORT).await.map_err(|e| {
-                        CleanroomError::container_error("Failed to get OTLP gRPC port")
-                            .with_source(e.to_string())
-                    })?;
-                    metadata.insert("otlp_grpc_port".to_string(), grpc_port.to_string());
-                    metadata.insert(
-                        "otlp_grpc_endpoint".to_string(),
-                        format!("http://127.0.0.1:{}", grpc_port),
-                    );
-                }
+        if self.config.enable_prometheus {
+            let prom_port = node
+                .get_host_port_ipv4(PROMETHEUS_PORT)
+                .await
+                .map_err(|e| {
+                    CleanroomError::container_error("Failed to get Prometheus port")
+                        .with_source(e.to_string())
+                })?;
+            metadata.insert("prometheus_port".to_string(), prom_port.to_string());
+            metadata.insert(
+                "prometheus_endpoint".to_string(),
+                format!("http://127.0.0.1:{}", prom_port),
+            );
+        }
 
-                if self.config.enable_otlp_http {
-                    let http_port = node.get_host_port_ipv4(OTLP_HTTP_PORT).await.map_err(|e| {
-                        CleanroomError::container_error("Failed to get OTLP HTTP port")
-                            .with_source(e.to_string())
-                    })?;
-                    metadata.insert("otlp_http_port".to_string(), http_port.to_string());
-                    metadata.insert(
-                        "otlp_http_endpoint".to_string(),
-                        format!("http://127.0.0.1:{}", http_port),
-                    );
-                }
+        // Store container ID
+        let container_id = format!("otel-collector-{}", uuid::Uuid::new_v4());
+        let mut container_guard = self.container_id.write().await;
+        *container_guard = Some(container_id.clone());
 
-                if self.config.enable_health_check {
-                    let health_port =
-                        node.get_host_port_ipv4(HEALTH_CHECK_PORT)
-                            .await
-                            .map_err(|e| {
-                                CleanroomError::container_error("Failed to get health check port")
-                                    .with_source(e.to_string())
-                            })?;
-                    metadata.insert("health_check_port".to_string(), health_port.to_string());
-                    metadata.insert(
-                        "health_check_endpoint".to_string(),
-                        format!("http://127.0.0.1:{}", health_port),
-                    );
-
-                    // Verify health endpoint is responding
-                    self.verify_health(health_port).await?;
-                }
-
-                if self.config.enable_prometheus {
-                    let prom_port =
-                        node.get_host_port_ipv4(PROMETHEUS_PORT)
-                            .await
-                            .map_err(|e| {
-                                CleanroomError::container_error("Failed to get Prometheus port")
-                                    .with_source(e.to_string())
-                            })?;
-                    metadata.insert("prometheus_port".to_string(), prom_port.to_string());
-                    metadata.insert(
-                        "prometheus_endpoint".to_string(),
-                        format!("http://127.0.0.1:{}", prom_port),
-                    );
-                }
-
-                // Store container ID
-                let container_id = format!("otel-collector-{}", uuid::Uuid::new_v4());
-                let mut container_guard = self.container_id.write().await;
-                *container_guard = Some(container_id.clone());
-
-                Ok(ServiceHandle {
-                    id: container_id,
-                    service_name: self.name.clone(),
-                    metadata,
-                })
-            })
+        Ok(ServiceHandle {
+            id: container_id,
+            service_name: self.name.clone(),
+            metadata,
         })
     }
 
-    fn stop(&self, handle: ServiceHandle) -> Result<()> {
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                let mut container_guard = self.container_id.write().await;
+    async fn stop(&self, handle: ServiceHandle) -> Result<()> {
+        let mut container_guard = self.container_id.write().await;
 
-                if container_guard.is_none() {
-                    return Err(CleanroomError::service_error(format!(
-                        "Cannot stop OTEL Collector '{}': not running",
-                        handle.service_name
-                    )));
-                }
+        if container_guard.is_none() {
+            return Err(CleanroomError::service_error(format!(
+                "Cannot stop OTEL Collector '{}': not running",
+                handle.service_name
+            )));
+        }
 
-                // Container cleanup is automatic with testcontainers
-                *container_guard = None;
+        // Container cleanup is automatic with testcontainers
+        *container_guard = None;
 
-                Ok(())
-            })
-        })
+        Ok(())
     }
 
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {
         // Check if health check endpoint is available in metadata
         if let Some(health_endpoint) = handle.metadata.get("health_check_endpoint") {
+            // Note: health_check remains sync for quick checks
+            // For async health checks, use a dedicated async method
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     let client = match reqwest::Client::builder()

@@ -19,6 +19,7 @@ pub mod determinism;
 pub mod error;
 pub mod formatting;
 pub mod macros;
+pub mod metrics;
 pub mod otel;
 pub mod policy;
 pub mod reporting;
@@ -67,6 +68,7 @@ pub use formatting::{
     TestStatus, TestSuite,
 };
 pub use macros::{with_cache, with_database, with_message_queue, with_web_server};
+pub use metrics::{AtomicMetrics, MetricsSnapshot};
 pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporter, ReportConfig};
 pub use services::generic::GenericContainerPlugin;
 pub use services::surrealdb::SurrealDbPlugin;

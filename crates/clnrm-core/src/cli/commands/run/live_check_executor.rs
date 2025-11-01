@@ -79,28 +79,43 @@ pub async fn execute_with_live_check(
          println!(\"{}\", completed.summary());\n\
          ```\n\
          \n\
-         See docs/architecture/v1.3.0/ for complete API usage examples."
+         See docs/architecture/v1.3.0/ for complete API usage examples.",
     ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{TestMetadata, WeaverConfig};
+    use crate::config::{TestMetadata, TestMetadataSection, WeaverConfig};
 
     fn create_test_config() -> TestConfig {
         TestConfig {
-            metadata: TestMetadata {
-                name: "test".to_string(),
-                description: None,
-                version: None,
-                author: None,
-                tags: None,
-                environment: None,
-                timeout: None,
-            },
+            test: Some(TestMetadataSection::Nested {
+                metadata: TestMetadata {
+                    name: "test".to_string(),
+                    description: None,
+                    timeout: None,
+                },
+            }),
+            meta: None,
+            services: None,
+            service: None,
+            steps: vec![],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
             weaver: Some(WeaverConfig::default()),
-            ..Default::default()
+            performance: None,
+            chaos: None,
         }
     }
 
@@ -108,7 +123,29 @@ mod tests {
     #[ignore = "CLI integration deferred to v1.3.1 - function is currently a stub"]
     fn test_config_validation_missing_weaver_config() {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let config = TestConfig::default(); // No weaver config
+        // Create config with no weaver config
+        let config = TestConfig {
+            test: None,
+            meta: None,
+            services: None,
+            service: None,
+            steps: vec![],
+            scenario: vec![],
+            assertions: None,
+            otel_validation: None,
+            otel: None,
+            vars: None,
+            matrix: None,
+            expect: None,
+            report: None,
+            determinism: None,
+            limits: None,
+            otel_headers: None,
+            otel_propagators: None,
+            weaver: None, // No weaver config
+            performance: None,
+            chaos: None,
+        };
         let paths = vec![PathBuf::from("tests/")];
 
         let result = rt.block_on(execute_with_live_check(&config, &paths, false, None));

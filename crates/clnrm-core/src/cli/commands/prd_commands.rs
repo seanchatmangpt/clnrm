@@ -120,9 +120,11 @@ pub async fn reproduce_baseline(
         fail_fast: false,
         watch: false,
         verbose: 0,
-        force: true,     // Force run all tests
-        digest: false,   // No digest needed for reproduction
-        validate: false, // No validation for baseline reproduction
+        force: true,           // Force run all tests
+        digest: false,         // No digest needed for reproduction
+        validate: false,       // No validation for baseline reproduction
+        enable_pooling: false, // Disable pooling for deterministic reproduction
+        pool_max_size: 10,
     };
 
     let results = run_tests_sequential_with_results(&test_paths, &config).await?;

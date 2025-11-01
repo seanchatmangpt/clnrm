@@ -1,7 +1,7 @@
 # Simple Variable Substitution Example
 # This demonstrates basic Tera variable usage in clnrm templates
 
-[template.vars]
+[vars]
 service_name = "clnrm"
 version = "0.6.0"
 exporter = "stdout"
@@ -14,10 +14,10 @@ version = "{{ vars.version }}"
 
 [otel]
 exporter = "{{ vars.exporter }}"
-resources = {
-    "service.name" = "{{ vars.service_name }}",
-    "service.version" = "{{ vars.version }}"
-}
+
+[otel.resources]
+"service.name" = "{{ vars.service_name }}"
+"service.version" = "{{ vars.version }}"
 
 [[scenario]]
 name = "simple_echo"
@@ -30,10 +30,10 @@ image = "alpine:latest"
 
 [[expect.span]]
 name = "clnrm.step:simple_echo"
-attributes.any = {
-    "container.service" = "alpine",
-    "test.version" = "{{ vars.version }}"
-}
+
+[expect.span.attributes.any]
+"container.service" = "alpine"
+"test.version" = "{{ vars.version }}"
 
 [expect.window]
 min_duration_ms = 0

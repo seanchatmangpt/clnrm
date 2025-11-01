@@ -73,6 +73,13 @@ pub async fn run_cli() -> Result<()> {
                 force,
                 digest,
                 validate: should_validate,
+                enable_pooling: std::env::var("CLNRM_ENABLE_POOLING")
+                    .map(|v| v == "true" || v == "1")
+                    .unwrap_or(false),
+                pool_max_size: std::env::var("CLNRM_POOL_MAX_SIZE")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(10),
             };
 
             // If no paths provided, discover all test files automatically

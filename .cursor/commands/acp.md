@@ -1,11 +1,11 @@
 # Git Add, Commit, Push
 
-Quick git workflow: stage all changes, commit with message, and push to remote.
+Quick git workflow: stage all changes, auto generate a message, and push to remote.
 
 ## Command
 When you type `/acp`, I will:
 1. Stage all changes (`git add -A`)
-2. Prompt you for a commit message
+2. Auto gen msg
 3. Commit with your message (`git commit -m "<message>"`)
 4. Push to remote (`git push`)
 

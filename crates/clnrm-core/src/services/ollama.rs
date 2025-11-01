@@ -215,48 +215,39 @@ pub struct OllamaModelList {
     pub models: Vec<OllamaModel>,
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for OllamaPlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        // Use tokio::task::block_in_place for async operations
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                // Test connection to Ollama service
-                let health_check = async {
-                    // Simple health check - try to connect
-                    match self.test_connection().await {
-                        Ok(_) => HealthStatus::Healthy,
-                        Err(_) => HealthStatus::Unhealthy,
-                    }
-                };
+    async fn start(&self) -> Result<ServiceHandle> {
+        // Test connection to Ollama service
+        let health = match self.test_connection().await {
+            Ok(_) => HealthStatus::Healthy,
+            Err(_) => HealthStatus::Unhealthy,
+        };
 
-                let health = health_check.await;
+        let mut metadata = HashMap::new();
+        metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
+        metadata.insert(
+            "default_model".to_string(),
+            self.config.default_model.clone(),
+        );
+        metadata.insert(
+            "timeout_seconds".to_string(),
+            self.config.timeout_seconds.to_string(),
+        );
+        metadata.insert("health_status".to_string(), format!("{:?}", health));
 
-                let mut metadata = HashMap::new();
-                metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
-                metadata.insert(
-                    "default_model".to_string(),
-                    self.config.default_model.clone(),
-                );
-                metadata.insert(
-                    "timeout_seconds".to_string(),
-                    self.config.timeout_seconds.to_string(),
-                );
-                metadata.insert("health_status".to_string(), format!("{:?}", health));
-
-                Ok(ServiceHandle {
-                    id: Uuid::new_v4().to_string(),
-                    service_name: self.name.clone(),
-                    metadata,
-                })
-            })
+        Ok(ServiceHandle {
+            id: Uuid::new_v4().to_string(),
+            service_name: self.name.clone(),
+            metadata,
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         // HTTP-based service, no cleanup needed beyond dropping the client
         Ok(())
     }

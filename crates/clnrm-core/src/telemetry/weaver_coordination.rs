@@ -325,7 +325,10 @@ impl WeaverController<Running> {
             if let Err(e) = kill(pid, Signal::SIGHUP) {
                 warn!("Failed to send SIGHUP: {}, attempting cleanup", e);
                 let _ = process.wait(); // Prevent zombie process
-                return Err(CleanroomError::internal_error(format!("Failed to send SIGHUP: {}", e)));
+                return Err(CleanroomError::internal_error(format!(
+                    "Failed to send SIGHUP: {}",
+                    e
+                )));
             }
         }
 
@@ -335,7 +338,10 @@ impl WeaverController<Running> {
             if let Err(e) = process.kill() {
                 warn!("Failed to kill Weaver: {}, attempting cleanup", e);
                 let _ = process.wait(); // Prevent zombie process
-                return Err(CleanroomError::internal_error(format!("Failed to kill Weaver: {}", e)));
+                return Err(CleanroomError::internal_error(format!(
+                    "Failed to kill Weaver: {}",
+                    e
+                )));
             }
         }
 

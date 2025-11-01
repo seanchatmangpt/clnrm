@@ -17,17 +17,18 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// Plugin-based service registry (no hardcoded postgres/redis)
+#[async_trait::async_trait]
 pub trait ServicePlugin: Send + Sync + std::fmt::Debug {
     /// Get service name
     fn name(&self) -> &str;
 
     /// Start the service
-    fn start(&self) -> Result<ServiceHandle>;
+    async fn start(&self) -> Result<ServiceHandle>;
 
     /// Stop the service
-    fn stop(&self, handle: ServiceHandle) -> Result<()>;
+    async fn stop(&self, handle: ServiceHandle) -> Result<()>;
 
-    /// Check service health
+    /// Check service health (sync for quick checks)
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus;
 }
 
@@ -131,7 +132,7 @@ impl ServiceRegistry {
             CleanroomError::internal_error(format!("Service plugin '{}' not found", service_name))
         })?;
 
-        let handle = plugin.start()?;
+        let handle = plugin.start().await?;
         self.active_services
             .insert(handle.id.clone(), handle.clone());
 
@@ -148,7 +149,7 @@ impl ServiceRegistry {
                 ))
             })?;
 
-            plugin.stop(handle)?;
+            plugin.stop(handle).await?;
         }
 
         Ok(())
@@ -1108,12 +1109,13 @@ impl MockDatabasePlugin {
     }
 }
 
+#[async_trait::async_trait]
 impl ServicePlugin for MockDatabasePlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
+    async fn start(&self) -> Result<ServiceHandle> {
         // For testing, create a simple mock handle without actual container
         // In production, this would use proper async container startup
 
@@ -1131,7 +1133,7 @@ impl ServicePlugin for MockDatabasePlugin {
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         // For testing, just return success without actual container cleanup
         // In production, this would properly stop the container
         Ok(())

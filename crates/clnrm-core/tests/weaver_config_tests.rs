@@ -8,7 +8,13 @@
 //! - Error handling and user-friendly error messages
 
 use clnrm_core::config::{TestConfig, WeaverConfig};
-use clnrm_core::error::Result;
+use clnrm_core::error::{CleanroomError, Result};
+
+// Helper function to parse TOML with proper error conversion
+fn parse_test_config(toml: &str) -> Result<TestConfig> {
+    toml::from_str(toml)
+        .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))
+}
 
 // ============================================================================
 // Basic Parsing Tests
@@ -29,7 +35,7 @@ fn test_parse_minimal_weaver_config() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     assert!(config.weaver.is_some());
 
     let weaver = config.weaver.unwrap();
@@ -94,7 +100,7 @@ fn test_parse_complete_weaver_config() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
     // Core config
@@ -199,7 +205,7 @@ fn test_parse_80_20_validation_mode() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
     let validation = weaver
@@ -245,7 +251,7 @@ fn test_parse_lenient_validation_mode() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
     let validation = weaver
         .validation
@@ -281,7 +287,7 @@ fn test_parse_existing_collector_config() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
     let collector = weaver
         .collector
@@ -335,7 +341,7 @@ fn test_parse_weaver_with_partial_config() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
     // Explicitly set value
@@ -603,7 +609,7 @@ fn test_v1_2_1_toml_without_weaver_still_works() -> Result<()> {
         expected_output_regex = "hello"
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
 
     // Weaver config should be None (not enabled)
     assert!(config.weaver.is_none());
@@ -635,7 +641,7 @@ fn test_v1_2_1_format_compatibility() -> Result<()> {
         service = "postgres"
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     assert!(config.weaver.is_none());
     config.validate()?;
 
@@ -683,7 +689,7 @@ fn test_validation_mode_enum_parsing() -> Result<()> {
             mode_str
         );
 
-        let config: TestConfig = toml::from_str(&toml)?;
+        let config = parse_test_config(&toml)?;
         let weaver = config.weaver.expect("Weaver config should be present");
         let validation = weaver
             .validation
@@ -726,7 +732,7 @@ fn test_diagnostic_format_enum_parsing() -> Result<()> {
             format_str
         );
 
-        let config: TestConfig = toml::from_str(&toml)?;
+        let config = parse_test_config(&toml)?;
         let weaver = config.weaver.expect("Weaver config should be present");
         let validation = weaver
             .validation
@@ -756,7 +762,7 @@ fn test_weaver_disabled_explicitly() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
     assert!(!weaver.enabled);
@@ -787,10 +793,14 @@ fn test_empty_optional_attributes_allowed() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
-    let weaver = config.weaver.expect("Weaver config should be present");
+    let config = parse_test_config(toml)?;
+    let weaver = config
+        .weaver
+        .as_ref()
+        .expect("Weaver config should be present");
     let eighty_twenty = weaver
         .eighty_twenty
+        .as_ref()
         .expect("80/20 config should be present");
 
     assert!(eighty_twenty.optional_attributes.is_empty());
@@ -814,7 +824,7 @@ fn test_home_directory_path_resolution() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
     assert_eq!(weaver.registry_path, "~/clnrm/registry");
@@ -837,7 +847,7 @@ fn test_absolute_path_registry() -> Result<()> {
         command = ["echo", "hello"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
     assert_eq!(weaver.registry_path, "/usr/local/share/clnrm/registry");
@@ -880,7 +890,7 @@ fn test_ci_cd_pipeline_config() -> Result<()> {
         command = ["make", "test"]
     "#;
 
-    let config: TestConfig = toml::from_str(toml)?;
+    let config = parse_test_config(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
     let validation = weaver

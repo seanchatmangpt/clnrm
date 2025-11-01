@@ -47,6 +47,7 @@ fn test_noun_command_trait() -> Result<()> {
 
 #[test]
 fn test_verb_command_trait() -> Result<()> {
+    #[allow(dead_code)]
     struct TestVerb {
         name: String,
         about: String,

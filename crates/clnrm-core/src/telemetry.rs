@@ -236,10 +236,26 @@ impl Drop for OtelGuard {
             }
         }
 
-        // Calculate adaptive flush timeout (v1.3.0 improvement)
+        // v1.4.0: Calculate adaptive flush timeout and log performance metrics
         let flush_timeout = if let Some(ref adaptive) = self.adaptive_flush {
             let (timeout, diagnostics) = adaptive.calculate_timeout_with_diagnostics();
+            let metrics = adaptive.performance_metrics();
+
             tracing::info!("🔄 Using adaptive flush timeout: {}", diagnostics);
+            tracing::info!("📊 Performance metrics: {}", metrics.diagnostics());
+
+            if metrics.is_overhead_optimal() {
+                tracing::info!(
+                    "✅ OTEL overhead is optimal: {:.1}%",
+                    metrics.estimated_overhead_percent()
+                );
+            } else {
+                tracing::warn!(
+                    "⚠️  OTEL overhead suboptimal: {:.1}% (target: 3-5%)",
+                    metrics.estimated_overhead_percent()
+                );
+            }
+
             timeout
         } else {
             // Fallback to fixed 500ms (v1.2.0 behavior)
@@ -475,8 +491,9 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     // Note: For logs, we use the logger provider through the OtelGuard
     // The global logger provider is set when needed through specific log operations
 
-    // v1.3.0: Initialize adaptive flush calculator
-    let adaptive_flush = Some(adaptive_flush::AdaptiveFlush::default());
+    // v1.4.0: Initialize adaptive flush calculator with production settings
+    // Uses 500ms base timeout for lower overhead in production workloads
+    let adaptive_flush = Some(adaptive_flush::AdaptiveFlush::production());
 
     Ok(OtelGuard {
         tracer_provider: tp,
@@ -580,14 +597,16 @@ pub fn init_otel_with_weaver(
         endpoint: endpoint_static,
     };
 
-    // Configure batching based on test scenario
-    // For test scenarios, we want aggressive flushing to ensure telemetry
-    // reaches Weaver before tests complete
-    std::env::set_var("OTEL_BSP_SCHEDULE_DELAY", "100"); // Flush every 100ms (default: 5000ms)
-    std::env::set_var("OTEL_BSP_MAX_QUEUE_SIZE", "2048"); // Default: 2048
-    std::env::set_var("OTEL_BSP_MAX_EXPORT_BATCH_SIZE", "512"); // Default: 512
+    // v1.4.0: Configure adaptive batching for test scenarios
+    // Use testing-optimized adaptive flush (100ms base timeout)
+    let adaptive_flush_calculator = adaptive_flush::AdaptiveFlush::testing();
+    let batch_config = adaptive_flush_calculator.calculate_batch_config();
 
-    warn!("   Configured aggressive batching for test scenario (100ms flush interval)");
+    // Apply adaptive batch configuration to environment
+    batch_config.apply_to_env();
+
+    info!("   Configured adaptive batching for test scenario");
+    info!("   {}", batch_config.diagnostics());
 
     // Initialize OTEL with Weaver-coordinated configuration
     let mut guard = init_otel(cfg)?;
@@ -596,18 +615,30 @@ pub fn init_otel_with_weaver(
     let monitor = ExportMonitor::new();
     guard.export_monitor = Some(monitor);
 
-    // v1.3.0: Adaptive flush already initialized in init_otel()
-    // Ensure it's present for Weaver coordination
-    if guard.adaptive_flush.is_none() {
-        guard.adaptive_flush = Some(adaptive_flush::AdaptiveFlush::default());
+    // v1.4.0: Replace default adaptive flush with testing-optimized version
+    // Testing scenarios need faster feedback (100ms base) vs production (500ms base)
+    guard.adaptive_flush = Some(adaptive_flush_calculator);
+
+    // Log performance metrics
+    if let Some(ref adaptive) = guard.adaptive_flush {
+        let metrics = adaptive.performance_metrics();
+        info!("   Performance metrics: {}", metrics.diagnostics());
+
+        if !metrics.is_overhead_optimal() {
+            warn!(
+                "   ⚠️  OTEL overhead estimated at {:.1}% (target: 3-5%)",
+                metrics.estimated_overhead_percent()
+            );
+        }
     }
 
-    info!("✅ OTEL initialized with Weaver coordination (v1.3.0 features enabled)");
+    info!("✅ OTEL initialized with Weaver coordination (v1.4.0 adaptive batching enabled)");
     info!(
         "   Weaver PID: {}, Telemetry will be validated",
         coordination.weaver_pid
     );
     info!("   Export monitoring: enabled");
+    info!("   Adaptive batching: enabled (3-5% overhead target)");
     info!("   Adaptive flush: enabled (>99.9% delivery target)");
     info!("   Metrics export: enabled (OTLP)");
 
