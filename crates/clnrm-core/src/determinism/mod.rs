@@ -248,11 +248,7 @@ impl DeterminismEngine {
     pub fn release_port(&self, port: u16) -> Result<()> {
         self.port_allocator
             .as_ref()
-            .ok_or_else(|| {
-                CleanroomError::deterministic_error(
-                    "Deterministic ports not enabled"
-                )
-            })?
+            .ok_or_else(|| CleanroomError::deterministic_error("Deterministic ports not enabled"))?
             .release(port)
     }
 
@@ -266,11 +262,7 @@ impl DeterminismEngine {
     pub fn allocated_ports(&self) -> Result<Vec<u16>> {
         self.port_allocator
             .as_ref()
-            .ok_or_else(|| {
-                CleanroomError::deterministic_error(
-                    "Deterministic ports not enabled"
-                )
-            })?
+            .ok_or_else(|| CleanroomError::deterministic_error("Deterministic ports not enabled"))?
             .allocated_ports()
     }
 
@@ -324,7 +316,7 @@ impl DeterminismEngine {
             Ok(ports::PortAllocator::default_ports_string())
         } else {
             Err(CleanroomError::deterministic_error(
-                "Deterministic ports not enabled"
+                "Deterministic ports not enabled",
             ))
         }
     }

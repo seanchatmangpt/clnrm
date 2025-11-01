@@ -91,8 +91,7 @@ pub trait NounCommand: Send + Sync {
 
     /// Build the clap command for this noun
     fn build_command(&self) -> Command {
-        let mut cmd = Command::new(self.name())
-            .about(self.about());
+        let mut cmd = Command::new(self.name()).about(self.about());
 
         // Add verb subcommands (build_command already includes additional_args)
         for verb in self.verbs() {
@@ -117,7 +116,8 @@ pub trait NounCommand: Send + Sync {
 
     /// Handle a verb command for this noun
     fn handle_verb(&self, verb_name: &str, args: &VerbArgs) -> Result<()> {
-        let verb = self.verbs()
+        let verb = self
+            .verbs()
             .into_iter()
             .find(|v| v.name() == verb_name)
             .ok_or_else(|| crate::error::NounVerbError::verb_not_found(self.name(), verb_name))?;
@@ -127,7 +127,8 @@ pub trait NounCommand: Send + Sync {
 
     /// Handle a sub-noun command for this noun
     fn handle_sub_noun(&self, sub_noun_name: &str, args: &VerbArgs) -> Result<()> {
-        let sub_noun = self.sub_nouns()
+        let sub_noun = self
+            .sub_nouns()
             .into_iter()
             .find(|n| n.name() == sub_noun_name)
             .ok_or_else(|| crate::error::NounVerbError::command_not_found(sub_noun_name))?;
@@ -152,10 +153,20 @@ pub trait CompoundNounCommand: NounCommand {
     /// Get all verbs recursively
     fn all_verbs(&self) -> HashMap<String, Vec<String>> {
         let mut verbs = HashMap::new();
-        verbs.insert(self.name().to_string(), self.verbs().iter().map(|v| v.name().to_string()).collect());
+        verbs.insert(
+            self.name().to_string(),
+            self.verbs().iter().map(|v| v.name().to_string()).collect(),
+        );
 
         for sub_noun in self.sub_nouns() {
-            verbs.insert(sub_noun.name().to_string(), sub_noun.verbs().iter().map(|v| v.name().to_string()).collect());
+            verbs.insert(
+                sub_noun.name().to_string(),
+                sub_noun
+                    .verbs()
+                    .iter()
+                    .map(|v| v.name().to_string())
+                    .collect(),
+            );
         }
 
         verbs

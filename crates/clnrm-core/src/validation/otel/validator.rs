@@ -8,8 +8,8 @@ use opentelemetry::trace::TraceId;
 use opentelemetry_sdk::trace::InMemorySpanExporter;
 use std::collections::HashMap;
 
-use super::config::OtelValidationConfig;
 use super::assertions::{SpanAssertion, TraceAssertion};
+use super::config::OtelValidationConfig;
 use super::results::{SpanValidationResult, TraceValidationResult};
 use super::span_processor::ValidationSpanProcessor;
 

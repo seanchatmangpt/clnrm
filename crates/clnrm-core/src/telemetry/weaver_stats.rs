@@ -280,7 +280,10 @@ impl WeaverStats {
             .nth(1)
             .and_then(|s| s.trim().parse().ok())
             .ok_or_else(|| {
-                CleanroomError::serialization_error(format!("Failed to parse number from: {}", line))
+                CleanroomError::serialization_error(format!(
+                    "Failed to parse number from: {}",
+                    line
+                ))
             })
     }
 
@@ -294,7 +297,10 @@ impl WeaverStats {
         // Overview
         report.push_str("📦 Registry Overview:\n");
         report.push_str(&format!("   Groups: {}\n", stats.total_groups));
-        report.push_str(&format!("   Total Attributes: {}\n", stats.total_attributes));
+        report.push_str(&format!(
+            "   Total Attributes: {}\n",
+            stats.total_attributes
+        ));
         report.push_str(&format!(
             "   - Required: {} ({:.1}%)\n",
             stats.required_attributes,

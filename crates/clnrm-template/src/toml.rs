@@ -8,12 +8,12 @@
 //! - TOML diff and patch operations
 //! - Template file organization and management
 
-use crate::error::{TemplateError, Result};
+use crate::error::{Result, TemplateError};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
 use std::fs;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 /// TOML file representation with metadata
 #[derive(Debug, Clone)]
@@ -121,11 +121,17 @@ impl TomlLoader {
         let path = path.as_ref();
 
         if !path.exists() {
-            return Err(TemplateError::IoError(format!("TOML file not found: {}", path.display())));
+            return Err(TemplateError::IoError(format!(
+                "TOML file not found: {}",
+                path.display()
+            )));
         }
 
         if !path.is_file() {
-            return Err(TemplateError::IoError(format!("Path is not a file: {}", path.display())));
+            return Err(TemplateError::IoError(format!(
+                "Path is not a file: {}",
+                path.display()
+            )));
         }
 
         // Check file extension
@@ -144,7 +150,8 @@ impl TomlLoader {
         let parsed = toml::from_str::<Value>(&content)
             .map_err(|e| TemplateError::ValidationError(format!("Invalid TOML format: {}", e)))?;
 
-        let metadata = path.metadata()
+        let metadata = path
+            .metadata()
             .map_err(|e| TemplateError::IoError(format!("Failed to read file metadata: {}", e)))?;
 
         let file = TomlFile {
@@ -153,8 +160,9 @@ impl TomlLoader {
             parsed,
             metadata: TomlMetadata {
                 size: metadata.len(),
-                modified: metadata.modified()
-                    .map_err(|e| TemplateError::IoError(format!("Failed to get modification time: {}", e)))?,
+                modified: metadata.modified().map_err(|e| {
+                    TemplateError::IoError(format!("Failed to get modification time: {}", e))
+                })?,
                 permissions: metadata.permissions(),
                 variables_used: HashSet::new(),
                 functions_used: HashSet::new(),
@@ -193,8 +201,9 @@ impl TomlLoader {
         };
 
         for entry in walker {
-            let entry = entry
-                .map_err(|e| TemplateError::IoError(format!("Failed to read directory entry: {}", e)))?;
+            let entry = entry.map_err(|e| {
+                TemplateError::IoError(format!("Failed to read directory entry: {}", e))
+            })?;
 
             if entry.file_type().is_file() {
                 let path = entry.path();
@@ -222,8 +231,9 @@ impl TomlLoader {
     pub fn load_glob(&self, pattern: &str) -> Result<HashMap<PathBuf, TomlFile>> {
         use globset::{Glob, GlobSetBuilder};
 
-        let glob = Glob::new(pattern)
-            .map_err(|e| TemplateError::ConfigError(format!("Invalid glob pattern '{}': {}", pattern, e)))?;
+        let glob = Glob::new(pattern).map_err(|e| {
+            TemplateError::ConfigError(format!("Invalid glob pattern '{}': {}", pattern, e))
+        })?;
 
         let glob_set = GlobSetBuilder::new()
             .add(glob)
@@ -240,7 +250,12 @@ impl TomlLoader {
     }
 
     /// Scan directory with glob pattern
-    fn scan_glob_pattern(&self, dir: &Path, glob_set: &globset::GlobSet, files: &mut HashMap<PathBuf, TomlFile>) -> Result<()> {
+    fn scan_glob_pattern(
+        &self,
+        dir: &Path,
+        glob_set: &globset::GlobSet,
+        files: &mut HashMap<PathBuf, TomlFile>,
+    ) -> Result<()> {
         use walkdir::WalkDir;
 
         let walker = if self.recursive {
@@ -250,8 +265,9 @@ impl TomlLoader {
         };
 
         for entry in walker {
-            let entry = entry
-                .map_err(|e| TemplateError::IoError(format!("Failed to read directory entry: {}", e)))?;
+            let entry = entry.map_err(|e| {
+                TemplateError::IoError(format!("Failed to read directory entry: {}", e))
+            })?;
 
             if entry.file_type().is_file() {
                 let path_str = entry.path().to_string_lossy();
@@ -261,7 +277,11 @@ impl TomlLoader {
                             files.insert(entry.path().to_path_buf(), file);
                         }
                         Err(e) => {
-                            eprintln!("Warning: Failed to load TOML file {:?}: {}", entry.path(), e);
+                            eprintln!(
+                                "Warning: Failed to load TOML file {:?}: {}",
+                                entry.path(),
+                                e
+                            );
                         }
                     }
                 }
@@ -332,7 +352,12 @@ impl TomlWriter {
     /// * `path` - Target file path
     /// * `content` - TOML content to write
     /// * `validator` - Optional validator to run before writing
-    pub fn write_file<P: AsRef<Path>>(&self, path: P, content: &str, validator: Option<&crate::validation::TemplateValidator>) -> Result<()> {
+    pub fn write_file<P: AsRef<Path>>(
+        &self,
+        path: P,
+        content: &str,
+        validator: Option<&crate::validation::TemplateValidator>,
+    ) -> Result<()> {
         let path = path.as_ref();
 
         // Validate before writing if enabled
@@ -381,7 +406,7 @@ impl TomlWriter {
     fn backup_path(&self, path: &Path) -> PathBuf {
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
         let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-        let ext = path.extension().unwrap_or_default().to_string_lossy();
+        let _ext = path.extension().unwrap_or_default().to_string_lossy();
 
         path.with_file_name(format!("{}.{}.bak", stem, timestamp))
     }
@@ -516,7 +541,9 @@ impl TomlMerger {
     /// * `files` - Vector of TomlFile objects to merge
     pub fn merge_files(&self, files: &[&TomlFile]) -> Result<TomlFile> {
         if files.is_empty() {
-            return Err(TemplateError::ValidationError("No files to merge".to_string()));
+            return Err(TemplateError::ValidationError(
+                "No files to merge".to_string(),
+            ));
         }
 
         let mut merged_value = files[0].parsed.clone();
@@ -531,8 +558,9 @@ impl TomlMerger {
             toml::to_string_pretty(&merged_value)
                 .unwrap_or_else(|_| toml::to_string(&merged_value).unwrap_or_default())
         } else {
-            toml::to_string(&merged_value)
-                .map_err(|e| TemplateError::ValidationError(format!("Failed to serialize merged TOML: {}", e)))?
+            toml::to_string(&merged_value).map_err(|e| {
+                TemplateError::ValidationError(format!("Failed to serialize merged TOML: {}", e))
+            })?
         };
 
         Ok(TomlFile {
@@ -553,8 +581,9 @@ impl TomlUtils {
     /// # Arguments
     /// * `content` - TOML content as string
     pub fn extract_variables(content: &str) -> Result<HashSet<String>> {
-        let parsed = toml::from_str::<Value>(content)
-            .map_err(|e| TemplateError::ValidationError(format!("Invalid TOML for variable extraction: {}", e)))?;
+        let parsed = toml::from_str::<Value>(content).map_err(|e| {
+            TemplateError::ValidationError(format!("Invalid TOML for variable extraction: {}", e))
+        })?;
 
         let mut variables = HashSet::new();
         Self::extract_variables_recursive(&parsed, &mut variables, "");
@@ -613,14 +642,17 @@ impl TomlUtils {
     /// * `file` - TomlFile to validate
     /// * `required_sections` - Required top-level sections
     pub fn validate_structure(file: &TomlFile, required_sections: &[&str]) -> Result<()> {
-        let obj = file.parsed.as_object()
+        let obj = file
+            .parsed
+            .as_object()
             .ok_or_else(|| TemplateError::ValidationError("TOML must be an object".to_string()))?;
 
         for section in required_sections {
             if !obj.contains_key(*section) {
                 return Err(TemplateError::ValidationError(format!(
                     "Required section '{}' missing in TOML file: {}",
-                    section, file.path.display()
+                    section,
+                    file.path.display()
                 )));
             }
         }
@@ -669,8 +701,9 @@ impl TomlUtils {
     /// # Arguments
     /// * `content` - TOML content to format
     pub fn format_toml(content: &str) -> Result<String> {
-        let parsed = toml::from_str::<Value>(content)
-            .map_err(|e| TemplateError::ValidationError(format!("Invalid TOML for formatting: {}", e)))?;
+        let parsed = toml::from_str::<Value>(content).map_err(|e| {
+            TemplateError::ValidationError(format!("Invalid TOML for formatting: {}", e))
+        })?;
 
         toml::to_string_pretty(&parsed)
             .map_err(|e| TemplateError::ValidationError(format!("Failed to format TOML: {}", e)))
@@ -693,8 +726,9 @@ impl TomlUtils {
     /// # Arguments
     /// * `content` - TOML content
     pub fn extract_keys(content: &str) -> Result<HashSet<String>> {
-        let parsed = toml::from_str::<Value>(content)
-            .map_err(|e| TemplateError::ValidationError(format!("Invalid TOML for key extraction: {}", e)))?;
+        let parsed = toml::from_str::<Value>(content).map_err(|e| {
+            TemplateError::ValidationError(format!("Invalid TOML for key extraction: {}", e))
+        })?;
 
         let mut keys = HashSet::new();
         Self::extract_keys_recursive(&parsed, &mut keys, "");
@@ -835,7 +869,12 @@ impl TomlFileBuilder {
     }
 
     /// Write TOML file
-    pub fn write<P: AsRef<Path>>(self, path: P, content: &str, validator: Option<&crate::validation::TemplateValidator>) -> Result<()> {
+    pub fn write<P: AsRef<Path>>(
+        self,
+        path: P,
+        content: &str,
+        validator: Option<&crate::validation::TemplateValidator>,
+    ) -> Result<()> {
         self.writer.write_file(path, content, validator)
     }
 

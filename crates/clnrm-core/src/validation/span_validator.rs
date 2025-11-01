@@ -244,10 +244,7 @@ impl SpanValidator {
     ///
     /// * `Result<Self>` - SpanValidator instance or error
     pub fn from_span_data(spans: &[opentelemetry_sdk::trace::SpanData]) -> Result<Self> {
-        let converted_spans: Vec<SpanData> = spans
-            .iter()
-            .map(Self::convert_otel_span)
-            .collect();
+        let converted_spans: Vec<SpanData> = spans.iter().map(Self::convert_otel_span).collect();
 
         Ok(Self {
             spans: converted_spans,
@@ -283,12 +280,7 @@ impl SpanValidator {
         let events = if span.events.is_empty() {
             None
         } else {
-            Some(
-                span.events
-                    .iter()
-                    .map(|e| e.name.to_string())
-                    .collect(),
-            )
+            Some(span.events.iter().map(|e| e.name.to_string()).collect())
         };
 
         // Get parent span ID

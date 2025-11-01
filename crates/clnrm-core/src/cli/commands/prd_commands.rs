@@ -52,8 +52,8 @@ pub async fn reproduce_baseline(
     verify_digest: bool,
     output: Option<&PathBuf>,
 ) -> Result<()> {
-    use crate::cli::commands::run::run_tests_sequential_with_results;
     use crate::cli::commands::record::{BaselineRecord, BaselineTestResult};
+    use crate::cli::commands::run::run_tests_sequential_with_results;
     use crate::cli::types::{CliConfig, OutputFormat};
 
     info!(
@@ -120,8 +120,8 @@ pub async fn reproduce_baseline(
         fail_fast: false,
         watch: false,
         verbose: 0,
-        force: true,   // Force run all tests
-        digest: false, // No digest needed for reproduction
+        force: true,     // Force run all tests
+        digest: false,   // No digest needed for reproduction
         validate: false, // No validation for baseline reproduction
     };
 

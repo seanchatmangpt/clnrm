@@ -1,10 +1,10 @@
 //! Integration tests for clap-noun-verb framework
 
-use clap_noun_verb::{
-    app, command_group, command_tree, noun, verb, Cli, Registry, VerbArgs, Result,
-    NounCommand, VerbCommand, CommandTree, CommandTreeBuilder
-};
 use clap_noun_verb::tree::patterns;
+use clap_noun_verb::{
+    app, command_group, command_tree, noun, verb, Cli, CommandTree, CommandTreeBuilder,
+    NounCommand, Registry, Result, VerbArgs, VerbCommand,
+};
 
 #[test]
 fn test_basic_noun_verb_cli() -> Result<()> {
@@ -22,7 +22,9 @@ fn test_basic_noun_verb_cli() -> Result<()> {
     };
 
     let command = cli.build_command();
-    assert!(command.get_subcommands().any(|cmd| cmd.get_name() == "services"));
+    assert!(command
+        .get_subcommands()
+        .any(|cmd| cmd.get_name() == "services"));
 
     Ok(())
 }
@@ -32,12 +34,14 @@ fn test_registry_functionality() -> Result<()> {
     let registry = Registry::new()
         .name("registry-test")
         .about("Registry test application")
-        .register_noun(noun!("test", "Test commands", [
-            verb!("run", "Run test", |_args: &VerbArgs| {
+        .register_noun(noun!(
+            "test",
+            "Test commands",
+            [verb!("run", "Run test", |_args: &VerbArgs| {
                 println!("Running test");
                 Ok(())
-            }),
-        ]));
+            }),]
+        ));
 
     let structure = registry.command_structure();
     assert!(structure.contains_key("test"));
@@ -49,34 +53,41 @@ fn test_registry_functionality() -> Result<()> {
 
 #[test]
 fn test_command_tree_hierarchy() -> Result<()> {
-    let tree = CommandTree::from_builder(
-        CommandTreeBuilder::new()
-            .add_root_with_children(
-                "dev",
-                "Development tools",
-                vec![
-                    patterns::noun_verb_pattern(
-                        "test",
-                        "Testing utilities",
-                        vec![
-                            ("run".to_string(), "Run tests".to_string(), Box::new(|_args: &VerbArgs| {
-                                println!("Running tests...");
-                                Ok(())
-                            })),
-                            ("watch".to_string(), "Watch for changes".to_string(), Box::new(|_args: &VerbArgs| {
-                                println!("Watching for changes...");
-                                Ok(())
-                            })),
-                        ]
-                    ),
-                ]
-            )
-    );
+    let tree = CommandTree::from_builder(CommandTreeBuilder::new().add_root_with_children(
+        "dev",
+        "Development tools",
+        vec![patterns::noun_verb_pattern(
+            "test",
+            "Testing utilities",
+            vec![
+                (
+                    "run".to_string(),
+                    "Run tests".to_string(),
+                    Box::new(|_args: &VerbArgs| {
+                        println!("Running tests...");
+                        Ok(())
+                    }),
+                ),
+                (
+                    "watch".to_string(),
+                    "Watch for changes".to_string(),
+                    Box::new(|_args: &VerbArgs| {
+                        println!("Watching for changes...");
+                        Ok(())
+                    }),
+                ),
+            ],
+        )],
+    ));
 
     let paths = tree.roots()[0].command_paths();
     assert_eq!(paths.len(), 2);
-    assert!(paths.iter().any(|path| path == &vec!["dev".to_string(), "test".to_string(), "run".to_string()]));
-    assert!(paths.iter().any(|path| path == &vec!["dev".to_string(), "test".to_string(), "watch".to_string()]));
+    assert!(paths
+        .iter()
+        .any(|path| path == &vec!["dev".to_string(), "test".to_string(), "run".to_string()]));
+    assert!(paths
+        .iter()
+        .any(|path| path == &vec!["dev".to_string(), "test".to_string(), "watch".to_string()]));
 
     Ok(())
 }
@@ -110,8 +121,12 @@ fn test_custom_command_implementation() -> Result<()> {
     struct CustomServicesCommand;
 
     impl NounCommand for CustomServicesCommand {
-        fn name(&self) -> &'static str { "custom-services" }
-        fn about(&self) -> &'static str { "Custom services implementation" }
+        fn name(&self) -> &'static str {
+            "custom-services"
+        }
+        fn about(&self) -> &'static str {
+            "Custom services implementation"
+        }
         fn verbs(&self) -> Vec<Box<dyn VerbCommand>> {
             vec![Box::new(CustomStatusCommand)]
         }
@@ -120,8 +135,12 @@ fn test_custom_command_implementation() -> Result<()> {
     struct CustomStatusCommand;
 
     impl VerbCommand for CustomStatusCommand {
-        fn name(&self) -> &'static str { "status" }
-        fn about(&self) -> &'static str { "Show custom status" }
+        fn name(&self) -> &'static str {
+            "status"
+        }
+        fn about(&self) -> &'static str {
+            "Show custom status"
+        }
         fn run(&self, _args: &VerbArgs) -> Result<()> {
             println!("Custom status: All systems operational");
             Ok(())
@@ -135,7 +154,10 @@ fn test_custom_command_implementation() -> Result<()> {
 
     let structure = cli.command_structure();
     assert!(structure.contains_key("custom-services"));
-    assert!(structure.get("custom-services").unwrap().contains(&"status".to_string()));
+    assert!(structure
+        .get("custom-services")
+        .unwrap()
+        .contains(&"status".to_string()));
 
     Ok(())
 }
@@ -166,7 +188,9 @@ fn test_verb_args_context() -> Result<()> {
     };
 
     let command = cli.build_command();
-    assert!(command.get_subcommands().any(|cmd| cmd.get_name() == "test"));
+    assert!(command
+        .get_subcommands()
+        .any(|cmd| cmd.get_name() == "test"));
 
     Ok(())
 }
@@ -186,7 +210,9 @@ fn test_error_handling() -> Result<()> {
     };
 
     let command = cli.build_command();
-    assert!(command.get_subcommands().any(|cmd| cmd.get_name() == "test"));
+    assert!(command
+        .get_subcommands()
+        .any(|cmd| cmd.get_name() == "test"));
 
     Ok(())
 }
@@ -196,18 +222,22 @@ fn test_cli_builder_method_chaining() -> Result<()> {
     let cli = Cli::new()
         .name("method-chain-test")
         .about("Method chaining test")
-        .noun(noun!("first", "First command group", [
-            verb!("action", "First action", |_args: &VerbArgs| {
+        .noun(noun!(
+            "first",
+            "First command group",
+            [verb!("action", "First action", |_args: &VerbArgs| {
                 println!("First action executed");
                 Ok(())
-            }),
-        ]))
-        .noun(noun!("second", "Second command group", [
-            verb!("action", "Second action", |_args: &VerbArgs| {
+            }),]
+        ))
+        .noun(noun!(
+            "second",
+            "Second command group",
+            [verb!("action", "Second action", |_args: &VerbArgs| {
                 println!("Second action executed");
                 Ok(())
-            }),
-        ]));
+            }),]
+        ));
 
     let structure = cli.command_structure();
     assert!(structure.contains_key("first"));
@@ -220,16 +250,20 @@ fn test_cli_builder_method_chaining() -> Result<()> {
 
 #[test]
 fn test_command_group_macro() -> Result<()> {
-    let group = command_group!("test-group", "Test command group", [
-        verb!("first", "First command", |_args: &VerbArgs| {
-            println!("First command");
-            Ok(())
-        }),
-        verb!("second", "Second command", |_args: &VerbArgs| {
-            println!("Second command");
-            Ok(())
-        }),
-    ]);
+    let group = command_group!(
+        "test-group",
+        "Test command group",
+        [
+            verb!("first", "First command", |_args: &VerbArgs| {
+                println!("First command");
+                Ok(())
+            }),
+            verb!("second", "Second command", |_args: &VerbArgs| {
+                println!("Second command");
+                Ok(())
+            }),
+        ]
+    );
 
     // The macro should create a noun command
     assert_eq!(group.name(), "test-group");
@@ -241,10 +275,8 @@ fn test_command_group_macro() -> Result<()> {
 
 #[test]
 fn test_command_tree_macro() -> Result<()> {
-    let mut cli = Cli::new()
-        .name("tree-test")
-        .about("Tree test");
-    
+    let mut cli = Cli::new().name("tree-test").about("Tree test");
+
     cli = command_tree!(cli => noun!("root", "Root command", [
         verb!("leaf", "Leaf command", |_args: &VerbArgs| {
             println!("Leaf command");
@@ -253,7 +285,9 @@ fn test_command_tree_macro() -> Result<()> {
     ]));
 
     let command = cli.build_command();
-    assert!(command.get_subcommands().any(|cmd| cmd.get_name() == "root"));
+    assert!(command
+        .get_subcommands()
+        .any(|cmd| cmd.get_name() == "root"));
 
     Ok(())
 }
@@ -263,14 +297,22 @@ fn test_registry_introspection() -> Result<()> {
     let registry = Registry::new()
         .name("introspection-test")
         .about("Introspection test")
-        .register_noun(noun!("services", "Service management", [
-            verb!("status", "Show status", |_args: &VerbArgs| { Ok(()) }),
-            verb!("restart", "Restart service", |_args: &VerbArgs| { Ok(()) }),
-        ]))
-        .register_noun(noun!("config", "Configuration management", [
-            verb!("get", "Get config value", |_args: &VerbArgs| { Ok(()) }),
-            verb!("set", "Set config value", |_args: &VerbArgs| { Ok(()) }),
-        ]));
+        .register_noun(noun!(
+            "services",
+            "Service management",
+            [
+                verb!("status", "Show status", |_args: &VerbArgs| { Ok(()) }),
+                verb!("restart", "Restart service", |_args: &VerbArgs| { Ok(()) }),
+            ]
+        ))
+        .register_noun(noun!(
+            "config",
+            "Configuration management",
+            [
+                verb!("get", "Get config value", |_args: &VerbArgs| { Ok(()) }),
+                verb!("set", "Set config value", |_args: &VerbArgs| { Ok(()) }),
+            ]
+        ));
 
     // Test introspection methods
     assert_eq!(registry.noun_names().len(), 2);
@@ -311,8 +353,9 @@ fn test_verb_args_functionality() -> Result<()> {
     };
 
     let command = cli.build_command();
-    assert!(command.get_subcommands().any(|cmd| cmd.get_name() == "test"));
+    assert!(command
+        .get_subcommands()
+        .any(|cmd| cmd.get_name() == "test"));
 
     Ok(())
 }
-

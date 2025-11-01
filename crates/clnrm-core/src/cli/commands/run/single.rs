@@ -6,8 +6,8 @@
 use crate::cleanroom::CleanroomEnvironment;
 use crate::cli::types::CliConfig;
 use crate::error::{CleanroomError, Result};
-use crate::telemetry::spans;
 use crate::telemetry::span_storage;
+use crate::telemetry::spans;
 use crate::validation::span_validator::SpanValidator;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -22,9 +22,8 @@ use super::{scenario, services};
 ///          Err on failure
 #[tracing::instrument(name = "clnrm.test", skip(_config), fields(test.hermetic = true))]
 pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Option<String>> {
-    let content = std::fs::read_to_string(path).map_err(|e| {
-        CleanroomError::config_error(format!("Failed to read config file: {}", e))
-    })?;
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| CleanroomError::config_error(format!("Failed to read config file: {}", e)))?;
 
     let test_config: crate::config::TestConfig = toml::from_str(&content)
         .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
@@ -92,13 +91,14 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
     // Initialize chaos engineering if enabled
     let chaos_handle = if let Some(ref chaos_config) = test_config.chaos {
         if chaos_config.enabled {
-            info!("🎭 Chaos engineering enabled with {} experiments", chaos_config.experiments.len());
+            info!(
+                "🎭 Chaos engineering enabled with {} experiments",
+                chaos_config.experiments.len()
+            );
 
             // Create chaos plugin from TOML config
-            let chaos_plugin = crate::chaos::ChaosOrchestrator::create_plugin(
-                "chaos_engine",
-                chaos_config
-            )?;
+            let chaos_plugin =
+                crate::chaos::ChaosOrchestrator::create_plugin("chaos_engine", chaos_config)?;
 
             // Register and start chaos engine
             let plugin_box: Box<dyn crate::cleanroom::ServicePlugin> = Box::new(chaos_plugin);
@@ -108,7 +108,10 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
             // Emit telemetry for chaos initialization
             for exp in &chaos_config.experiments {
                 let attrs = crate::chaos::ChaosOrchestrator::get_experiment_attributes(exp);
-                info!("🎯 Chaos experiment: {} targeting {}", exp.experiment_type, exp.target_service);
+                info!(
+                    "🎯 Chaos experiment: {} targeting {}",
+                    exp.experiment_type, exp.target_service
+                );
                 for (key, value) in attrs {
                     tracing::Span::current().record(key.as_str(), value.as_str());
                 }
@@ -135,11 +138,15 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
         }
 
         // Render command templates with vars context
-          let rendered_command: Vec<String> = step
+        let rendered_command: Vec<String> = step
             .command
-              .iter()
-              .map(|arg| template_renderer.render_str(arg, &format!("step_{}_arg", step.name)).map_err(|e| e.into()))
-              .collect::<std::result::Result<Vec<String>, CleanroomError>>()?;
+            .iter()
+            .map(|arg| {
+                template_renderer
+                    .render_str(arg, &format!("step_{}_arg", step.name))
+                    .map_err(|e| e.into())
+            })
+            .collect::<std::result::Result<Vec<String>, CleanroomError>>()?;
 
         info!("🔧 Executing: {}", rendered_command.join(" "));
         info!("🔧 Executing: {}", rendered_command.join(" "));
@@ -157,29 +164,26 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
                 info!("🎯 Executing in service: {}", service_name);
 
                 // Validate service exists and retrieve handle
-                let service_handle = service_handles.get(service_name)
-                    .ok_or_else(|| {
-                        // REST-like error: 404 Not Found for missing resource
-                        let available_services: Vec<&str> = service_handles
-                            .keys()
-                            .map(|k| k.as_str())
-                            .collect();
+                let service_handle = service_handles.get(service_name).ok_or_else(|| {
+                    // REST-like error: 404 Not Found for missing resource
+                    let available_services: Vec<&str> =
+                        service_handles.keys().map(|k| k.as_str()).collect();
 
-                        CleanroomError::validation_error(format!(
-                            "Step '{}' references unknown service '{}'\n\
+                    CleanroomError::validation_error(format!(
+                        "Step '{}' references unknown service '{}'\n\
                             Available services: {}\n\
                             Hint: Check [service.{}] or [services.{}] section in TOML config",
-                            step.name,
-                            service_name,
-                            if available_services.is_empty() {
-                                "(none)".to_string()
-                            } else {
-                                available_services.join(", ")
-                            },
-                            service_name,
-                            service_name
-                        ))
-                    })?;
+                        step.name,
+                        service_name,
+                        if available_services.is_empty() {
+                            "(none)".to_string()
+                        } else {
+                            available_services.join(", ")
+                        },
+                        service_name,
+                        service_name
+                    ))
+                })?;
 
                 // Execute in service container with full observability
                 environment
@@ -326,7 +330,10 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
                 // Convert SpanData to validation format
                 let validator = SpanValidator::from_span_data(&collected_spans)?;
 
-                info!("📊 Collected {} span(s) for validation", collected_spans.len());
+                info!(
+                    "📊 Collected {} span(s) for validation",
+                    collected_spans.len()
+                );
 
                 // Validate expectations
                 let validation_result = validator.validate_expectations(&expect.span)?;

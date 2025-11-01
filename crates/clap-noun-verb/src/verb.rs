@@ -120,15 +120,12 @@ impl VerbArgs {
     where
         T: Clone + Send + Sync + 'static,
     {
-        self.matches
-            .get_one::<T>(name)
-            .cloned()
-            .ok_or_else(|| {
-                crate::error::NounVerbError::argument_error(format!(
-                    "Required argument '{}' is missing or has invalid type",
-                    name
-                ))
-            })
+        self.matches.get_one::<T>(name).cloned().ok_or_else(|| {
+            crate::error::NounVerbError::argument_error(format!(
+                "Required argument '{}' is missing or has invalid type",
+                name
+            ))
+        })
     }
 
     /// Get an optional typed argument
@@ -183,7 +180,10 @@ impl VerbArgs {
 
     /// Get all argument names
     pub fn arg_names(&self) -> Vec<String> {
-        self.matches.ids().map(|id| id.as_str().to_string()).collect()
+        self.matches
+            .ids()
+            .map(|id| id.as_str().to_string())
+            .collect()
     }
 
     /// Get a required PathBuf argument

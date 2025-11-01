@@ -180,8 +180,14 @@ impl ChaosOrchestrator {
     /// * `Vec<(String, String)>` - List of key-value pairs for telemetry
     pub fn get_experiment_attributes(exp: &ChaosExperiment) -> Vec<(String, String)> {
         let mut attrs = vec![
-            ("chaos.experiment.type".to_string(), exp.experiment_type.clone()),
-            ("chaos.target.service".to_string(), exp.target_service.clone()),
+            (
+                "chaos.experiment.type".to_string(),
+                exp.experiment_type.clone(),
+            ),
+            (
+                "chaos.target.service".to_string(),
+                exp.target_service.clone(),
+            ),
         ];
 
         if let Some(latency) = exp.latency_ms {
@@ -396,8 +402,14 @@ mod tests {
 
         let attrs = ChaosOrchestrator::get_experiment_attributes(&exp);
 
-        assert!(attrs.contains(&("chaos.experiment.type".to_string(), "network_latency".to_string())));
-        assert!(attrs.contains(&("chaos.target.service".to_string(), "test_service".to_string())));
+        assert!(attrs.contains(&(
+            "chaos.experiment.type".to_string(),
+            "network_latency".to_string()
+        )));
+        assert!(attrs.contains(&(
+            "chaos.target.service".to_string(),
+            "test_service".to_string()
+        )));
         assert!(attrs.contains(&("chaos.latency_ms".to_string(), "100".to_string())));
         assert!(attrs.contains(&("chaos.duration_seconds".to_string(), "10".to_string())));
     }

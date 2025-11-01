@@ -40,9 +40,7 @@ pub struct CommandTreeBuilder {
 impl CommandTree {
     /// Create a new empty command tree
     pub fn new() -> Self {
-        Self {
-            roots: Vec::new(),
-        }
+        Self { roots: Vec::new() }
     }
 
     /// Create a tree from a builder
@@ -105,11 +103,15 @@ impl CommandTree {
 
     /// Route a command based on clap matches
     pub fn route(&self, matches: &ArgMatches) -> Result<()> {
-        let (cmd_name, cmd_matches) = matches.subcommand()
+        let (cmd_name, cmd_matches) = matches
+            .subcommand()
             .ok_or_else(|| NounVerbError::invalid_structure("No subcommand found"))?;
 
         // Find the root command
-        let root = self.roots.iter().find(|n| n.name == cmd_name)
+        let root = self
+            .roots
+            .iter()
+            .find(|n| n.name == cmd_name)
             .ok_or_else(|| NounVerbError::command_not_found(cmd_name))?;
 
         // Route recursively
@@ -121,7 +123,10 @@ impl CommandTree {
     fn route_recursive(&self, node: &TreeNode, matches: &ArgMatches) -> Result<()> {
         if let Some((child_name, child_matches)) = matches.subcommand() {
             // Find the child command
-            let child = node.children.iter().find(|n| n.name == child_name)
+            let child = node
+                .children
+                .iter()
+                .find(|n| n.name == child_name)
                 .ok_or_else(|| NounVerbError::command_not_found(child_name))?;
 
             // Recursively route
@@ -196,8 +201,7 @@ impl TreeNode {
         // Note: This leaks memory but is acceptable for CLI construction (happens once per run)
         let name: &'static str = Box::leak(self.name.clone().into_boxed_str());
         let about: &'static str = Box::leak(self.about.clone().into_boxed_str());
-        let mut cmd = Command::new(name)
-            .about(about);
+        let mut cmd = Command::new(name).about(about);
 
         for child in &self.children {
             cmd = cmd.subcommand(child.build_command());
@@ -230,9 +234,7 @@ impl TreeNode {
 impl CommandTreeBuilder {
     /// Create a new command tree builder
     pub fn new() -> Self {
-        Self {
-            roots: Vec::new(),
-        }
+        Self { roots: Vec::new() }
     }
 
     /// Add a root command
@@ -273,9 +275,7 @@ impl CommandTreeBuilder {
 
     /// Build the command tree
     pub fn build(self) -> CommandTree {
-        CommandTree {
-            roots: self.roots,
-        }
+        CommandTree { roots: self.roots }
     }
 }
 
@@ -300,7 +300,11 @@ pub mod patterns {
     pub fn noun_verb_pattern(
         noun_name: impl Into<String>,
         about: impl Into<String>,
-        verbs: Vec<(String, String, Box<dyn Fn(&VerbArgs) -> Result<()> + Send + Sync>)>,
+        verbs: Vec<(
+            String,
+            String,
+            Box<dyn Fn(&VerbArgs) -> Result<()> + Send + Sync>,
+        )>,
     ) -> TreeNode {
         let mut node = TreeNode::new(noun_name, about);
 

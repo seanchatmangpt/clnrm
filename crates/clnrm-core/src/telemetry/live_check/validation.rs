@@ -4,13 +4,8 @@
 //! fast CI/CD gates (80/20 mode) while maintaining strict validation
 //! for final releases.
 
-use super::config::{
-    AttributeCriticality, Complete80_20Config, EightyTwentyConfig, ValidationConfig,
-    ValidationMode,
-};
-use crate::error::{CleanroomError, Result};
+use super::config::{Complete80_20Config, EightyTwentyConfig, ValidationConfig, ValidationMode};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 
 /// Validator for conformance reports with 80/20 support
 pub struct ConformanceValidator {
@@ -30,10 +25,7 @@ impl ConformanceValidator {
     }
 
     /// Create validator with 80/20 configuration
-    pub fn with_80_20_config(
-        config: ValidationConfig,
-        eighty_twenty: EightyTwentyConfig,
-    ) -> Self {
+    pub fn with_80_20_config(config: ValidationConfig, eighty_twenty: EightyTwentyConfig) -> Self {
         Self {
             config,
             eighty_twenty_config: Some(eighty_twenty),
@@ -256,7 +248,11 @@ impl ConformanceValidator {
     }
 
     /// Calculate minimal coverage (minimal mode)
-    fn calculate_minimal_coverage(&self, report: &ConformanceReport, minimal_attrs: &[&str]) -> f64 {
+    fn calculate_minimal_coverage(
+        &self,
+        report: &ConformanceReport,
+        minimal_attrs: &[&str],
+    ) -> f64 {
         let eighty_twenty = match &self.eighty_twenty_config {
             Some(config) => config,
             None => &EightyTwentyConfig::default(),
@@ -450,7 +446,14 @@ impl ValidationResult {
         println!("WEAVER VALIDATION REPORT ({:?} MODE)", self.mode);
         println!("{}", "=".repeat(60));
 
-        println!("\nStatus: {}", if self.passed { "✅ PASSED" } else { "❌ FAILED" });
+        println!(
+            "\nStatus: {}",
+            if self.passed {
+                "✅ PASSED"
+            } else {
+                "❌ FAILED"
+            }
+        );
         println!("Coverage: {:.1}%", self.coverage);
         println!("Duration: {}ms", self.duration_ms);
         println!(
@@ -666,7 +669,13 @@ mod tests {
         let mut report = ConformanceReport::new();
 
         // Add all critical spans
-        for span in &["clnrm.test.execute", "clnrm.container.start", "clnrm.container.stop", "clnrm.test.cleanup", "clnrm.cli.health"] {
+        for span in &[
+            "clnrm.test.execute",
+            "clnrm.container.start",
+            "clnrm.container.stop",
+            "clnrm.test.cleanup",
+            "clnrm.cli.health",
+        ] {
             report.add_required_span(span.to_string());
             report.add_present_span(span.to_string());
         }

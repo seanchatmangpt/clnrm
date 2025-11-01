@@ -27,11 +27,14 @@ impl CommandRouter {
     /// Route a command based on clap matches
     pub fn route(&self, matches: &ArgMatches) -> Result<()> {
         // Get the top-level subcommand (noun)
-        let (noun_name, noun_matches) = matches.subcommand()
+        let (noun_name, noun_matches) = matches
+            .subcommand()
             .ok_or_else(|| NounVerbError::invalid_structure("No subcommand found"))?;
 
         // Find the noun command
-        let noun = self.nouns.get(noun_name)
+        let noun = self
+            .nouns
+            .get(noun_name)
             .ok_or_else(|| NounVerbError::command_not_found(noun_name))?;
 
         // Route the command recursively with root matches for global args
@@ -40,7 +43,13 @@ impl CommandRouter {
 
     /// Recursively route commands through nested noun-verb structure
     #[allow(clippy::only_used_in_recursion)]
-    fn route_recursive(&self, noun: &dyn NounCommand, noun_name: &str, matches: &ArgMatches, root_matches: &ArgMatches) -> Result<()> {
+    fn route_recursive(
+        &self,
+        noun: &dyn NounCommand,
+        noun_name: &str,
+        matches: &ArgMatches,
+        root_matches: &ArgMatches,
+    ) -> Result<()> {
         // Check if there's a subcommand (either verb or sub-noun)
         if let Some((sub_name, sub_matches)) = matches.subcommand() {
             // First check if it's a verb
@@ -62,8 +71,7 @@ impl CommandRouter {
         } else {
             // No subcommand, try direct noun execution
             let context = VerbContext::new("").with_noun(noun_name);
-            let args = VerbArgs::new(matches.clone())
-                .with_context(context);
+            let args = VerbArgs::new(matches.clone()).with_context(context);
 
             noun.handle_direct(&args)
         }
@@ -87,9 +95,11 @@ impl CommandRouter {
 
     /// Get verbs for a specific noun
     pub fn get_verbs(&self, noun_name: &str) -> Result<Vec<String>> {
-        let noun = self.nouns.get(noun_name)
+        let noun = self
+            .nouns
+            .get(noun_name)
             .ok_or_else(|| NounVerbError::command_not_found(noun_name))?;
-        
+
         Ok(noun.verbs().iter().map(|v| v.name().to_string()).collect())
     }
 }

@@ -13,12 +13,17 @@ pub mod testing;
 pub mod validation_analyzer;
 pub mod weaver_controller;
 
+// v1.3.0 Phase 2: OTLP Integration Improvements
+pub mod adaptive_flush;
+pub mod metrics_export;
+pub mod semantic_conventions;
+
 // Type-safe Weaver coordination (state machine pattern)
 pub mod weaver_coordination;
 
 // Weaver innovation modules
-pub mod weaver_stats;
 pub mod weaver_emit;
+pub mod weaver_stats;
 
 // Weaver-generated telemetry code (type-safe builders from schemas)
 pub mod generated;
@@ -114,6 +119,8 @@ pub struct OtelGuard {
     logger_provider: Option<opentelemetry_sdk::logs::SdkLoggerProvider>,
     /// Export monitoring for Weaver coordination
     export_monitor: Option<ExportMonitor>,
+    /// Adaptive flush timeout calculator (v1.3.0)
+    adaptive_flush: Option<adaptive_flush::AdaptiveFlush>,
 }
 
 /// Monitor for OTLP export health and failures
@@ -229,7 +236,17 @@ impl Drop for OtelGuard {
             }
         }
 
-        // Flush traces with timeout
+        // Calculate adaptive flush timeout (v1.3.0 improvement)
+        let flush_timeout = if let Some(ref adaptive) = self.adaptive_flush {
+            let (timeout, diagnostics) = adaptive.calculate_timeout_with_diagnostics();
+            tracing::info!("🔄 Using adaptive flush timeout: {}", diagnostics);
+            timeout
+        } else {
+            // Fallback to fixed 500ms (v1.2.0 behavior)
+            Duration::from_millis(500)
+        };
+
+        // Flush traces with adaptive timeout
         if let Err(e) = self.tracer_provider.force_flush() {
             tracing::error!("Failed to flush traces during shutdown: {}", e);
             if let Some(ref monitor) = self.export_monitor {
@@ -241,7 +258,8 @@ impl Drop for OtelGuard {
 
         // Give async exports time to complete (batch processor uses async)
         // OTLP HTTP/gRPC exporters need time to send buffered data
-        std::thread::sleep(Duration::from_millis(500));
+        // v1.3.0: Use adaptive timeout instead of fixed 500ms
+        std::thread::sleep(flush_timeout);
 
         // Shutdown tracer provider after flush completes
         if let Err(e) = self.tracer_provider.shutdown() {
@@ -385,14 +403,56 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
 
     tracing::subscriber::set_global_default(subscriber).ok();
 
-    // Initialize metrics provider if enabled
+    // Initialize metrics provider with OTLP export (v1.3.0 improvement)
     let meter_provider = {
         use opentelemetry_sdk::metrics::SdkMeterProvider;
-        // Basic metrics provider - stdout only for now
-        // OTLP metrics export can be added later when API stabilizes
-        let provider = SdkMeterProvider::builder()
-            .with_resource(resource.clone())
-            .build();
+
+        // v1.3.0: Add OTLP metrics export (previously only provider existed)
+        // This is CRITICAL for Weaver validation - Weaver validates ALL signal types
+        let provider = match cfg.export {
+            Export::OtlpHttp { endpoint: _ } | Export::OtlpGrpc { endpoint: _ } => {
+                // Create OTLP metrics exporter matching trace exporter protocol
+                use opentelemetry_otlp::MetricExporter;
+                use opentelemetry_sdk::metrics::PeriodicReader;
+
+                let exporter = if matches!(cfg.export, Export::OtlpGrpc { .. }) {
+                    MetricExporter::builder()
+                        .with_tonic()
+                        .build()
+                        .map_err(|e| {
+                            CleanroomError::internal_error(format!(
+                                "Failed to create OTLP gRPC metrics exporter: {}",
+                                e
+                            ))
+                        })?
+                } else {
+                    MetricExporter::builder().with_http().build().map_err(|e| {
+                        CleanroomError::internal_error(format!(
+                            "Failed to create OTLP HTTP metrics exporter: {}",
+                            e
+                        ))
+                    })?
+                };
+
+                // Create periodic reader with 1-second interval (aggressive for testing)
+                let reader = PeriodicReader::builder(exporter)
+                    .with_interval(std::time::Duration::from_secs(1))
+                    .build();
+
+                SdkMeterProvider::builder()
+                    .with_resource(resource.clone())
+                    .with_reader(reader)
+                    .build()
+            }
+            Export::Stdout | Export::StdoutNdjson => {
+                // Stdout metrics not supported by opentelemetry-stdout crate
+                // Use no-op provider for stdout mode
+                SdkMeterProvider::builder()
+                    .with_resource(resource.clone())
+                    .build()
+            }
+        };
+
         Some(provider)
     };
 
@@ -415,11 +475,15 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     // Note: For logs, we use the logger provider through the OtelGuard
     // The global logger provider is set when needed through specific log operations
 
+    // v1.3.0: Initialize adaptive flush calculator
+    let adaptive_flush = Some(adaptive_flush::AdaptiveFlush::default());
+
     Ok(OtelGuard {
         tracer_provider: tp,
         meter_provider,
         logger_provider,
         export_monitor: None,
+        adaptive_flush,
     })
 }
 
@@ -523,9 +587,7 @@ pub fn init_otel_with_weaver(
     std::env::set_var("OTEL_BSP_MAX_QUEUE_SIZE", "2048"); // Default: 2048
     std::env::set_var("OTEL_BSP_MAX_EXPORT_BATCH_SIZE", "512"); // Default: 512
 
-    warn!(
-        "   Configured aggressive batching for test scenario (100ms flush interval)"
-    );
+    warn!("   Configured aggressive batching for test scenario (100ms flush interval)");
 
     // Initialize OTEL with Weaver-coordinated configuration
     let mut guard = init_otel(cfg)?;
@@ -534,12 +596,20 @@ pub fn init_otel_with_weaver(
     let monitor = ExportMonitor::new();
     guard.export_monitor = Some(monitor);
 
-    info!("✅ OTEL initialized with Weaver coordination");
+    // v1.3.0: Adaptive flush already initialized in init_otel()
+    // Ensure it's present for Weaver coordination
+    if guard.adaptive_flush.is_none() {
+        guard.adaptive_flush = Some(adaptive_flush::AdaptiveFlush::default());
+    }
+
+    info!("✅ OTEL initialized with Weaver coordination (v1.3.0 features enabled)");
     info!(
-        "   Telemetry will be validated by Weaver (PID {})",
+        "   Weaver PID: {}, Telemetry will be validated",
         coordination.weaver_pid
     );
-    info!("   Export monitoring enabled for health tracking");
+    info!("   Export monitoring: enabled");
+    info!("   Adaptive flush: enabled (>99.9% delivery target)");
+    info!("   Metrics export: enabled (OTLP)");
 
     Ok(guard)
 }
@@ -726,134 +796,137 @@ pub fn add_otel_logs_layer() {
 
 /// Span creation helpers for clnrm self-testing
 /// These spans enable validation of clnrm functionality via OTEL traces
+///
+/// # DEPRECATED (v1.3.0)
+///
+/// Use `semantic_conventions::SpanBuilder` instead for proper semantic convention compliance.
+/// These legacy helpers remain for backward compatibility but will be removed in v2.0.0.
 pub mod spans {
-    use tracing::{span, Level};
 
     /// Create root span for clnrm run
     /// This proves clnrm executed and completed
+    ///
+    /// # DEPRECATED
+    ///
+    /// Use `semantic_conventions::SpanBuilder::clnrm_run()` instead.
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::clnrm_run()"
+    )]
     pub fn run_span(config_path: &str, test_count: usize) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.run",
-            clnrm.version = env!("CARGO_PKG_VERSION"),
-            test.config = config_path,
-            test.count = test_count,
-            otel.kind = "internal",
-            component = "runner",
-        )
+        // Forward to semantic conventions builder
+        crate::telemetry::semantic_conventions::SpanBuilder::clnrm_run(config_path, test_count)
     }
 
     /// Create span for test step execution
     /// Each test step gets its own span with proper parent-child relationship
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::test_step()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::test_step()"
+    )]
     pub fn step_span(step_name: &str, step_index: usize) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.step",
-            step.name = step_name,
-            step.index = step_index,
-            otel.kind = "internal",
-            component = "step_executor",
-        )
+        crate::telemetry::semantic_conventions::SpanBuilder::test_step(step_name, step_index)
     }
 
     /// Create span for individual test execution
     /// Proves tests ran successfully
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::test_execution()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::test_execution()"
+    )]
     pub fn test_span(test_name: &str) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.test",
-            test.name = test_name,
-            test.hermetic = true,
-            otel.kind = "internal",
-            component = "test_executor",
-        )
+        crate::telemetry::semantic_conventions::SpanBuilder::test_execution(test_name)
     }
 
     /// Create span for plugin registry initialization
     /// Proves plugin system works correctly
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::plugin_registry()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::plugin_registry()"
+    )]
     pub fn plugin_registry_span(plugin_count: usize) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.plugin.registry",
-            plugin.count = plugin_count,
-            otel.kind = "internal",
-            component = "plugin_registry",
-        )
+        crate::telemetry::semantic_conventions::SpanBuilder::plugin_registry(plugin_count)
     }
 
     /// Create span for service start
     /// Proves container lifecycle management works
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::service_start()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::service_start()"
+    )]
     pub fn service_start_span(service_name: &str, service_type: &str) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.service.start",
-            service.name = service_name,
-            service.type = service_type,
-            otel.kind = "internal",
-            component = "service_manager",
+        crate::telemetry::semantic_conventions::SpanBuilder::service_start(
+            service_name,
+            service_type,
         )
     }
 
     /// Create span for container start
     /// Records container lifecycle with image details
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::container_start()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::container_start()"
+    )]
     pub fn container_start_span(image: &str, container_id: &str) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.container.start",
-            container.image = image,
-            container.id = container_id,
-            otel.kind = "internal",
-            component = "container_backend",
-        )
+        crate::telemetry::semantic_conventions::SpanBuilder::container_start(image, container_id)
     }
 
     /// Create span for container exec
     /// Records command execution in container
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::container_exec()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::container_exec()"
+    )]
     pub fn container_exec_span(container_id: &str, command: &str) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.container.exec",
-            container.id = container_id,
-            command = command,
-            otel.kind = "internal",
-            component = "container_backend",
-        )
+        crate::telemetry::semantic_conventions::SpanBuilder::container_exec(container_id, command)
     }
 
     /// Create span for container stop
     /// Records container cleanup
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::container_stop()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::container_stop()"
+    )]
     pub fn container_stop_span(container_id: &str) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.container.stop",
-            container.id = container_id,
-            otel.kind = "internal",
-            component = "container_backend",
-        )
+        crate::telemetry::semantic_conventions::SpanBuilder::container_stop(container_id)
     }
 
     /// Create span for command execution
     /// Proves core command execution works
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::command_execute()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::command_execute()"
+    )]
     pub fn command_execute_span(command: &str) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.command.execute",
-            command = command,
-            otel.kind = "internal",
-            component = "command_executor",
-        )
+        crate::telemetry::semantic_conventions::SpanBuilder::command_execute(command)
     }
 
     /// Create span for assertion validation
     /// Proves validation logic works
+    ///
+    /// # DEPRECATED - Use semantic_conventions::SpanBuilder::assertion_validate()
+    #[deprecated(
+        since = "1.3.0",
+        note = "Use semantic_conventions::SpanBuilder::assertion_validate()"
+    )]
     pub fn assertion_span(assertion_type: &str) -> tracing::Span {
-        span!(
-            Level::INFO,
-            "clnrm.assertion.validate",
-            assertion.type = assertion_type,
-            otel.kind = "internal",
-            component = "validator",
-        )
+        crate::telemetry::semantic_conventions::SpanBuilder::assertion_validate(assertion_type)
     }
 }
 

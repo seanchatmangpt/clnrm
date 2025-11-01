@@ -39,7 +39,12 @@ async fn test_e2e_basic_workflow_single_container() -> Result<()> {
     // Act
     let handle = env.start_service("alpine").await?;
     let result = env
-        .execute_in_container("alpine", &["echo".to_string(), "hello".to_string()], None, None)
+        .execute_in_container(
+            "alpine",
+            &["echo".to_string(), "hello".to_string()],
+            None,
+            None,
+        )
         .await?;
 
     // Assert
@@ -64,7 +69,11 @@ async fn test_e2e_basic_workflow_with_environment_variables() -> Result<()> {
     let result = env
         .execute_in_container(
             "alpine",
-            &["sh".to_string(), "-c".to_string(), "echo $TEST_VAR".to_string()],
+            &[
+                "sh".to_string(),
+                "-c".to_string(),
+                "echo $TEST_VAR".to_string(),
+            ],
             None,
             Some(&env_vars),
         )
@@ -86,13 +95,28 @@ async fn test_e2e_basic_workflow_multiple_steps() -> Result<()> {
     let handle = env.start_service("alpine").await?;
 
     let step1 = env
-        .execute_in_container("alpine", &["echo".to_string(), "step1".to_string()], None, None)
+        .execute_in_container(
+            "alpine",
+            &["echo".to_string(), "step1".to_string()],
+            None,
+            None,
+        )
         .await?;
     let step2 = env
-        .execute_in_container("alpine", &["echo".to_string(), "step2".to_string()], None, None)
+        .execute_in_container(
+            "alpine",
+            &["echo".to_string(), "step2".to_string()],
+            None,
+            None,
+        )
         .await?;
     let step3 = env
-        .execute_in_container("alpine", &["echo".to_string(), "step3".to_string()], None, None)
+        .execute_in_container(
+            "alpine",
+            &["echo".to_string(), "step3".to_string()],
+            None,
+            None,
+        )
         .await?;
 
     assert!(step1.succeeded() && step2.succeeded() && step3.succeeded());
@@ -148,7 +172,12 @@ async fn test_feature_span_enforcement_basic() -> Result<()> {
 
     let handle = env.start_service("alpine").await?;
     let result = env
-        .execute_in_container("alpine", &["echo".to_string(), "test".to_string()], None, None)
+        .execute_in_container(
+            "alpine",
+            &["echo".to_string(), "test".to_string()],
+            None,
+            None,
+        )
         .await?;
 
     assert!(result.succeeded());
@@ -164,7 +193,12 @@ async fn test_feature_service_routing() -> Result<()> {
 
     let handle = env.start_service("alpine").await?;
     let result = env
-        .execute_in_container("alpine", &["echo".to_string(), "test".to_string()], None, None)
+        .execute_in_container(
+            "alpine",
+            &["echo".to_string(), "test".to_string()],
+            None,
+            None,
+        )
         .await?;
 
     assert!(result.succeeded());
@@ -183,7 +217,12 @@ async fn test_feature_chaos_container_restart() -> Result<()> {
 
     let handle2 = env.start_service("alpine").await?;
     let result = env
-        .execute_in_container("alpine", &["echo".to_string(), "restarted".to_string()], None, None)
+        .execute_in_container(
+            "alpine",
+            &["echo".to_string(), "restarted".to_string()],
+            None,
+            None,
+        )
         .await?;
 
     assert!(result.succeeded());
@@ -203,7 +242,12 @@ async fn test_regression_container_lifecycle() -> Result<()> {
 
     let handle = env.start_service("alpine").await?;
     let result = env
-        .execute_in_container("alpine", &["echo".to_string(), "test".to_string()], None, None)
+        .execute_in_container(
+            "alpine",
+            &["echo".to_string(), "test".to_string()],
+            None,
+            None,
+        )
         .await?;
     env.stop_service(&handle.id).await?;
 

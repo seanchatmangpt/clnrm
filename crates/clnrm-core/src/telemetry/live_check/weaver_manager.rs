@@ -9,14 +9,13 @@
 /// - Conformance report collection
 /// - Zombie process prevention
 /// - RAII cleanup (Drop trait)
-
 use crate::error::{CleanroomError, Result};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 use std::{env, fs, thread};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 #[cfg(unix)]
 use nix::sys::signal::{kill, Signal};
@@ -103,14 +102,14 @@ impl WeaverProcessManager {
         // Discover available ports
         let otlp_port = Self::find_available_otlp_port()?;
         let admin_port = Self::find_available_admin_port()?;
-        info!("📡 Discovered ports: OTLP={}, Admin={}", otlp_port, admin_port);
+        info!(
+            "📡 Discovered ports: OTLP={}, Admin={}",
+            otlp_port, admin_port
+        );
 
         // Create output directory
         fs::create_dir_all(&self.output_dir).map_err(|e| {
-            CleanroomError::internal_error(format!(
-                "Failed to create output directory: {}",
-                e
-            ))
+            CleanroomError::internal_error(format!("Failed to create output directory: {}", e))
         })?;
 
         // Build command
@@ -139,7 +138,7 @@ impl WeaverProcessManager {
 
         debug!("🔧 Spawning Weaver: {:?}", cmd);
 
-        let mut child = cmd.spawn().map_err(|e| {
+        let child = cmd.spawn().map_err(|e| {
             CleanroomError::internal_error(format!("Failed to spawn Weaver process: {}", e))
         })?;
 
@@ -193,9 +192,9 @@ impl WeaverProcessManager {
         let start = Instant::now();
         let mut delay = INITIAL_DELAY;
 
-        let admin_port = self.admin_port.ok_or_else(|| {
-            CleanroomError::internal_error("Admin port not set")
-        })?;
+        let admin_port = self
+            .admin_port
+            .ok_or_else(|| CleanroomError::internal_error("Admin port not set"))?;
 
         loop {
             // Check timeout
@@ -279,9 +278,10 @@ impl WeaverProcessManager {
     pub async fn stop(&mut self) -> Result<()> {
         info!("🛑 Stopping Weaver process");
 
-        let mut process = self.process.take().ok_or_else(|| {
-            CleanroomError::internal_error("Weaver process not running")
-        })?;
+        let mut process = self
+            .process
+            .take()
+            .ok_or_else(|| CleanroomError::internal_error("Weaver process not running"))?;
 
         // Send graceful shutdown signal
         #[cfg(unix)]
@@ -336,7 +336,7 @@ impl WeaverProcessManager {
                     // Still running
                     if start.elapsed() > timeout {
                         warn!("Weaver shutdown timed out, force killing");
-                        return self.force_kill_process(process);
+                        return Self::force_kill_process(process);
                     }
                     tokio::time::sleep(check_interval).await;
                 }
@@ -379,15 +379,14 @@ impl WeaverProcessManager {
     ///
     /// Used as last resort if graceful shutdown fails.
     pub fn force_kill(&mut self) -> Result<()> {
-        if let Some(ref mut process) = self.process {
-            self.force_kill_process(process)?;
+        if let Some(mut process) = self.process.take() {
+            Self::force_kill_process(&mut process)?;
         }
-        self.process = None;
         Ok(())
     }
 
-    /// Force kill a process
-    fn force_kill_process(&self, process: &mut Child) -> Result<()> {
+    /// Force kill a process (static method to avoid borrowing issues)
+    fn force_kill_process(process: &mut Child) -> Result<()> {
         warn!("Force killing Weaver process (PID: {})", process.id());
         process.kill().map_err(|e| {
             CleanroomError::internal_error(format!("Failed to force kill Weaver: {}", e))
@@ -402,11 +401,9 @@ impl WeaverProcessManager {
             if let Some(ref mut stderr) = process.stderr {
                 let mut stderr_content = String::new();
                 let reader = BufReader::new(stderr);
-                for line in reader.lines() {
-                    if let Ok(line) = line {
-                        stderr_content.push_str(&line);
-                        stderr_content.push('\n');
-                    }
+                for line in reader.lines().flatten() {
+                    stderr_content.push_str(&line);
+                    stderr_content.push('\n');
                 }
                 return Ok(stderr_content);
             }

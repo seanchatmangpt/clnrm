@@ -3,8 +3,8 @@
 //! Provides builder pattern helpers for emitting CLI command telemetry
 //! that conforms to registry schemas.
 
-use tracing::{info_span, Span};
 use std::time::Instant;
+use tracing::{info_span, Span};
 
 /// Builder for CLI initialization span (clnrm init)
 pub struct CliInitSpanBuilder {
@@ -125,7 +125,8 @@ impl CliPluginsSpan {
 
         // Required attributes
         self.span.record("operation.success", success);
-        self.span.record("plugins.discovered", plugins_discovered as i64);
+        self.span
+            .record("plugins.discovered", plugins_discovered as i64);
         self.span.record("operation.duration_ms", duration_ms);
 
         // Recommended attributes
@@ -220,7 +221,12 @@ impl HealthCheckResultBuilder {
         self
     }
 
-    pub fn docker(mut self, available: bool, version: Option<String>, dtype: Option<String>) -> Self {
+    pub fn docker(
+        mut self,
+        available: bool,
+        version: Option<String>,
+        dtype: Option<String>,
+    ) -> Self {
         self.result.docker_available = available;
         self.result.docker_version = version;
         self.result.docker_type = dtype;
@@ -253,10 +259,14 @@ impl CliHealthSpan {
         // Required attributes
         self.span.record("operation.success", result.success);
         self.span.record("health.overall", result.overall.as_str());
-        self.span.record("health.checks_total", result.checks_total as i64);
-        self.span.record("health.checks_passed", result.checks_passed as i64);
-        self.span.record("health.checks_failed", result.checks_failed as i64);
-        self.span.record("docker.available", result.docker_available);
+        self.span
+            .record("health.checks_total", result.checks_total as i64);
+        self.span
+            .record("health.checks_passed", result.checks_passed as i64);
+        self.span
+            .record("health.checks_failed", result.checks_failed as i64);
+        self.span
+            .record("docker.available", result.docker_available);
         self.span.record("operation.duration_ms", duration_ms);
 
         // Recommended attributes
@@ -266,7 +276,8 @@ impl CliHealthSpan {
         if let Some(dtype) = result.docker_type {
             self.span.record("docker.type", dtype.as_str());
         }
-        self.span.record("weaver.available", result.weaver_available);
+        self.span
+            .record("weaver.available", result.weaver_available);
         if let Some(version) = result.weaver_version {
             self.span.record("weaver.version", version.as_str());
         }

@@ -79,7 +79,10 @@ command = ["echo", "test"]
 
     // DEBUG: Check if performance field was parsed
     println!("DEBUG: performance field = {:?}", config.performance);
-    assert!(config.performance.is_some(), "Performance field should be Some after parsing TOML with [test.performance]");
+    assert!(
+        config.performance.is_some(),
+        "Performance field should be Some after parsing TOML with [test.performance]"
+    );
 
     // WHEN: Validating config (this is where fail-fast should occur)
     let validation_result = config.validate();
@@ -140,8 +143,7 @@ command = ["echo", "test"]
 "#;
 
     // WHEN: Parsing and validating config
-    let config = parse_toml_config(toml_with_baseline)
-        .expect("Config should parse successfully");
+    let config = parse_toml_config(toml_with_baseline).expect("Config should parse successfully");
 
     let validation_result = config.validate();
 
@@ -180,8 +182,7 @@ command = ["echo", "test"]
 "#;
 
     // WHEN: Parsing and validating config
-    let config = parse_toml_config(toml_with_regression)
-        .expect("Config should parse successfully");
+    let config = parse_toml_config(toml_with_regression).expect("Config should parse successfully");
 
     let validation_result = config.validate();
 
@@ -222,8 +223,8 @@ command = ["echo", "test"]
 "#;
 
     // WHEN: Parsing and validating config
-    let config = parse_toml_config(toml_with_all_features)
-        .expect("Config should parse successfully");
+    let config =
+        parse_toml_config(toml_with_all_features).expect("Config should parse successfully");
 
     let validation_result = config.validate();
 
@@ -271,11 +272,10 @@ command = ["echo", "test"]
 "#;
 
     // WHEN: Validating config
-    let config = parse_toml_config(toml_with_performance)
-        .expect("Config should parse successfully");
+    let config =
+        parse_toml_config(toml_with_performance).expect("Config should parse successfully");
 
-    let error = config.validate()
-        .expect_err("Should fail validation");
+    let error = config.validate().expect_err("Should fail validation");
 
     // THEN: Error message should provide guidance
     let error_msg = error.to_string();
@@ -318,8 +318,7 @@ command = ["echo", "test"]
 "#;
 
     // WHEN: Parsing and validating config
-    let config = parse_toml_config(normal_toml)
-        .expect("Config should parse successfully");
+    let config = parse_toml_config(normal_toml).expect("Config should parse successfully");
 
     let validation_result = config.validate();
 
@@ -359,8 +358,7 @@ command = ["echo", "measuring performance"]
 "#;
 
     // WHEN: Loading config (as CLI would do)
-    let config = parse_toml_config(user_toml)
-        .expect("Config should parse (syntax valid)");
+    let config = parse_toml_config(user_toml).expect("Config should parse (syntax valid)");
 
     // WHEN: Validating config (CLI calls this before execution)
     let validation_result = config.validate();

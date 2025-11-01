@@ -79,10 +79,13 @@ pub mod metrics {
 
         pub fn record(&self, value: f64, test_name: &str, result: &str) {
             use opentelemetry::KeyValue;
-            self.histogram.record(value, &[
-                KeyValue::new("test.name", test_name.to_string()),
-                KeyValue::new("test.result", result.to_string()),
-            ]);
+            self.histogram.record(
+                value,
+                &[
+                    KeyValue::new("test.name", test_name.to_string()),
+                    KeyValue::new("test.result", result.to_string()),
+                ],
+            );
         }
     }
 }

@@ -47,7 +47,10 @@ fn test_performance_config_parses_but_warns() {
     // Assert - parsing succeeds, but performance field exists
     assert!(result.is_ok());
     let config = result.unwrap();
-    assert!(config.performance.is_some(), "Performance config should be parsed");
+    assert!(
+        config.performance.is_some(),
+        "Performance config should be parsed"
+    );
 }
 
 #[test]
@@ -157,7 +160,10 @@ fn test_performance_validation_detects_unsupported_feature() {
     let has_performance = config.performance.is_some();
 
     // Assert
-    assert!(has_performance, "Performance config should be detected for validation");
+    assert!(
+        has_performance,
+        "Performance config should be detected for validation"
+    );
 }
 
 #[test]
@@ -265,7 +271,10 @@ fn test_config_without_performance_section() {
     // Assert
     assert!(result.is_ok());
     let config = result.unwrap();
-    assert!(config.performance.is_none(), "No performance config should be present");
+    assert!(
+        config.performance.is_none(),
+        "No performance config should be present"
+    );
 }
 
 #[test]

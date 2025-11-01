@@ -36,9 +36,9 @@ pub mod tree;
 pub mod verb;
 
 // Core framework types
-pub use builder::{CliBuilder, run_cli, run_cli_with_args, build_cli};
+pub use builder::{build_cli, run_cli, run_cli_with_args, CliBuilder};
 pub use error::{NounVerbError, Result};
-pub use noun::{NounCommand, NounContext, CompoundNounCommand};
+pub use noun::{CompoundNounCommand, NounCommand, NounContext};
 pub use registry::CommandRegistry;
 pub use router::CommandRouter;
 pub use tree::{CommandTree, CommandTreeBuilder};

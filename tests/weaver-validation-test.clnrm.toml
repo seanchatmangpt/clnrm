@@ -1,0 +1,19 @@
+[test.metadata]
+name = "weaver_validation_test"
+description = "Test Weaver live-check integration"
+version = "1.0.0"
+
+[weaver]
+enabled = true
+validation_mode = "80_20"
+registry_path = "./registry"
+
+[services.alpine]
+type = "generic_container"
+image = "alpine:latest"
+
+[[steps]]
+name = "simple_echo"
+command = ["echo", "Hello Weaver"]
+expected_output_regex = "Hello Weaver"
+service = "alpine"

@@ -3,9 +3,9 @@
 //! Provides caching for compiled templates and hot-reload functionality
 //! for development and dynamic template loading.
 
+use crate::context::TemplateContext;
 use crate::error::Result;
 use crate::renderer::TemplateRenderer;
-use crate::context::TemplateContext;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -35,6 +35,7 @@ struct CachedTemplate {
     /// Template content
     content: String,
     /// Last modification time
+    #[allow(dead_code)]
     modified: SystemTime,
     /// Compilation time
     compiled_at: SystemTime,
@@ -73,8 +74,8 @@ impl TemplateCache {
         }
     }
 
-    /// Create cache with default settings (1 hour TTL, hot-reload enabled)
-    pub fn default() -> Self {
+    /// Create cache with common settings (1 hour TTL, hot-reload enabled)
+    pub fn with_defaults() -> Self {
         Self::new(true, Duration::from_secs(3600))
     }
 
@@ -84,7 +85,12 @@ impl TemplateCache {
     /// * `template_name` - Name of template
     /// * `template_content` - Template content
     /// * `file_path` - Optional file path for hot-reload
-    pub fn get_or_compile(&self, template_name: &str, template_content: &str, file_path: Option<&Path>) -> Result<String> {
+    pub fn get_or_compile(
+        &self,
+        template_name: &str,
+        template_content: &str,
+        file_path: Option<&Path>,
+    ) -> Result<String> {
         // Check if template is in cache and still valid
         if let Some(cached) = self.templates.read().unwrap().get(template_name) {
             if self.is_cache_valid(cached, file_path)? {
@@ -106,7 +112,10 @@ impl TemplateCache {
         if let Some(path) = file_path {
             if let Ok(metadata) = std::fs::metadata(path) {
                 if let Ok(mtime) = metadata.modified() {
-                    self.file_mtimes.write().unwrap().insert(path.to_path_buf(), mtime);
+                    self.file_mtimes
+                        .write()
+                        .unwrap()
+                        .insert(path.to_path_buf(), mtime);
                 }
             }
         }
@@ -117,7 +126,8 @@ impl TemplateCache {
     /// Check if cached template is still valid
     fn is_cache_valid(&self, cached: &CachedTemplate, file_path: Option<&Path>) -> Result<bool> {
         // Check TTL
-        let age = SystemTime::now().duration_since(cached.compiled_at)
+        let age = SystemTime::now()
+            .duration_since(cached.compiled_at)
             .unwrap_or(Duration::from_secs(0));
 
         if age > self.ttl {
@@ -150,7 +160,7 @@ impl TemplateCache {
     }
 
     /// Cache compiled template
-    fn cache_template(&self, name: &str, content: &str, compiled: &str) -> Result<()> {
+    fn cache_template(&self, name: &str, _content: &str, compiled: &str) -> Result<()> {
         let now = SystemTime::now();
         let cached = CachedTemplate {
             content: compiled.to_string(),
@@ -160,7 +170,10 @@ impl TemplateCache {
         };
 
         // Update cache
-        self.templates.write().unwrap().insert(name.to_string(), cached);
+        self.templates
+            .write()
+            .unwrap()
+            .insert(name.to_string(), cached);
 
         // Update stats
         let mut stats = self.stats.write().unwrap();
@@ -205,7 +218,9 @@ impl TemplateCache {
 
         let initial_count = templates.len();
         templates.retain(|_name, cached| {
-            let age = now.duration_since(cached.compiled_at).unwrap_or(Duration::from_secs(0));
+            let age = now
+                .duration_since(cached.compiled_at)
+                .unwrap_or(Duration::from_secs(0));
             if age > self.ttl {
                 // Template expired
                 stats.total_size -= cached.size;
@@ -257,7 +272,12 @@ impl CachedRenderer {
     /// * `template` - Template content
     /// * `name` - Template name for caching
     /// * `file_path` - Optional file path for hot-reload
-    pub fn render_cached(&mut self, template: &str, name: &str, file_path: Option<&Path>) -> Result<String> {
+    pub fn render_cached(
+        &mut self,
+        template: &str,
+        name: &str,
+        file_path: Option<&Path>,
+    ) -> Result<String> {
         // Try to get from cache first
         if let Ok(cached) = self.cache.get_or_compile(name, template, file_path) {
             return Ok(cached);
@@ -301,6 +321,7 @@ pub struct HotReloadWatcher {
     /// Watched directories
     watched_dirs: Vec<PathBuf>,
     /// Cache to invalidate
+    #[allow(dead_code)]
     cache: Arc<TemplateCache>,
     /// File watcher (simplified implementation)
     _watcher: Option<Box<dyn Watcher>>,

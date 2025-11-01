@@ -101,14 +101,20 @@ impl ValidationAnalysis {
             .collect();
 
         // Check for missing critical attributes
-        let critical_attributes = ["container.id",
+        let critical_attributes = [
+            "container.id",
             "test.isolated",
             "test.result",
-            "container.destroyed_at"];
+            "container.destroyed_at",
+        ];
 
         let missing_critical: Vec<String> = critical_attributes
             .iter()
-            .filter(|attr| !report.seen_registry_attributes.contains_key(&attr.to_string()))
+            .filter(|attr| {
+                !report
+                    .seen_registry_attributes
+                    .contains_key(&attr.to_string())
+            })
             .map(|s| s.to_string())
             .collect();
 
@@ -307,15 +313,13 @@ mod tests {
                 information: 5,
             },
             registry_coverage: 0.92,
-            all_advice: vec![
-                Advice {
-                    advice_level: "improvement".to_string(),
-                    advice_type: "missing_attribute".to_string(),
-                    message: "Consider adding container.runtime attribute".to_string(),
-                    signal_name: "clnrm.container_lifecycle".to_string(),
-                    signal_type: "span".to_string(),
-                },
-            ],
+            all_advice: vec![Advice {
+                advice_level: "improvement".to_string(),
+                advice_type: "missing_attribute".to_string(),
+                message: "Consider adding container.runtime attribute".to_string(),
+                signal_name: "clnrm.container_lifecycle".to_string(),
+                signal_type: "span".to_string(),
+            }],
             seen_registry_attributes: HashMap::from([
                 ("container.id".to_string(), 10),
                 ("test.isolated".to_string(), 8),
@@ -342,15 +346,13 @@ mod tests {
                 information: 0,
             },
             registry_coverage: 0.60,
-            all_advice: vec![
-                Advice {
-                    advice_level: "violation".to_string(),
-                    advice_type: "missing_required_attribute".to_string(),
-                    message: "Missing required attribute: container.id".to_string(),
-                    signal_name: "clnrm.test_execution".to_string(),
-                    signal_type: "span".to_string(),
-                },
-            ],
+            all_advice: vec![Advice {
+                advice_level: "violation".to_string(),
+                advice_type: "missing_required_attribute".to_string(),
+                message: "Missing required attribute: container.id".to_string(),
+                signal_name: "clnrm.test_execution".to_string(),
+                signal_type: "span".to_string(),
+            }],
             seen_registry_attributes: HashMap::new(),
             seen_non_registry_attributes: HashMap::new(),
         };

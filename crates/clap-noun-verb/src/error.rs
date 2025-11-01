@@ -33,9 +33,7 @@ pub enum NounVerbError {
 impl NounVerbError {
     /// Create a command not found error
     pub fn command_not_found(noun: impl Into<String>) -> Self {
-        Self::CommandNotFound {
-            noun: noun.into(),
-        }
+        Self::CommandNotFound { noun: noun.into() }
     }
 
     /// Create a verb not found error
@@ -77,7 +75,3 @@ impl NounVerbError {
 
 /// Result type alias for noun-verb operations
 pub type Result<T> = std::result::Result<T, NounVerbError>;
-
-
-
-

@@ -275,11 +275,13 @@ impl TemplateContextBuilder {
     /// # Arguments
     /// * `path` - Path to JSON file containing variables
     pub fn load_vars_from_file<P: AsRef<Path>>(mut self, path: P) -> Result<Self> {
-        let content = std::fs::read_to_string(path.as_ref())
-            .map_err(|e| crate::error::TemplateError::IoError(format!("Failed to read vars file: {}", e)))?;
+        let content = std::fs::read_to_string(path.as_ref()).map_err(|e| {
+            crate::error::TemplateError::IoError(format!("Failed to read vars file: {}", e))
+        })?;
 
-        let vars: HashMap<String, Value> = serde_json::from_str(&content)
-            .map_err(|e| crate::error::TemplateError::ConfigError(format!("Invalid JSON in vars file: {}", e)))?;
+        let vars: HashMap<String, Value> = serde_json::from_str(&content).map_err(|e| {
+            crate::error::TemplateError::ConfigError(format!("Invalid JSON in vars file: {}", e))
+        })?;
 
         self.context.merge_user_vars(vars);
         Ok(self)
@@ -290,11 +292,13 @@ impl TemplateContextBuilder {
     /// # Arguments
     /// * `path` - Path to TOML file containing matrix parameters
     pub fn load_matrix_from_file<P: AsRef<Path>>(mut self, path: P) -> Result<Self> {
-        let content = std::fs::read_to_string(path.as_ref())
-            .map_err(|e| crate::error::TemplateError::IoError(format!("Failed to read matrix file: {}", e)))?;
+        let content = std::fs::read_to_string(path.as_ref()).map_err(|e| {
+            crate::error::TemplateError::IoError(format!("Failed to read matrix file: {}", e))
+        })?;
 
-        let matrix: HashMap<String, Value> = toml::from_str(&content)
-            .map_err(|e| crate::error::TemplateError::ConfigError(format!("Invalid TOML in matrix file: {}", e)))?;
+        let matrix: HashMap<String, Value> = toml::from_str(&content).map_err(|e| {
+            crate::error::TemplateError::ConfigError(format!("Invalid TOML in matrix file: {}", e))
+        })?;
 
         self.context.matrix = matrix;
         Ok(self)
@@ -366,14 +370,20 @@ mod tests {
             .otel("endpoint", "http://localhost:4318")
             .build();
 
-        assert_eq!(context.vars["service"], Value::String("my-service".to_string()));
+        assert_eq!(
+            context.vars["service"],
+            Value::String("my-service".to_string())
+        );
         assert_eq!(context.vars["version"], Value::String("1.0.0".to_string()));
 
         let browsers = context.matrix["browsers"].as_array().unwrap();
         assert_eq!(browsers.len(), 2);
         assert_eq!(browsers[0], Value::String("chrome".to_string()));
 
-        assert_eq!(context.otel["endpoint"], Value::String("http://localhost:4318".to_string()));
+        assert_eq!(
+            context.otel["endpoint"],
+            Value::String("http://localhost:4318".to_string())
+        );
     }
 
     #[test]
@@ -385,7 +395,10 @@ mod tests {
         assert!(context.vars.contains_key("service"));
         assert!(context.vars.contains_key("environment"));
         assert!(context.vars.contains_key("timestamp"));
-        assert_eq!(context.vars["test_type"], Value::String("integration".to_string()));
+        assert_eq!(
+            context.vars["test_type"],
+            Value::String("integration".to_string())
+        );
     }
 
     #[test]

@@ -13,6 +13,7 @@ pub mod graph;
 pub mod health;
 pub mod init;
 pub mod lint;
+pub mod live_check;
 pub mod plugins;
 pub mod prd_commands;
 pub mod pull;
@@ -54,6 +55,9 @@ pub use report::{display_test_results, generate_framework_report, generate_repor
 pub use self_test::run_self_tests;
 
 pub use health::system_health_check;
+
+// Re-export live-check commands
+pub use live_check::{show_modes, show_status, show_version, test_weaver, validate_registry};
 
 // Re-export commands
 pub use analyze::analyze_traces;

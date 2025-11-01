@@ -38,8 +38,7 @@ fn test_deterministic_random_seed() -> Result<()> {
     };
 
     let engine = Arc::new(DeterminismEngine::new(config)?);
-    let backend = TestcontainerBackend::new("alpine:latest")?
-        .with_determinism(engine.clone());
+    let backend = TestcontainerBackend::new("alpine:latest")?.with_determinism(engine.clone());
 
     // Command to read RANDOM env var
     let cmd = Cmd {

@@ -23,8 +23,14 @@ pub struct PortAllocator {
 impl std::fmt::Debug for PortAllocator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PortAllocator")
-            .field("available_count", &self.available_ports.lock().map(|p| p.len()).unwrap_or(0))
-            .field("allocated_count", &self.allocated_ports.lock().map(|p| p.len()).unwrap_or(0))
+            .field(
+                "available_count",
+                &self.available_ports.lock().map(|p| p.len()).unwrap_or(0),
+            )
+            .field(
+                "allocated_count",
+                &self.allocated_ports.lock().map(|p| p.len()).unwrap_or(0),
+            )
             .finish()
     }
 }
@@ -65,7 +71,7 @@ impl PortAllocator {
         let port = available.pop().ok_or_else(|| {
             CleanroomError::deterministic_error(
                 "No more ports available in deterministic port pool. \
-                 Increase the port pool size or reduce number of concurrent services."
+                 Increase the port pool size or reduce number of concurrent services.",
             )
         })?;
 
@@ -97,15 +103,12 @@ impl PortAllocator {
             ))
         })?;
 
-        let index = allocated
-            .iter()
-            .position(|&p| p == port)
-            .ok_or_else(|| {
-                CleanroomError::deterministic_error(format!(
-                    "Port {} was not allocated, cannot release",
-                    port
-                ))
-            })?;
+        let index = allocated.iter().position(|&p| p == port).ok_or_else(|| {
+            CleanroomError::deterministic_error(format!(
+                "Port {} was not allocated, cannot release",
+                port
+            ))
+        })?;
 
         allocated.remove(index);
 
@@ -178,7 +181,9 @@ impl Default for PortAllocator {
 impl Clone for PortAllocator {
     fn clone(&self) -> Self {
         // Clone creates a fresh allocator with the same available ports
-        let available = self.available_ports.lock()
+        let available = self
+            .available_ports
+            .lock()
             .expect("Port allocator lock poisoned during clone")
             .clone();
 

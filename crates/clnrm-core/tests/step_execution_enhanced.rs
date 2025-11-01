@@ -10,7 +10,7 @@
 //! - Service targeting (service field)
 //! - Interaction patterns between features
 
-use clnrm_core::config::{TestConfig, StepConfig};
+use clnrm_core::config::{StepConfig, TestConfig};
 use clnrm_core::error::Result;
 use std::collections::HashMap;
 
@@ -198,7 +198,10 @@ fn test_working_directory_with_spaces() {
     let config: TestConfig = toml::from_str(toml_content).unwrap();
 
     // Assert
-    assert_eq!(config.steps[0].workdir, Some("/app/my project/src".to_string()));
+    assert_eq!(
+        config.steps[0].workdir,
+        Some("/app/my project/src".to_string())
+    );
 }
 
 #[test]

@@ -6,6 +6,7 @@
 //! This module is organized into several submodules:
 //! - `cache` - Cache management and filtering
 //! - `executor` - Sequential and parallel test execution
+//! - `live_check_executor` - Live-check integrated test execution (v1.3.0)
 //! - `services` - Service loading from configuration (extracted from original)
 //! - `commands` - Plugin command execution (extracted from original)
 //! - `assertions` - Test assertion validation (extracted from original)
@@ -14,6 +15,7 @@
 
 pub mod cache;
 pub mod executor;
+pub mod live_check_executor;
 pub mod scenario;
 pub mod services;
 pub mod single;
@@ -80,7 +82,10 @@ fn resolve_registry_path() -> Result<PathBuf> {
 
         // Validate that the path exists
         if registry_path.exists() {
-            info!("📂 Using registry from CLNRM_REGISTRY_PATH: {}", registry_path.display());
+            info!(
+                "📂 Using registry from CLNRM_REGISTRY_PATH: {}",
+                registry_path.display()
+            );
             return Ok(registry_path);
         } else {
             warn!(
@@ -231,7 +236,15 @@ pub async fn run_tests_with_shard_and_report(
     }
 
     // Run tests with sharding applied
-    run_tests_impl_with_report(paths, config, shard, report_junit, otel_exporter, otel_endpoint).await
+    run_tests_impl_with_report(
+        paths,
+        config,
+        shard,
+        report_junit,
+        otel_exporter,
+        otel_endpoint,
+    )
+    .await
 }
 
 /// Implementation of run_tests with sharding support
@@ -409,8 +422,8 @@ async fn run_tests_impl_with_report(
     otel_exporter: &str,
     otel_endpoint: Option<&str>,
 ) -> Result<()> {
-    use crate::telemetry::{init_otel, flush_telemetry_and_wait, Export, OtelConfig};
     use crate::telemetry::weaver_controller::{WeaverConfig, WeaverController};
+    use crate::telemetry::{flush_telemetry_and_wait, init_otel, Export, OtelConfig};
 
     // ========================================
     // STEP 1: CHECK FOR WEAVER CONFIG IN TOML FILES
@@ -418,7 +431,7 @@ async fn run_tests_impl_with_report(
     // Discover Weaver config from test files (if any have [weaver] section)
     // We'll check all discovered test files later, but for now check input paths
     let mut weaver_config_from_toml: Option<crate::config::WeaverConfig> = None;
-    
+
     // Helper to check a single file for Weaver config
     let check_file_for_weaver = |path: &PathBuf| -> Result<Option<crate::config::WeaverConfig>> {
         if path.is_file() {
@@ -437,7 +450,7 @@ async fn run_tests_impl_with_report(
         }
         Ok(None)
     };
-    
+
     // Check input paths first
     for path in paths {
         if let Ok(Some(weaver)) = check_file_for_weaver(path) {
@@ -452,7 +465,7 @@ async fn run_tests_impl_with_report(
     // ========================================
     // Enable Weaver if: CLI flag set OR TOML config has enabled=true
     let should_enable_weaver = config.validate || weaver_config_from_toml.is_some();
-    
+
     let weaver_controller = if should_enable_weaver {
         // Resolve registry path (CRITICAL: must be absolute, not relative)
         let registry_path = if let Some(ref toml_weaver) = weaver_config_from_toml {
@@ -471,13 +484,13 @@ async fn run_tests_impl_with_report(
         let weaver_config = if let Some(ref toml_weaver) = weaver_config_from_toml {
             // Validate TOML config
             toml_weaver.validate()?;
-            
+
             // Convert TOML config to telemetry WeaverConfig
             let mut telemetry_config = toml_weaver.to_telemetry_config()?;
-            
+
             // Override registry_path with resolved absolute path
             telemetry_config.registry_path = registry_path;
-            
+
             // Use TOML ports if specified (0 = auto-discover)
             if toml_weaver.otlp_port > 0 {
                 telemetry_config.otlp_port = toml_weaver.otlp_port;
@@ -485,15 +498,15 @@ async fn run_tests_impl_with_report(
             if toml_weaver.admin_port > 0 {
                 telemetry_config.admin_port = toml_weaver.admin_port;
             }
-            
+
             telemetry_config.stream = toml_weaver.stream;
-            
+
             telemetry_config
         } else {
             // Default Weaver config from CLI
             WeaverConfig {
                 registry_path, // ✅ Absolute path, works from any directory
-                otlp_port: 0, // 0 = auto-discover
+                otlp_port: 0,  // 0 = auto-discover
                 admin_port: 0, // 0 = auto-discover
                 output_dir: PathBuf::from("./validation_output"),
                 stream: false,
@@ -501,21 +514,26 @@ async fn run_tests_impl_with_report(
         };
 
         let mut controller = WeaverController::new(weaver_config);
-        
+
         let source = if weaver_config_from_toml.is_some() {
             "TOML configuration"
         } else {
             "CLI flag"
         };
-        info!("🔍 Starting Weaver validation from {} (Weaver-first pattern)", source);
+        info!(
+            "🔍 Starting Weaver validation from {} (Weaver-first pattern)",
+            source
+        );
 
         // Start Weaver and get coordination metadata
         let coordination = controller.start_and_coordinate().map_err(|e| {
             CleanroomError::validation_error(format!("Failed to start Weaver: {}", e))
         })?;
 
-        info!("✅ Weaver ready (PID: {}, OTLP port: {})",
-            coordination.weaver_pid, coordination.otlp_grpc_port);
+        info!(
+            "✅ Weaver ready (PID: {}, OTLP port: {})",
+            coordination.weaver_pid, coordination.otlp_grpc_port
+        );
 
         Some(controller)
     } else {
@@ -538,7 +556,10 @@ async fn run_tests_impl_with_report(
             // Convert to static string by leaking (acceptable for CLI setup)
             let static_endpoint: &'static str = Box::leak(endpoint.into_boxed_str());
 
-            info!("🔗 OTEL configured to export to Weaver at {}", static_endpoint);
+            info!(
+                "🔗 OTEL configured to export to Weaver at {}",
+                static_endpoint
+            );
             Export::OtlpGrpc {
                 endpoint: static_endpoint,
             }
@@ -548,18 +569,24 @@ async fn run_tests_impl_with_report(
                 "stdout" => Export::Stdout,
                 "otlp-http" => {
                     let endpoint = otel_endpoint.ok_or_else(|| {
-                        CleanroomError::validation_error("OTEL endpoint required for otlp-http exporter")
+                        CleanroomError::validation_error(
+                            "OTEL endpoint required for otlp-http exporter",
+                        )
                     })?;
-                    let static_endpoint: &'static str = Box::leak(endpoint.to_string().into_boxed_str());
+                    let static_endpoint: &'static str =
+                        Box::leak(endpoint.to_string().into_boxed_str());
                     Export::OtlpHttp {
                         endpoint: static_endpoint,
                     }
                 }
                 "otlp-grpc" => {
                     let endpoint = otel_endpoint.ok_or_else(|| {
-                        CleanroomError::validation_error("OTEL endpoint required for otlp-grpc exporter")
+                        CleanroomError::validation_error(
+                            "OTEL endpoint required for otlp-grpc exporter",
+                        )
                     })?;
-                    let static_endpoint: &'static str = Box::leak(endpoint.to_string().into_boxed_str());
+                    let static_endpoint: &'static str =
+                        Box::leak(endpoint.to_string().into_boxed_str());
                     Export::OtlpGrpc {
                         endpoint: static_endpoint,
                     }
@@ -821,8 +848,14 @@ async fn run_tests_impl_with_report(
         }
 
         // Log success metrics (structured logging)
-        info!("✅ Weaver received {} telemetry samples", report.sample_count);
-        info!("📊 Registry coverage: {:.1}%", report.registry_coverage * 100.0);
+        info!(
+            "✅ Weaver received {} telemetry samples",
+            report.sample_count
+        );
+        info!(
+            "📊 Registry coverage: {:.1}%",
+            report.registry_coverage * 100.0
+        );
 
         // Print validation summary
         println!("\n=== Weaver Validation Report ===");
@@ -870,13 +903,12 @@ async fn run_tests_impl_with_report(
         } else {
             println!("✅ No violations detected");
             println!("Telemetry matches semantic conventions.");
-            println!("Validation passed: {} samples validated successfully.\n", report.sample_count);
+            println!(
+                "Validation passed: {} samples validated successfully.\n",
+                report.sample_count
+            );
         }
     }
 
     Ok(())
 }
-
-
-
-

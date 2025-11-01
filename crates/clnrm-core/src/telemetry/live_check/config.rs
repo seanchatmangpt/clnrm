@@ -10,23 +10,18 @@ use std::collections::HashMap;
 /// Validation mode for Weaver live-check
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ValidationMode {
     /// Local development - critical spans only (60% coverage, <2s)
     Minimal,
     /// CI/CD gate - critical spans + required attributes (80% coverage, <5s)
     #[serde(rename = "80_20")]
+    #[default]
     EightyTwenty,
     /// QA/staging - all spans + required attributes (90% coverage, <15s)
     Lenient,
     /// Final release - all spans + all attributes (100% coverage, <30s)
     Strict,
-}
-
-impl Default for ValidationMode {
-    fn default() -> Self {
-        // Default to 80/20 for CI/CD optimization
-        ValidationMode::EightyTwenty
-    }
 }
 
 /// Validation configuration for live-check
@@ -233,7 +228,7 @@ pub struct AttributeMetadata {
 }
 
 /// Critical span definition
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CriticalSpan {
     /// Span ID (e.g., "span.clnrm.test_execution")
     pub id: String,
@@ -243,17 +238,6 @@ pub struct CriticalSpan {
     pub risk_coverage: u8,
     /// Required attributes for this span
     pub required_attributes: Vec<String>,
-}
-
-impl Default for CriticalSpan {
-    fn default() -> Self {
-        Self {
-            id: String::new(),
-            reason: String::new(),
-            risk_coverage: 0,
-            required_attributes: Vec::new(),
-        }
-    }
 }
 
 /// Complete 80/20 validation configuration
@@ -329,10 +313,7 @@ impl Complete80_20Config {
                 id: "clnrm.plugin.lifecycle".to_string(),
                 reason: "Core plugin system validation".to_string(),
                 risk_coverage: 10,
-                required_attributes: vec![
-                    "plugin.name".to_string(),
-                    "plugin.loaded".to_string(),
-                ],
+                required_attributes: vec!["plugin.name".to_string(), "plugin.loaded".to_string()],
             },
             CriticalSpan {
                 id: "clnrm.backend.operation".to_string(),
@@ -455,7 +436,9 @@ mod tests {
     fn test_eighty_twenty_config_default() {
         let config = EightyTwentyConfig::default();
         assert_eq!(config.critical_spans.len(), 5);
-        assert!(config.critical_spans.contains(&"clnrm.test.execute".to_string()));
+        assert!(config
+            .critical_spans
+            .contains(&"clnrm.test.execute".to_string()));
         assert!(config
             .required_attributes
             .contains(&"container.id".to_string()));
@@ -483,11 +466,7 @@ mod tests {
         assert_eq!(config.critical_spans.len(), 5);
 
         // Check risk coverage adds up to ~100%
-        let total_risk: u8 = config
-            .critical_spans
-            .iter()
-            .map(|s| s.risk_coverage)
-            .sum();
+        let total_risk: u8 = config.critical_spans.iter().map(|s| s.risk_coverage).sum();
         assert_eq!(total_risk, 100);
     }
 }

@@ -3,8 +3,8 @@
 //! This module provides template rendering capabilities for test configuration files,
 //! enabling dynamic test generation with custom functions.
 
-use crate::error::{TemplateError, Result};
 use crate::context::TemplateContext;
+use crate::error::{Result, TemplateError};
 use crate::functions::{register_functions, TimestampProvider};
 use std::path::Path;
 use std::sync::OnceLock;
@@ -106,7 +106,10 @@ impl TemplateRenderer {
     ///     .unwrap()
     ///     .with_determinism(engine);
     /// ```
-    pub fn with_determinism(mut self, determinism: std::sync::Arc<dyn TimestampProvider + Send + Sync>) -> Self {
+    pub fn with_determinism(
+        mut self,
+        determinism: std::sync::Arc<dyn TimestampProvider + Send + Sync>,
+    ) -> Self {
         self.determinism = Some(determinism);
         self
     }
@@ -144,10 +147,7 @@ impl TemplateRenderer {
 
         // Render template
         self.tera.render_str(template, &tera_ctx).map_err(|e| {
-            TemplateError::RenderError(format!(
-                "Template rendering failed in '{}': {}",
-                name, e
-            ))
+            TemplateError::RenderError(format!("Template rendering failed in '{}': {}", name, e))
         })
     }
 
@@ -157,7 +157,12 @@ impl TemplateRenderer {
     /// * `template` - Template content
     /// * `name` - Template name for error reporting
     /// * `format` - Desired output format
-    pub fn render_to_format(&mut self, template: &str, name: &str, format: OutputFormat) -> Result<String> {
+    pub fn render_to_format(
+        &mut self,
+        template: &str,
+        name: &str,
+        format: OutputFormat,
+    ) -> Result<String> {
         let rendered = self.render_str(template, name)?;
 
         match format {
@@ -185,9 +190,14 @@ impl TemplateRenderer {
     /// Useful for rendering multiple templates with shared context
     pub fn render_from_glob(&mut self, glob_pattern: &str, template_name: &str) -> Result<String> {
         // Add templates matching glob pattern
-        self.tera.add_template_file(glob_pattern, Some(template_name)).map_err(|e| {
-            TemplateError::RenderError(format!("Failed to add templates from glob '{}': {}", glob_pattern, e))
-        })?;
+        self.tera
+            .add_template_file(glob_pattern, Some(template_name))
+            .map_err(|e| {
+                TemplateError::RenderError(format!(
+                    "Failed to add templates from glob '{}': {}",
+                    glob_pattern, e
+                ))
+            })?;
 
         // Build Tera context
         let tera_ctx = self.context.to_tera_context()?;
@@ -213,8 +223,9 @@ impl TemplateRenderer {
     ///
     /// Useful for dynamic template loading and composition
     pub fn add_template(&mut self, name: &str, content: &str) -> Result<()> {
-        self.tera.add_raw_template(name, content)
-            .map_err(|e| TemplateError::RenderError(format!("Failed to add template '{}': {}", name, e)))
+        self.tera.add_raw_template(name, content).map_err(|e| {
+            TemplateError::RenderError(format!("Failed to add template '{}': {}", name, e))
+        })
     }
 
     /// Get available template names
@@ -229,9 +240,10 @@ impl TemplateRenderer {
 }
 
 /// Output format for template rendering
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum OutputFormat {
     /// TOML format (default for Cleanroom)
+    #[default]
     Toml,
     /// JSON format
     Json,
@@ -239,12 +251,6 @@ pub enum OutputFormat {
     Yaml,
     /// Plain text (remove template syntax)
     Plain,
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        OutputFormat::Toml
-    }
 }
 
 /// Convenience functions for simple template rendering
@@ -279,9 +285,8 @@ pub fn render_template_file(
     user_vars: std::collections::HashMap<String, serde_json::Value>,
 ) -> Result<String> {
     // Read template file
-    let template_content = std::fs::read_to_string(template_path).map_err(|e| {
-        TemplateError::IoError(format!("Failed to read template file: {}", e))
-    })?;
+    let template_content = std::fs::read_to_string(template_path)
+        .map_err(|e| TemplateError::IoError(format!("Failed to read template file: {}", e)))?;
 
     // Render with user vars
     render_template(&template_content, user_vars)

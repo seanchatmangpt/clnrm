@@ -36,8 +36,11 @@ fn extract_vars_section(content: &str) -> Result<HashMap<String, serde_json::Val
         }
 
         // Check for next section start (ends [vars]/[variables] section)
-        if trimmed.starts_with('[') && trimmed.ends_with(']')
-            && trimmed != "[vars]" && trimmed != "[variables]" {
+        if trimmed.starts_with('[')
+            && trimmed.ends_with(']')
+            && trimmed != "[vars]"
+            && trimmed != "[variables]"
+        {
             in_vars_section = false;
             continue;
         }
@@ -56,17 +59,19 @@ fn extract_vars_section(content: &str) -> Result<HashMap<String, serde_json::Val
                     serde_json::Value::Number(i.into())
                 } else if let Ok(f) = value.parse::<f64>() {
                     // Float
-                    serde_json::Value::Number(serde_json::Number::from_f64(f).unwrap_or_else(|| 0.into()))
+                    serde_json::Value::Number(
+                        serde_json::Number::from_f64(f).unwrap_or_else(|| 0.into()),
+                    )
                 } else if value == "true" || value == "false" {
                     // Boolean
                     serde_json::Value::Bool(value == "true")
                 } else if value.starts_with('"') && value.ends_with('"') {
                     // Quoted string
-                    let unquoted = &value[1..value.len()-1];
+                    let unquoted = &value[1..value.len() - 1];
                     serde_json::Value::String(unquoted.to_string())
                 } else if value.starts_with('[') && value.ends_with(']') {
                     // Array (simple parsing for now)
-                    let items_str = &value[1..value.len()-1];
+                    let items_str = &value[1..value.len() - 1];
                     let items: Vec<serde_json::Value> = items_str
                         .split(',')
                         .map(|s| {
@@ -74,7 +79,7 @@ fn extract_vars_section(content: &str) -> Result<HashMap<String, serde_json::Val
                             if let Ok(i) = s.parse::<i64>() {
                                 serde_json::Value::Number(i.into())
                             } else if s.starts_with('"') && s.ends_with('"') {
-                                serde_json::Value::String(s[1..s.len()-1].to_string())
+                                serde_json::Value::String(s[1..s.len() - 1].to_string())
                             } else {
                                 serde_json::Value::String(s.to_string())
                             }
@@ -116,8 +121,9 @@ pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
         let vars_from_toml = extract_vars_section(&content)?;
 
         // Render template with extracted vars from [vars] section
-        clnrm_template::render_template(&content, vars_from_toml)
-            .map_err(|e| CleanroomError::config_error(format!("Template rendering failed: {}", e)))?
+        clnrm_template::render_template(&content, vars_from_toml).map_err(|e| {
+            CleanroomError::config_error(format!("Template rendering failed: {}", e))
+        })?
     } else {
         // No template syntax detected, use content as-is
         content

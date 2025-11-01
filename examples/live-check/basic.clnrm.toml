@@ -1,0 +1,30 @@
+# Basic Weaver Live-Check Example
+# This is the simplest possible configuration for live-check validation
+
+[meta]
+name = "basic_live_check"
+version = "1.0.0"
+description = "Minimal live-check configuration example"
+
+# Enable Weaver validation with defaults
+[weaver]
+enabled = true
+
+# Service definition
+[service.app]
+plugin = "generic_container"
+image = "alpine:latest"
+
+# Simple test scenario
+[[scenario]]
+name = "echo_test"
+service = "app"
+run = "echo 'Hello from clnrm'"
+
+# Validate that test executed in container
+[[expect.span]]
+name = "test.execute"
+attrs.all = {
+  "test.isolated" = "true",
+  "container.id" = "*"
+}

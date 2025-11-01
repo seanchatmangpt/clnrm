@@ -198,7 +198,12 @@ run = "echo test"
     let db_service = services.get("db").expect("Should have db service");
 
     assert_eq!(
-        db_service.env.as_ref().unwrap().get("DATABASE_TIMEOUT").unwrap(),
+        db_service
+            .env
+            .as_ref()
+            .unwrap()
+            .get("DATABASE_TIMEOUT")
+            .unwrap(),
         "5000",
         "Environment variable should have substituted timeout value"
     );
@@ -250,8 +255,14 @@ run = "nc -zv db {{ db_port }}"
     let config = load_config_from_file(&config_path).expect("Should load config");
 
     let services = config.service.expect("Should have services");
-    assert_eq!(services.get("app").unwrap().ports.as_ref().unwrap(), &vec![3000]);
-    assert_eq!(services.get("db").unwrap().ports.as_ref().unwrap(), &vec![5432]);
+    assert_eq!(
+        services.get("app").unwrap().ports.as_ref().unwrap(),
+        &vec![3000]
+    );
+    assert_eq!(
+        services.get("db").unwrap().ports.as_ref().unwrap(),
+        &vec![5432]
+    );
 
     // Test 2: Variables in scenario commands
     let scenario = &config.scenario[0];
@@ -313,19 +324,35 @@ run = "psql postgres://db:{{ db_port }}/mydb -c 'SELECT 1'"
     let result = load_config_from_file(&config_path);
 
     // THEN: Everything should work
-    assert!(result.is_ok(), "Integration test should pass: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Integration test should pass: {:?}",
+        result.err()
+    );
 
     let config = result.unwrap();
     let services = config.service.expect("Should have services");
 
     // Verify all services have correct ports
-    assert_eq!(services.get("app").unwrap().ports.as_ref().unwrap(), &vec![8080]);
-    assert_eq!(services.get("db").unwrap().ports.as_ref().unwrap(), &vec![5432]);
-    assert_eq!(services.get("cache").unwrap().ports.as_ref().unwrap(), &vec![6379]);
+    assert_eq!(
+        services.get("app").unwrap().ports.as_ref().unwrap(),
+        &vec![8080]
+    );
+    assert_eq!(
+        services.get("db").unwrap().ports.as_ref().unwrap(),
+        &vec![5432]
+    );
+    assert_eq!(
+        services.get("cache").unwrap().ports.as_ref().unwrap(),
+        &vec![6379]
+    );
 
     // Verify environment variables have substituted ports
     let app_env = services.get("app").unwrap().env.as_ref().unwrap();
-    assert_eq!(app_env.get("DATABASE_URL").unwrap(), "postgres://db:5432/mydb");
+    assert_eq!(
+        app_env.get("DATABASE_URL").unwrap(),
+        "postgres://db:5432/mydb"
+    );
     assert_eq!(app_env.get("REDIS_URL").unwrap(), "redis://cache:6379");
 
     // Verify scenarios have substituted variables

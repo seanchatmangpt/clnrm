@@ -7,7 +7,6 @@
 /// - Error handling and recovery
 /// - Timeout behavior
 /// - Resource cleanup
-
 use clnrm_core::error::Result;
 use clnrm_core::telemetry::live_check::WeaverProcessManager;
 use std::path::PathBuf;
@@ -34,7 +33,11 @@ async fn test_manager_creation() -> Result<()> {
     let manager = create_test_manager()?;
 
     // Assert
-    assert_eq!(manager.pid(), None, "No process should be running initially");
+    assert_eq!(
+        manager.pid(),
+        None,
+        "No process should be running initially"
+    );
     assert_eq!(
         manager.otlp_port(),
         None,
@@ -218,10 +221,7 @@ async fn test_stop_without_start_fails() -> Result<()> {
     let result = manager.stop().await;
 
     // Assert: Should fail since process never started
-    assert!(
-        result.is_err(),
-        "Stopping non-running process should fail"
-    );
+    assert!(result.is_err(), "Stopping non-running process should fail");
 
     Ok(())
 }
@@ -235,10 +235,7 @@ async fn test_health_check_without_start_fails() -> Result<()> {
     let result = manager.health_check().await;
 
     // Assert: Should fail since process not started
-    assert!(
-        result.is_err(),
-        "Health check without start should fail"
-    );
+    assert!(result.is_err(), "Health check without start should fail");
 
     Ok(())
 }
@@ -271,10 +268,7 @@ async fn test_force_kill_cleanup() -> Result<()> {
 
         // Sending signal 0 checks if process exists
         let result = kill(Pid::from_raw(pid as i32), Signal::from_c_int(0).unwrap());
-        assert!(
-            result.is_err(),
-            "Process should not exist after force kill"
-        );
+        assert!(result.is_err(), "Process should not exist after force kill");
     }
 
     Ok(())

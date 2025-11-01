@@ -46,9 +46,7 @@ mod telemetry_validation {
 
         /// Check if telemetry contains a specific attribute
         pub fn contains_attribute(&self, key: &str, value: &str) -> bool {
-            self.attributes
-                .iter()
-                .any(|(k, v)| k == key && v == value)
+            self.attributes.iter().any(|(k, v)| k == key && v == value)
         }
 
         /// Check if telemetry contains a span with specific name
@@ -113,7 +111,7 @@ fn init_test_otel() -> Result<OtelGuard> {
     let export = if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
         // Leak the string to get a 'static lifetime required by Export::OtlpGrpc
         Export::OtlpGrpc {
-            endpoint: Box::leak(endpoint.into_boxed_str())
+            endpoint: Box::leak(endpoint.into_boxed_str()),
         }
     } else {
         // Fallback to stdout for local development without Weaver
@@ -144,7 +142,9 @@ async fn test_container_execution_exports_container_id() -> Result<()> {
     let container_name = "test_container_exec";
     let command = vec!["echo".to_string(), "test".to_string()];
 
-    let result = env.execute_in_container(container_name, &command, None, None).await?;
+    let result = env
+        .execute_in_container(container_name, &command, None, None)
+        .await?;
 
     // Assert - Container ran
     assert!(
@@ -185,7 +185,9 @@ async fn test_container_lifecycle_telemetry() -> Result<()> {
     let container_name = "test_lifecycle";
     let command = vec!["echo".to_string(), "lifecycle_test".to_string()];
 
-    let result = env.execute_in_container(container_name, &command, None, None).await?;
+    let result = env
+        .execute_in_container(container_name, &command, None, None)
+        .await?;
 
     // Assert - Verify container ran
     assert_eq!(result.exit_code, 0, "Command should succeed");
@@ -245,8 +247,10 @@ async fn test_hermetic_isolation_exports_isolation_flag() -> Result<()> {
     });
 
     let (name1, name2) = tokio::join!(test1, test2);
-    let name1 = name1.map_err(|e| CleanroomError::internal_error(format!("Task 1 failed: {}", e)))?;
-    let name2 = name2.map_err(|e| CleanroomError::internal_error(format!("Task 2 failed: {}", e)))?;
+    let name1 =
+        name1.map_err(|e| CleanroomError::internal_error(format!("Task 1 failed: {}", e)))?;
+    let name2 =
+        name2.map_err(|e| CleanroomError::internal_error(format!("Task 2 failed: {}", e)))?;
 
     // Assert - Different container names (proves isolation)
     assert_ne!(
@@ -276,7 +280,9 @@ async fn test_container_failure_exports_error_telemetry() -> Result<()> {
     let container_name = "test_failure";
     let command = vec!["sh".to_string(), "-c".to_string(), "exit 1".to_string()];
 
-    let result = env.execute_in_container(container_name, &command, None, None).await?;
+    let result = env
+        .execute_in_container(container_name, &command, None, None)
+        .await?;
 
     // Assert - Command failed
     assert_eq!(result.exit_code, 1, "Command should fail with exit code 1");
@@ -302,12 +308,11 @@ async fn test_multiple_operations_export_metrics() -> Result<()> {
     // Act - Execute multiple commands
     for i in 0..3 {
         let container_name = format!("test_metrics_{}", i);
-        let command = vec![
-            "echo".to_string(),
-            format!("operation_{}", i),
-        ];
+        let command = vec!["echo".to_string(), format!("operation_{}", i)];
 
-        let result = env.execute_in_container(&container_name, &command, None, None).await?;
+        let result = env
+            .execute_in_container(&container_name, &command, None, None)
+            .await?;
         assert_eq!(result.exit_code, 0, "Command {} should succeed", i);
     }
 
@@ -336,7 +341,9 @@ async fn test_container_timeout_exports_telemetry() -> Result<()> {
     let container_name = "test_timeout";
     let command = vec!["echo".to_string(), "quick".to_string()];
 
-    let result = env.execute_in_container(container_name, &command, None, None).await?;
+    let result = env
+        .execute_in_container(container_name, &command, None, None)
+        .await?;
 
     // Assert - Command succeeded
     assert_eq!(result.exit_code, 0, "Quick command should succeed");
@@ -404,7 +411,8 @@ async fn test_concurrent_execution_exports_individual_telemetry() -> Result<()> 
                 let env = CleanroomEnvironment::new().await.unwrap();
                 let container_name = format!("test_concurrent_{}", i);
                 let command = vec!["echo".to_string(), format!("task_{}", i)];
-                env.execute_in_container(&container_name, &command, None, None).await
+                env.execute_in_container(&container_name, &command, None, None)
+                    .await
             })
         })
         .collect();
@@ -461,7 +469,9 @@ async fn test_env_var_propagation_exports_telemetry() -> Result<()> {
         "echo $TEST_VAR".to_string(),
     ];
 
-    let result = env.execute_in_container(container_name, &command, None, None).await?;
+    let result = env
+        .execute_in_container(container_name, &command, None, None)
+        .await?;
 
     // Assert - Command succeeded
     assert_eq!(result.exit_code, 0, "Command should succeed");
@@ -492,7 +502,12 @@ async fn test_container_reuse_stats_telemetry() -> Result<()> {
 
     // Execute command to create container
     let result = env
-        .execute_in_container("test_reuse", &vec!["echo".to_string(), "test".to_string()], None, None)
+        .execute_in_container(
+            "test_reuse",
+            &vec!["echo".to_string(), "test".to_string()],
+            None,
+            None,
+        )
         .await?;
     assert_eq!(result.exit_code, 0, "Command should succeed");
 
@@ -529,7 +544,12 @@ async fn test_complete_workflow_weaver_ready() -> Result<()> {
 
     // Execute container command
     let result = env
-        .execute_in_container(test_name, &vec!["echo".to_string(), "workflow".to_string()], None, None)
+        .execute_in_container(
+            test_name,
+            &vec!["echo".to_string(), "workflow".to_string()],
+            None,
+            None,
+        )
         .await?;
 
     assert_eq!(result.exit_code, 0, "Workflow should succeed");
@@ -548,7 +568,10 @@ async fn test_complete_workflow_weaver_ready() -> Result<()> {
     // Verify traces were collected
     let traces = env.get_traces().await?;
     // Note: In production with live Weaver, this would contain actual trace data
-    assert!(traces.is_empty() || !traces.is_empty(), "Traces should be available");
+    assert!(
+        traces.is_empty() || !traces.is_empty(),
+        "Traces should be available"
+    );
 
     Ok(())
 }
@@ -569,7 +592,9 @@ async fn test_telemetry_performance_overhead() -> Result<()> {
     for i in 0..10 {
         let container_name = format!("test_perf_{}", i);
         let command = vec!["echo".to_string(), format!("perf_test_{}", i)];
-        let result = env.execute_in_container(&container_name, &command, None, None).await?;
+        let result = env
+            .execute_in_container(&container_name, &command, None, None)
+            .await?;
         assert_eq!(result.exit_code, 0, "Operation {} should succeed", i);
     }
 

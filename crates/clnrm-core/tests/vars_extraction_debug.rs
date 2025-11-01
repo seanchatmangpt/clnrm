@@ -47,7 +47,10 @@ run = "echo {{ test_message }}"
 
     println!("Image value: {}", image);
 
-    assert_eq!(image, "alpine:latest", "Image should be substituted from [variables] section");
+    assert_eq!(
+        image, "alpine:latest",
+        "Image should be substituted from [variables] section"
+    );
 
     // Check scenario run command
     let scenario = &config.scenario[0];
@@ -55,7 +58,10 @@ run = "echo {{ test_message }}"
 
     println!("Run command: {}", run_cmd);
 
-    assert_eq!(run_cmd, "echo Hello from template", "Run command should have substituted template variable");
+    assert_eq!(
+        run_cmd, "echo Hello from template",
+        "Run command should have substituted template variable"
+    );
 
     // Clean up
     let _ = fs::remove_file(&config_path);

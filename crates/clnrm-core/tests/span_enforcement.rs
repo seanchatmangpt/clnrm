@@ -10,7 +10,7 @@
 //! - Attribute completeness verification
 //! - Span relationships (parent-child)
 
-use clnrm_core::config::{TestConfig, ExpectedSpanConfig, SpanExpectationConfig};
+use clnrm_core::config::{ExpectedSpanConfig, SpanExpectationConfig, TestConfig};
 use clnrm_core::error::Result;
 use std::collections::HashMap;
 
@@ -210,9 +210,16 @@ impl MockSpanCollector {
 
     fn validate_expected_spans(&self, expected: &[&str]) -> Result<()> {
         for expected_name in expected {
-            if !self.collected_spans.iter().any(|s| s.name == *expected_name) {
+            if !self
+                .collected_spans
+                .iter()
+                .any(|s| s.name == *expected_name)
+            {
                 return Err(clnrm_core::error::CleanroomError::validation_error(
-                    format!("Expected span '{}' not found in collected spans", expected_name)
+                    format!(
+                        "Expected span '{}' not found in collected spans",
+                        expected_name
+                    ),
                 ));
             }
         }
@@ -288,7 +295,7 @@ impl MockSpan {
         for attr in required {
             if !self.has_attribute(attr) {
                 return Err(clnrm_core::error::CleanroomError::validation_error(
-                    format!("Span '{}' missing required attribute '{}'", self.name, attr)
+                    format!("Span '{}' missing required attribute '{}'", self.name, attr),
                 ));
             }
         }
@@ -432,8 +439,14 @@ fn test_span_hierarchy_validation() {
     });
 
     // Act - validate hierarchy
-    let has_root = collector.collected_spans.iter().any(|s| s.parent_id.is_none());
-    let has_children = collector.collected_spans.iter().any(|s| s.parent_id.is_some());
+    let has_root = collector
+        .collected_spans
+        .iter()
+        .any(|s| s.parent_id.is_none());
+    let has_children = collector
+        .collected_spans
+        .iter()
+        .any(|s| s.parent_id.is_some());
 
     // Assert
     assert!(has_root, "Should have root span");

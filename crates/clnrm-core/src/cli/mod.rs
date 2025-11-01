@@ -52,7 +52,17 @@ pub async fn run_cli() -> Result<()> {
             validate,
             otel_exporter,
             otel_endpoint,
+            live_check,
+            validation_mode,
+            registry_path,
+            otlp_port,
+            admin_port,
+            diagnostic_format,
+            stop_timeout,
         } => {
+            // CLI flags take precedence: --live-check or --validate enables validation
+            let should_validate = validate || live_check;
+
             let config = crate::cli::types::CliConfig {
                 parallel,
                 jobs,
@@ -62,7 +72,7 @@ pub async fn run_cli() -> Result<()> {
                 verbose: cli.verbose,
                 force,
                 digest,
-                validate,
+                validate: should_validate,
             };
 
             // If no paths provided, discover all test files automatically
@@ -73,8 +83,27 @@ pub async fn run_cli() -> Result<()> {
                 vec![PathBuf::from(".")]
             };
 
-            run_tests_with_shard_and_report(&paths_to_run, &config, shard, report_junit.as_deref(), &otel_exporter, otel_endpoint.as_deref())
-                .await
+            // TODO: Pass CLI validation parameters to executor
+            // For now, these are stored but not yet used in the executor
+            // Phase 3 will integrate validation_mode, registry_path, etc.
+            let _ = (
+                validation_mode,
+                registry_path,
+                otlp_port,
+                admin_port,
+                diagnostic_format,
+                stop_timeout,
+            );
+
+            run_tests_with_shard_and_report(
+                &paths_to_run,
+                &config,
+                shard,
+                report_junit.as_deref(),
+                &otel_exporter,
+                otel_endpoint.as_deref(),
+            )
+            .await
         }
 
         Commands::Validate { files } => {
@@ -380,16 +409,22 @@ pub async fn run_cli() -> Result<()> {
                 let mut json_map = std::collections::HashMap::new();
                 for pair in &map {
                     if let Some((key, value)) = pair.split_once('=') {
-                        json_map.insert(key.to_string(), serde_json::Value::String(value.to_string()));
+                        json_map.insert(
+                            key.to_string(),
+                            serde_json::Value::String(value.to_string()),
+                        );
                     }
                 }
                 serde_json::to_string(&json_map).map_err(|e| {
-                    crate::error::CleanroomError::serialization_error(format!("Failed to serialize map: {}", e))
+                    crate::error::CleanroomError::serialization_error(format!(
+                        "Failed to serialize map: {}",
+                        e
+                    ))
                 })?
             };
             render_template_with_vars(&template, &map_str, output.as_deref(), show_vars)?;
             Ok(())
-        },
+        }
 
         Commands::Spans {
             trace,
@@ -432,6 +467,16 @@ pub async fn run_cli() -> Result<()> {
                 }
             }
         }
+
+        Commands::LiveCheck { command } => match command {
+            crate::cli::types::LiveCheckCommands::Status => show_status(),
+            crate::cli::types::LiveCheckCommands::ValidateRegistry { registry } => {
+                validate_registry(&registry)
+            }
+            crate::cli::types::LiveCheckCommands::TestWeaver => test_weaver(),
+            crate::cli::types::LiveCheckCommands::Modes => show_modes(),
+            crate::cli::types::LiveCheckCommands::Version => show_version(),
+        },
     };
 
     if let Err(e) = result {

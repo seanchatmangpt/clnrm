@@ -423,14 +423,10 @@ impl FixtureGenerator {
     pub fn emit_to_file<P: AsRef<Path>>(&self, output_path: P) -> Result<()> {
         let fixtures = self.generate_json_fixtures()?;
 
-        std::fs::write(output_path.as_ref(), fixtures).map_err(|e| {
-            CleanroomError::io_error(format!("Failed to write fixtures: {}", e))
-        })?;
+        std::fs::write(output_path.as_ref(), fixtures)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to write fixtures: {}", e)))?;
 
-        info!(
-            "✅ Fixtures written to: {}",
-            output_path.as_ref().display()
-        );
+        info!("✅ Fixtures written to: {}", output_path.as_ref().display());
 
         Ok(())
     }

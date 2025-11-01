@@ -7,8 +7,8 @@
 //! - Template performance profiling
 //! - Development-time validation
 
-use crate::error::{TemplateError, Result};
 use crate::context::TemplateContext;
+use crate::error::{Result, TemplateError};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -180,7 +180,7 @@ impl TemplateDebugger {
                 '}' => {
                     if let Some(next) = content.chars().nth(i + 1) {
                         if next == '}' {
-                            if let Some((open, open_pos)) = stack.pop() {
+                            if let Some((open, _open_pos)) = stack.pop() {
                                 if !matches!((open, ch), ('{', '}')) {
                                     errors.push(format!(
                                         "Unmatched braces at position {}: found '{}' but expected matching '{}'",
@@ -206,8 +206,7 @@ impl TemplateDebugger {
     /// Check variable syntax
     fn check_variable_syntax(&self, content: &str, errors: &mut Vec<String>) {
         // Simple regex for Tera variables: {{ variable }} or {{ variable.nested }}
-        let var_regex = regex::Regex::new(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)")
-            .unwrap();
+        let var_regex = regex::Regex::new(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)").unwrap();
 
         for cap in var_regex.captures_iter(content) {
             if let Some(var_name) = cap.get(1) {
@@ -221,18 +220,24 @@ impl TemplateDebugger {
     }
 
     /// Check function call syntax
-    fn check_function_syntax(&self, content: &str, errors: &mut Vec<String>) {
+    fn check_function_syntax(&self, content: &str, _errors: &mut [String]) {
         // Simple regex for function calls: function_name(args)
-        let func_regex = regex::Regex::new(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\(")
-            .unwrap();
+        let func_regex = regex::Regex::new(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\(").unwrap();
 
         for cap in func_regex.captures_iter(content) {
             if let Some(func_name) = cap.get(1) {
                 let func = func_name.as_str();
                 // Check for unknown functions (basic check)
                 let known_functions = [
-                    "env", "now_rfc3339", "sha256", "toml_encode",
-                    "fake_name", "fake_email", "uuid_v4", "include", "extends"
+                    "env",
+                    "now_rfc3339",
+                    "sha256",
+                    "toml_encode",
+                    "fake_name",
+                    "fake_email",
+                    "uuid_v4",
+                    "include",
+                    "extends",
                 ];
 
                 if !known_functions.contains(&func) && !func.starts_with("fake_") {
@@ -248,8 +253,7 @@ impl TemplateDebugger {
     /// Extract variables used in template
     fn extract_variables(&self, content: &str, info: &mut DebugInfo) {
         // Extract variables from {{ variable }} patterns
-        let var_regex = regex::Regex::new(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)")
-            .unwrap();
+        let var_regex = regex::Regex::new(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)").unwrap();
 
         for cap in var_regex.captures_iter(content) {
             if let Some(var_name) = cap.get(1) {
@@ -261,8 +265,7 @@ impl TemplateDebugger {
     /// Extract function calls from template
     fn extract_functions(&self, content: &str, info: &mut DebugInfo) {
         // Extract function calls
-        let func_regex = regex::Regex::new(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\(")
-            .unwrap();
+        let func_regex = regex::Regex::new(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\(").unwrap();
 
         for cap in func_regex.captures_iter(content) {
             if let Some(func_name) = cap.get(1) {
@@ -274,8 +277,7 @@ impl TemplateDebugger {
     /// Extract template composition information
     fn extract_composition_info(&self, content: &str, info: &mut DebugInfo) {
         // Extract extends declarations
-        let extends_regex = regex::Regex::new(r#"extends\s*\(\s*["']([^"']+)["']\s*\)"#)
-            .unwrap();
+        let extends_regex = regex::Regex::new(r#"extends\s*\(\s*["']([^"']+)["']\s*\)"#).unwrap();
 
         for cap in extends_regex.captures_iter(content) {
             if let Some(template) = cap.get(1) {
@@ -284,8 +286,7 @@ impl TemplateDebugger {
         }
 
         // Extract include declarations
-        let include_regex = regex::Regex::new(r#"include\s*\(\s*["']([^"']+)["']\s*\)"#)
-            .unwrap();
+        let include_regex = regex::Regex::new(r#"include\s*\(\s*["']([^"']+)["']\s*\)"#).unwrap();
 
         for cap in include_regex.captures_iter(content) {
             if let Some(template) = cap.get(1) {
@@ -294,8 +295,7 @@ impl TemplateDebugger {
         }
 
         // Extract block definitions
-        let block_regex = regex::Regex::new(r#"block\s*\(\s*["']([^"']+)["']\s*\)"#)
-            .unwrap();
+        let block_regex = regex::Regex::new(r#"block\s*\(\s*["']([^"']+)["']\s*\)"#).unwrap();
 
         for cap in block_regex.captures_iter(content) {
             if let Some(block_name) = cap.get(1) {
@@ -310,7 +310,12 @@ impl TemplateDebugger {
     /// * `template_content` - Template content
     /// * `context` - Template context
     /// * `template_name` - Template name
-    pub fn debug_render(&self, template_content: &str, context: &TemplateContext, template_name: &str) -> Result<DebugInfo> {
+    pub fn debug_render(
+        &self,
+        template_content: &str,
+        context: &TemplateContext,
+        template_name: &str,
+    ) -> Result<DebugInfo> {
         let mut info = self.analyze(template_content, template_name)?;
 
         if self.profile_performance {
@@ -322,8 +327,8 @@ impl TemplateDebugger {
             let elapsed = start.elapsed();
             info.render_time_ms = Some(elapsed.as_millis() as u64);
 
-            if result.is_err() {
-                info.syntax_errors.push(result.unwrap_err().to_string());
+            if let Err(e) = result {
+                info.syntax_errors.push(e.to_string());
             }
         }
 
@@ -361,7 +366,11 @@ impl TemplateDebugger {
     /// # Arguments
     /// * `debug_info` - Debug info from template analysis
     /// * `context` - Template context
-    pub fn find_unused_variables(&self, debug_info: &DebugInfo, context: &TemplateContext) -> Vec<String> {
+    pub fn find_unused_variables(
+        &self,
+        debug_info: &DebugInfo,
+        context: &TemplateContext,
+    ) -> Vec<String> {
         let mut unused = Vec::new();
         for var_name in context.vars.keys() {
             if !debug_info.variables_used.contains(var_name) {
@@ -376,7 +385,11 @@ impl TemplateDebugger {
     /// # Arguments
     /// * `debug_info` - Debug info from template analysis
     /// * `context` - Template context
-    pub fn find_missing_variables(&self, debug_info: &DebugInfo, context: &TemplateContext) -> Vec<String> {
+    pub fn find_missing_variables(
+        &self,
+        debug_info: &DebugInfo,
+        context: &TemplateContext,
+    ) -> Vec<String> {
         let mut missing = Vec::new();
         for var_name in &debug_info.variables_used {
             if !context.vars.contains_key(var_name) {
@@ -408,7 +421,9 @@ impl TemplateAnalyzer {
         let content = std::fs::read_to_string(&file_path)
             .map_err(|e| TemplateError::IoError(format!("Failed to read template file: {}", e)))?;
 
-        let file_name = file_path.as_ref().file_stem()
+        let file_name = file_path
+            .as_ref()
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
 
@@ -419,7 +434,10 @@ impl TemplateAnalyzer {
     ///
     /// # Arguments
     /// * `dir_path` - Directory path to scan
-    pub fn analyze_directory<P: AsRef<Path>>(&self, dir_path: P) -> Result<HashMap<String, DebugInfo>> {
+    pub fn analyze_directory<P: AsRef<Path>>(
+        &self,
+        dir_path: P,
+    ) -> Result<HashMap<String, DebugInfo>> {
         use walkdir::WalkDir;
 
         let mut results = HashMap::new();
@@ -446,7 +464,11 @@ impl TemplateAnalyzer {
     /// # Arguments
     /// * `template_info` - Template debug information
     /// * `context` - Template context
-    pub fn find_unused_variables(&self, template_info: &DebugInfo, context: &TemplateContext) -> Vec<String> {
+    pub fn find_unused_variables(
+        &self,
+        template_info: &DebugInfo,
+        context: &TemplateContext,
+    ) -> Vec<String> {
         let used_vars: HashSet<String> = template_info.variables_used.iter().cloned().collect();
         let context_vars: HashSet<String> = context.vars.keys().cloned().collect();
 
@@ -458,7 +480,11 @@ impl TemplateAnalyzer {
     /// # Arguments
     /// * `template_info` - Template debug information
     /// * `context` - Template context
-    pub fn find_missing_variables(&self, template_info: &DebugInfo, context: &TemplateContext) -> Vec<String> {
+    pub fn find_missing_variables(
+        &self,
+        template_info: &DebugInfo,
+        context: &TemplateContext,
+    ) -> Vec<String> {
         let used_vars: HashSet<String> = template_info.variables_used.iter().cloned().collect();
         let context_vars: HashSet<String> = context.vars.keys().cloned().collect();
 
@@ -483,7 +509,7 @@ pub mod lint {
     pub struct UnusedVariablesRule;
 
     impl LintRule for UnusedVariablesRule {
-        fn check(&self, info: &DebugInfo) -> Vec<String> {
+        fn check(&self, _info: &DebugInfo) -> Vec<String> {
             // This would need context information to determine unused vars
             // For now, return empty
             Vec::new()
@@ -524,7 +550,8 @@ pub mod lint {
             let mut violations = Vec::new();
 
             // Simple complexity metric: count of functions + variables + blocks
-            let complexity = info.functions_used.len() + info.variables_used.len() + info.blocks_defined.len();
+            let complexity =
+                info.functions_used.len() + info.variables_used.len() + info.blocks_defined.len();
 
             if complexity > self.max_complexity {
                 violations.push(format!(
@@ -566,13 +593,19 @@ pub struct TemplateLinter {
     debugger: TemplateDebugger,
 }
 
-impl TemplateLinter {
-    /// Create new template linter
-    pub fn new() -> Self {
+impl Default for TemplateLinter {
+    fn default() -> Self {
         Self {
             rules: Vec::new(),
             debugger: TemplateDebugger::new(),
         }
+    }
+}
+
+impl TemplateLinter {
+    /// Create new template linter
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Add lint rule
@@ -616,7 +649,9 @@ impl TemplateLinter {
         let content = std::fs::read_to_string(&file_path)
             .map_err(|e| TemplateError::IoError(format!("Failed to read template file: {}", e)))?;
 
-        let file_name = file_path.as_ref().file_stem()
+        let file_name = file_path
+            .as_ref()
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
 
@@ -627,7 +662,10 @@ impl TemplateLinter {
     ///
     /// # Arguments
     /// * `dir_path` - Directory path to scan
-    pub fn lint_directory<P: AsRef<Path>>(&self, dir_path: P) -> Result<HashMap<String, Vec<String>>> {
+    pub fn lint_directory<P: AsRef<Path>>(
+        &self,
+        dir_path: P,
+    ) -> Result<HashMap<String, Vec<String>>> {
         use walkdir::WalkDir;
 
         let mut results = HashMap::new();
@@ -639,7 +677,8 @@ impl TemplateLinter {
                     if matches!(ext, "toml" | "tera" | "tpl" | "template") {
                         match self.lint_file(path) {
                             Ok(violations) => {
-                                let name = path.file_stem()
+                                let name = path
+                                    .file_stem()
                                     .and_then(|s| s.to_str())
                                     .unwrap_or("unknown")
                                     .to_string();
@@ -717,7 +756,12 @@ impl DebugTemplateValidator {
     /// * `template` - Template content
     /// * `context` - Template context
     /// * `name` - Template name
-    pub fn validate_template(&self, template: &str, context: &TemplateContext, name: &str) -> Result<ValidationReport> {
+    pub fn validate_template(
+        &self,
+        template: &str,
+        context: &TemplateContext,
+        name: &str,
+    ) -> Result<ValidationReport> {
         let mut report = ValidationReport {
             template_name: name.to_string(),
             syntax_valid: true,
@@ -763,11 +807,17 @@ impl DebugTemplateValidator {
     /// # Arguments
     /// * `file_path` - Path to template file
     /// * `context` - Template context
-    pub fn validate_file<P: AsRef<Path>>(&self, file_path: P, context: &TemplateContext) -> Result<ValidationReport> {
+    pub fn validate_file<P: AsRef<Path>>(
+        &self,
+        file_path: P,
+        context: &TemplateContext,
+    ) -> Result<ValidationReport> {
         let content = std::fs::read_to_string(&file_path)
             .map_err(|e| TemplateError::IoError(format!("Failed to read template file: {}", e)))?;
 
-        let file_name = file_path.as_ref().file_stem()
+        let file_name = file_path
+            .as_ref()
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
 
@@ -862,8 +912,7 @@ Hello {{ user }}
 
     #[test]
     fn test_template_linter() {
-        let linter = TemplateLinter::new()
-            .with_production_rules();
+        let linter = TemplateLinter::new().with_production_rules();
 
         let template = r#"
 {{ deprecated_function() }}

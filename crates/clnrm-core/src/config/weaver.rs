@@ -508,28 +508,25 @@ impl WeaverConfig {
     }
 
     /// Convert to telemetry::WeaverConfig (for backward compatibility)
-    pub fn to_telemetry_config(
-        &self,
-    ) -> Result<crate::telemetry::weaver_controller::WeaverConfig> {
+    pub fn to_telemetry_config(&self) -> Result<crate::telemetry::weaver_controller::WeaverConfig> {
         use crate::telemetry::weaver_controller::WeaverConfig as TelemetryWeaverConfig;
 
         // Resolve registry path (can be relative or absolute)
-        let registry_path = if self.registry_path.starts_with('/')
-            || self.registry_path.starts_with("~/")
-        {
-            // Absolute path or home directory
-            PathBuf::from(self.registry_path.replace(
-                "~/",
-                &format!(
-                    "{}/",
-                    std::env::var("HOME").unwrap_or_else(|_| ".".to_string())
-                ),
-            ))
-        } else {
-            // Relative path - resolve from installation directory or current directory
-            // Note: Actual resolution happens in run command
-            PathBuf::from(&self.registry_path)
-        };
+        let registry_path =
+            if self.registry_path.starts_with('/') || self.registry_path.starts_with("~/") {
+                // Absolute path or home directory
+                PathBuf::from(self.registry_path.replace(
+                    "~/",
+                    &format!(
+                        "{}/",
+                        std::env::var("HOME").unwrap_or_else(|_| ".".to_string())
+                    ),
+                ))
+            } else {
+                // Relative path - resolve from installation directory or current directory
+                // Note: Actual resolution happens in run command
+                PathBuf::from(&self.registry_path)
+            };
 
         Ok(TelemetryWeaverConfig {
             registry_path,

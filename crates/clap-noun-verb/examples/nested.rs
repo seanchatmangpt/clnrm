@@ -1,6 +1,6 @@
 //! Nested noun-verb CLI example demonstrating compound commands
 
-use clap_noun_verb::{run_cli, noun, verb, VerbArgs, Result};
+use clap_noun_verb::{noun, run_cli, verb, Result, VerbArgs};
 
 fn main() -> Result<()> {
     run_cli(|cli| {

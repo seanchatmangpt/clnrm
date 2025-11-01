@@ -158,9 +158,9 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
             "-c".to_string(),
             "echo 'data-a' > /tmp/shared.txt".to_string(),
         ],
-            None,
-            None,
-        )
+        None,
+        None,
+    )
     .await?;
     env.execute_in_container(
         &container_b,
@@ -169,9 +169,9 @@ async fn test_container_lifecycle_framework_self_test() -> Result<()> {
             "-c".to_string(),
             "echo 'data-b' > /tmp/shared.txt".to_string(),
         ],
-            None,
-            None,
-        )
+        None,
+        None,
+    )
     .await?;
 
     // Verify isolation - each container should have its own data

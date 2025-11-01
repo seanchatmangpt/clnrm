@@ -81,7 +81,7 @@ impl SpanProcessor for ValidationSpanProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use opentelemetry::trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState, SpanKind};
+    use opentelemetry::trace::{SpanContext, SpanId, SpanKind, TraceFlags, TraceId, TraceState};
     use opentelemetry_sdk::trace::{SpanEvents, SpanLinks};
     use std::borrow::Cow;
     use std::time::SystemTime;

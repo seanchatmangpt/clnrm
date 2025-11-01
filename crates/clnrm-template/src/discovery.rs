@@ -6,7 +6,7 @@
 //! - File paths
 //! - Template collections/namespaces
 
-use crate::error::{TemplateError, Result};
+use crate::error::{Result, TemplateError};
 use crate::renderer::TemplateRenderer;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -169,7 +169,11 @@ impl TemplateDiscovery {
     }
 
     /// Discover templates from a directory path
-    fn discover_from_path(&self, path: &Path, templates: &mut HashMap<String, String>) -> Result<()> {
+    fn discover_from_path(
+        &self,
+        path: &Path,
+        templates: &mut HashMap<String, String>,
+    ) -> Result<()> {
         if !path.exists() {
             return Ok(()); // Skip non-existent paths
         }
@@ -178,8 +182,12 @@ impl TemplateDiscovery {
             // Single file
             if self.should_include_file(path) {
                 let name = self.template_name_from_path(path);
-                let content = std::fs::read_to_string(path)
-                    .map_err(|e| TemplateError::IoError(format!("Failed to read template file {:?}: {}", path, e)))?;
+                let content = std::fs::read_to_string(path).map_err(|e| {
+                    TemplateError::IoError(format!(
+                        "Failed to read template file {:?}: {}",
+                        path, e
+                    ))
+                })?;
                 templates.insert(name, content);
             }
             return Ok(());
@@ -190,16 +198,20 @@ impl TemplateDiscovery {
     }
 
     /// Discover templates from glob pattern
-    fn discover_from_glob(&self, pattern: &str, templates: &mut HashMap<String, String>) -> Result<()> {
+    fn discover_from_glob(
+        &self,
+        pattern: &str,
+        templates: &mut HashMap<String, String>,
+    ) -> Result<()> {
         use globset::{Glob, GlobSetBuilder};
 
-        let glob = Glob::new(pattern)
-            .map_err(|e| TemplateError::ConfigError(format!("Invalid glob pattern '{}': {}", pattern, e)))?;
+        let glob = Glob::new(pattern).map_err(|e| {
+            TemplateError::ConfigError(format!("Invalid glob pattern '{}': {}", pattern, e))
+        })?;
 
-        let glob_set = GlobSetBuilder::new()
-            .add(glob)
-            .build()
-            .map_err(|e| TemplateError::ConfigError(format!("Failed to build glob set for '{}': {}", pattern, e)))?;
+        let glob_set = GlobSetBuilder::new().add(glob).build().map_err(|e| {
+            TemplateError::ConfigError(format!("Failed to build glob set for '{}': {}", pattern, e))
+        })?;
 
         for search_path in &self.search_paths {
             self.scan_path_with_glob(search_path, &glob_set, templates)?;
@@ -219,13 +231,19 @@ impl TemplateDiscovery {
         };
 
         for entry in walker {
-            let entry = entry
-                .map_err(|e| TemplateError::IoError(format!("Failed to read directory entry: {}", e)))?;
+            let entry = entry.map_err(|e| {
+                TemplateError::IoError(format!("Failed to read directory entry: {}", e))
+            })?;
 
-            if entry.file_type().is_file() && self.should_include_file(&entry.path()) {
-                let name = self.template_name_from_path(&entry.path());
-                let content = std::fs::read_to_string(entry.path())
-                    .map_err(|e| TemplateError::IoError(format!("Failed to read template file {:?}: {}", entry.path(), e)))?;
+            if entry.file_type().is_file() && self.should_include_file(entry.path()) {
+                let name = self.template_name_from_path(entry.path());
+                let content = std::fs::read_to_string(entry.path()).map_err(|e| {
+                    TemplateError::IoError(format!(
+                        "Failed to read template file {:?}: {}",
+                        entry.path(),
+                        e
+                    ))
+                })?;
 
                 templates.insert(name, content);
             }
@@ -235,7 +253,12 @@ impl TemplateDiscovery {
     }
 
     /// Scan path with glob pattern
-    fn scan_path_with_glob(&self, path: &Path, glob_set: &globset::GlobSet, templates: &mut HashMap<String, String>) -> Result<()> {
+    fn scan_path_with_glob(
+        &self,
+        path: &Path,
+        glob_set: &globset::GlobSet,
+        templates: &mut HashMap<String, String>,
+    ) -> Result<()> {
         use walkdir::WalkDir;
 
         let walker = if self.recursive {
@@ -245,15 +268,21 @@ impl TemplateDiscovery {
         };
 
         for entry in walker {
-            let entry = entry
-                .map_err(|e| TemplateError::IoError(format!("Failed to read directory entry: {}", e)))?;
+            let entry = entry.map_err(|e| {
+                TemplateError::IoError(format!("Failed to read directory entry: {}", e))
+            })?;
 
             if entry.file_type().is_file() {
                 let path_str = entry.path().to_string_lossy();
-                if glob_set.is_match(&*path_str) && self.should_include_file(&entry.path()) {
-                    let name = self.template_name_from_path(&entry.path());
-                    let content = std::fs::read_to_string(entry.path())
-                        .map_err(|e| TemplateError::IoError(format!("Failed to read template file {:?}: {}", entry.path(), e)))?;
+                if glob_set.is_match(&*path_str) && self.should_include_file(entry.path()) {
+                    let name = self.template_name_from_path(entry.path());
+                    let content = std::fs::read_to_string(entry.path()).map_err(|e| {
+                        TemplateError::IoError(format!(
+                            "Failed to read template file {:?}: {}",
+                            entry.path(),
+                            e
+                        ))
+                    })?;
 
                     templates.insert(name, content);
                 }
@@ -275,7 +304,8 @@ impl TemplateDiscovery {
     /// Generate template name from file path
     fn template_name_from_path(&self, path: &Path) -> String {
         // Remove extension and convert path separators to dots
-        let stem = path.file_stem()
+        let stem = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
 
@@ -283,7 +313,8 @@ impl TemplateDiscovery {
         for search_path in &self.search_paths {
             if let Ok(relative_path) = path.strip_prefix(search_path) {
                 let relative_str = relative_path.to_string_lossy().replace(['/', '\\'], ".");
-                let name_without_ext = Path::new(&relative_str).file_stem()
+                let name_without_ext = Path::new(&relative_str)
+                    .file_stem()
                     .and_then(|s| s.to_str())
                     .unwrap_or(stem);
 
@@ -291,7 +322,8 @@ impl TemplateDiscovery {
                     TemplateOrganization::Flat => name_without_ext.to_string(),
                     TemplateOrganization::Hierarchical => {
                         // Use full relative path as template name
-                        let parent = relative_path.parent()
+                        let parent = relative_path
+                            .parent()
                             .and_then(|p| p.to_str())
                             .unwrap_or("");
                         if parent.is_empty() {
@@ -320,9 +352,16 @@ pub struct TemplateLoader {
     /// Loaded templates (name -> content)
     pub(crate) templates: HashMap<String, String>,
     /// Hot-reload enabled
+    #[allow(dead_code)]
     hot_reload: bool,
     /// Template organization strategy
     organization: TemplateOrganization,
+}
+
+impl Default for TemplateLoader {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TemplateLoader {
@@ -361,7 +400,10 @@ impl TemplateLoader {
                 "root".to_string()
             };
 
-            categories.entry(category).or_insert_with(Vec::new).push(name.clone());
+            categories
+                .entry(category)
+                .or_insert_with(Vec::new)
+                .push(name.clone());
         }
 
         categories
@@ -372,13 +414,17 @@ impl TemplateLoader {
     /// # Arguments
     /// * `context` - Template context for rendering
     /// * `determinism` - Optional determinism configuration
-    pub fn create_renderer(&self, context: crate::context::TemplateContext) -> Result<TemplateRenderer> {
+    pub fn create_renderer(
+        &self,
+        context: crate::context::TemplateContext,
+    ) -> Result<TemplateRenderer> {
         let mut renderer = TemplateRenderer::new()?;
 
         // Add all loaded templates
         for (name, content) in &self.templates {
-            renderer.add_template(name, content)
-                .map_err(|e| TemplateError::RenderError(format!("Failed to add template '{}': {}", name, e)))?;
+            renderer.add_template(name, content).map_err(|e| {
+                TemplateError::RenderError(format!("Failed to add template '{}': {}", name, e))
+            })?;
         }
 
         Ok(renderer.with_context(context))
@@ -398,7 +444,11 @@ impl TemplateLoader {
     /// Render template with user variables
     ///
     /// Convenience method for simple rendering with user vars
-    pub fn render_with_vars(&self, name: &str, user_vars: std::collections::HashMap<String, serde_json::Value>) -> Result<String> {
+    pub fn render_with_vars(
+        &self,
+        name: &str,
+        user_vars: std::collections::HashMap<String, serde_json::Value>,
+    ) -> Result<String> {
         let mut context = crate::context::TemplateContext::with_defaults();
         context.merge_user_vars(user_vars);
         self.render(name, context)
@@ -412,13 +462,15 @@ impl TemplateLoader {
         let output_dir = output_dir.as_ref();
 
         // Create output directory if it doesn't exist
-        std::fs::create_dir_all(output_dir)
-            .map_err(|e| TemplateError::IoError(format!("Failed to create output directory: {}", e)))?;
+        std::fs::create_dir_all(output_dir).map_err(|e| {
+            TemplateError::IoError(format!("Failed to create output directory: {}", e))
+        })?;
 
         for (name, content) in &self.templates {
             let file_path = self.template_path_from_name(name, output_dir);
-            std::fs::write(&file_path, content)
-                .map_err(|e| TemplateError::IoError(format!("Failed to write template '{}': {}", name, e)))?;
+            std::fs::write(&file_path, content).map_err(|e| {
+                TemplateError::IoError(format!("Failed to write template '{}': {}", name, e))
+            })?;
         }
 
         Ok(())
@@ -427,9 +479,7 @@ impl TemplateLoader {
     /// Convert template name back to file path
     fn template_path_from_name(&self, name: &str, base_dir: &Path) -> PathBuf {
         match &self.organization {
-            TemplateOrganization::Flat => {
-                base_dir.join(format!("{}.toml", name))
-            }
+            TemplateOrganization::Flat => base_dir.join(format!("{}.toml", name)),
             TemplateOrganization::Hierarchical => {
                 // Convert dots back to path separators
                 let path_str = name.replace('.', "/");
@@ -464,7 +514,9 @@ impl TemplateLoaderBuilder {
 
     /// Add search path
     pub fn search_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.discovery.search_paths.push(path.as_ref().to_path_buf());
+        self.discovery
+            .search_paths
+            .push(path.as_ref().to_path_buf());
         self
     }
 
@@ -476,7 +528,9 @@ impl TemplateLoaderBuilder {
 
     /// Add namespace template
     pub fn namespace<S: Into<String>>(mut self, name: S, content: S) -> Self {
-        self.discovery.namespaces.insert(name.into(), content.into());
+        self.discovery
+            .namespaces
+            .insert(name.into(), content.into());
         self
     }
 
@@ -522,7 +576,10 @@ mod tests {
         let loader = discovery.load()?;
 
         assert!(loader.has_template("test"));
-        assert_eq!(loader.get_template("test"), Some("name = \"{{ test_var }}\""));
+        assert_eq!(
+            loader.get_template("test"),
+            Some("name = \"{{ test_var }}\"")
+        );
 
         Ok(())
     }
@@ -535,7 +592,10 @@ mod tests {
         let loader = discovery.load()?;
 
         assert!(loader.has_template("macros"));
-        assert_eq!(loader.get_template("macros"), Some("{% macro test() %}Hello{% endmacro %}"));
+        assert_eq!(
+            loader.get_template("macros"),
+            Some("{% macro test() %}Hello{% endmacro %}")
+        );
 
         Ok(())
     }
@@ -546,13 +606,15 @@ mod tests {
         let template_file = temp_dir.path().join("config.toml");
         std::fs::write(&template_file, "service = \"{{ svc }}\"")?;
 
-        let discovery = TemplateDiscovery::new()
-            .with_search_path(&temp_dir);
+        let discovery = TemplateDiscovery::new().with_search_path(&temp_dir);
 
         let loader = discovery.load()?;
 
         let mut vars = std::collections::HashMap::new();
-        vars.insert("svc".to_string(), serde_json::Value::String("test-service".to_string()));
+        vars.insert(
+            "svc".to_string(),
+            serde_json::Value::String("test-service".to_string()),
+        );
 
         let result = loader.render_with_vars("config", vars)?;
         assert_eq!(result.trim(), "service = \"test-service\"");

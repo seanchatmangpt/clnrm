@@ -267,10 +267,7 @@ impl WeaverController {
 
         // Ensure output directory exists
         std::fs::create_dir_all(&self.config.output_dir).map_err(|e| {
-            CleanroomError::io_error(format!(
-                "Failed to create output directory: {}",
-                e
-            ))
+            CleanroomError::io_error(format!("Failed to create output directory: {}", e))
         })?;
 
         // Build Weaver command
@@ -314,9 +311,10 @@ impl WeaverController {
 
         // If streaming is enabled, spawn a monitor thread
         if self.config.stream {
-            let stderr = child.stderr.take().ok_or_else(|| {
-                CleanroomError::internal_error("Failed to capture Weaver stderr")
-            })?;
+            let stderr = child
+                .stderr
+                .take()
+                .ok_or_else(|| CleanroomError::internal_error("Failed to capture Weaver stderr"))?;
 
             let violations_flag = Arc::clone(&self.has_violations);
             let monitor = thread::spawn(move || {
@@ -394,7 +392,7 @@ impl WeaverController {
         Self::find_available_port(5317, 5327).map_err(|_| {
             CleanroomError::validation_error(
                 "No available ports in range 4317-4327, 5317-5327. \
-                 All ports in use. Stop other OTLP services or use custom port range."
+                 All ports in use. Stop other OTLP services or use custom port range.",
             )
         })
     }
@@ -547,10 +545,7 @@ impl WeaverController {
 
         // Ensure output directory exists
         std::fs::create_dir_all(&self.config.output_dir).map_err(|e| {
-            CleanroomError::io_error(format!(
-                "Failed to create output directory: {}",
-                e
-            ))
+            CleanroomError::io_error(format!("Failed to create output directory: {}", e))
         })?;
 
         // Build Weaver command
@@ -591,9 +586,10 @@ impl WeaverController {
 
         // If streaming is enabled, spawn a monitor thread
         if self.config.stream {
-            let stderr = child.stderr.take().ok_or_else(|| {
-                CleanroomError::internal_error("Failed to capture Weaver stderr")
-            })?;
+            let stderr = child
+                .stderr
+                .take()
+                .ok_or_else(|| CleanroomError::internal_error("Failed to capture Weaver stderr"))?;
 
             let violations_flag = Arc::clone(&self.has_violations);
             let monitor = thread::spawn(move || {
@@ -640,9 +636,10 @@ impl WeaverController {
     pub fn stop_and_report(&mut self) -> Result<ValidationReport> {
         info!("🛑 Stopping Weaver and retrieving validation report");
 
-        let mut process = self.live_check_process.take().ok_or_else(|| {
-            CleanroomError::internal_error("Weaver live-check is not running")
-        })?;
+        let mut process = self
+            .live_check_process
+            .take()
+            .ok_or_else(|| CleanroomError::internal_error("Weaver live-check is not running"))?;
 
         // Send graceful shutdown signal
         #[cfg(unix)]
@@ -696,10 +693,7 @@ impl WeaverController {
         })?;
 
         let mut report: ValidationReport = serde_json::from_str(&report_json).map_err(|e| {
-            CleanroomError::serialization_error(format!(
-                "Failed to parse validation report: {}",
-                e
-            ))
+            CleanroomError::serialization_error(format!("Failed to parse validation report: {}", e))
         })?;
 
         // CRITICAL: Zero-sample validation (prevents false positives)

@@ -6,7 +6,7 @@
 //! - Format validation
 //! - Custom validation rules
 
-use crate::error::{TemplateError, Result};
+use crate::error::{Result, TemplateError};
 use serde_json::Value;
 use std::collections::HashSet;
 
@@ -49,9 +49,10 @@ pub struct TomlValidationOptions {
 }
 
 /// Supported output formats for validation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum OutputFormat {
     /// TOML format (default for Cleanroom)
+    #[default]
     Toml,
     /// JSON format
     Json,
@@ -61,15 +62,8 @@ pub enum OutputFormat {
     Auto,
 }
 
-impl Default for OutputFormat {
+impl Default for TemplateValidator {
     fn default() -> Self {
-        OutputFormat::Toml
-    }
-}
-
-impl TemplateValidator {
-    /// Create new template validator
-    pub fn new() -> Self {
         Self {
             required_fields: HashSet::new(),
             required_sections: HashSet::new(),
@@ -78,6 +72,13 @@ impl TemplateValidator {
             schema: None,
             toml_options: TomlValidationOptions::default(),
         }
+    }
+}
+
+impl TemplateValidator {
+    /// Create new template validator
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Set required fields that must be present in output
@@ -198,7 +199,12 @@ impl TemplateValidator {
     }
 
     /// Validate content format
-    fn validate_format(&self, format: &OutputFormat, content: &str, template_name: &str) -> Result<()> {
+    fn validate_format(
+        &self,
+        format: &OutputFormat,
+        content: &str,
+        template_name: &str,
+    ) -> Result<()> {
         match format {
             OutputFormat::Toml => self.validate_toml(content, template_name),
             OutputFormat::Json => self.validate_json(content, template_name),
@@ -209,58 +215,63 @@ impl TemplateValidator {
 
     /// Validate TOML format
     fn validate_toml(&self, content: &str, template_name: &str) -> Result<()> {
-        toml::from_str::<Value>(content)
-            .map_err(|e| TemplateError::ValidationError(format!(
+        toml::from_str::<Value>(content).map_err(|e| {
+            TemplateError::ValidationError(format!(
                 "Invalid TOML format in template '{}': {}",
                 template_name, e
-            )))?;
+            ))
+        })?;
         Ok(())
     }
 
     /// Validate JSON format
     fn validate_json(&self, content: &str, template_name: &str) -> Result<()> {
-        serde_json::from_str::<Value>(content)
-            .map_err(|e| TemplateError::ValidationError(format!(
+        serde_json::from_str::<Value>(content).map_err(|e| {
+            TemplateError::ValidationError(format!(
                 "Invalid JSON format in template '{}': {}",
                 template_name, e
-            )))?;
+            ))
+        })?;
         Ok(())
     }
 
     /// Validate YAML format
     fn validate_yaml(&self, content: &str, template_name: &str) -> Result<()> {
-        serde_yaml::from_str::<Value>(content)
-            .map_err(|e| TemplateError::ValidationError(format!(
+        serde_yaml::from_str::<Value>(content).map_err(|e| {
+            TemplateError::ValidationError(format!(
                 "Invalid YAML format in template '{}': {}",
                 template_name, e
-            )))?;
+            ))
+        })?;
         Ok(())
     }
 
     /// Parse content into JSON Value for validation
-    fn parse_content(&self, format: &OutputFormat, content: &str, template_name: &str) -> Result<Value> {
+    fn parse_content(
+        &self,
+        format: &OutputFormat,
+        content: &str,
+        template_name: &str,
+    ) -> Result<Value> {
         match format {
-            OutputFormat::Toml => {
-                toml::from_str::<Value>(content)
-                    .map_err(|e| TemplateError::ValidationError(format!(
-                        "Failed to parse TOML in template '{}': {}",
-                        template_name, e
-                    )))
-            }
-            OutputFormat::Json => {
-                serde_json::from_str::<Value>(content)
-                    .map_err(|e| TemplateError::ValidationError(format!(
-                        "Failed to parse JSON in template '{}': {}",
-                        template_name, e
-                    )))
-            }
-            OutputFormat::Yaml => {
-                serde_yaml::from_str::<Value>(content)
-                    .map_err(|e| TemplateError::ValidationError(format!(
-                        "Failed to parse YAML in template '{}': {}",
-                        template_name, e
-                    )))
-            }
+            OutputFormat::Toml => toml::from_str::<Value>(content).map_err(|e| {
+                TemplateError::ValidationError(format!(
+                    "Failed to parse TOML in template '{}': {}",
+                    template_name, e
+                ))
+            }),
+            OutputFormat::Json => serde_json::from_str::<Value>(content).map_err(|e| {
+                TemplateError::ValidationError(format!(
+                    "Failed to parse JSON in template '{}': {}",
+                    template_name, e
+                ))
+            }),
+            OutputFormat::Yaml => serde_yaml::from_str::<Value>(content).map_err(|e| {
+                TemplateError::ValidationError(format!(
+                    "Failed to parse YAML in template '{}': {}",
+                    template_name, e
+                ))
+            }),
             OutputFormat::Auto => {
                 // Try TOML first (most common for Cleanroom)
                 if let Ok(value) = toml::from_str::<Value>(content) {
@@ -294,11 +305,12 @@ impl TemplateValidator {
 
     /// Validate required sections exist (TOML only)
     fn validate_required_sections(&self, parsed: &Value, template_name: &str) -> Result<()> {
-        let obj = parsed.as_object()
-            .ok_or_else(|| TemplateError::ValidationError(format!(
+        let obj = parsed.as_object().ok_or_else(|| {
+            TemplateError::ValidationError(format!(
                 "Template '{}' must be a TOML object for section validation",
                 template_name
-            )))?;
+            ))
+        })?;
 
         for section in &self.required_sections {
             if !obj.contains_key(section) {
@@ -333,7 +345,12 @@ impl TemplateValidator {
             if let Some(properties) = schema_obj.get("properties").and_then(|v| v.as_object()) {
                 for (prop_name, prop_schema) in properties {
                     if let Some(prop_value) = obj.get(prop_name) {
-                        self.validate_property_type(prop_value, prop_schema, prop_name, template_name)?;
+                        self.validate_property_type(
+                            prop_value,
+                            prop_schema,
+                            prop_name,
+                            template_name,
+                        )?;
                     }
                 }
             }
@@ -343,7 +360,13 @@ impl TemplateValidator {
     }
 
     /// Validate property type against schema
-    fn validate_property_type(&self, value: &Value, schema: &Value, prop_name: &str, template_name: &str) -> Result<()> {
+    fn validate_property_type(
+        &self,
+        value: &Value,
+        schema: &Value,
+        prop_name: &str,
+        template_name: &str,
+    ) -> Result<()> {
         if let Some(expected_type) = schema.get("type").and_then(|v| v.as_str()) {
             match expected_type {
                 "string" => {
@@ -422,7 +445,12 @@ impl TemplateValidator {
     }
 
     /// Validate TOML nesting depth
-    fn validate_toml_nesting(&self, value: &Value, depth: usize, template_name: &str) -> Result<()> {
+    fn validate_toml_nesting(
+        &self,
+        value: &Value,
+        depth: usize,
+        template_name: &str,
+    ) -> Result<()> {
         if let Some(max_depth) = self.toml_options.max_nesting_depth {
             if depth > max_depth {
                 return Err(TemplateError::ValidationError(format!(
@@ -457,7 +485,9 @@ impl TemplateValidator {
                     if arr.len() > max_len {
                         return Err(TemplateError::ValidationError(format!(
                             "Array length {} exceeds maximum {} in template '{}'",
-                            arr.len(), max_len, template_name
+                            arr.len(),
+                            max_len,
+                            template_name
                         )));
                     }
                 }
@@ -467,7 +497,9 @@ impl TemplateValidator {
                     if s.len() > max_len {
                         return Err(TemplateError::ValidationError(format!(
                             "String length {} exceeds maximum {} in template '{}'",
-                            s.len(), max_len, template_name
+                            s.len(),
+                            max_len,
+                            template_name
                         )));
                     }
                 }
@@ -511,7 +543,9 @@ impl ValidationRule {
         match self {
             ValidationRule::ServiceName => Self::validate_service_name(parsed, template_name),
             ValidationRule::Semver => Self::validate_semver(parsed, template_name),
-            ValidationRule::Environment { allowed } => Self::validate_environment(parsed, template_name, allowed),
+            ValidationRule::Environment { allowed } => {
+                Self::validate_environment(parsed, template_name, allowed)
+            }
             ValidationRule::OtelConfig => Self::validate_otel_config(parsed, template_name),
             ValidationRule::Custom { .. } => {
                 // For now, custom validation is not implemented in this simplified version
@@ -522,8 +556,15 @@ impl ValidationRule {
     }
 
     fn validate_service_name(parsed: &Value, template_name: &str) -> Result<()> {
-        if let Some(service_name) = parsed.get("service").and_then(|v| v.get("name")).and_then(|v| v.as_str()) {
-            if !service_name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+        if let Some(service_name) = parsed
+            .get("service")
+            .and_then(|v| v.get("name"))
+            .and_then(|v| v.as_str())
+        {
+            if !service_name
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+            {
                 return Err(TemplateError::ValidationError(format!(
                     "Service name '{}' in template '{}' contains invalid characters (only alphanumeric, '-', '_' allowed)",
                     service_name, template_name
@@ -541,10 +582,17 @@ impl ValidationRule {
     }
 
     fn validate_semver(parsed: &Value, template_name: &str) -> Result<()> {
-        if let Some(version) = parsed.get("meta").and_then(|v| v.get("version")).and_then(|v| v.as_str()) {
+        if let Some(version) = parsed
+            .get("meta")
+            .and_then(|v| v.get("version"))
+            .and_then(|v| v.as_str())
+        {
             // Simple semver regex check
-            let semver_regex = regex::Regex::new(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$")
-                .map_err(|_| TemplateError::ValidationError("Failed to compile semver regex".to_string()))?;
+            let semver_regex =
+                regex::Regex::new(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$")
+                    .map_err(|_| {
+                        TemplateError::ValidationError("Failed to compile semver regex".to_string())
+                    })?;
 
             if !semver_regex.is_match(version) {
                 return Err(TemplateError::ValidationError(format!(
@@ -557,7 +605,11 @@ impl ValidationRule {
     }
 
     fn validate_environment(parsed: &Value, template_name: &str, allowed: &[String]) -> Result<()> {
-        if let Some(env) = parsed.get("meta").and_then(|v| v.get("environment")).and_then(|v| v.as_str()) {
+        if let Some(env) = parsed
+            .get("meta")
+            .and_then(|v| v.get("environment"))
+            .and_then(|v| v.as_str())
+        {
             if !allowed.contains(&env.to_string()) {
                 return Err(TemplateError::ValidationError(format!(
                     "Environment '{}' in template '{}' not in allowed list: {:?}",
@@ -573,7 +625,7 @@ impl ValidationRule {
             let required_fields = ["endpoint", "service_name"];
 
             for field in &required_fields {
-                if !otel.get(*field).is_some() {
+                if otel.get(*field).is_none() {
                     return Err(TemplateError::ValidationError(format!(
                         "Required OTEL field '{}' missing in template '{}'",
                         field, template_name
@@ -612,7 +664,9 @@ impl Clone for ValidationRule {
         match self {
             ValidationRule::ServiceName => ValidationRule::ServiceName,
             ValidationRule::Semver => ValidationRule::Semver,
-            ValidationRule::Environment { allowed } => ValidationRule::Environment { allowed: allowed.clone() },
+            ValidationRule::Environment { allowed } => ValidationRule::Environment {
+                allowed: allowed.clone(),
+            },
             ValidationRule::OtelConfig => ValidationRule::OtelConfig,
             ValidationRule::Custom { name } => ValidationRule::Custom { name: name.clone() },
         }
@@ -669,11 +723,12 @@ impl SchemaValidator {
 
     /// Validate content against schema
     pub fn validate(&self, content: &str, template_name: &str) -> Result<()> {
-        let parsed: Value = serde_json::from_str(content)
-            .map_err(|e| TemplateError::ValidationError(format!(
+        let parsed: Value = serde_json::from_str(content).map_err(|e| {
+            TemplateError::ValidationError(format!(
                 "Failed to parse content for schema validation in template '{}': {}",
                 template_name, e
-            )))?;
+            ))
+        })?;
 
         // Simple schema validation implementation
         // In a real implementation, this would use a proper JSON Schema validator
@@ -681,7 +736,12 @@ impl SchemaValidator {
     }
 
     /// Recursive schema validation
-    fn validate_against_schema(&self, value: &Value, schema: &Value, template_name: &str) -> Result<()> {
+    fn validate_against_schema(
+        &self,
+        value: &Value,
+        schema: &Value,
+        template_name: &str,
+    ) -> Result<()> {
         // Check type
         if let Some(expected_type) = schema.get("type").and_then(|v| v.as_str()) {
             match expected_type {

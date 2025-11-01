@@ -2,41 +2,58 @@
 
 use crate::cleanroom::CleanroomEnvironment;
 use crate::error::{CleanroomError, Result};
-use clap_noun_verb::{noun, verb, VerbArgs, NounVerbError};
+use clap_noun_verb::{noun, verb, NounVerbError, VerbArgs};
 
 /// Create the services noun command
 pub fn services_command() -> impl clap_noun_verb::NounCommand {
-    noun!("services", "Manage application services", [
-        verb!("status", "Show status of all services", |_args: &VerbArgs| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    show_service_status().await
-                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
+    noun!(
+        "services",
+        "Manage application services",
+        [
+            verb!(
+                "status",
+                "Show status of all services",
+                |_args: &VerbArgs| {
+                    tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(async {
+                            show_service_status()
+                                .await
+                                .map_err(|e| NounVerbError::ExecutionError {
+                                    message: e.to_string(),
+                                })
+                        })
+                    })
+                }
+            ),
+            verb!("logs", "Show logs for a service", |_args: &VerbArgs| {
+                tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        // Get service name from args - in a real implementation, this would come from clap args
+                        let service = "default-service"; // This should be extracted from args.matches
+                        let lines = 50; // This should be extracted from args.matches
+                        show_service_logs(service, lines).await.map_err(|e| {
+                            NounVerbError::ExecutionError {
+                                message: e.to_string(),
+                            }
+                        })
+                    })
                 })
-            })
-        }),
-        verb!("logs", "Show logs for a service", |_args: &VerbArgs| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    // Get service name from args - in a real implementation, this would come from clap args
-                    let service = "default-service"; // This should be extracted from args.matches
-                    let lines = 50; // This should be extracted from args.matches
-                    show_service_logs(service, lines).await
-                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
+            }),
+            verb!("restart", "Restart a service", |_args: &VerbArgs| {
+                tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        // Get service name from args - in a real implementation, this would come from clap args
+                        let service = "default-service"; // This should be extracted from args.matches
+                        restart_service(service)
+                            .await
+                            .map_err(|e| NounVerbError::ExecutionError {
+                                message: e.to_string(),
+                            })
+                    })
                 })
-            })
-        }),
-        verb!("restart", "Restart a service", |_args: &VerbArgs| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    // Get service name from args - in a real implementation, this would come from clap args
-                    let service = "default-service"; // This should be extracted from args.matches
-                    restart_service(service).await
-                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
-                })
-            })
-        }),
-    ])
+            }),
+        ]
+    )
 }
 
 /// Show service status
@@ -196,7 +213,3 @@ async fn restart_service(service: &str) -> Result<()> {
 
     Ok(())
 }
-
-
-
-

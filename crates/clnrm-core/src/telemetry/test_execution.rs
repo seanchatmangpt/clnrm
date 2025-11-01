@@ -213,10 +213,7 @@ impl TestExecutionContext {
             "test.start_timestamp",
             self.test_start_timestamp,
         ));
-        span.set_attribute(KeyValue::new(
-            "test.end_timestamp",
-            self.test_end_timestamp,
-        ));
+        span.set_attribute(KeyValue::new("test.end_timestamp", self.test_end_timestamp));
         span.set_attribute(KeyValue::new(
             "test.cleanup_performed",
             self.cleanup_performed,
@@ -344,7 +341,10 @@ impl TestExecutionContext {
         if errors.is_empty() {
             Ok(())
         } else {
-            Err(format!("Invalid test execution context: {}", errors.join(", ")))
+            Err(format!(
+                "Invalid test execution context: {}",
+                errors.join(", ")
+            ))
         }
     }
 }
@@ -482,11 +482,12 @@ mod tests {
     #[test]
     fn test_builder_fluent_api() {
         let container = ContainerInfo::new("test123".to_string(), "alpine:3.18".to_string());
-        let builder = TestExecutionBuilder::new("test_example".to_string(), "integration".to_string())
-            .container(container)
-            .assertions(5)
-            .plugin_time(45.2)
-            .cleanup_done();
+        let builder =
+            TestExecutionBuilder::new("test_example".to_string(), "integration".to_string())
+                .container(container)
+                .assertions(5)
+                .plugin_time(45.2)
+                .cleanup_done();
 
         // Don't finish in test to avoid emitting spans
         assert_eq!(builder.context.test_name, "test_example");

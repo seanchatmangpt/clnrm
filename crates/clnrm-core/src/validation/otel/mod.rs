@@ -14,7 +14,9 @@ pub mod validator;
 mod tests;
 
 // Re-export main types for convenience
-pub use assertions::{SpanAssertion, TraceAssertion, span_assertion_from_toml, trace_assertion_from_toml};
+pub use assertions::{
+    span_assertion_from_toml, trace_assertion_from_toml, SpanAssertion, TraceAssertion,
+};
 pub use config::OtelValidationConfig;
 pub use results::{SpanValidationResult, TraceValidationResult};
 pub use span_processor::ValidationSpanProcessor;

@@ -1,0 +1,104 @@
+# 80/20 Mode Example - Recommended for CI/CD
+# Validates critical 20% of telemetry for 80% bug coverage
+# 6x faster than strict mode
+
+[meta]
+name = "eighty_twenty_mode"
+version = "1.0.0"
+description = "80/20 validation mode - fast and effective"
+
+# Configure 80/20 validation mode
+[weaver]
+enabled = true
+
+[weaver.validation]
+mode = "80_20"  # Fast validation mode
+fail_on_violations = true
+fail_on_improvements = false  # Ignore style warnings in dev
+
+# Define critical spans to validate
+[weaver.eighty_twenty]
+critical_spans = [
+    "test.execute",           # Core test execution
+    "container.start",        # Container lifecycle
+    "container.stop",         # Cleanup verification
+    "service.health_check"    # Service availability
+]
+
+# OTEL configuration
+[otel]
+exporter = "otlp-http"
+sample_ratio = 1.0  # Always sample in 80/20 mode
+
+resources = {
+  "service.name" = "eighty_twenty_test",
+  "deployment.environment" = "ci"
+}
+
+# Service: HTTP API
+[service.api]
+plugin = "generic_container"
+image = "nginx:alpine"
+env = {
+  "PORT" = "8080"
+}
+
+# Service: Database
+[service.db]
+plugin = "generic_container"
+image = "postgres:15-alpine"
+env = {
+  "POSTGRES_PASSWORD" = "testpass",
+  "POSTGRES_DB" = "testdb"
+}
+
+# Scenario: Health check
+[[scenario]]
+name = "api_health_check"
+service = "api"
+run = "curl -f http://localhost:8080/ || exit 1"
+
+# Validate critical spans only (80/20 principle)
+[[expect.span]]
+name = "test.execute"
+attrs.all = {
+  "test.name" = "api_health_check",
+  "test.isolated" = "true",
+  "container.id" = "*"
+}
+
+[[expect.span]]
+name = "service.health_check"
+attrs.all = {
+  "service.name" = "api",
+  "health.status" = "healthy"
+}
+
+# Validate container lifecycle (critical for cleanup)
+[[expect.span]]
+name = "container.start"
+attrs.all = {
+  "container.image.name" = "nginx:alpine"
+}
+
+[[expect.span]]
+name = "container.stop"
+attrs.all = {
+  "container.destroyed_at" = "*",
+  "cleanup.success" = "true"
+}
+
+# Count validation - ensure cleanup happened
+[expect.counts]
+by_name = {
+  "container.start" = { eq = 2 },  # Started api + db
+  "container.stop" = { eq = 2 }    # Stopped api + db
+}
+
+# Status validation - all operations succeeded
+[expect.status]
+by_name = {
+  "test.execute" = "OK",
+  "container.start" = "OK",
+  "container.stop" = "OK"
+}

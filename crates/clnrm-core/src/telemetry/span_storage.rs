@@ -114,7 +114,7 @@ pub fn span_count() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use opentelemetry::trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState, SpanKind};
+    use opentelemetry::trace::{SpanContext, SpanId, SpanKind, TraceFlags, TraceId, TraceState};
     use opentelemetry_sdk::trace::{SpanData, SpanEvents, SpanLinks};
     use std::borrow::Cow;
     use std::time::SystemTime;
@@ -144,6 +144,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_store_and_retrieve_spans() {
         clear_collected_spans();
 
@@ -160,6 +161,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_clear_spans() {
         clear_collected_spans();
 
@@ -174,15 +176,28 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_span_count() {
         // Clear any spans from other tests (global state)
         clear_collected_spans();
 
-        // Wait a bit for any async cleanup
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        // Aggressive cleanup: clear multiple times and wait longer
+        clear_collected_spans();
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        clear_collected_spans();
 
         // Now verify clean state
-        assert_eq!(span_count(), 0);
+        let initial_count = span_count();
+        if initial_count != 0 {
+            // One more aggressive clear if still dirty
+            clear_collected_spans();
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        assert_eq!(
+            span_count(),
+            0,
+            "Initial state should be clean after aggressive cleanup"
+        );
 
         store_span(create_test_span("span1"));
         assert_eq!(span_count(), 1);

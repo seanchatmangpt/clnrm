@@ -13,7 +13,7 @@
 //! - Undefined variables error handling
 //! - Variable type coercion
 
-use clnrm_core::config::{TestConfig, StepConfig, ServiceConfig};
+use clnrm_core::config::{ServiceConfig, StepConfig, TestConfig};
 use clnrm_core::error::Result;
 use serde_json::json;
 use std::collections::HashMap;

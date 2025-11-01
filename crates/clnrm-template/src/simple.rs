@@ -6,12 +6,12 @@
 //! - `render_with_context(template, context)` - Advanced rendering with context
 //! - `TemplateBuilder` - Fluent API for complex configurations
 
-use crate::error::{TemplateError, Result};
 use crate::context::TemplateContext;
-use crate::renderer::{TemplateRenderer, render_template};
+use crate::error::{Result, TemplateError};
+use crate::renderer::{render_template, TemplateRenderer};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
-use serde_json::Value;
 
 /// Render template string with variables (simplest API)
 ///
@@ -109,7 +109,7 @@ pub fn render_file<P: AsRef<Path>>(path: P, vars: HashMap<&str, &str>) -> Result
 ///
 /// let result = render_with_context("Service: {{ service }}, Env: {{ environment }}", &context).unwrap();
 /// ```
-pub fn render_with_context(template: &str, context: &TemplateContext) -> Result<String> {
+pub fn render_with_context(template: &str, _context: &TemplateContext) -> Result<String> {
     let mut renderer = TemplateRenderer::new()?;
     renderer.render_str(template, "template")
 }
@@ -132,7 +132,11 @@ pub fn render_with_context(template: &str, context: &TemplateContext) -> Result<
 ///
 /// let result = render_to_format("Name: {{ name }}, Value: {{ value }}", vars, OutputFormat::Json).unwrap();
 /// ```
-pub fn render_to_format(template: &str, vars: HashMap<&str, &str>, format: OutputFormat) -> Result<String> {
+pub fn render_to_format(
+    template: &str,
+    vars: HashMap<&str, &str>,
+    format: OutputFormat,
+) -> Result<String> {
     let mut json_vars = HashMap::new();
     for (key, value) in vars {
         json_vars.insert(key.to_string(), Value::String(value.to_string()));
@@ -163,8 +167,9 @@ pub enum OutputFormat {
 
 /// Convert TOML to JSON format
 pub fn convert_to_json(toml_content: &str) -> Result<String> {
-    let parsed: Value = toml::from_str(toml_content)
-        .map_err(|e| TemplateError::ValidationError(format!("Failed to parse TOML for JSON conversion: {}", e)))?;
+    let parsed: Value = toml::from_str(toml_content).map_err(|e| {
+        TemplateError::ValidationError(format!("Failed to parse TOML for JSON conversion: {}", e))
+    })?;
 
     serde_json::to_string_pretty(&parsed)
         .map_err(|e| TemplateError::ValidationError(format!("Failed to serialize to JSON: {}", e)))
@@ -172,8 +177,9 @@ pub fn convert_to_json(toml_content: &str) -> Result<String> {
 
 /// Convert TOML to YAML format
 pub fn convert_to_yaml(toml_content: &str) -> Result<String> {
-    let parsed: Value = toml::from_str(toml_content)
-        .map_err(|e| TemplateError::ValidationError(format!("Failed to parse TOML for YAML conversion: {}", e)))?;
+    let parsed: Value = toml::from_str(toml_content).map_err(|e| {
+        TemplateError::ValidationError(format!("Failed to parse TOML for YAML conversion: {}", e))
+    })?;
 
     serde_yaml::to_string(&parsed)
         .map_err(|e| TemplateError::ValidationError(format!("Failed to serialize to YAML: {}", e)))
@@ -268,7 +274,8 @@ impl TemplateBuilder {
 
     /// Add string variable
     pub fn variable<K: Into<String>, V: Into<String>>(mut self, key: K, value: V) -> Self {
-        self.variables.insert(key.into(), Value::String(value.into()));
+        self.variables
+            .insert(key.into(), Value::String(value.into()));
         self
     }
 
@@ -286,7 +293,8 @@ impl TemplateBuilder {
         V: Into<String>,
     {
         for (key, value) in vars {
-            self.variables.insert(key.into(), Value::String(value.into()));
+            self.variables
+                .insert(key.into(), Value::String(value.into()));
         }
         self
     }
@@ -305,7 +313,8 @@ impl TemplateBuilder {
 
     /// Render template
     pub fn render(self) -> Result<String> {
-        let template = self.template
+        let template = self
+            .template
             .ok_or_else(|| TemplateError::ValidationError("No template provided".to_string()))?;
 
         if let Some(context) = self.context {
@@ -323,7 +332,8 @@ impl TemplateBuilder {
 
     /// Render template file
     pub fn render_file<P: AsRef<Path>>(self, path: P) -> Result<String> {
-        let template = self.template
+        let _template = self
+            .template
             .ok_or_else(|| TemplateError::ValidationError("No template provided".to_string()))?;
 
         let mut json_vars = HashMap::new();
@@ -348,15 +358,23 @@ pub mod quick {
 
     /// Render a simple greeting template
     pub fn greeting(name: &str) -> String {
-        render("Hello {{ name }}!", [("name", name)].iter().cloned().collect()).unwrap_or_default()
+        render(
+            "Hello {{ name }}!",
+            [("name", name)].iter().cloned().collect(),
+        )
+        .unwrap_or_default()
     }
 
     /// Render a configuration template
     pub fn config(service: &str, port: u16) -> String {
         render(
             "[service]\nname = \"{{ service }}\"\nport = {{ port }}",
-            [("service", service), ("port", &port.to_string())].iter().cloned().collect()
-        ).unwrap_or_default()
+            [("service", service), ("port", &port.to_string())]
+                .iter()
+                .cloned()
+                .collect(),
+        )
+        .unwrap_or_default()
     }
 
     /// Render a JSON template
@@ -364,18 +382,20 @@ pub mod quick {
         render_to_format(
             "{\"name\": \"{{ name }}\", \"value\": \"{{ value }}\"}",
             [("name", name), ("value", value)].iter().cloned().collect(),
-            OutputFormat::Json
-        ).unwrap_or_default()
+            OutputFormat::Json,
+        )
+        .unwrap_or_default()
     }
 
     /// Render a YAML template
     pub fn yaml_template(title: &str, items: Vec<&str>) -> String {
-        let items_str = items.join("\", \"");
+        let _items_str = items.join("\", \"");
         render_to_format(
             "title: {{ title }}\nitems:\n  - \"{{ items | join('\",\n  - \"') }}\"",
             [("title", title)].iter().cloned().collect(),
-            OutputFormat::Yaml
-        ).unwrap_or_default()
+            OutputFormat::Yaml,
+        )
+        .unwrap_or_default()
     }
 }
 
@@ -421,17 +441,24 @@ mod tests {
 
     #[test]
     fn test_simple_render() {
-        let result = render("Hello {{ name }}!", [("name", "World")].iter().cloned().collect()).unwrap();
+        let result = render(
+            "Hello {{ name }}!",
+            [("name", "World")].iter().cloned().collect(),
+        )
+        .unwrap();
         assert_eq!(result, "Hello World!");
     }
 
     #[test]
     fn test_render_with_json() {
         let mut vars = HashMap::new();
-        vars.insert("items", Value::Array(vec![
-            Value::String("apple".to_string()),
-            Value::String("banana".to_string())
-        ]));
+        vars.insert(
+            "items",
+            Value::Array(vec![
+                Value::String("apple".to_string()),
+                Value::String("banana".to_string()),
+            ]),
+        );
 
         let result = render_with_json("Items: {{ items | length }}", vars).unwrap();
         // Note: This would need the length filter to be implemented
@@ -455,15 +482,17 @@ mod tests {
         let toml_result = render_to_format(
             "name = \"{{ name }}\"",
             [("name", "test")].iter().cloned().collect(),
-            OutputFormat::Toml
-        ).unwrap();
+            OutputFormat::Toml,
+        )
+        .unwrap();
         assert_eq!(toml_result, "name = \"test\"");
 
         let json_result = render_to_format(
             "{\"name\": \"{{ name }}\"}",
             [("name", "test")].iter().cloned().collect(),
-            OutputFormat::Json
-        ).unwrap();
+            OutputFormat::Json,
+        )
+        .unwrap();
         assert!(json_result.contains("\"name\""));
         assert!(json_result.contains("\"test\""));
     }

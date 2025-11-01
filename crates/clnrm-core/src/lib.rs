@@ -39,15 +39,14 @@ pub use error::{CleanroomError, Result};
 pub use policy::{Policy, SecurityLevel, SecurityPolicy};
 pub use scenario::scenario;
 
-pub use telemetry::{Export, OtelConfig, OtelGuard};
 pub use telemetry::weaver_controller::{
     ValidationReport as WeaverValidationReport, ValidationStatus, WeaverConfig, WeaverController,
 };
+pub use telemetry::{Export, OtelConfig, OtelGuard};
 // Type-safe Weaver coordination exports
 pub use telemetry::weaver_coordination::{
+    Running, Stopped, Unstarted, WeaverConfig as TypeSafeWeaverConfig,
     WeaverController as TypeSafeWeaverController,
-    WeaverConfig as TypeSafeWeaverConfig,
-    Running, Stopped, Unstarted,
 };
 
 pub use assertions::{cache, database, email_service, UserAssertions};
@@ -73,8 +72,9 @@ pub use services::surrealdb::SurrealDbPlugin;
 
 // Re-export template functionality from clnrm-template
 pub use clnrm_template::{
-    TemplateRenderer, TemplateContext, DeterminismConfig as TemplateDeterminismConfig, TemplateError,
-    render_template, render_template_file, is_template, get_cached_template_renderer,
+    get_cached_template_renderer, is_template, render_template, render_template_file,
+    DeterminismConfig as TemplateDeterminismConfig, TemplateContext, TemplateError,
+    TemplateRenderer,
 };
 
 pub use validation::otel::{OtelValidationConfig, OtelValidator, SpanAssertion, TraceAssertion};

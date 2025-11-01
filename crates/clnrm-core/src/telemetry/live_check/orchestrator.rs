@@ -10,14 +10,152 @@
 
 use std::marker::PhantomData;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, info, warn};
 
 use crate::error::{CleanroomError, Result};
-use crate::telemetry::live_check::{ConformanceReport, WeaverProcessManager, WeaverPorts};
+use crate::telemetry::live_check::WeaverProcessManager;
+
+// ============================================================================
+// Configuration Types
+// ============================================================================
+
+/// Configuration for live-check orchestration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LiveCheckConfig {
+    /// Enable live-check validation
+    pub enabled: bool,
+    /// Path to Weaver registry
+    pub registry_path: PathBuf,
+    /// OTLP gRPC port (None = auto-discover)
+    pub otlp_port: Option<u16>,
+    /// Admin HTTP port (None = auto-discover)
+    pub admin_port: Option<u16>,
+    /// Output directory for validation reports
+    pub output_dir: PathBuf,
+    /// Enable streaming output
+    pub stream: bool,
+    /// Fail fast on first violation
+    pub fail_fast: bool,
+}
+
+impl Default for LiveCheckConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            registry_path: PathBuf::from("registry"),
+            otlp_port: None,
+            admin_port: None,
+            output_dir: std::env::temp_dir().join("weaver-validation"),
+            stream: false,
+            fail_fast: false,
+        }
+    }
+}
+
+impl LiveCheckConfig {
+    /// Validate configuration
+    pub fn validate(&self) -> Result<()> {
+        // Port validation
+        if let Some(port) = self.otlp_port {
+            if port < 1024 {
+                return Err(CleanroomError::config_error(
+                    "OTLP port must be >= 1024 or None for auto-discovery",
+                ));
+            }
+        }
+
+        if let Some(port) = self.admin_port {
+            if port < 1024 {
+                return Err(CleanroomError::config_error(
+                    "Admin port must be >= 1024 or None for auto-discovery",
+                ));
+            }
+        }
+
+        if self.otlp_port.is_some()
+            && self.admin_port.is_some()
+            && self.otlp_port == self.admin_port
+        {
+            return Err(CleanroomError::config_error(
+                "OTLP and admin ports must be different",
+            ));
+        }
+
+        // Registry path validation
+        if self.registry_path.as_os_str().is_empty() {
+            return Err(CleanroomError::config_error(
+                "Registry path cannot be empty",
+            ));
+        }
+
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Validation Report Types
+// ============================================================================
+
+/// Validation status from Weaver
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ValidationStatus {
+    /// Validation passed (no violations)
+    Success,
+    /// Validation failed (violations detected)
+    Failure,
+}
+
+/// Validation report from Weaver live-check
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationReport {
+    /// Overall status
+    pub status: ValidationStatus,
+    /// Number of violations
+    pub violations: u32,
+    /// Number of improvements suggested
+    pub improvements: u32,
+    /// Number of informational messages
+    pub information: u32,
+    /// Registry coverage (0.0 - 1.0)
+    pub registry_coverage: f64,
+    /// Number of telemetry samples received
+    pub sample_count: u32,
+    /// Detailed violation/improvement messages
+    pub details: Vec<ValidationDetail>,
+}
+
+/// Detail entry in validation report
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidationDetail {
+    /// Level: "violation", "improvement", or "information"
+    pub level: String,
+    /// Metric or span name
+    pub metric_name: Option<String>,
+    /// Span name (if applicable)
+    pub span_name: Option<String>,
+    /// Human-readable message
+    pub message: String,
+    /// Registry file path
+    pub registry_path: Option<String>,
+}
+
+impl Default for ValidationReport {
+    fn default() -> Self {
+        Self {
+            status: ValidationStatus::Failure,
+            violations: 0,
+            improvements: 0,
+            information: 0,
+            registry_coverage: 0.0,
+            sample_count: 0,
+            details: Vec::new(),
+        }
+    }
+}
 
 // ============================================================================
 // State Marker Types
@@ -87,8 +225,9 @@ pub struct Completed {
 /// ```
 pub struct LiveCheckOrchestrator<State = Uninitialized> {
     state: PhantomData<State>,
-    weaver_manager: WeaverProcessManager,
-    config: LiveCheckConfig,
+    // Wrap in Option to allow moving during state transitions
+    weaver_manager: Option<WeaverProcessManager>,
+    config: Option<LiveCheckConfig>,
 
     // State-specific data stored in type-erased form
     // (accessed via state marker methods)
@@ -119,12 +258,16 @@ impl LiveCheckOrchestrator<Uninitialized> {
         debug!("Creating LiveCheckOrchestrator with config: {:?}", config);
 
         // Create process manager (does not start process yet)
-        let weaver_manager = WeaverProcessManager::new(&config)?;
+        let weaver_manager = WeaverProcessManager::new(
+            config.registry_path.clone(),
+            30, // 30 second inactivity timeout
+            config.output_dir.clone(),
+        )?;
 
         Ok(Self {
             state: PhantomData,
-            weaver_manager,
-            config,
+            weaver_manager: Some(weaver_manager),
+            config: Some(config),
             running_state: None,
             completed_state: None,
         })
@@ -159,25 +302,29 @@ impl LiveCheckOrchestrator<Uninitialized> {
     pub async fn start_weaver(mut self) -> Result<LiveCheckOrchestrator<WeaverRunning>> {
         info!("Starting Weaver live-check process");
 
-        // Start the Weaver process and get coordination metadata
-        let coordination = self.weaver_manager.start().await?;
+        // Start the Weaver process and get ports
+        let weaver_manager = self
+            .weaver_manager
+            .as_mut()
+            .expect("weaver_manager must be Some in Uninitialized state");
+        let ports = weaver_manager.start().await?;
 
         info!(
             "Weaver started: OTLP gRPC port {}, Admin port {}",
-            coordination.otlp_grpc_port, coordination.admin_port
+            ports.otlp_grpc, ports.admin_http
         );
 
         // Create running state data
         let running_state = WeaverRunning {
-            otlp_port: coordination.otlp_grpc_port,
-            admin_port: coordination.admin_port,
+            otlp_port: ports.otlp_grpc,
+            admin_port: ports.admin_http,
             start_time: Instant::now(),
         };
 
         Ok(LiveCheckOrchestrator {
             state: PhantomData,
-            weaver_manager: self.weaver_manager,
-            config: self.config,
+            weaver_manager: self.weaver_manager.take(),
+            config: self.config.take(),
             running_state: Some(running_state),
             completed_state: None,
         })
@@ -207,7 +354,12 @@ impl LiveCheckOrchestrator<Uninitialized> {
     /// # }
     /// ```
     pub async fn start_with_fallback(self) -> Result<OrchestrationMode> {
-        let registry_path = self.config.registry_path.clone();
+        let registry_path = self
+            .config
+            .as_ref()
+            .expect("config must be Some in Uninitialized state")
+            .registry_path
+            .clone();
 
         match self.start_weaver().await {
             Ok(running) => Ok(OrchestrationMode::LiveCheck(running)),
@@ -276,18 +428,19 @@ impl LiveCheckOrchestrator<WeaverRunning> {
     /// - `Ok(false)` - Weaver is unhealthy (process died)
     /// - `Err(...)` - Health check failed (cannot determine status)
     pub async fn health_check(&self) -> Result<bool> {
-        self.weaver_manager.health_check().await
+        self.weaver_manager
+            .as_ref()
+            .expect("weaver_manager must be Some in WeaverRunning state")
+            .health_check()
+            .await
     }
 
-    /// Check if validation is currently passing (streaming mode)
-    ///
-    /// In streaming mode, Weaver reports violations in real-time.
-    /// This method returns `false` if any violations have been detected so far.
-    ///
-    /// Note: This is a point-in-time check. The status may change as more
-    /// telemetry is validated.
-    pub fn is_passing(&self) -> bool {
-        self.weaver_manager.is_passing()
+    /// Get process ID of running Weaver
+    pub fn pid(&self) -> Option<u32> {
+        self.weaver_manager
+            .as_ref()
+            .expect("weaver_manager must be Some in WeaverRunning state")
+            .pid()
     }
 
     /// Stop Weaver and collect conformance report
@@ -326,7 +479,8 @@ impl LiveCheckOrchestrator<WeaverRunning> {
     /// # }
     /// ```
     pub async fn stop_weaver(mut self) -> Result<LiveCheckOrchestrator<Completed>> {
-        let start_time = self.running_state
+        let start_time = self
+            .running_state
             .as_ref()
             .expect("running_state must be Some in WeaverRunning state")
             .start_time;
@@ -334,10 +488,15 @@ impl LiveCheckOrchestrator<WeaverRunning> {
         info!("Stopping Weaver and collecting conformance report");
 
         // Stop the Weaver process (graceful shutdown)
-        self.weaver_manager.stop().await?;
+        let weaver_manager = self
+            .weaver_manager
+            .as_mut()
+            .expect("weaver_manager must be Some in WeaverRunning state");
+        weaver_manager.stop().await?;
 
-        // Parse conformance report from disk
-        let report = self.weaver_manager.collect_report()?;
+        // Collect report as string and parse it
+        let report_json = weaver_manager.collect_report()?;
+        let report = Self::parse_report(&report_json)?;
 
         let runtime_duration_ms = start_time.elapsed().as_millis() as u64;
 
@@ -359,11 +518,50 @@ impl LiveCheckOrchestrator<WeaverRunning> {
 
         Ok(LiveCheckOrchestrator {
             state: PhantomData,
-            weaver_manager: self.weaver_manager,
-            config: self.config,
+            weaver_manager: self.weaver_manager.take(),
+            config: self.config.take(),
             running_state: None,
             completed_state: Some(completed_state),
         })
+    }
+
+    /// Parse report JSON string to ValidationReport
+    fn parse_report(json: &str) -> Result<ValidationReport> {
+        serde_json::from_str(json).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to parse validation report: {}", e))
+        })
+    }
+
+    /// Get reference to config (for StopCoordinator)
+    pub fn config(&self) -> &LiveCheckConfig {
+        self.config
+            .as_ref()
+            .expect("config must be Some in WeaverRunning state")
+    }
+
+    /// Stop Weaver gracefully (for StopCoordinator Phase 2)
+    ///
+    /// This sends SIGHUP to Weaver and waits for it to exit gracefully.
+    /// Returns Ok(()) if Weaver exits within timeout, Err otherwise.
+    pub async fn stop_weaver_gracefully(&mut self) -> Result<()> {
+        let weaver_manager = self
+            .weaver_manager
+            .as_mut()
+            .expect("weaver_manager must be Some in WeaverRunning state");
+
+        weaver_manager.stop().await
+    }
+
+    /// Force kill Weaver (for StopCoordinator Phase 2 timeout)
+    ///
+    /// This sends SIGKILL to forcefully terminate Weaver.
+    pub fn force_kill_weaver(&mut self) -> Result<()> {
+        let weaver_manager = self
+            .weaver_manager
+            .as_mut()
+            .expect("weaver_manager must be Some in WeaverRunning state");
+
+        weaver_manager.force_kill()
     }
 }
 
@@ -376,7 +574,8 @@ impl LiveCheckOrchestrator<Completed> {
     ///
     /// Only available in Completed state (after stopping Weaver).
     pub fn report(&self) -> &ValidationReport {
-        &self.completed_state
+        &self
+            .completed_state
             .as_ref()
             .expect("completed_state must be Some in Completed state")
             .report
@@ -393,8 +592,9 @@ impl LiveCheckOrchestrator<Completed> {
     }
 
     /// Consume orchestrator and return conformance report
-    pub fn into_report(self) -> ValidationReport {
+    pub fn into_report(mut self) -> ValidationReport {
         self.completed_state
+            .take()
             .expect("completed_state must be Some in Completed state")
             .report
     }
@@ -454,9 +654,7 @@ impl LiveCheckOrchestrator<Completed> {
             summary.push_str("⚠️  ERROR: No telemetry samples received!\n\n");
             summary.push_str("Possible causes:\n");
             summary.push_str("  • OTLP exporter not configured\n");
-            summary.push_str("  • OTLP endpoint incorrect (should be: ");
-            summary.push_str(&format!("http://127.0.0.1:{})\n",
-                self.config.otlp_port.unwrap_or(0)));
+            summary.push_str("  • OTLP endpoint incorrect\n");
             summary.push_str("  • Network connectivity issues\n");
             summary.push_str("  • Telemetry initialization failed\n\n");
         }
@@ -480,11 +678,14 @@ impl LiveCheckOrchestrator<Completed> {
                     detail.message
                 ));
             }
-            summary.push_str("\n");
+            summary.push('\n');
         }
 
         if report.improvements > 0 {
-            summary.push_str(&format!("💡 {} improvements suggested\n", report.improvements));
+            summary.push_str(&format!(
+                "💡 {} improvements suggested\n",
+                report.improvements
+            ));
         }
 
         if self.passed() {
@@ -586,7 +787,9 @@ impl Drop for LiveCheckGuard {
             warn!("LiveCheckGuard dropped without explicit stop - forcing cleanup");
 
             // Force cleanup even on panic (best-effort)
-            let _ = orchestrator.weaver_manager.force_kill();
+            if let Some(weaver_manager) = orchestrator.weaver_manager.as_mut() {
+                let _ = weaver_manager.force_kill();
+            }
         }
     }
 }
@@ -659,7 +862,10 @@ pub async fn run_with_graceful_fallback(
                 report: Some(completed.into_report()),
             })
         }
-        OrchestrationMode::RegistryCheckOnly { registry_path, reason } => {
+        OrchestrationMode::RegistryCheckOnly {
+            registry_path,
+            reason,
+        } => {
             // Live-check unavailable - use static registry check
             warn!("Live-check unavailable: {}", reason);
             info!("Falling back to static registry check");
@@ -704,7 +910,12 @@ fn run_registry_check(registry_path: &std::path::Path) -> Result<bool> {
     info!("Running static registry check: {}", registry_path.display());
 
     let output = Command::new("weaver")
-        .args(["registry", "check", "-r", &registry_path.display().to_string()])
+        .args([
+            "registry",
+            "check",
+            "-r",
+            &registry_path.display().to_string(),
+        ])
         .output()
         .map_err(|e| {
             CleanroomError::internal_error(format!(
@@ -714,7 +925,10 @@ fn run_registry_check(registry_path: &std::path::Path) -> Result<bool> {
         })?;
 
     if !output.status.success() {
-        error!("Registry check failed:\n{}", String::from_utf8_lossy(&output.stderr));
+        error!(
+            "Registry check failed:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         return Ok(false);
     }
 

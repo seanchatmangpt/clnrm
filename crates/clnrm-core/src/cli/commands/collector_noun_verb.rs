@@ -1,44 +1,60 @@
 //! Collector command implementation using noun-verb pattern
 
 use crate::error::Result;
-use clap_noun_verb::{noun, verb, VerbArgs, NounVerbError};
+use clap_noun_verb::{noun, verb, NounVerbError, VerbArgs};
 
 /// Create the collector noun command
 pub fn collector_command() -> impl clap_noun_verb::NounCommand {
-    noun!("collector", "Manage OpenTelemetry collector", [
-        verb!("up", "Start the collector", |_args: &VerbArgs| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    start_collector().await
-                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
+    noun!(
+        "collector",
+        "Manage OpenTelemetry collector",
+        [
+            verb!("up", "Start the collector", |_args: &VerbArgs| {
+                tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        start_collector()
+                            .await
+                            .map_err(|e| NounVerbError::ExecutionError {
+                                message: e.to_string(),
+                            })
+                    })
                 })
-            })
-        }),
-        verb!("down", "Stop the collector", |_args: &VerbArgs| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    stop_collector().await
-                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
+            }),
+            verb!("down", "Stop the collector", |_args: &VerbArgs| {
+                tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        stop_collector()
+                            .await
+                            .map_err(|e| NounVerbError::ExecutionError {
+                                message: e.to_string(),
+                            })
+                    })
                 })
-            })
-        }),
-        verb!("status", "Show collector status", |_args: &VerbArgs| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    show_collector_status().await
-                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
+            }),
+            verb!("status", "Show collector status", |_args: &VerbArgs| {
+                tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        show_collector_status()
+                            .await
+                            .map_err(|e| NounVerbError::ExecutionError {
+                                message: e.to_string(),
+                            })
+                    })
                 })
-            })
-        }),
-        verb!("logs", "Show collector logs", |_args: &VerbArgs| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    show_collector_logs().await
-                        .map_err(|e| NounVerbError::ExecutionError { message: e.to_string() })
+            }),
+            verb!("logs", "Show collector logs", |_args: &VerbArgs| {
+                tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        show_collector_logs()
+                            .await
+                            .map_err(|e| NounVerbError::ExecutionError {
+                                message: e.to_string(),
+                            })
+                    })
                 })
-            })
-        }),
-    ])
+            }),
+        ]
+    )
 }
 
 /// Start the OpenTelemetry collector
@@ -77,7 +93,3 @@ async fn show_collector_logs() -> Result<()> {
     println!("[2024-01-01 10:05:23] INFO: Received 150 spans");
     Ok(())
 }
-
-
-
-

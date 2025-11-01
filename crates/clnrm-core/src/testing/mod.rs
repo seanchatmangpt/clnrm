@@ -517,9 +517,9 @@ service = "db"
 
     let config = parse_toml_config(toml)?;
 
-    let services = config.services.ok_or_else(|| {
-        CleanroomError::validation_error("Services not parsed")
-    })?;
+    let services = config
+        .services
+        .ok_or_else(|| CleanroomError::validation_error("Services not parsed"))?;
 
     if !services.contains_key("db") {
         return Err(CleanroomError::validation_error("Service 'db' not found"));
@@ -876,10 +876,14 @@ command = ["echo", "test"]
 
     if let Some(meta) = &config.meta {
         if meta.name != "cli_test" {
-            return Err(CleanroomError::validation_error("CLI parsing: name mismatch"));
+            return Err(CleanroomError::validation_error(
+                "CLI parsing: name mismatch",
+            ));
         }
     } else {
-        return Err(CleanroomError::validation_error("CLI parsing: meta not found"));
+        return Err(CleanroomError::validation_error(
+            "CLI parsing: meta not found",
+        ));
     }
 
     Ok(())
@@ -973,7 +977,12 @@ async fn test_cli_report_generation() -> Result<()> {
     }
 
     let config = ReportConfig {
-        json_path: Some(report_dir.join("results.json").to_string_lossy().to_string()),
+        json_path: Some(
+            report_dir
+                .join("results.json")
+                .to_string_lossy()
+                .to_string(),
+        ),
         junit_path: None,
         digest_path: None,
     };
@@ -989,7 +998,9 @@ async fn test_cli_report_generation() -> Result<()> {
 
     // Verify report was created
     if !report_dir.exists() {
-        return Err(CleanroomError::validation_error("Report directory not created"));
+        return Err(CleanroomError::validation_error(
+            "Report directory not created",
+        ));
     }
 
     Ok(())
@@ -1013,7 +1024,9 @@ async fn test_cli_format() -> Result<()> {
 
     // Verify it contains key elements
     if !formatted.contains("[meta]") || !formatted.contains("name") {
-        return Err(CleanroomError::validation_error("Formatted TOML missing key elements"));
+        return Err(CleanroomError::validation_error(
+            "Formatted TOML missing key elements",
+        ));
     }
 
     Ok(())
@@ -1128,8 +1141,12 @@ async fn test_otel_exporters() -> Result<()> {
 
     // Test that different export types can be created
     let _stdout = Export::Stdout;
-    let _otlp_http = Export::OtlpHttp { endpoint: "http://localhost:4318" };
-    let _otlp_grpc = Export::OtlpGrpc { endpoint: "http://localhost:4317" };
+    let _otlp_http = Export::OtlpHttp {
+        endpoint: "http://localhost:4318",
+    };
+    let _otlp_grpc = Export::OtlpGrpc {
+        endpoint: "http://localhost:4317",
+    };
 
     // Verify types can be matched
     match _stdout {

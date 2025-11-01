@@ -12,8 +12,8 @@ use std::time::Duration;
 
 use clnrm_core::error::Result;
 use clnrm_core::telemetry::live_check::{
-    GracefulFallbackResult, LiveCheckConfig, LiveCheckGuard, LiveCheckOrchestrator,
-    OrchestrationMode, ValidationStatus, run_with_graceful_fallback,
+    run_with_graceful_fallback, GracefulFallbackResult, LiveCheckConfig, LiveCheckGuard,
+    LiveCheckOrchestrator, OrchestrationMode, ValidationStatus,
 };
 
 // ============================================================================
@@ -36,8 +36,8 @@ fn test_config() -> LiveCheckConfig {
     LiveCheckConfig {
         enabled: true,
         registry_path: PathBuf::from("registry"),
-        otlp_port: None,    // Auto-discover
-        admin_port: None,   // Auto-discover
+        otlp_port: None,  // Auto-discover
+        admin_port: None, // Auto-discover
         output_dir: temp_dir,
         stream: false,
         fail_fast: false,
@@ -158,9 +158,7 @@ async fn test_orchestrator_endpoint_format() -> Result<()> {
     }
 
     let config = test_config();
-    let running = LiveCheckOrchestrator::new(config)?
-        .start_weaver()
-        .await?;
+    let running = LiveCheckOrchestrator::new(config)?.start_weaver().await?;
 
     // Test endpoint format
     let endpoint = running.otlp_endpoint();
@@ -190,9 +188,7 @@ async fn test_raii_guard_cleanup() -> Result<()> {
     }
 
     let config = test_config();
-    let orchestrator = LiveCheckOrchestrator::new(config)?
-        .start_weaver()
-        .await?;
+    let orchestrator = LiveCheckOrchestrator::new(config)?.start_weaver().await?;
 
     let otlp_port = orchestrator.otlp_port();
 
@@ -221,9 +217,7 @@ async fn test_guard_automatic_cleanup() -> Result<()> {
     }
 
     let config = test_config();
-    let orchestrator = LiveCheckOrchestrator::new(config)?
-        .start_weaver()
-        .await?;
+    let orchestrator = LiveCheckOrchestrator::new(config)?.start_weaver().await?;
 
     {
         let _guard = LiveCheckGuard::new(orchestrator);
@@ -284,7 +278,10 @@ async fn test_fallback_to_registry_check() -> Result<()> {
 
     // Should fallback to registry check
     match mode {
-        OrchestrationMode::RegistryCheckOnly { registry_path, reason } => {
+        OrchestrationMode::RegistryCheckOnly {
+            registry_path,
+            reason,
+        } => {
             assert!(reason.len() > 0, "Should have fallback reason");
             assert_eq!(registry_path, PathBuf::from("/nonexistent/registry"));
         }
@@ -353,7 +350,10 @@ async fn test_graceful_fallback_with_invalid_registry() -> Result<()> {
     }
 
     // Should not have full report (registry check only)
-    assert!(result.report.is_none(), "Registry check should not provide report");
+    assert!(
+        result.report.is_none(),
+        "Registry check should not provide report"
+    );
 
     Ok(())
 }
@@ -370,9 +370,7 @@ async fn test_health_check() -> Result<()> {
     }
 
     let config = test_config();
-    let running = LiveCheckOrchestrator::new(config)?
-        .start_weaver()
-        .await?;
+    let running = LiveCheckOrchestrator::new(config)?.start_weaver().await?;
 
     // Health check should return true (process alive)
     let health = running.health_check().await?;
@@ -385,20 +383,18 @@ async fn test_health_check() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_is_passing() -> Result<()> {
+async fn test_pid() -> Result<()> {
     if !weaver_available() {
         eprintln!("Skipping test: Weaver not available");
         return Ok(());
     }
 
     let config = test_config();
-    let running = LiveCheckOrchestrator::new(config)?
-        .start_weaver()
-        .await?;
+    let running = LiveCheckOrchestrator::new(config)?.start_weaver().await?;
 
-    // Should be passing initially (no violations yet)
-    let passing = running.is_passing();
-    assert!(passing, "Should be passing initially");
+    // Should have PID
+    let pid = running.pid();
+    assert!(pid.is_some(), "Should have PID");
 
     // Stop
     let _ = running.stop_weaver().await?;
@@ -442,8 +438,7 @@ async fn test_report_structure() -> Result<()> {
 
     // Check status is valid
     assert!(
-        report.status == ValidationStatus::Success
-            || report.status == ValidationStatus::Failure
+        report.status == ValidationStatus::Success || report.status == ValidationStatus::Failure
     );
 
     Ok(())
@@ -669,16 +664,8 @@ async fn test_parallel_orchestrators() -> Result<()> {
 
     // Start both concurrently
     let (result1, result2) = tokio::join!(
-        async {
-            LiveCheckOrchestrator::new(config1)?
-                .start_weaver()
-                .await
-        },
-        async {
-            LiveCheckOrchestrator::new(config2)?
-                .start_weaver()
-                .await
-        }
+        async { LiveCheckOrchestrator::new(config1)?.start_weaver().await },
+        async { LiveCheckOrchestrator::new(config2)?.start_weaver().await }
     );
 
     let running1 = result1?;

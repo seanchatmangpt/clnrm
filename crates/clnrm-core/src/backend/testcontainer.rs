@@ -271,7 +271,8 @@ impl TestcontainerBackend {
                         0
                     }
                 };
-                container_request = container_request.with_env_var("RANDOM", random_value.to_string());
+                container_request =
+                    container_request.with_env_var("RANDOM", random_value.to_string());
             }
 
             // Set FAKETIME env vars for clock freezing (requires libfaketime in container)
@@ -279,7 +280,10 @@ impl TestcontainerBackend {
                 container_request = container_request.with_env_var("FAKETIME", frozen_clock);
                 // LD_PRELOAD for libfaketime - assumes libfaketime.so.1 is in standard location
                 // Users must ensure libfaketime is installed in their container image
-                container_request = container_request.with_env_var("LD_PRELOAD", "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1");
+                container_request = container_request.with_env_var(
+                    "LD_PRELOAD",
+                    "/usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1",
+                );
                 // Make faketime work in multi-threaded environments
                 container_request = container_request.with_env_var("FAKETIME_NO_CACHE", "1");
             }
@@ -287,7 +291,8 @@ impl TestcontainerBackend {
             // Set CLEANROOM_ALLOWED_PORTS for deterministic port allocation
             if engine.config().has_deterministic_ports() {
                 if let Ok(port_list) = engine.get_port_pool_env() {
-                    container_request = container_request.with_env_var("CLEANROOM_ALLOWED_PORTS", port_list);
+                    container_request =
+                        container_request.with_env_var("CLEANROOM_ALLOWED_PORTS", port_list);
                 }
             }
         }

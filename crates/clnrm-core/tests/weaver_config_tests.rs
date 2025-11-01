@@ -107,16 +107,26 @@ fn test_parse_complete_weaver_config() -> Result<()> {
     assert!(weaver.fail_fast);
 
     // Validation config
-    let validation = weaver.validation.expect("Validation config should be present");
-    assert_eq!(validation.mode, clnrm_core::config::weaver::ValidationMode::Strict);
+    let validation = weaver
+        .validation
+        .expect("Validation config should be present");
+    assert_eq!(
+        validation.mode,
+        clnrm_core::config::weaver::ValidationMode::Strict
+    );
     assert!(validation.fail_on_violation);
     assert!(!validation.fail_on_missing_optional);
     assert_eq!(validation.coverage_threshold, 95.0);
     assert_eq!(validation.inactivity_timeout, 10);
-    assert_eq!(validation.diagnostic_format, clnrm_core::config::weaver::DiagnosticFormat::Json);
+    assert_eq!(
+        validation.diagnostic_format,
+        clnrm_core::config::weaver::DiagnosticFormat::Json
+    );
 
     // Collector config
-    let collector = weaver.collector.expect("Collector config should be present");
+    let collector = weaver
+        .collector
+        .expect("Collector config should be present");
     assert!(!collector.use_existing);
     assert!(collector.auto_start);
     assert_eq!(collector.image, "otel/opentelemetry-collector:0.91.0");
@@ -135,7 +145,9 @@ fn test_parse_complete_weaver_config() -> Result<()> {
     assert_eq!(reports.max_samples_per_violation, 5);
 
     // Performance config
-    let perf = weaver.performance.expect("Performance config should be present");
+    let perf = weaver
+        .performance
+        .expect("Performance config should be present");
     assert_eq!(perf.buffer_size, 2097152);
     assert_eq!(perf.max_workers, 8);
     assert!(perf.batching);
@@ -190,11 +202,18 @@ fn test_parse_80_20_validation_mode() -> Result<()> {
     let config: TestConfig = toml::from_str(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
-    let validation = weaver.validation.expect("Validation config should be present");
-    assert_eq!(validation.mode, clnrm_core::config::weaver::ValidationMode::EightyTwenty);
+    let validation = weaver
+        .validation
+        .expect("Validation config should be present");
+    assert_eq!(
+        validation.mode,
+        clnrm_core::config::weaver::ValidationMode::EightyTwenty
+    );
     assert_eq!(validation.coverage_threshold, 80.0);
 
-    let eighty_twenty = weaver.eighty_twenty.expect("80/20 config should be present");
+    let eighty_twenty = weaver
+        .eighty_twenty
+        .expect("80/20 config should be present");
     assert!(eighty_twenty.enabled);
     assert_eq!(eighty_twenty.critical_spans.len(), 3);
     assert_eq!(eighty_twenty.required_attributes.len(), 4);
@@ -228,9 +247,14 @@ fn test_parse_lenient_validation_mode() -> Result<()> {
 
     let config: TestConfig = toml::from_str(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
-    let validation = weaver.validation.expect("Validation config should be present");
+    let validation = weaver
+        .validation
+        .expect("Validation config should be present");
 
-    assert_eq!(validation.mode, clnrm_core::config::weaver::ValidationMode::Lenient);
+    assert_eq!(
+        validation.mode,
+        clnrm_core::config::weaver::ValidationMode::Lenient
+    );
     assert!(!validation.fail_on_violation);
     assert_eq!(validation.coverage_threshold, 50.0);
 
@@ -259,10 +283,15 @@ fn test_parse_existing_collector_config() -> Result<()> {
 
     let config: TestConfig = toml::from_str(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
-    let collector = weaver.collector.expect("Collector config should be present");
+    let collector = weaver
+        .collector
+        .expect("Collector config should be present");
 
     assert!(collector.use_existing);
-    assert_eq!(collector.endpoint, Some("http://localhost:4317".to_string()));
+    assert_eq!(
+        collector.endpoint,
+        Some("http://localhost:4317".to_string())
+    );
     assert!(!collector.auto_start);
 
     Ok(())
@@ -331,7 +360,10 @@ fn test_validation_fails_for_invalid_otlp_port() {
 
     let result = config.validate();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("OTLP port must be >= 1024"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("OTLP port must be >= 1024"));
 }
 
 #[test]
@@ -341,7 +373,10 @@ fn test_validation_fails_for_invalid_admin_port() {
 
     let result = config.validate();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Admin port must be >= 1024"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Admin port must be >= 1024"));
 }
 
 #[test]
@@ -352,7 +387,10 @@ fn test_validation_fails_for_port_conflict() {
 
     let result = config.validate();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("must be different"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("must be different"));
 }
 
 #[test]
@@ -375,7 +413,7 @@ fn test_validation_succeeds_for_auto_discover_ports() {
 
 #[test]
 fn test_validation_fails_for_invalid_coverage_threshold() {
-    use clnrm_core::config::weaver::{ValidationConfig, ValidationMode, DiagnosticFormat};
+    use clnrm_core::config::weaver::{DiagnosticFormat, ValidationConfig, ValidationMode};
 
     let validation_config = ValidationConfig {
         mode: ValidationMode::Strict,
@@ -388,12 +426,15 @@ fn test_validation_fails_for_invalid_coverage_threshold() {
 
     let result = validation_config.validate();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("between 0.0 and 100.0"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("between 0.0 and 100.0"));
 }
 
 #[test]
 fn test_validation_fails_for_zero_inactivity_timeout() {
-    use clnrm_core::config::weaver::{ValidationConfig, ValidationMode, DiagnosticFormat};
+    use clnrm_core::config::weaver::{DiagnosticFormat, ValidationConfig, ValidationMode};
 
     let validation_config = ValidationConfig {
         mode: ValidationMode::Strict,
@@ -430,7 +471,10 @@ fn test_validation_fails_for_80_20_mode_without_config() {
     let result = config.validate();
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("80/20 validation mode requires"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("80/20 validation mode requires"));
 }
 
 #[test]
@@ -449,7 +493,10 @@ fn test_validation_fails_for_80_20_without_critical_spans() {
 
     let result = config.validate();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("at least one critical span"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("at least one critical span"));
 }
 
 #[test]
@@ -468,7 +515,10 @@ fn test_validation_fails_for_80_20_without_required_attributes() {
 
     let result = config.validate();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("at least one required attribute"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("at least one required attribute"));
 }
 
 #[test]
@@ -486,7 +536,10 @@ fn test_validation_fails_for_use_existing_without_endpoint() {
 
     let result = config.validate();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("endpoint must be provided"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("endpoint must be provided"));
 }
 
 #[test]
@@ -504,7 +557,10 @@ fn test_validation_fails_for_invalid_endpoint_format() {
 
     let result = config.validate();
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("must start with http://"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("must start with http://"));
 }
 
 #[test]
@@ -594,13 +650,23 @@ fn test_v1_2_1_format_compatibility() -> Result<()> {
 fn test_validation_mode_enum_parsing() -> Result<()> {
     let test_cases = vec![
         ("strict", clnrm_core::config::weaver::ValidationMode::Strict),
-        ("lenient", clnrm_core::config::weaver::ValidationMode::Lenient),
-        ("80_20", clnrm_core::config::weaver::ValidationMode::EightyTwenty),
-        ("minimal", clnrm_core::config::weaver::ValidationMode::Minimal),
+        (
+            "lenient",
+            clnrm_core::config::weaver::ValidationMode::Lenient,
+        ),
+        (
+            "80_20",
+            clnrm_core::config::weaver::ValidationMode::EightyTwenty,
+        ),
+        (
+            "minimal",
+            clnrm_core::config::weaver::ValidationMode::Minimal,
+        ),
     ];
 
     for (mode_str, expected_mode) in test_cases {
-        let toml = format!(r#"
+        let toml = format!(
+            r#"
             [test.metadata]
             name = "mode_test"
 
@@ -613,11 +679,15 @@ fn test_validation_mode_enum_parsing() -> Result<()> {
             [[steps]]
             name = "test"
             command = ["echo", "hello"]
-        "#, mode_str);
+        "#,
+            mode_str
+        );
 
         let config: TestConfig = toml::from_str(&toml)?;
         let weaver = config.weaver.expect("Weaver config should be present");
-        let validation = weaver.validation.expect("Validation config should be present");
+        let validation = weaver
+            .validation
+            .expect("Validation config should be present");
 
         assert_eq!(validation.mode, expected_mode);
     }
@@ -630,12 +700,16 @@ fn test_diagnostic_format_enum_parsing() -> Result<()> {
     let test_cases = vec![
         ("ansi", clnrm_core::config::weaver::DiagnosticFormat::Ansi),
         ("json", clnrm_core::config::weaver::DiagnosticFormat::Json),
-        ("gh_workflow_command", clnrm_core::config::weaver::DiagnosticFormat::GhWorkflowCommand),
+        (
+            "gh_workflow_command",
+            clnrm_core::config::weaver::DiagnosticFormat::GhWorkflowCommand,
+        ),
         ("auto", clnrm_core::config::weaver::DiagnosticFormat::Auto),
     ];
 
     for (format_str, expected_format) in test_cases {
-        let toml = format!(r#"
+        let toml = format!(
+            r#"
             [test.metadata]
             name = "format_test"
 
@@ -648,11 +722,15 @@ fn test_diagnostic_format_enum_parsing() -> Result<()> {
             [[steps]]
             name = "test"
             command = ["echo", "hello"]
-        "#, format_str);
+        "#,
+            format_str
+        );
 
         let config: TestConfig = toml::from_str(&toml)?;
         let weaver = config.weaver.expect("Weaver config should be present");
-        let validation = weaver.validation.expect("Validation config should be present");
+        let validation = weaver
+            .validation
+            .expect("Validation config should be present");
 
         assert_eq!(validation.diagnostic_format, expected_format);
     }
@@ -711,7 +789,9 @@ fn test_empty_optional_attributes_allowed() -> Result<()> {
 
     let config: TestConfig = toml::from_str(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
-    let eighty_twenty = weaver.eighty_twenty.expect("80/20 config should be present");
+    let eighty_twenty = weaver
+        .eighty_twenty
+        .expect("80/20 config should be present");
 
     assert!(eighty_twenty.optional_attributes.is_empty());
     config.validate()?;
@@ -803,8 +883,13 @@ fn test_ci_cd_pipeline_config() -> Result<()> {
     let config: TestConfig = toml::from_str(toml)?;
     let weaver = config.weaver.expect("Weaver config should be present");
 
-    let validation = weaver.validation.expect("Validation config should be present");
-    assert_eq!(validation.diagnostic_format, clnrm_core::config::weaver::DiagnosticFormat::GhWorkflowCommand);
+    let validation = weaver
+        .validation
+        .expect("Validation config should be present");
+    assert_eq!(
+        validation.diagnostic_format,
+        clnrm_core::config::weaver::DiagnosticFormat::GhWorkflowCommand
+    );
     assert_eq!(validation.coverage_threshold, 90.0);
 
     let reports = weaver.reports.expect("Reports config should be present");

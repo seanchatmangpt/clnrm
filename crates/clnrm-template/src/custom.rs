@@ -6,11 +6,11 @@
 //! - Function registry for managing custom extensions
 //! - Type-safe function signatures
 
-use crate::error::{TemplateError, Result};
+use crate::error::{Result, TemplateError};
 use crate::renderer::TemplateRenderer;
 use serde_json::Value;
 use std::collections::HashMap;
-use tera::{Function, Filter, Tera};
+use tera::{Filter, Function, Tera};
 
 /// Custom function for template rendering
 ///
@@ -133,14 +133,14 @@ impl FunctionRegistry {
     ///
     /// # Arguments
     /// * `tera` - Tera instance to register with
-    pub fn register_all(&self, tera: &mut Tera) -> Result<()> {
-        for func in &self.functions {
+    pub fn register_all(&self, _tera: &mut Tera) -> Result<()> {
+        for _func in &self.functions {
             // We need to downcast to get the name for registration
             // This is a limitation of the current design
             // In a real implementation, we'd store the name separately
         }
 
-        for filter in &self.filters {
+        for _filter in &self.filters {
             // Same limitation applies
         }
 
@@ -166,11 +166,7 @@ impl FunctionRegistry {
 /// * `tera` - Tera instance to register with
 /// * `name` - Function name for template usage
 /// * `func` - Function implementation
-pub fn register_custom_function<F>(
-    tera: &mut Tera,
-    name: &str,
-    func: F,
-) -> Result<()>
+pub fn register_custom_function<F>(tera: &mut Tera, name: &str, func: F) -> Result<()>
 where
     F: Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static,
 {
@@ -185,11 +181,7 @@ where
 /// * `tera` - Tera instance to register with
 /// * `name` - Filter name for template usage
 /// * `filter` - Filter implementation
-pub fn register_custom_filter<F>(
-    tera: &mut Tera,
-    name: &str,
-    filter: F,
-) -> Result<()>
+pub fn register_custom_filter<F>(tera: &mut Tera, name: &str, filter: F) -> Result<()>
 where
     F: Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static,
 {
@@ -201,13 +193,17 @@ where
 /// Common custom function implementations for reuse
 ///
 /// Create a simple function that returns a static string
-pub fn simple_string_function(value: &str) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
+pub fn simple_string_function(
+    value: &str,
+) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
     let value = value.to_string();
     move |_| Ok(Value::String(value.clone()))
 }
 
 /// Create a function that formats arguments
-pub fn format_function(format_str: &str) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
+pub fn format_function(
+    format_str: &str,
+) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + '_ {
     let format_str = format_str.to_string();
     move |args| {
         let mut result = format_str.clone();
@@ -226,7 +222,9 @@ pub fn format_function(format_str: &str) -> impl Fn(&HashMap<String, Value>) -> 
 }
 
 /// Create a function that performs arithmetic operations
-pub fn arithmetic_function(operation: ArithmeticOp) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
+pub fn arithmetic_function(
+    operation: ArithmeticOp,
+) -> impl Fn(&HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
     move |args| {
         let a = args.get("a").and_then(|v| v.as_f64()).unwrap_or(0.0);
         let b = args.get("b").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -237,13 +235,17 @@ pub fn arithmetic_function(operation: ArithmeticOp) -> impl Fn(&HashMap<String, 
             ArithmeticOp::Multiply => a * b,
             ArithmeticOp::Divide => {
                 if b == 0.0 {
-                    return Err(TemplateError::ValidationError("Division by zero".to_string()));
+                    return Err(TemplateError::ValidationError(
+                        "Division by zero".to_string(),
+                    ));
                 }
                 a / b
             }
         };
 
-        Ok(Value::Number(serde_json::Number::from_f64(result).unwrap_or(serde_json::Number::from(0))))
+        Ok(Value::Number(
+            serde_json::Number::from_f64(result).unwrap_or(serde_json::Number::from(0)),
+        ))
     }
 }
 
@@ -263,58 +265,57 @@ pub enum ArithmeticOp {
 /// Common custom filter implementations
 ///
 /// Create a filter that converts values to uppercase
-pub fn uppercase_filter() -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
-    |value, _args| {
-        match value {
-            Value::String(s) => Ok(Value::String(s.to_uppercase())),
-            _ => Ok(value.clone()),
-        }
+pub fn uppercase_filter(
+) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
+    |value, _args| match value {
+        Value::String(s) => Ok(Value::String(s.to_uppercase())),
+        _ => Ok(value.clone()),
     }
 }
 
 /// Create a filter that converts values to lowercase
-pub fn lowercase_filter() -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
-    |value, _args| {
-        match value {
-            Value::String(s) => Ok(Value::String(s.to_lowercase())),
-            _ => Ok(value.clone()),
-        }
+pub fn lowercase_filter(
+) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
+    |value, _args| match value {
+        Value::String(s) => Ok(Value::String(s.to_lowercase())),
+        _ => Ok(value.clone()),
     }
 }
 
 /// Create a filter that truncates strings
-pub fn truncate_filter(max_len: usize) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
-    move |value, _args| {
-        match value {
-            Value::String(s) => {
-                if s.len() > max_len {
-                    Ok(Value::String(format!("{}...", &s[..max_len])))
-                } else {
-                    Ok(Value::String(s.clone()))
-                }
+pub fn truncate_filter(
+    max_len: usize,
+) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
+    move |value, _args| match value {
+        Value::String(s) => {
+            if s.len() > max_len {
+                Ok(Value::String(format!("{}...", &s[..max_len])))
+            } else {
+                Ok(Value::String(s.clone()))
             }
-            _ => Ok(value.clone()),
         }
+        _ => Ok(value.clone()),
     }
 }
 
 /// Create a filter that joins array elements
-pub fn join_filter(separator: &str) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
+pub fn join_filter(
+    separator: &str,
+) -> impl Fn(&Value, &HashMap<String, Value>) -> Result<Value> + Send + Sync + 'static {
     let separator = separator.to_string();
-    move |value, _args| {
-        match value {
-            Value::Array(arr) => {
-                let joined = arr.iter()
-                    .map(|v| match v {
-                        Value::String(s) => s.clone(),
-                        _ => v.to_string(),
-                    })
-                    .collect::<Vec<_>>()
-                    .join(&separator);
-                Ok(Value::String(joined))
-            }
-            _ => Ok(value.clone()),
+    move |value, _args| match value {
+        Value::Array(arr) => {
+            let joined = arr
+                .iter()
+                .map(|v| match v {
+                    Value::String(s) => s.clone(),
+                    _ => v.to_string(),
+                })
+                .collect::<Vec<_>>()
+                .join(&separator);
+            Ok(Value::String(joined))
         }
+        _ => Ok(value.clone()),
     }
 }
 
@@ -332,7 +333,7 @@ impl ExtendedTemplateRenderer {
     /// Create new extended renderer with common custom functions
     pub fn new() -> Result<Self> {
         let mut renderer = TemplateRenderer::new()?;
-        let mut registry = FunctionRegistry::new();
+        let registry = FunctionRegistry::new();
 
         // Register common custom functions
         Self::register_common_functions(&mut renderer.tera)?;
@@ -423,7 +424,7 @@ impl ExtendedTemplateRenderer {
 }
 
 /// Helper macros for creating custom functions and filters
-
+///
 /// Create a custom function with less boilerplate
 ///
 /// # Example
@@ -496,8 +497,8 @@ macro_rules! register_filters {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use serde_json::Value;
+    use std::collections::HashMap;
 
     #[test]
     fn test_custom_function_registration() {
@@ -506,7 +507,8 @@ mod tests {
         register_custom_function(&mut tera, "test_func", |args| {
             let input = args.get("input").and_then(|v| v.as_str()).unwrap_or("");
             Ok(Value::String(format!("Processed: {}", input)))
-        }).unwrap();
+        })
+        .unwrap();
 
         // Test that function is registered (would need actual Tera rendering to test fully)
         assert!(tera.get_function("test_func").is_some());
@@ -540,9 +542,7 @@ mod tests {
             .add_function(CustomFunction::new("test1", |args| {
                 Ok(Value::String("test1".to_string()))
             }))
-            .add_filter(CustomFilter::new("test2", |value, _args| {
-                Ok(value.clone())
-            }));
+            .add_filter(CustomFilter::new("test2", |value, _args| Ok(value.clone())));
 
         assert_eq!(registry.function_count(), 1);
         assert_eq!(registry.filter_count(), 1);
@@ -556,7 +556,9 @@ mod tests {
         assert!(renderer.renderer().has_template("_macros.toml.tera"));
 
         // Test rendering with extended functions
-        let result = renderer.render("Hello {{ uppercase(input='world') }}!", "test").unwrap();
+        let result = renderer
+            .render("Hello {{ uppercase(input='world') }}!", "test")
+            .unwrap();
         assert_eq!(result, "Hello WORLD!");
     }
 }

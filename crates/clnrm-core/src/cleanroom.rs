@@ -473,9 +473,7 @@ impl CleanroomEnvironment {
         // Capture start timestamp (milliseconds since epoch)
         let start_timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|e| {
-                CleanroomError::internal_error(format!("System time error: {}", e))
-            })?
+            .map_err(|e| CleanroomError::internal_error(format!("System time error: {}", e)))?
             .as_millis() as i64;
 
         let start_time = std::time::Instant::now();
@@ -484,11 +482,11 @@ impl CleanroomEnvironment {
         span.set_attributes(vec![
             KeyValue::new("test.name", _test_name.to_string()),
             KeyValue::new("test.suite", "core_tests"), // Default suite name
-            KeyValue::new("test.isolated", true), // clnrm ALWAYS runs isolated
+            KeyValue::new("test.isolated", true),      // clnrm ALWAYS runs isolated
             KeyValue::new("test.start_timestamp", start_timestamp),
             KeyValue::new("session.id", self.session_id.to_string()),
             KeyValue::new("container.image.name", "alpine:latest"), // Default image
-            KeyValue::new("test.cleanup_performed", true), // clnrm always cleans up
+            KeyValue::new("test.cleanup_performed", true),          // clnrm always cleans up
         ]);
 
         // Update metrics
@@ -505,9 +503,7 @@ impl CleanroomEnvironment {
         // Capture end timestamp
         let end_timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|e| {
-                CleanroomError::internal_error(format!("System time error: {}", e))
-            })?
+            .map_err(|e| CleanroomError::internal_error(format!("System time error: {}", e)))?
             .as_millis() as i64;
 
         // Record OTel metrics
@@ -842,32 +838,32 @@ impl CleanroomEnvironment {
         // Note: Current limitation - testcontainers backend creates fresh container
         // Future enhancement: Backend trait needs exec_in_running_container() method
         let backend = self.backend.clone();
-        let execution_result = tokio::task::spawn_blocking(move || {
-            backend.run_cmd(cmd)
-        })
-        .await
-        .map_err(|e| {
-            {
-                span.set_status(opentelemetry::trace::Status::error("Task join failed"));
-                span.end();
-            }
-            CleanroomError::internal_error("Failed to execute command in blocking task")
-                .with_context("Service command execution task failed")
-                .with_source(e.to_string())
-        })?
-        .map_err(|e| {
-            {
-                span.set_status(opentelemetry::trace::Status::error("Command execution failed"));
-                span.end();
-            }
-            CleanroomError::container_error("Failed to execute command in service container")
-                .with_context(format!(
-                    "Service: {}, Command: {}",
-                    service_handle.service_name,
-                    command.join(" ")
-                ))
-                .with_source(e.to_string())
-        })?;
+        let execution_result = tokio::task::spawn_blocking(move || backend.run_cmd(cmd))
+            .await
+            .map_err(|e| {
+                {
+                    span.set_status(opentelemetry::trace::Status::error("Task join failed"));
+                    span.end();
+                }
+                CleanroomError::internal_error("Failed to execute command in blocking task")
+                    .with_context("Service command execution task failed")
+                    .with_source(e.to_string())
+            })?
+            .map_err(|e| {
+                {
+                    span.set_status(opentelemetry::trace::Status::error(
+                        "Command execution failed",
+                    ));
+                    span.end();
+                }
+                CleanroomError::container_error("Failed to execute command in service container")
+                    .with_context(format!(
+                        "Service: {}, Command: {}",
+                        service_handle.service_name,
+                        command.join(" ")
+                    ))
+                    .with_source(e.to_string())
+            })?;
 
         let duration = start_time.elapsed();
         let duration_ms = duration.as_millis() as f64;
@@ -895,7 +891,11 @@ impl CleanroomEnvironment {
         }
 
         // Set telemetry attributes - Complete observability
-        let test_result = if execution_result.exit_code == 0 { "pass" } else { "fail" };
+        let test_result = if execution_result.exit_code == 0 {
+            "pass"
+        } else {
+            "fail"
+        };
         span.set_attributes(vec![
             KeyValue::new("container.exit_code", execution_result.exit_code as i64),
             KeyValue::new("test.duration_ms", duration_ms),
@@ -950,9 +950,7 @@ impl CleanroomEnvironment {
         // Capture start timestamp
         let start_timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|e| {
-                CleanroomError::internal_error(format!("System time error: {}", e))
-            })?
+            .map_err(|e| CleanroomError::internal_error(format!("System time error: {}", e)))?
             .as_millis() as i64;
 
         span.set_attributes(vec![
@@ -1021,9 +1019,7 @@ impl CleanroomEnvironment {
         // Capture end timestamp
         let end_timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|e| {
-                CleanroomError::internal_error(format!("System time error: {}", e))
-            })?
+            .map_err(|e| CleanroomError::internal_error(format!("System time error: {}", e)))?
             .as_millis() as i64;
 
         // Record metrics

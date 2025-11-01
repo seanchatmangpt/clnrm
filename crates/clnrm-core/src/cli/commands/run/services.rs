@@ -23,71 +23,71 @@ pub async fn load_services_from_config(
         );
 
         // Create plugin based on service type
-        let plugin: Box<dyn crate::cleanroom::ServicePlugin> =
-            match service_config.plugin.as_str() {
-                "surrealdb" => {
-                    use crate::services::surrealdb::SurrealDbPlugin;
+        let plugin: Box<dyn crate::cleanroom::ServicePlugin> = match service_config.plugin.as_str()
+        {
+            "surrealdb" => {
+                use crate::services::surrealdb::SurrealDbPlugin;
 
-                    let username = service_config.username.as_deref().unwrap_or("root");
-                    let password = service_config.password.as_deref().unwrap_or("root");
-                    let strict = service_config.strict.unwrap_or(false);
+                let username = service_config.username.as_deref().unwrap_or("root");
+                let password = service_config.password.as_deref().unwrap_or("root");
+                let strict = service_config.strict.unwrap_or(false);
 
-                    let plugin = SurrealDbPlugin::with_credentials(username, password)
-                        .with_name(service_name)
-                        .with_strict(strict);
+                let plugin = SurrealDbPlugin::with_credentials(username, password)
+                    .with_name(service_name)
+                    .with_strict(strict);
 
-                    Box::new(plugin)
-                }
-                "generic_container" => {
-                    use crate::services::generic::GenericContainerPlugin;
+                Box::new(plugin)
+            }
+            "generic_container" => {
+                use crate::services::generic::GenericContainerPlugin;
 
-                    let image = service_config.image.as_deref().ok_or_else(|| {
-                        CleanroomError::validation_error(format!(
-                            "Service '{}': generic_container requires 'image' field",
-                            service_name
-                        ))
-                    })?;
+                let image = service_config.image.as_deref().ok_or_else(|| {
+                    CleanroomError::validation_error(format!(
+                        "Service '{}': generic_container requires 'image' field",
+                        service_name
+                    ))
+                })?;
 
-                    let mut plugin = GenericContainerPlugin::new(service_name, image);
+                let mut plugin = GenericContainerPlugin::new(service_name, image);
 
-                    if let Some(env_vars) = &service_config.env {
-                        for (key, value) in env_vars {
-                            plugin = plugin.with_env(key, value);
-                        }
+                if let Some(env_vars) = &service_config.env {
+                    for (key, value) in env_vars {
+                        plugin = plugin.with_env(key, value);
                     }
-
-                    if let Some(ports) = &service_config.ports {
-                        for port in ports {
-                            plugin = plugin.with_port(*port);
-                        }
-                    }
-
-                    if let Some(volumes) = &service_config.volumes {
-                        for volume in volumes {
-                            plugin = plugin
-                                .with_volume(
-                                    &volume.host_path,
-                                    &volume.container_path,
-                                    volume.read_only.unwrap_or(false),
-                                )
-                                .map_err(|e| {
-                                    CleanroomError::validation_error(format!(
-                                        "Service '{}': invalid volume configuration: {}",
-                                        service_name, e
-                                    ))
-                                })?;
-                        }
-                    }
-
-                    Box::new(plugin)
                 }
-                _ => {
-                    return Err(CleanroomError::validation_error(format!(
-                        "Unknown service plugin: {}",
-                        service_config.plugin
-                    )));
+
+                if let Some(ports) = &service_config.ports {
+                    for port in ports {
+                        plugin = plugin.with_port(*port);
+                    }
                 }
-            };
+
+                if let Some(volumes) = &service_config.volumes {
+                    for volume in volumes {
+                        plugin = plugin
+                            .with_volume(
+                                &volume.host_path,
+                                &volume.container_path,
+                                volume.read_only.unwrap_or(false),
+                            )
+                            .map_err(|e| {
+                                CleanroomError::validation_error(format!(
+                                    "Service '{}': invalid volume configuration: {}",
+                                    service_name, e
+                                ))
+                            })?;
+                    }
+                }
+
+                Box::new(plugin)
+            }
+            _ => {
+                return Err(CleanroomError::validation_error(format!(
+                    "Unknown service plugin: {}",
+                    service_config.plugin
+                )));
+            }
+        };
 
         env.register_service(plugin).await?;
         info!("📦 Registered service plugin: {}", service_name);

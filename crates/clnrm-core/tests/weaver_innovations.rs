@@ -33,14 +33,8 @@ fn test_statistics_collection() -> Result<()> {
     // Assert
     println!("📊 Registry Statistics:");
     println!("   Total Attributes: {}", statistics.total_attributes);
-    println!(
-        "   Required Attributes: {}",
-        statistics.required_attributes
-    );
-    println!(
-        "   Coverage: {:.1}%",
-        statistics.coverage_percentage()
-    );
+    println!("   Required Attributes: {}", statistics.required_attributes);
+    println!("   Coverage: {:.1}%", statistics.coverage_percentage());
     println!("   Quality Score: {:.1}/100", statistics.quality_score());
     println!("   Health Status: {}", statistics.health_status());
 
@@ -108,10 +102,7 @@ fn test_cicd_gate_validation() -> Result<()> {
     match gate_result {
         Ok(_) => {
             println!("✅ CI/CD gate passed - safe to merge");
-            println!(
-                "   Coverage: {:.1}%",
-                statistics.coverage_percentage()
-            );
+            println!("   Coverage: {:.1}%", statistics.coverage_percentage());
             println!("   Quality: {:.1}/100", statistics.quality_score());
         }
         Err(e) => {
@@ -185,10 +176,7 @@ fn test_emit_to_stdout() -> Result<()> {
 
     // Assert
     assert!(result.success, "Emission should succeed");
-    assert!(
-        result.total_signals > 0,
-        "Should emit at least one signal"
-    );
+    assert!(result.total_signals > 0, "Should emit at least one signal");
 
     println!("✅ Emitted telemetry:");
     println!("   Spans: {}", result.spans_emitted);
@@ -239,10 +227,7 @@ fn test_fixture_file_generation() -> Result<()> {
     generator.emit_to_file(&output_path)?;
 
     // Assert
-    assert!(
-        output_path.exists(),
-        "Fixture file should be created"
-    );
+    assert!(output_path.exists(), "Fixture file should be created");
 
     let contents = std::fs::read_to_string(&output_path)?;
     assert!(!contents.is_empty(), "Fixture file should not be empty");
@@ -351,10 +336,7 @@ fn test_complete_validation_workflow() -> Result<()> {
     let config = EmitConfig::stdout();
     let emitter = WeaverEmitter::with_config(config);
     let result = emitter.emit()?;
-    println!(
-        "✅ Emitted {} signals",
-        result.total_signals
-    );
+    println!("✅ Emitted {} signals", result.total_signals);
 
     println!("\n✅ Complete workflow executed successfully!");
 

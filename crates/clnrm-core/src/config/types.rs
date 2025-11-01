@@ -227,8 +227,9 @@ impl ChaosConfigSection {
         }
 
         for (i, exp) in self.experiments.iter().enumerate() {
-            exp.validate()
-                .map_err(|e| CleanroomError::validation_error(format!("Chaos experiment {}: {}", i, e)))?;
+            exp.validate().map_err(|e| {
+                CleanroomError::validation_error(format!("Chaos experiment {}: {}", i, e))
+            })?;
         }
 
         Ok(())
@@ -594,9 +595,9 @@ impl TestConfig {
 
         // Validate Weaver config if present
         if let Some(ref weaver) = self.weaver {
-            weaver.validate().map_err(|e| {
-                CleanroomError::validation_error(format!("Weaver config: {}", e))
-            })?;
+            weaver
+                .validate()
+                .map_err(|e| CleanroomError::validation_error(format!("Weaver config: {}", e)))?;
         }
 
         // FAIL FAST: Performance testing is not yet implemented
@@ -609,9 +610,9 @@ impl TestConfig {
 
         // Validate chaos config if present
         if let Some(ref chaos) = self.chaos {
-            chaos.validate().map_err(|e| {
-                CleanroomError::validation_error(format!("Chaos config: {}", e))
-            })?;
+            chaos
+                .validate()
+                .map_err(|e| CleanroomError::validation_error(format!("Chaos config: {}", e)))?;
         }
 
         Ok(())

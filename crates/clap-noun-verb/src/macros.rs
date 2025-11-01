@@ -107,7 +107,7 @@ macro_rules! verb {
     ($name:expr, $about:expr, $handler:expr) => {
         $crate::verb!($name, $about, $handler, args: [])
     };
-    
+
     // Verb with additional arguments
     ($name:expr, $about:expr, $handler:expr, args: [$($arg:expr),* $(,)?]) => {
         {
@@ -115,7 +115,7 @@ macro_rules! verb {
                 handler: F,
                 args: Vec<clap::Arg>,
             }
-            
+
             impl<F> $crate::VerbCommand for VerbImpl<F>
             where
                 F: Fn(&$crate::VerbArgs) -> $crate::Result<()> + Send + Sync,
@@ -123,15 +123,15 @@ macro_rules! verb {
                 fn name(&self) -> &'static str {
                     $name
                 }
-                
+
                 fn about(&self) -> &'static str {
                     $about
                 }
-                
+
                 fn run(&self, args: &$crate::VerbArgs) -> $crate::Result<()> {
                     (self.handler)(args)
                 }
-                
+
                 fn build_command(&self) -> clap::Command {
                     let mut cmd = clap::Command::new(self.name()).about(self.about());
                     for arg in &self.args {
@@ -139,12 +139,12 @@ macro_rules! verb {
                     }
                     cmd
                 }
-                
+
                 fn additional_args(&self) -> Vec<clap::Arg> {
                     self.args.clone()
                 }
             }
-            
+
             VerbImpl {
                 handler: $handler,
                 args: vec![$($arg),*],

@@ -40,12 +40,18 @@ impl MockTomlParser {
 
     /// Configure parser to return specific result for path
     pub fn expect_parse(&self, path: &str, result: Result<MockTestConfig, String>) {
-        self.parse_results.lock().unwrap().insert(path.to_string(), result);
+        self.parse_results
+            .lock()
+            .unwrap()
+            .insert(path.to_string(), result);
     }
 
     /// Configure schema validation result
     pub fn expect_schema_valid(&self, path: &str, is_valid: bool) {
-        self.schema_validations.lock().unwrap().insert(path.to_string(), is_valid);
+        self.schema_validations
+            .lock()
+            .unwrap()
+            .insert(path.to_string(), is_valid);
     }
 
     /// Parse TOML from path
@@ -120,19 +126,31 @@ impl MockServiceRegistry {
 
     /// Register a service with plugin type
     pub fn register_service(&self, name: &str, plugin_type: &str) {
-        self.services.lock().unwrap().insert(name.to_string(), plugin_type.to_string());
-        self.creation_calls.lock().unwrap().push((name.to_string(), plugin_type.to_string()));
+        self.services
+            .lock()
+            .unwrap()
+            .insert(name.to_string(), plugin_type.to_string());
+        self.creation_calls
+            .lock()
+            .unwrap()
+            .push((name.to_string(), plugin_type.to_string()));
     }
 
     /// Lookup a service plugin
     pub fn lookup(&self, service_name: &str) -> Option<String> {
-        self.lookup_calls.lock().unwrap().push(service_name.to_string());
+        self.lookup_calls
+            .lock()
+            .unwrap()
+            .push(service_name.to_string());
         self.services.lock().unwrap().get(service_name).cloned()
     }
 
     /// Verify service was looked up
     pub fn verify_lookup(&self, service_name: &str) -> bool {
-        self.lookup_calls.lock().unwrap().contains(&service_name.to_string())
+        self.lookup_calls
+            .lock()
+            .unwrap()
+            .contains(&service_name.to_string())
     }
 
     /// Verify service was created
@@ -186,13 +204,20 @@ impl MockContainerBackend {
     /// Start a container
     pub fn start_container(&self, image: &str) -> String {
         let container_id = format!("container_{}", self.containers.lock().unwrap().len());
-        self.containers.lock().unwrap().push(format!("{}:{}", image, container_id));
+        self.containers
+            .lock()
+            .unwrap()
+            .push(format!("{}:{}", image, container_id));
         container_id
     }
 
     /// Verify command was executed
     pub fn verify_exec(&self, command: &[String]) -> bool {
-        self.exec_calls.lock().unwrap().iter().any(|cmd| cmd == command)
+        self.exec_calls
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|cmd| cmd == command)
     }
 
     /// Get number of exec calls
@@ -220,13 +245,19 @@ impl MockTemplateRenderer {
 
     /// Configure expected render result
     pub fn expect_render(&self, template: &str, result: &str) {
-        self.render_results.lock().unwrap().insert(template.to_string(), result.to_string());
+        self.render_results
+            .lock()
+            .unwrap()
+            .insert(template.to_string(), result.to_string());
     }
 
     /// Render template with variables
     pub fn render(&self, template: &str, variables: HashMap<String, String>) -> String {
         // Record the call
-        self.render_calls.lock().unwrap().push((template.to_string(), variables.clone()));
+        self.render_calls
+            .lock()
+            .unwrap()
+            .push((template.to_string(), variables.clone()));
 
         // Return pre-configured result or simple substitution
         if let Some(result) = self.render_results.lock().unwrap().get(template) {
@@ -251,7 +282,11 @@ impl MockTemplateRenderer {
     }
 
     /// Verify render was called with specific variables
-    pub fn verify_render_with_vars(&self, template: &str, expected_vars: &HashMap<String, String>) -> bool {
+    pub fn verify_render_with_vars(
+        &self,
+        template: &str,
+        expected_vars: &HashMap<String, String>,
+    ) -> bool {
         self.render_calls
             .lock()
             .unwrap()
@@ -352,7 +387,12 @@ impl MockSpanCollector {
 
     /// Find span by name
     pub fn find_span(&self, name: &str) -> Option<MockSpan> {
-        self.spans.lock().unwrap().iter().find(|s| s.name == name).cloned()
+        self.spans
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|s| s.name == name)
+            .cloned()
     }
 }
 
@@ -389,8 +429,14 @@ mod tests {
 
         // ASSERT: Schema validation happens BEFORE parsing
         assert!(schema_valid, "Schema should be valid");
-        assert!(parse_result.is_ok(), "Parse should succeed after schema validation");
-        assert!(parser.verify_parse_called("test.toml"), "Parse should have been called");
+        assert!(
+            parse_result.is_ok(),
+            "Parse should succeed after schema validation"
+        );
+        assert!(
+            parser.verify_parse_called("test.toml"),
+            "Parse should have been called"
+        );
     }
 
     #[test]
@@ -403,25 +449,34 @@ mod tests {
         let schema_valid = parser.validate_schema("invalid.toml");
 
         // ASSERT: Schema validation fails
-        assert!(!schema_valid, "Schema validation should fail for invalid TOML");
+        assert!(
+            !schema_valid,
+            "Schema validation should fail for invalid TOML"
+        );
     }
 
     #[test]
     fn test_mock_toml_parser_tracks_parse_calls() {
         // ARRANGE: Mock parser
         let parser = MockTomlParser::new();
-        parser.expect_parse("file1.toml", Ok(MockTestConfig {
-            name: "test1".to_string(),
-            services: vec![],
-            steps: vec![],
-            variables: HashMap::new(),
-        }));
-        parser.expect_parse("file2.toml", Ok(MockTestConfig {
-            name: "test2".to_string(),
-            services: vec![],
-            steps: vec![],
-            variables: HashMap::new(),
-        }));
+        parser.expect_parse(
+            "file1.toml",
+            Ok(MockTestConfig {
+                name: "test1".to_string(),
+                services: vec![],
+                steps: vec![],
+                variables: HashMap::new(),
+            }),
+        );
+        parser.expect_parse(
+            "file2.toml",
+            Ok(MockTestConfig {
+                name: "test2".to_string(),
+                services: vec![],
+                steps: vec![],
+                variables: HashMap::new(),
+            }),
+        );
 
         // ACT: Parse multiple files
         let _ = parser.parse("file1.toml");
@@ -429,8 +484,14 @@ mod tests {
 
         // ASSERT: Both parse calls recorded
         assert_eq!(parser.parse_call_count(), 2, "Should track all parse calls");
-        assert!(parser.verify_parse_called("file1.toml"), "First parse call tracked");
-        assert!(parser.verify_parse_called("file2.toml"), "Second parse call tracked");
+        assert!(
+            parser.verify_parse_called("file1.toml"),
+            "First parse call tracked"
+        );
+        assert!(
+            parser.verify_parse_called("file2.toml"),
+            "Second parse call tracked"
+        );
     }
 
     #[test]
@@ -466,7 +527,10 @@ mod tests {
 
         // ASSERT: Returns correct plugin type
         assert_eq!(plugin_type, Some("generic_container".to_string()));
-        assert!(registry.verify_lookup("postgres"), "Lookup should be tracked");
+        assert!(
+            registry.verify_lookup("postgres"),
+            "Lookup should be tracked"
+        );
     }
 
     #[test]
@@ -479,7 +543,10 @@ mod tests {
 
         // ASSERT: Returns None
         assert_eq!(plugin_type, None, "Should return None for unknown service");
-        assert!(registry.verify_lookup("unknown"), "Failed lookup still tracked");
+        assert!(
+            registry.verify_lookup("unknown"),
+            "Failed lookup still tracked"
+        );
     }
 
     #[test]
@@ -549,7 +616,10 @@ mod tests {
 
         // ASSERT: Unique container IDs generated
         assert_ne!(container1, container2, "Container IDs should be unique");
-        assert!(container1.starts_with("container_"), "Container ID has prefix");
+        assert!(
+            container1.starts_with("container_"),
+            "Container ID has prefix"
+        );
     }
 
     #[test]
@@ -759,7 +829,10 @@ mod tests {
         });
 
         // ASSERT: Validation fails
-        assert!(!collector.validate(), "Should fail when parent required but missing");
+        assert!(
+            !collector.validate(),
+            "Should fail when parent required but missing"
+        );
     }
 
     #[test]
@@ -896,7 +969,11 @@ mod tests {
                 services: vec![],
                 steps: vec![MockStep {
                     name: "query".to_string(),
-                    command: vec!["psql".to_string(), "-d".to_string(), "{{db_name}}".to_string()],
+                    command: vec![
+                        "psql".to_string(),
+                        "-d".to_string(),
+                        "{{db_name}}".to_string(),
+                    ],
                 }],
                 variables: variables.clone(),
             }),

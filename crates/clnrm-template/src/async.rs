@@ -6,12 +6,12 @@
 //! - Async template discovery
 //! - Async caching and hot-reload
 
-use crate::error::{TemplateError, Result};
 use crate::context::TemplateContext;
-use crate::renderer::{TemplateRenderer, OutputFormat};
+use crate::error::{Result, TemplateError};
+use crate::renderer::{OutputFormat, TemplateRenderer};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use serde_json::Value;
 
 /// Async template renderer for async applications
 ///
@@ -51,11 +51,9 @@ impl AsyncTemplateRenderer {
         let template = template.to_string();
         let name = name.to_string();
         let mut renderer = self.renderer.clone();
-        tokio::task::spawn_blocking(move || {
-            renderer.render_str(&template, &name)
-        })
-        .await
-        .map_err(|e| TemplateError::InternalError(format!("Async rendering failed: {}", e)))?
+        tokio::task::spawn_blocking(move || renderer.render_str(&template, &name))
+            .await
+            .map_err(|e| TemplateError::InternalError(format!("Async rendering failed: {}", e)))?
     }
 
     /// Render template to specific format
@@ -64,7 +62,12 @@ impl AsyncTemplateRenderer {
     /// * `template` - Template content
     /// * `name` - Template name
     /// * `format` - Output format
-    pub async fn render_to_format(&mut self, template: &str, name: &str, format: OutputFormat) -> Result<String> {
+    pub async fn render_to_format(
+        &mut self,
+        template: &str,
+        name: &str,
+        format: OutputFormat,
+    ) -> Result<String> {
         let rendered = self.render_str(template, name).await?;
 
         match format {
@@ -106,7 +109,7 @@ impl AsyncTemplateRenderer {
 }
 
 /// Async convenience functions for simple template rendering
-
+///
 /// Render template string asynchronously
 ///
 /// # Arguments
@@ -128,7 +131,10 @@ pub async fn async_render(template: &str, vars: HashMap<&str, &str>) -> Result<S
 /// # Arguments
 /// * `path` - Path to template file
 /// * `vars` - Variables as key-value pairs
-pub async fn async_render_file<P: AsRef<Path>>(path: P, vars: HashMap<&str, &str>) -> Result<String> {
+pub async fn async_render_file<P: AsRef<Path>>(
+    path: P,
+    vars: HashMap<&str, &str>,
+) -> Result<String> {
     let mut json_vars = HashMap::new();
     for (key, value) in vars {
         json_vars.insert(key.to_string(), Value::String(value.to_string()));
@@ -186,7 +192,8 @@ impl AsyncTemplateBuilder {
 
     /// Add string variable
     pub fn variable<K: Into<String>, V: Into<String>>(mut self, key: K, value: V) -> Self {
-        self.variables.insert(key.into(), Value::String(value.into()));
+        self.variables
+            .insert(key.into(), Value::String(value.into()));
         self
     }
 
@@ -210,7 +217,8 @@ impl AsyncTemplateBuilder {
 
     /// Render template asynchronously
     pub async fn render(self) -> Result<String> {
-        let template = self.template
+        let template = self
+            .template
             .ok_or_else(|| TemplateError::ValidationError("No template provided".to_string()))?;
 
         if let Some(context) = self.context {
@@ -267,14 +275,18 @@ pub mod async_toml {
     ///
     /// # Arguments
     /// * `search_paths` - Directories to search
-    pub async fn load_all_toml_files(search_paths: Vec<&Path>) -> Result<HashMap<PathBuf, TomlFile>> {
+    pub async fn load_all_toml_files(
+        search_paths: Vec<&Path>,
+    ) -> Result<HashMap<PathBuf, TomlFile>> {
         let paths: Vec<PathBuf> = search_paths.iter().map(|p| p.to_path_buf()).collect();
         tokio::task::spawn_blocking(move || {
             let loader = TomlLoader::new().with_search_paths(paths);
             loader.load_all()
         })
         .await
-        .map_err(|e| TemplateError::InternalError(format!("Async TOML directory loading failed: {}", e)))?
+        .map_err(|e| {
+            TemplateError::InternalError(format!("Async TOML directory loading failed: {}", e))
+        })?
     }
 
     /// Write TOML file asynchronously
@@ -286,7 +298,7 @@ pub mod async_toml {
     pub async fn write_toml_file<P: AsRef<Path>>(
         path: P,
         content: &str,
-        validator: Option<&crate::validation::TemplateValidator>
+        validator: Option<&crate::validation::TemplateValidator>,
     ) -> Result<()> {
         let path = path.as_ref().to_path_buf();
         let content = content.to_string();
@@ -313,7 +325,7 @@ pub mod async_discovery {
     /// * `patterns` - Glob patterns to match
     pub async fn discover_templates(
         search_paths: Vec<&Path>,
-        patterns: Vec<&str>
+        patterns: Vec<&str>,
     ) -> Result<TemplateLoader> {
         let paths: Vec<PathBuf> = search_paths.iter().map(|p| p.to_path_buf()).collect();
         let patterns: Vec<String> = patterns.iter().map(|s| s.to_string()).collect();
@@ -329,7 +341,9 @@ pub mod async_discovery {
             discovery.load()
         })
         .await
-        .map_err(|e| TemplateError::InternalError(format!("Async template discovery failed: {}", e)))?
+        .map_err(|e| {
+            TemplateError::InternalError(format!("Async template discovery failed: {}", e))
+        })?
     }
 }
 
@@ -346,16 +360,14 @@ pub mod async_validation {
     pub async fn validate_async(
         output: &str,
         template_name: &str,
-        validator: &crate::validation::TemplateValidator
+        validator: &crate::validation::TemplateValidator,
     ) -> Result<()> {
         let output = output.to_string();
         let template_name = template_name.to_string();
         let validator = validator.clone();
-        tokio::task::spawn_blocking(move || {
-            validator.validate(&output, &template_name)
-        })
-        .await
-        .map_err(|e| TemplateError::InternalError(format!("Async validation failed: {}", e)))?
+        tokio::task::spawn_blocking(move || validator.validate(&output, &template_name))
+            .await
+            .map_err(|e| TemplateError::InternalError(format!("Async validation failed: {}", e)))?
     }
 }
 
@@ -371,13 +383,16 @@ pub mod async_cache {
     /// * `hot_reload` - Enable hot-reload
     pub async fn create_async_cached_renderer(
         context: TemplateContext,
-        hot_reload: bool
+        hot_reload: bool,
     ) -> Result<CachedRenderer> {
-        tokio::task::spawn_blocking(move || {
-            CachedRenderer::new(context, hot_reload)
-        })
-        .await
-        .map_err(|e| TemplateError::InternalError(format!("Async cached renderer creation failed: {}", e)))?
+        tokio::task::spawn_blocking(move || CachedRenderer::new(context, hot_reload))
+            .await
+            .map_err(|e| {
+                TemplateError::InternalError(format!(
+                    "Async cached renderer creation failed: {}",
+                    e
+                ))
+            })?
     }
 }
 
@@ -387,7 +402,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_async_render() {
-        let result = async_render("Hello {{ name }}!", [("name", "World")].iter().cloned().collect()).await.unwrap();
+        let result = async_render(
+            "Hello {{ name }}!",
+            [("name", "World")].iter().cloned().collect(),
+        )
+        .await
+        .unwrap();
         assert_eq!(result, "Hello World!");
     }
 
@@ -405,8 +425,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_async_toml_loading() {
-        use tempfile::tempdir;
         use std::fs;
+        use tempfile::tempdir;
 
         let temp_dir = tempdir().unwrap();
         let toml_file = temp_dir.path().join("test.toml");

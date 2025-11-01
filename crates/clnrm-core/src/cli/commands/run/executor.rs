@@ -49,8 +49,9 @@ pub async fn run_tests_sequential_with_results(
                         container_id,
                         // Get image from cleanroom config or use default
                         crate::config::load_cleanroom_config()
-                            .ok().map(|cfg| cfg.containers.default_image)
-                            .unwrap_or_else(|| "alpine:latest".to_string())
+                            .ok()
+                            .map(|cfg| cfg.containers.default_image)
+                            .unwrap_or_else(|| "alpine:latest".to_string()),
                     );
                     builder = builder.container(container_info);
                 }
@@ -165,8 +166,9 @@ pub async fn run_tests_parallel_with_results(
                         container_id,
                         // Get image from cleanroom config or use default
                         crate::config::load_cleanroom_config()
-                            .ok().map(|cfg| cfg.containers.default_image)
-                            .unwrap_or_else(|| "alpine:latest".to_string())
+                            .ok()
+                            .map(|cfg| cfg.containers.default_image)
+                            .unwrap_or_else(|| "alpine:latest".to_string()),
                     );
                     builder = builder.container(container_info);
                 }

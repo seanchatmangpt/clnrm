@@ -205,7 +205,8 @@ impl CommandRegistry {
             }
 
             // Check for verb/sub-noun name conflicts
-            let verb_names: std::collections::HashSet<_> = noun.verbs().iter().map(|v| v.name()).collect();
+            let verb_names: std::collections::HashSet<_> =
+                noun.verbs().iter().map(|v| v.name()).collect();
             for sub_noun in noun.sub_nouns() {
                 let sub_noun_name = sub_noun.name();
                 if verb_names.contains(sub_noun_name) {
@@ -229,14 +230,13 @@ impl CommandRegistry {
                 eprintln!("Warning: Command structure validation failed: {}", e);
             }
         }
-        
+
         // Clone to owned strings and convert to static lifetime for clap
         // Note: This leaks memory but is acceptable for CLI construction (happens once per run)
         // The leaked strings live for the duration of the program which is fine for CLI apps
         let name: &'static str = Box::leak(self.config.name.clone().into_boxed_str());
         let about: &'static str = Box::leak(self.config.about.clone().into_boxed_str());
-        let mut cmd = Command::new(name)
-            .about(about);
+        let mut cmd = Command::new(name).about(about);
 
         if let Some(version) = &self.config.version {
             let version_str: &'static str = Box::leak(version.to_string().into_boxed_str());
@@ -259,11 +259,14 @@ impl CommandRegistry {
     /// Route a command based on clap matches
     pub fn route(&self, matches: &ArgMatches) -> Result<()> {
         // Get the top-level subcommand (noun)
-        let (noun_name, noun_matches) = matches.subcommand()
+        let (noun_name, noun_matches) = matches
+            .subcommand()
             .ok_or_else(|| NounVerbError::invalid_structure("No subcommand found"))?;
 
         // Find the noun command
-        let noun = self.nouns.get(noun_name)
+        let noun = self
+            .nouns
+            .get(noun_name)
             .ok_or_else(|| NounVerbError::command_not_found(noun_name))?;
 
         // Route the command recursively with root matches for global args access
@@ -272,7 +275,13 @@ impl CommandRegistry {
 
     /// Recursively route commands through nested noun-verb structure
     #[allow(clippy::only_used_in_recursion)]
-    fn route_recursive(&self, noun: &dyn NounCommand, noun_name: &str, matches: &ArgMatches, root_matches: &ArgMatches) -> Result<()> {
+    fn route_recursive(
+        &self,
+        noun: &dyn NounCommand,
+        noun_name: &str,
+        matches: &ArgMatches,
+        root_matches: &ArgMatches,
+    ) -> Result<()> {
         // Check if there's a subcommand (either verb or sub-noun)
         if let Some((sub_name, sub_matches)) = matches.subcommand() {
             // First check if it's a verb
@@ -294,8 +303,7 @@ impl CommandRegistry {
         } else {
             // No subcommand, try direct noun execution
             let context = VerbContext::new("").with_noun(noun_name);
-            let args = VerbArgs::new(matches.clone())
-                .with_context(context);
+            let args = VerbArgs::new(matches.clone()).with_context(context);
 
             noun.handle_direct(&args)
         }
@@ -307,9 +315,10 @@ impl CommandRegistry {
         if self.config.auto_validate {
             self.validate()?;
         }
-        
+
         let cmd = self.build_command();
-        let matches = cmd.try_get_matches()
+        let matches = cmd
+            .try_get_matches()
             .map_err(|e| NounVerbError::argument_error(e.to_string()))?;
 
         self.route(&matches)
@@ -318,7 +327,8 @@ impl CommandRegistry {
     /// Run the CLI with custom arguments
     pub fn run_with_args(self, args: Vec<String>) -> Result<()> {
         let cmd = self.build_command();
-        let matches = cmd.try_get_matches_from(args)
+        let matches = cmd
+            .try_get_matches_from(args)
             .map_err(|e| NounVerbError::argument_error(e.to_string()))?;
 
         self.route(&matches)

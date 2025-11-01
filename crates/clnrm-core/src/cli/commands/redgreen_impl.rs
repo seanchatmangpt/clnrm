@@ -255,8 +255,8 @@ pub async fn run_red_green_validation(
         fail_fast: false,
         watch: false,
         verbose: 0,
-        force: true,   // Force run all tests
-        digest: false, // No digest needed for TDD validation
+        force: true,     // Force run all tests
+        digest: false,   // No digest needed for TDD validation
         validate: false, // No validation for TDD validation
     };
 

@@ -17,9 +17,7 @@
 //! - Forgetting to flush telemetry before shutdown
 
 use crate::error::{CleanroomError, Result};
-use crate::telemetry::weaver_controller::{
-    ValidationReport, ValidationStatus, WeaverCoordination,
-};
+use crate::telemetry::weaver_controller::{ValidationReport, ValidationStatus, WeaverCoordination};
 use std::io::{BufRead, BufReader};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
@@ -221,9 +219,7 @@ impl WeaverController<Unstarted> {
 
         warn!("Primary OTLP port range (4317-4327) exhausted, trying fallback range");
         Self::find_available_port(5317, 5327).map_err(|_| {
-            CleanroomError::validation_error(
-                "No available ports in range 4317-4327, 5317-5327",
-            )
+            CleanroomError::validation_error("No available ports in range 4317-4327, 5317-5327")
         })
     }
 
@@ -367,13 +363,12 @@ impl WeaverController<Running> {
                 CleanroomError::io_error(format!("Failed to read validation report: {}", e))
             })?;
 
-            let mut report: ValidationReport =
-                serde_json::from_str(&report_json).map_err(|e| {
-                    CleanroomError::serialization_error(format!(
-                        "Failed to parse validation report: {}",
-                        e
-                    ))
-                })?;
+            let mut report: ValidationReport = serde_json::from_str(&report_json).map_err(|e| {
+                CleanroomError::serialization_error(format!(
+                    "Failed to parse validation report: {}",
+                    e
+                ))
+            })?;
 
             if report.sample_count == 0 {
                 error!("🚨 CRITICAL: Weaver received ZERO telemetry samples!");

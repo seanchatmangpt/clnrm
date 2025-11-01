@@ -1,7 +1,7 @@
 //! Example demonstrating argument extraction and global args access
 
 use clap::Arg;
-use clap_noun_verb::{run_cli, noun, verb, VerbArgs, Result};
+use clap_noun_verb::{noun, run_cli, verb, Result, VerbArgs};
 
 fn main() -> Result<()> {
     run_cli(|cli| {
@@ -113,4 +113,3 @@ fn main() -> Result<()> {
             ]))
     })
 }
-

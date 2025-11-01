@@ -8,18 +8,18 @@
 //! - Caching and performance options
 //! - Output format configuration
 
-use crate::error::{TemplateError, Result};
-use crate::context::{TemplateContext, TemplateContextBuilder};
-use crate::renderer::OutputFormat;
-use crate::discovery::{TemplateDiscovery, TemplateLoader, TemplateOrganization};
-use crate::validation::{TemplateValidator, ValidationRule};
 use crate::cache::CachedRenderer;
-use crate::custom::{CustomFunction, CustomFilter, FunctionRegistry};
-use crate::toml::{TomlLoader, TomlWriter, TomlMerger};
+use crate::context::{TemplateContext, TemplateContextBuilder};
+use crate::custom::{CustomFilter, CustomFunction, FunctionRegistry};
+use crate::discovery::{TemplateDiscovery, TemplateLoader, TemplateOrganization};
+use crate::error::{Result, TemplateError};
+use crate::renderer::OutputFormat;
+use crate::toml::{TomlLoader, TomlMerger, TomlWriter};
+use crate::validation::{TemplateValidator, ValidationRule};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
-use serde_json::Value;
 
 /// Comprehensive template engine builder
 ///
@@ -274,7 +274,7 @@ impl TemplateEngineBuilder {
         let loader = self.discovery.load()?;
 
         // Build context from configuration
-        let context = self.context_builder.build();
+        let _context = self.context_builder.build();
 
         // Apply validation rules to templates
         for (name, content) in &loader.templates {
@@ -287,7 +287,9 @@ impl TemplateEngineBuilder {
     /// Build cached renderer for performance
     pub fn build_cached(self) -> Result<CachedRenderer> {
         let context = self.context_builder.build();
-        let (hot_reload, _ttl) = self.cache_config.unwrap_or((true, Duration::from_secs(3600)));
+        let (hot_reload, _ttl) = self
+            .cache_config
+            .unwrap_or((true, Duration::from_secs(3600)));
         CachedRenderer::new(context, hot_reload)
     }
 
@@ -295,7 +297,9 @@ impl TemplateEngineBuilder {
     #[cfg(feature = "async")]
     pub async fn build_async_cached(self) -> Result<crate::r#async::AsyncTemplateRenderer> {
         let context = self.context_builder.build();
-        Ok(crate::r#async::AsyncTemplateRenderer::with_defaults().await?.with_context(context))
+        Ok(crate::r#async::AsyncTemplateRenderer::with_defaults()
+            .await?
+            .with_context(context))
     }
 
     /// Build complete template engine with all components
@@ -313,7 +317,9 @@ impl TemplateEngineBuilder {
             self.validator.validate(content, name)?;
         }
 
-        let (hot_reload, _ttl) = self.cache_config.unwrap_or((true, Duration::from_secs(3600)));
+        let (hot_reload, _ttl) = self
+            .cache_config
+            .unwrap_or((true, Duration::from_secs(3600)));
         let cached_renderer = CachedRenderer::new(context.clone(), hot_reload)?;
 
         Ok(TemplateEngine {
@@ -398,7 +404,10 @@ impl TemplateEngine {
         if let Some(content) = self.loader.get_template(name) {
             self.validator.validate(content, name)
         } else {
-            Err(TemplateError::ValidationError(format!("Template '{}' not found", name)))
+            Err(TemplateError::ValidationError(format!(
+                "Template '{}' not found",
+                name
+            )))
         }
     }
 
@@ -416,7 +425,8 @@ impl TemplateEngine {
     /// * `path` - Target file path
     /// * `content` - TOML content to write
     pub fn write_toml_file<P: AsRef<Path>>(&self, path: P, content: &str) -> Result<()> {
-        self.toml_writer.write_file(path, content, Some(&self.validator))
+        self.toml_writer
+            .write_file(path, content, Some(&self.validator))
     }
 
     /// Get cache statistics
@@ -431,7 +441,7 @@ impl TemplateEngine {
 }
 
 /// Preset configurations for common use cases
-
+///
 /// Configuration for web application templates
 pub fn web_app_config() -> TemplateEngineBuilder {
     TemplateEngineBuilder::new()
@@ -451,9 +461,7 @@ pub fn cli_tool_config() -> TemplateEngineBuilder {
     TemplateEngineBuilder::new()
         .with_search_paths(vec!["./templates"])
         .with_context_defaults()
-        .with_validation_rules(vec![
-            ValidationRule::ServiceName,
-        ])
+        .with_validation_rules(vec![ValidationRule::ServiceName])
         .with_output_format(OutputFormat::Toml)
         .with_cache(Duration::from_secs(60)) // 1 minute for CLI tools
 }
@@ -464,10 +472,7 @@ pub fn development_config() -> TemplateEngineBuilder {
         .with_search_paths(vec!["./templates", "./test-templates"])
         .with_glob_patterns(vec!["**/*.toml", "**/*.tera"])
         .with_context_defaults()
-        .with_validation_rules(vec![
-            ValidationRule::ServiceName,
-            ValidationRule::Semver,
-        ])
+        .with_validation_rules(vec![ValidationRule::ServiceName, ValidationRule::Semver])
         .with_debug(true)
         .with_cache_and_reload(Duration::from_secs(30), true) // Hot-reload for development
 }
@@ -493,7 +498,9 @@ pub fn ci_config() -> TemplateEngineBuilder {
         .with_context_defaults()
         .with_validation_rules(vec![
             ValidationRule::ServiceName,
-            ValidationRule::Environment { allowed: vec!["ci".to_string(), "staging".to_string()] },
+            ValidationRule::Environment {
+                allowed: vec!["ci".to_string(), "staging".to_string()],
+            },
         ])
         .with_cache(Duration::from_secs(1800)) // 30 minutes for CI
 }
@@ -508,10 +515,7 @@ mod tests {
         let builder = TemplateEngineBuilder::new()
             .with_search_paths(vec!["./templates"])
             .with_context_defaults()
-            .with_validation_rules(vec![
-                rules::service_name(),
-                rules::semver(),
-            ])
+            .with_validation_rules(vec![rules::service_name(), rules::semver()])
             .with_output_format(OutputFormat::Json)
             .with_cache(Duration::from_secs(300));
 

@@ -220,9 +220,8 @@ fn build_prd_expectations(test_config: &crate::config::TestConfig) -> Result<Prd
             // Total span count
             if let Some(ref total) = counts_config.spans_total {
                 if let Some(eq) = total.eq {
-                    count_exp = count_exp.with_spans_total(
-                        crate::validation::count_validator::CountBound::eq(eq),
-                    );
+                    count_exp = count_exp
+                        .with_spans_total(crate::validation::count_validator::CountBound::eq(eq));
                 } else if let Some(gte) = total.gte {
                     if let Some(lte) = total.lte {
                         count_exp = count_exp.with_spans_total(
@@ -234,9 +233,8 @@ fn build_prd_expectations(test_config: &crate::config::TestConfig) -> Result<Prd
                         );
                     }
                 } else if let Some(lte) = total.lte {
-                    count_exp = count_exp.with_spans_total(
-                        crate::validation::count_validator::CountBound::lte(lte),
-                    );
+                    count_exp = count_exp
+                        .with_spans_total(crate::validation::count_validator::CountBound::lte(lte));
                 }
             }
 
@@ -252,9 +250,7 @@ fn build_prd_expectations(test_config: &crate::config::TestConfig) -> Result<Prd
                         if let Some(lte) = bound_config.lte {
                             count_exp = count_exp.with_name_count(
                                 name.clone(),
-                                crate::validation::count_validator::CountBound::range(
-                                    gte, lte,
-                                )?,
+                                crate::validation::count_validator::CountBound::range(gte, lte)?,
                             );
                         } else {
                             count_exp = count_exp.with_name_count(

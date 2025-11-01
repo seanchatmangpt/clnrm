@@ -879,15 +879,15 @@ mod otel_validation_tests {
             let mut config = OtelValidationConfig::default();
             config.validate_exports = true;
             let validator = OtelValidator::with_config(config);
-            
+
             // Act - Validate export with empty endpoint
             let result = validator.validate_export("");
-            
+
             // Assert - Verify error is returned
             assert!(result.is_err());
             let error = result.unwrap_err();
             assert!(error.message.contains("Export endpoint cannot be empty"));
-            
+
             Ok(())
         }
 
@@ -897,15 +897,15 @@ mod otel_validation_tests {
             let mut config = OtelValidationConfig::default();
             config.validate_exports = true;
             let validator = OtelValidator::with_config(config);
-            
+
             // Act - Validate export with invalid scheme
             let result = validator.validate_export("ftp://localhost:4318/v1/traces");
-            
+
             // Assert - Verify error is returned
             assert!(result.is_err());
             let error = result.unwrap_err();
             assert!(error.message.contains("must be a valid HTTP/HTTPS URL"));
-            
+
             Ok(())
         }
 
@@ -915,13 +915,13 @@ mod otel_validation_tests {
             let mut config = OtelValidationConfig::default();
             config.validate_exports = true;
             let validator = OtelValidator::with_config(config);
-            
+
             // Act - Validate export with valid HTTP URL
             let result = validator.validate_export("http://localhost:4318/v1/traces")?;
-            
+
             // Assert - Verify validation succeeds
             assert!(result);
-            
+
             Ok(())
         }
 
@@ -969,15 +969,15 @@ mod otel_validation_tests {
             let mut config = OtelValidationConfig::default();
             config.validate_exports = true;
             let validator = OtelValidator::with_config(config);
-            
+
             // Act - Validate export with empty endpoint
             let result = validator.validate_export_real("");
-            
+
             // Assert - Verify error is returned
             assert!(result.is_err());
             let error = result.unwrap_err();
             assert!(error.message.contains("Export endpoint cannot be empty"));
-            
+
             Ok(())
         }
 
@@ -1018,7 +1018,9 @@ mod otel_validation_tests {
             // Assert - Verify error is returned
             assert!(result.is_err());
             let error = result.unwrap_err();
-            assert!(error.message.contains("Export endpoint must be a valid HTTP/HTTPS URL"));
+            assert!(error
+                .message
+                .contains("Export endpoint must be a valid HTTP/HTTPS URL"));
 
             Ok(())
         }
@@ -1071,13 +1073,13 @@ mod otel_validation_tests {
             let mut config = OtelValidationConfig::default();
             config.validate_exports = true;
             let validator = OtelValidator::with_config(config);
-            
+
             // Act & Assert - Validate various valid OTLP endpoints
             assert!(validator.validate_export_real("http://localhost:4318/v1/traces")?);
             assert!(validator.validate_export_real("http://localhost:4317/v1/traces")?);
             assert!(validator.validate_export_real("https://collector.example.com:443/v1/traces")?);
             assert!(validator.validate_export_real("http://localhost:80/v1/traces")?);
-            
+
             Ok(())
         }
     }

@@ -84,6 +84,34 @@ pub enum Commands {
         /// OTEL endpoint (for otlp-http/otlp-grpc)
         #[arg(long)]
         otel_endpoint: Option<String>,
+
+        /// Enable Weaver live-check validation (alias for --validate)
+        #[arg(long)]
+        live_check: bool,
+
+        /// Validation mode: strict, lenient, 80_20, minimal
+        #[arg(long, value_name = "MODE")]
+        validation_mode: Option<String>,
+
+        /// Path to Weaver registry (overrides TOML and default resolution)
+        #[arg(long, value_name = "PATH")]
+        registry_path: Option<PathBuf>,
+
+        /// OTLP port for Weaver (0 = auto-discover)
+        #[arg(long, value_name = "PORT", default_value = "0")]
+        otlp_port: u16,
+
+        /// Admin port for Weaver (0 = auto-discover)
+        #[arg(long, value_name = "PORT", default_value = "0")]
+        admin_port: u16,
+
+        /// Diagnostic output format: ansi, json, github
+        #[arg(long, value_name = "FORMAT", default_value = "ansi")]
+        diagnostic_format: String,
+
+        /// Stop condition timeout (seconds)
+        #[arg(long, value_name = "SECONDS", default_value = "300")]
+        stop_timeout: u64,
     },
 
     /// Initialize a new test project
@@ -492,6 +520,12 @@ pub enum Commands {
         #[arg(long, value_name = "TRACES")]
         traces: Option<PathBuf>,
     },
+
+    /// Manage Weaver live-check configuration and validation
+    LiveCheck {
+        #[command(subcommand)]
+        command: LiveCheckCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -582,6 +616,28 @@ pub enum ServiceCommands {
         #[arg(short, long)]
         service: Option<String>,
     },
+}
+
+#[derive(Subcommand)]
+pub enum LiveCheckCommands {
+    /// Show current live-check configuration
+    Status,
+
+    /// Validate registry schemas
+    ValidateRegistry {
+        /// Path to Weaver registry
+        #[arg(long, value_name = "PATH")]
+        registry: PathBuf,
+    },
+
+    /// Test Weaver installation and configuration
+    TestWeaver,
+
+    /// Show available validation modes
+    Modes,
+
+    /// Show Weaver version and capabilities
+    Version,
 }
 
 #[derive(Clone, Debug, ValueEnum)]

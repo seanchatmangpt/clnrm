@@ -9,9 +9,7 @@
 //! - Port exhaustion handling
 
 use clnrm_core::error::Result;
-use clnrm_core::telemetry::live_check::{
-    wait_for_service_ready, PortAllocator, PortRange,
-};
+use clnrm_core::telemetry::live_check::{wait_for_service_ready, PortAllocator, PortRange};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Barrier;
@@ -53,7 +51,8 @@ async fn test_port_lock_released_on_drop() -> Result<()> {
 
     // ASSERT
     assert_eq!(
-        port1, lock2.port(),
+        port1,
+        lock2.port(),
         "Should be able to reuse port after lock released"
     );
     println!("✓ Port {} reused after lock release", port1);
@@ -206,10 +205,7 @@ async fn test_port_exhaustion_with_small_range() -> Result<()> {
     let result = allocator.allocate_port().await;
 
     // ASSERT
-    assert!(
-        result.is_err(),
-        "Should fail when all ports are exhausted"
-    );
+    assert!(result.is_err(), "Should fail when all ports are exhausted");
 
     println!("✓ Port exhaustion correctly detected");
 
