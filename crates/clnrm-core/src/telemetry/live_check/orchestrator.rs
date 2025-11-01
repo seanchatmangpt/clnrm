@@ -757,13 +757,13 @@ impl LiveCheckGuard {
 
     /// Get reference to orchestrator
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if orchestrator has been taken via `take_orchestrator()`.
-    pub fn orchestrator(&self) -> &LiveCheckOrchestrator<WeaverRunning> {
+    /// Returns error if orchestrator has been taken via `take_orchestrator()`.
+    pub fn orchestrator(&self) -> Result<&LiveCheckOrchestrator<WeaverRunning>> {
         self.orchestrator
             .as_ref()
-            .expect("orchestrator already taken")
+            .ok_or_else(|| CleanroomError::internal_error("orchestrator already taken from guard"))
     }
 
     /// Take orchestrator to transition states
@@ -771,13 +771,13 @@ impl LiveCheckGuard {
     /// After calling this, the guard no longer has ownership and will not
     /// perform cleanup on drop.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if orchestrator has already been taken.
-    pub fn take_orchestrator(mut self) -> LiveCheckOrchestrator<WeaverRunning> {
+    /// Returns error if orchestrator has already been taken.
+    pub fn take_orchestrator(mut self) -> Result<LiveCheckOrchestrator<WeaverRunning>> {
         self.orchestrator
             .take()
-            .expect("orchestrator already taken")
+            .ok_or_else(|| CleanroomError::invalid_state("orchestrator already taken from guard"))
     }
 }
 
@@ -961,5 +961,217 @@ mod tests {
         fn _check_completed(_: LiveCheckOrchestrator<Completed>) {}
 
         // If this compiles, types are distinct ✓
+    }
+
+    #[test]
+    fn test_config_validation_rejects_low_otlp_port() {
+        let config = LiveCheckConfig {
+            enabled: true,
+            registry_path: PathBuf::from("registry"),
+            otlp_port: Some(1023), // Below 1024
+            admin_port: None,
+            output_dir: std::env::temp_dir(),
+            stream: false,
+            fail_fast: false,
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("OTLP port must be >= 1024"));
+    }
+
+    #[test]
+    fn test_config_validation_rejects_low_admin_port() {
+        let config = LiveCheckConfig {
+            enabled: true,
+            registry_path: PathBuf::from("registry"),
+            otlp_port: None,
+            admin_port: Some(512), // Below 1024
+            output_dir: std::env::temp_dir(),
+            stream: false,
+            fail_fast: false,
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Admin port must be >= 1024"));
+    }
+
+    #[test]
+    fn test_config_validation_rejects_duplicate_ports() {
+        let config = LiveCheckConfig {
+            enabled: true,
+            registry_path: PathBuf::from("registry"),
+            otlp_port: Some(4317),
+            admin_port: Some(4317), // Same as OTLP
+            output_dir: std::env::temp_dir(),
+            stream: false,
+            fail_fast: false,
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("OTLP and admin ports must be different"));
+    }
+
+    #[test]
+    fn test_config_validation_rejects_empty_registry_path() {
+        let config = LiveCheckConfig {
+            enabled: true,
+            registry_path: PathBuf::from(""),
+            otlp_port: None,
+            admin_port: None,
+            output_dir: std::env::temp_dir(),
+            stream: false,
+            fail_fast: false,
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Registry path cannot be empty"));
+    }
+
+    #[test]
+    fn test_validation_report_default() {
+        let report = ValidationReport::default();
+        assert_eq!(report.status, ValidationStatus::Failure);
+        assert_eq!(report.violations, 0);
+        assert_eq!(report.sample_count, 0);
+    }
+
+    #[test]
+    fn test_completed_passed_requires_samples() {
+        // Create a mock completed state
+        let report = ValidationReport {
+            status: ValidationStatus::Success,
+            violations: 0,
+            improvements: 0,
+            information: 0,
+            registry_coverage: 1.0,
+            sample_count: 0, // Zero samples should fail
+            details: vec![],
+        };
+
+        let completed_state = Completed {
+            report,
+            runtime_duration_ms: 1000,
+        };
+
+        let orchestrator = LiveCheckOrchestrator::<Completed> {
+            state: PhantomData,
+            weaver_manager: None,
+            config: None,
+            running_state: None,
+            completed_state: Some(completed_state),
+        };
+
+        // Should NOT pass due to zero samples
+        assert!(!orchestrator.passed());
+    }
+
+    #[test]
+    fn test_completed_passed_requires_zero_violations() {
+        let report = ValidationReport {
+            status: ValidationStatus::Success,
+            violations: 1, // Has violations
+            improvements: 0,
+            information: 0,
+            registry_coverage: 1.0,
+            sample_count: 100,
+            details: vec![],
+        };
+
+        let completed_state = Completed {
+            report,
+            runtime_duration_ms: 1000,
+        };
+
+        let orchestrator = LiveCheckOrchestrator::<Completed> {
+            state: PhantomData,
+            weaver_manager: None,
+            config: None,
+            running_state: None,
+            completed_state: Some(completed_state),
+        };
+
+        // Should NOT pass due to violations
+        assert!(!orchestrator.passed());
+    }
+
+    #[test]
+    fn test_completed_passed_all_conditions_met() {
+        let report = ValidationReport {
+            status: ValidationStatus::Success,
+            violations: 0,
+            improvements: 0,
+            information: 0,
+            registry_coverage: 1.0,
+            sample_count: 100,
+            details: vec![],
+        };
+
+        let completed_state = Completed {
+            report,
+            runtime_duration_ms: 1000,
+        };
+
+        let orchestrator = LiveCheckOrchestrator::<Completed> {
+            state: PhantomData,
+            weaver_manager: None,
+            config: None,
+            running_state: None,
+            completed_state: Some(completed_state),
+        };
+
+        // Should pass all conditions
+        assert!(orchestrator.passed());
+        assert_eq!(orchestrator.exit_code(), 0);
+    }
+
+    #[test]
+    fn test_completed_summary_format() {
+        let report = ValidationReport {
+            status: ValidationStatus::Success,
+            violations: 0,
+            improvements: 2,
+            information: 5,
+            registry_coverage: 0.95,
+            sample_count: 1000,
+            details: vec![],
+        };
+
+        let completed_state = Completed {
+            report,
+            runtime_duration_ms: 5000,
+        };
+
+        let orchestrator = LiveCheckOrchestrator::<Completed> {
+            state: PhantomData,
+            weaver_manager: None,
+            config: None,
+            running_state: None,
+            completed_state: Some(completed_state),
+        };
+
+        let summary = orchestrator.summary();
+
+        // Validate summary contains key information
+        assert!(summary.contains("Weaver Live-Check Validation Report"));
+        assert!(summary.contains("Runtime:           5000ms"));
+        assert!(summary.contains("Samples Received:  1000"));
+        assert!(summary.contains("Registry Coverage: 95.0%"));
+        assert!(summary.contains("✅ Validation PASSED"));
     }
 }

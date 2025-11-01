@@ -106,6 +106,8 @@ async fn validate_container_security() -> Result<String, CleanroomError> {
                 "-c".to_string(),
                 "echo 'Testing resource limits' && ulimit -a | head -5".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 
@@ -127,6 +129,8 @@ async fn validate_container_security() -> Result<String, CleanroomError> {
                 "echo 'test data' > /tmp/security-test.txt && cat /tmp/security-test.txt"
                     .to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 
@@ -163,6 +167,8 @@ async fn validate_network_security() -> Result<String, CleanroomError> {
                 "-c".to_string(),
                 "ping -c 1 8.8.8.8 || echo 'Network access restricted'".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 
@@ -184,6 +190,8 @@ async fn validate_network_security() -> Result<String, CleanroomError> {
                 "-c".to_string(),
                 "netstat -tuln | grep LISTEN | wc -l".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 
@@ -217,9 +225,7 @@ async fn validate_access_control() -> Result<String, CleanroomError> {
 
     // Check that containers run as non-root users
     let user_check = env
-        None,
-        None,
-        .execute_in_container(&user_container, &["id".to_string()])
+        .execute_in_container(&user_container, &["id".to_string()], None, None)
         .await?;
 
     if user_check.exit_code == 0 {
@@ -239,6 +245,8 @@ async fn validate_access_control() -> Result<String, CleanroomError> {
                 "-c".to_string(),
                 "touch /tmp/access-test && ls -la /tmp/access-test".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 

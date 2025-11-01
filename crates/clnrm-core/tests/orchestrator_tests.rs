@@ -196,11 +196,11 @@ async fn test_raii_guard_cleanup() -> Result<()> {
     let guard = LiveCheckGuard::new(orchestrator);
 
     // Can access orchestrator through guard
-    let port_via_guard = guard.orchestrator().otlp_port();
+    let port_via_guard = guard.orchestrator()?.otlp_port();
     assert_eq!(port_via_guard, otlp_port);
 
     // Take orchestrator back
-    let orchestrator = guard.take_orchestrator();
+    let orchestrator = guard.take_orchestrator()?;
     assert_eq!(orchestrator.otlp_port(), otlp_port);
 
     // Stop explicitly

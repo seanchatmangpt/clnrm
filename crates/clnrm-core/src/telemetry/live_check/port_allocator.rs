@@ -31,16 +31,12 @@
 /// # Ok(())
 /// # }
 /// ```
-
 use crate::error::{CleanroomError, Result};
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write as IoWrite};
 use std::net::TcpListener;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
-
-#[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
+use std::time::Instant;
 
 /// Atomic port allocator with flock-based locking
 ///
@@ -134,10 +130,7 @@ impl PortAllocator {
     ) -> Result<Self> {
         let lock_dir = Self::default_lock_dir();
         std::fs::create_dir_all(&lock_dir).map_err(|e| {
-            CleanroomError::internal_error(format!(
-                "Failed to create port lock directory: {}",
-                e
-            ))
+            CleanroomError::internal_error(format!("Failed to create port lock directory: {}", e))
         })?;
 
         Ok(Self {
@@ -187,35 +180,26 @@ impl PortAllocator {
 
         // Try primary range
         if let Some(lock) = self.try_allocate_from_range(&self.primary_range).await? {
-            tracing::info!(
-                "✓ Port {} allocated from primary range",
-                lock.port()
-            );
+            tracing::info!("✓ Port {} allocated from primary range", lock.port());
             return Ok(lock);
         }
 
         // Try fallback range
         tracing::warn!("Primary range exhausted, trying fallback range");
         if let Some(lock) = self.try_allocate_from_range(&self.fallback_range).await? {
-            tracing::info!(
-                "✓ Port {} allocated from fallback range",
-                lock.port()
-            );
+            tracing::info!("✓ Port {} allocated from fallback range", lock.port());
             return Ok(lock);
         }
 
         // Try extended range
         tracing::warn!("Fallback range exhausted, trying extended range");
         if let Some(lock) = self.try_allocate_from_range(&self.extended_range).await? {
-            tracing::info!(
-                "✓ Port {} allocated from extended range",
-                lock.port()
-            );
+            tracing::info!("✓ Port {} allocated from extended range", lock.port());
             return Ok(lock);
         }
 
         // All ranges exhausted
-        Err(CleanroomError::resource_error(format!(
+        Err(CleanroomError::resource_limit_exceeded(format!(
             "Port exhaustion: all port ranges in use (primary: {}-{}, fallback: {}-{}, extended: {}-{}). \
              {} ports checked total.",
             self.primary_range.start,
@@ -304,31 +288,29 @@ impl PortAllocator {
                     // Lock acquired! Double-check port is still available
                     if Self::is_port_available(port).await? {
                         tracing::debug!("Port {} locked successfully", port);
-                        return Ok(Some(PortLock {
+                        Ok(Some(PortLock {
                             port,
                             _lock_file: file,
                             lock_file_path,
-                        }));
+                        }))
                     } else {
                         tracing::warn!(
                             "Port {} locked but not available (race condition detected)",
                             port
                         );
                         // Release lock (via drop) and return None
-                        return Ok(None);
+                        Ok(None)
                     }
                 }
                 Err(nix::errno::Errno::EWOULDBLOCK) => {
                     // Lock held by another process
                     tracing::debug!("Port {} lock held by another process", port);
-                    return Ok(None);
+                    Ok(None)
                 }
-                Err(e) => {
-                    return Err(CleanroomError::internal_error(format!(
-                        "flock failed on port {}: {}",
-                        port, e
-                    )));
-                }
+                Err(e) => Err(CleanroomError::internal_error(format!(
+                    "flock failed on port {}: {}",
+                    port, e
+                ))),
             }
         }
 
@@ -473,17 +455,18 @@ pub async fn wait_for_service_ready(port: u16, timeout_secs: u64) -> Result<()> 
         .timeout(Duration::from_secs(2))
         .build()
         .map_err(|e| {
-            CleanroomError::internal_error(format!(
-                "Failed to create HTTP client: {}",
-                e
-            ))
+            CleanroomError::internal_error(format!("Failed to create HTTP client: {}", e))
         })?;
 
     let health_url = format!("http://localhost:{}/health", port);
     let deadline = Duration::from_secs(timeout_secs);
     let start = Instant::now();
 
-    tracing::debug!("Waiting for service at {} (timeout: {}s)", health_url, timeout_secs);
+    tracing::debug!(
+        "Waiting for service at {} (timeout: {}s)",
+        health_url,
+        timeout_secs
+    );
 
     let result = timeout(deadline, async {
         let mut delay = Duration::from_millis(100);

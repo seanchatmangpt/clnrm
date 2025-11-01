@@ -6,23 +6,28 @@
 use crate::context::TemplateContext;
 use crate::error::Result;
 use crate::renderer::TemplateRenderer;
-use std::collections::HashMap;
+use dashmap::DashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 /// Template cache for compiled templates and metadata
 ///
 /// Caches compiled Tera templates and tracks file modification times
 /// for hot-reload functionality.
+///
+/// Lock-free implementation using DashMap for high-performance concurrent access.
 #[derive(Debug)]
 pub struct TemplateCache {
-    /// Cached compiled templates (template_name -> compiled_template)
-    templates: Arc<RwLock<HashMap<String, CachedTemplate>>>,
-    /// File modification times for hot-reload
-    file_mtimes: Arc<RwLock<HashMap<PathBuf, SystemTime>>>,
-    /// Cache statistics
-    stats: Arc<RwLock<CacheStats>>,
+    /// Cached compiled templates (template_name -> compiled_template) - lock-free
+    templates: Arc<DashMap<String, CachedTemplate>>,
+    /// File modification times for hot-reload - lock-free
+    file_mtimes: Arc<DashMap<PathBuf, SystemTime>>,
+    /// Cache statistics - atomic counters for lock-free access
+    hits: Arc<AtomicU64>,
+    misses: Arc<AtomicU64>,
+    evictions: Arc<AtomicU64>,
     /// Hot-reload enabled
     hot_reload: bool,
     /// Cache TTL (time-to-live)
@@ -66,9 +71,11 @@ impl TemplateCache {
     /// * `ttl` - Cache time-to-live duration
     pub fn new(hot_reload: bool, ttl: Duration) -> Self {
         Self {
-            templates: Arc::new(RwLock::new(HashMap::new())),
-            file_mtimes: Arc::new(RwLock::new(HashMap::new())),
-            stats: Arc::new(RwLock::new(CacheStats::default())),
+            templates: Arc::new(DashMap::new()),
+            file_mtimes: Arc::new(DashMap::new()),
+            hits: Arc::new(AtomicU64::new(0)),
+            misses: Arc::new(AtomicU64::new(0)),
+            evictions: Arc::new(AtomicU64::new(0)),
             hot_reload,
             ttl,
         }
@@ -92,11 +99,11 @@ impl TemplateCache {
         file_path: Option<&Path>,
     ) -> Result<String> {
         // Check if template is in cache and still valid
-        if let Some(cached) = self.templates.read().unwrap().get(template_name) {
-            if self.is_cache_valid(cached, file_path)? {
+        if let Some(cached_ref) = self.templates.get(template_name) {
+            if self.is_cache_valid(cached_ref.value(), file_path)? {
                 // Cache hit
                 self.record_hit();
-                return Ok(cached.content.clone());
+                return Ok(cached_ref.value().content.clone());
             }
         }
 
@@ -112,10 +119,7 @@ impl TemplateCache {
         if let Some(path) = file_path {
             if let Ok(metadata) = std::fs::metadata(path) {
                 if let Ok(mtime) = metadata.modified() {
-                    self.file_mtimes
-                        .write()
-                        .unwrap()
-                        .insert(path.to_path_buf(), mtime);
+                    self.file_mtimes.insert(path.to_path_buf(), mtime);
                 }
             }
         }
@@ -139,8 +143,8 @@ impl TemplateCache {
             if let Some(path) = file_path {
                 if let Ok(metadata) = std::fs::metadata(path) {
                     if let Ok(mtime) = metadata.modified() {
-                        if let Some(cached_mtime) = self.file_mtimes.read().unwrap().get(path) {
-                            if mtime > *cached_mtime {
+                        if let Some(cached_mtime_ref) = self.file_mtimes.get(path) {
+                            if mtime > *cached_mtime_ref.value() {
                                 return Ok(false); // File was modified
                             }
                         }
@@ -169,76 +173,99 @@ impl TemplateCache {
             size: compiled.len(),
         };
 
-        // Update cache
-        self.templates
-            .write()
-            .unwrap()
-            .insert(name.to_string(), cached);
-
-        // Update stats
-        let mut stats = self.stats.write().unwrap();
-        stats.total_size += compiled.len();
-        stats.template_count += 1;
+        // Update cache (lock-free insertion)
+        self.templates.insert(name.to_string(), cached);
 
         Ok(())
     }
 
-    /// Record cache hit
+    /// Record cache hit (lock-free atomic increment)
     fn record_hit(&self) {
-        self.stats.write().unwrap().hits += 1;
+        self.hits.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Record cache miss
+    /// Record cache miss (lock-free atomic increment)
     fn record_miss(&self) {
-        self.stats.write().unwrap().misses += 1;
+        self.misses.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Get cache statistics
+    /// Get cache statistics (lock-free read)
     pub fn stats(&self) -> CacheStats {
-        self.stats.read().unwrap().clone()
+        let template_count = self.templates.len();
+        let total_size: usize = self.templates.iter().map(|entry| entry.value().size).sum();
+
+        CacheStats {
+            hits: self.hits.load(Ordering::Relaxed),
+            misses: self.misses.load(Ordering::Relaxed),
+            evictions: self.evictions.load(Ordering::Relaxed),
+            total_size,
+            template_count,
+        }
     }
 
-    /// Clear cache
+    /// Clear cache (lock-free clear)
     pub fn clear(&self) {
-        self.templates.write().unwrap().clear();
-        self.file_mtimes.write().unwrap().clear();
-
-        let mut stats = self.stats.write().unwrap();
-        stats.total_size = 0;
-        stats.template_count = 0;
-        stats.evictions = 0;
+        self.templates.clear();
+        self.file_mtimes.clear();
+        self.evictions.store(0, Ordering::Relaxed);
     }
 
-    /// Evict expired templates
+    /// Evict expired templates (lock-free eviction)
     pub fn evict_expired(&self) -> usize {
         let now = SystemTime::now();
-        let mut templates = self.templates.write().unwrap();
-        let mut file_mtimes = self.file_mtimes.write().unwrap();
-        let mut stats = self.stats.write().unwrap();
+        let mut evicted_count = 0;
 
-        let initial_count = templates.len();
-        templates.retain(|_name, cached| {
-            let age = now
-                .duration_since(cached.compiled_at)
-                .unwrap_or(Duration::from_secs(0));
-            if age > self.ttl {
-                // Template expired
-                stats.total_size -= cached.size;
-                stats.evictions += 1;
-                false
-            } else {
-                true
+        // Collect keys to remove (DashMap doesn't support retain directly)
+        let keys_to_remove: Vec<String> = self
+            .templates
+            .iter()
+            .filter_map(|entry| {
+                let age = now
+                    .duration_since(entry.value().compiled_at)
+                    .unwrap_or(Duration::from_secs(0));
+                if age > self.ttl {
+                    Some(entry.key().clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Remove expired templates
+        for key in keys_to_remove {
+            if self.templates.remove(&key).is_some() {
+                evicted_count += 1;
             }
-        });
+        }
 
-        // Clean up file modification times for non-existent templates
-        file_mtimes.retain(|path, _| {
-            // Check if file still exists
-            path.exists()
-        });
+        // Clean up file modification times for non-existent files
+        let paths_to_remove: Vec<PathBuf> = self
+            .file_mtimes
+            .iter()
+            .filter_map(|entry| {
+                if !entry.key().exists() {
+                    Some(entry.key().clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-        stats.template_count = templates.len();
-        initial_count - templates.len()
+        for path in paths_to_remove {
+            self.file_mtimes.remove(&path);
+        }
+
+        // Update eviction counter
+        self.evictions
+            .fetch_add(evicted_count as u64, Ordering::Relaxed);
+
+        evicted_count
+    }
+}
+
+impl Default for TemplateCache {
+    fn default() -> Self {
+        Self::with_defaults()
     }
 }
 
