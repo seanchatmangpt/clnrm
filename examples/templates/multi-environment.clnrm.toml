@@ -1,7 +1,7 @@
 # Multi-Environment Testing Example
 # This demonstrates environment-specific configurations with conditionals
 
-[template.vars]
+[vars]
 env = "{{ env(name='TEST_ENV', default='dev') }}"
 service_name = "clnrm"
 

@@ -1,7 +1,7 @@
 # Advanced Validators Example
 # This demonstrates new v0.6.0 validators (order, status) with templates
 
-[template.vars]
+[vars]
 service_name = "clnrm"
 test_type = "integration"
 
@@ -18,10 +18,10 @@ description = "Demonstrates order and status validators with template expansion"
 
 [otel]
 exporter = "stdout"
-resources = {
-    "service.name" = "{{ vars.service_name }}",
-    "test.type" = "{{ vars.test_type }}"
-}
+
+[otel.resources]
+"service.name" = "{{ vars.service_name }}"
+"test.type" = "{{ vars.test_type }}"
 
 [[scenario]]
 name = "test_container_lifecycle"

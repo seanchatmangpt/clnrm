@@ -1,7 +1,7 @@
 # Service Mesh Testing Example
 # This demonstrates complex multi-service orchestration with templates
 
-[template.vars]
+[vars]
 test_name = "service_mesh"
 enable_frontend = true
 enable_backend = true

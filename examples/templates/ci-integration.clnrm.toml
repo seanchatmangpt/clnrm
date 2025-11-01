@@ -1,7 +1,7 @@
 # CI/CD Integration Example
 # This demonstrates template configuration for continuous integration pipelines
 
-[template.vars]
+[vars]
 ci = "{{ env(name='CI', default='false') }}"
 ci_job_id = "{{ env(name='CI_JOB_ID', default='local') }}"
 git_commit = "{{ env(name='GIT_COMMIT', default='unknown') }}"

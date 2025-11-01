@@ -1,7 +1,7 @@
 # Matrix Expansion Example
 # This demonstrates using Tera loops to generate multiple scenarios from a matrix
 
-[template.vars]
+[vars]
 service_name = "clnrm"
 
 [template.matrix]
