@@ -93,3 +93,4 @@ async fn show_collector_logs() -> Result<()> {
     println!("[2024-01-01 10:05:23] INFO: Received 150 spans");
     Ok(())
 }
+

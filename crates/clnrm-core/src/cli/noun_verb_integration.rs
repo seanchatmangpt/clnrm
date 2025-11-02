@@ -13,3 +13,4 @@ pub async fn run_noun_verb_cli() -> Result<()> {
     })
     .map_err(|e| CleanroomError::internal_error(format!("CLI execution failed: {}", e)))
 }
+
