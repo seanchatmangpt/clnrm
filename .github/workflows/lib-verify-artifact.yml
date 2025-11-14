@@ -1,0 +1,70 @@
+# Composite Action: Verify Artifact
+# Check artifact existence and properties before use
+# Usage:
+#   - uses: ./.github/actions/verify-artifact
+#     with:
+#       path: 'target/contract-test-results/'
+#       description: 'Contract test results'
+
+name: Verify Artifact
+description: 'Check artifact existence and properties with diagnostics'
+
+inputs:
+  path:
+    description: 'Artifact path to verify'
+    required: true
+  description:
+    description: 'Human-readable description'
+    required: true
+  min-size:
+    description: 'Minimum file size in bytes (0 = skip)'
+    required: false
+    default: '0'
+
+outputs:
+  exists:
+    description: 'Whether artifact exists'
+    value: ${{ steps.verify.outputs.exists }}
+  size:
+    description: 'Artifact size in bytes'
+    value: ${{ steps.verify.outputs.size }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify artifact existence and properties
+      id: verify
+      shell: bash
+      run: |
+        ARTIFACT_PATH="${{ inputs.path }}"
+        DESCRIPTION="${{ inputs.description }}"
+        MIN_SIZE=${{ inputs.min-size }}
+
+        echo "🔍 Verifying $DESCRIPTION: $ARTIFACT_PATH"
+
+        if [ ! -e "$ARTIFACT_PATH" ]; then
+          echo "❌ Artifact not found: $ARTIFACT_PATH"
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "size=0" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Get size using portable method
+        if [ -f "$ARTIFACT_PATH" ]; then
+          SIZE=$(wc -c < "$ARTIFACT_PATH")
+        elif [ -d "$ARTIFACT_PATH" ]; then
+          SIZE=$(du -sb "$ARTIFACT_PATH" | awk '{print $1}')
+        else
+          echo "❌ Unknown artifact type: $ARTIFACT_PATH"
+          echo "exists=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        echo "✅ Artifact exists: $ARTIFACT_PATH ($SIZE bytes)"
+        echo "exists=true" >> $GITHUB_OUTPUT
+        echo "size=${SIZE}" >> $GITHUB_OUTPUT
+
+        if [ "$MIN_SIZE" -gt 0 ] && [ "$SIZE" -lt "$MIN_SIZE" ]; then
+          echo "⚠️  Artifact too small: $SIZE < $MIN_SIZE bytes"
+          exit 1
+        fi
