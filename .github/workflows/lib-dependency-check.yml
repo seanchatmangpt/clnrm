@@ -1,0 +1,114 @@
+name: Install and Verify Dependency
+description: 'Install a dependency and verify it worked, with automatic retry on failure'
+
+inputs:
+  package_name:
+    description: 'Name of the package to install (for apt-get or cargo)'
+    required: true
+
+  install_method:
+    description: 'How to install: apt, cargo, or custom'
+    required: true
+
+  install_command:
+    description: 'Full install command if method is custom'
+    required: false
+    default: ''
+
+  verify_command:
+    description: 'Command to verify installation (e.g., "jq --version")'
+    required: true
+
+  max_retries:
+    description: 'Maximum number of install attempts'
+    required: false
+    default: '3'
+
+  optional:
+    description: 'If true, fail gracefully on install failure; if false, exit with error'
+    required: false
+    default: 'false'
+
+outputs:
+  success:
+    description: 'Whether the dependency was successfully installed'
+    value: ${{ steps.install-dep.outputs.success }}
+
+runs:
+  using: composite
+  steps:
+    - id: install-dep
+      shell: bash
+      run: |
+        PKG_NAME="${{ inputs.package_name }}"
+        INSTALL_METHOD="${{ inputs.install_method }}"
+        INSTALL_CMD="${{ inputs.install_command }}"
+        VERIFY_CMD="${{ inputs.verify_command }}"
+        MAX_RETRIES=${{ inputs.max_retries }}
+        OPTIONAL="${{ inputs.optional }}"
+
+        echo "📦 Installing dependency: $PKG_NAME (method: $INSTALL_METHOD)"
+
+        # Determine install command based on method
+        case "$INSTALL_METHOD" in
+          apt)
+            if sudo apt-get update -qq 2>/dev/null; then
+              INSTALL_CMD="sudo apt-get install -y $PKG_NAME"
+            else
+              echo "⚠️  apt-get update failed, skipping installation"
+              INSTALL_CMD=""
+            fi
+            ;;
+          cargo)
+            INSTALL_CMD="cargo install $PKG_NAME"
+            ;;
+          custom)
+            # INSTALL_CMD is provided via input
+            ;;
+          *)
+            echo "❌ Unknown install method: $INSTALL_METHOD"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+            ;;
+        esac
+
+        if [ -z "$INSTALL_CMD" ]; then
+          echo "❌ No install command provided"
+          echo "success=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Attempt installation with retries
+        ATTEMPT=1
+        while [ $ATTEMPT -le $MAX_RETRIES ]; do
+          echo "  Attempt $ATTEMPT/$MAX_RETRIES..."
+
+          if eval "$INSTALL_CMD" 2>&1 | tail -5; then
+            # Verify installation
+            if eval "$VERIFY_CMD" &>/dev/null; then
+              echo "✅ Successfully installed and verified: $PKG_NAME"
+              echo "success=true" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "  ⚠️  Installation completed but verification failed (attempt $ATTEMPT/$MAX_RETRIES)"
+            fi
+          else
+            echo "  ⚠️  Installation failed (attempt $ATTEMPT/$MAX_RETRIES)"
+          fi
+
+          ATTEMPT=$((ATTEMPT + 1))
+          if [ $ATTEMPT -le $MAX_RETRIES ]; then
+            sleep $((ATTEMPT * 2))  # Exponential backoff
+          fi
+        done
+
+        # All retries exhausted
+        if [ "$OPTIONAL" == "true" ]; then
+          echo "⚠️  Failed to install $PKG_NAME after $MAX_RETRIES attempts (continuing as optional)"
+          echo "success=false" >> $GITHUB_OUTPUT
+          exit 0
+        else
+          echo "❌ CRITICAL: Failed to install $PKG_NAME after $MAX_RETRIES attempts"
+          echo "success=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi

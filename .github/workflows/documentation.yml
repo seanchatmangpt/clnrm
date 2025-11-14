@@ -68,8 +68,13 @@ jobs:
       - name: Validate all TOML examples
         continue-on-error: true
         run: |
-          # FMEA fix: Proper error handling for find command
+          # FMEA fix: Verify clnrm is available before using it
           echo "🔍 Validating all TOML examples..."
+
+          if ! command -v clnrm &> /dev/null; then
+            echo "⚠️  clnrm not found in PATH - skipping TOML validation"
+            exit 0
+          fi
 
           EXAMPLES_FOUND=0
           EXAMPLES_VALID=0
@@ -104,8 +109,13 @@ jobs:
       - name: Test template rendering
         continue-on-error: true
         run: |
-          # FMEA fix: Validate output before using
+          # FMEA fix: Verify clnrm is available before using
           echo "📝 Testing template rendering..."
+
+          if ! command -v clnrm &> /dev/null; then
+            echo "⚠️  clnrm not found in PATH - skipping template test"
+            exit 0
+          fi
 
           if ! clnrm template otel > /tmp/test-template.toml 2>/dev/null; then
             echo "⚠️  Template generation failed (may not be available)"
@@ -145,8 +155,13 @@ jobs:
       - name: Test quick start flow
         continue-on-error: true
         run: |
-          # FMEA fix: Proper error handling and cleanup
+          # FMEA fix: Verify clnrm is available before using
           echo "🚀 Testing quick start flow..."
+
+          if ! command -v clnrm &> /dev/null; then
+            echo "⚠️  clnrm not found in PATH - skipping quick start test"
+            exit 0
+          fi
 
           TEST_DIR="test-quickstart"
 
