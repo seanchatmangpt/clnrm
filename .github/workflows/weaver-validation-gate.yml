@@ -40,9 +40,7 @@ jobs:
 
       - name: Install Weaver
         run: |
-          curl -sSL https://github.com/open-telemetry/weaver/releases/latest/download/weaver-linux-x86_64 -o weaver
-          chmod +x weaver
-          sudo mv weaver /usr/local/bin/
+          cargo install weaver-cli --locked
           weaver --version
 
       - name: Validate schema registry
@@ -80,9 +78,8 @@ jobs:
 
       - name: Install Weaver
         run: |
-          curl -sSL https://github.com/open-telemetry/weaver/releases/latest/download/weaver-linux-x86_64 -o weaver
-          chmod +x weaver
-          sudo mv weaver /usr/local/bin/
+          cargo install weaver-cli --locked
+          weaver --version
 
       - name: Collect registry statistics
         id: stats
@@ -153,7 +150,6 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
 
       - name: Install Weaver
         run: |

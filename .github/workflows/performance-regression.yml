@@ -27,7 +27,6 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
           components: clippy
 
       - name: Cache Cargo registry
@@ -189,7 +188,6 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
 
       - name: Install valgrind
         run: |
@@ -248,7 +246,6 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
 
       - name: Build release binary
         run: cargo build --release --features otel
@@ -256,7 +253,8 @@ jobs:
       - name: Check binary size
         id: check-size
         run: |
-          BINARY_SIZE=$(stat -c%s target/release/clnrm)
+          # Platform-agnostic binary size check
+          BINARY_SIZE=$(du -b target/release/clnrm | cut -f1)
           BINARY_SIZE_MB=$(echo "scale=2; $BINARY_SIZE / 1024 / 1024" | bc)
 
           echo "Binary size: ${BINARY_SIZE_MB}MB"
