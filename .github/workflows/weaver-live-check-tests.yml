@@ -44,7 +44,7 @@ jobs:
       - name: Install Weaver
         timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
+          cargo install weaver-cli --version ${{ env.WEAVER_VERSION }} --locked
 
       - name: Install dependencies
         run: |
@@ -80,7 +80,7 @@ jobs:
       - name: Install Weaver
         timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
+          cargo install weaver-cli --version ${{ env.WEAVER_VERSION }} --locked
 
       - name: Install dependencies
         run: |
@@ -130,7 +130,7 @@ jobs:
       - name: Install Weaver
         timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
+          cargo install weaver-cli --version ${{ env.WEAVER_VERSION }} --locked
 
       - name: Install dependencies
         run: |
@@ -180,7 +180,7 @@ jobs:
       - name: Install Weaver
         timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
+          cargo install weaver-cli --version ${{ env.WEAVER_VERSION }} --locked
 
       - name: Install dependencies
         run: |
@@ -236,7 +236,7 @@ jobs:
       - name: Install Weaver
         timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
+          cargo install weaver-cli --version ${{ env.WEAVER_VERSION }} --locked
 
       - name: Install dependencies
         run: |

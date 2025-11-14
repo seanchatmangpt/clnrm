@@ -52,15 +52,28 @@ jobs:
       - name: Clean up port 4317
         continue-on-error: true
         run: |
-          echo "🔍 Checking for processes on port ${{ env.OTLP_PORT }}..."
-          if command -v fuser &> /dev/null; then
-            PIDS=$(fuser -q ${{ env.OTLP_PORT }}/tcp 2>/dev/null || true)
-            if [ -n "$PIDS" ]; then
-              echo "🔪 Killing zombie processes: $PIDS"
-              fuser -k -q ${{ env.OTLP_PORT }}/tcp 2>/dev/null || true
-              sleep 2
-            fi
+          # Use portable POSIX approach for port cleanup
+          PORT=${{ env.OTLP_PORT }}
+          echo "🧹 Cleaning up port $PORT..."
+
+          # Try netstat first (portable)
+          if command -v netstat &> /dev/null; then
+            PIDS=$(netstat -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | cut -d'/' -f1)
+          # Fall back to ss (modern Linux)
+          elif command -v ss &> /dev/null; then
+            PIDS=$(ss -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | cut -d':' -f1 | grep -oE '[0-9]+')
           fi
+
+          if [ -n "$PIDS" ]; then
+            echo "Found processes on port $PORT: $PIDS"
+            for PID in $PIDS; do
+              if [ -n "$PID" ] && [ "$PID" != "-" ]; then
+                kill -15 "$PID" 2>/dev/null || true
+                sleep 1
+              fi
+            done
+          fi
+          echo "✅ Port cleanup completed"
 
       - name: Install Weaver CLI
         id: weaver

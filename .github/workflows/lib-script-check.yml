@@ -1,0 +1,67 @@
+name: Check Script Exists
+description: 'Verify that a script file exists and is executable, with proper error handling'
+
+inputs:
+  script_path:
+    description: 'Path to the script file to check'
+    required: true
+
+  error_message:
+    description: 'Custom error message if script not found'
+    required: false
+    default: ''
+
+  optional:
+    description: 'If true, fail gracefully; if false, exit with error'
+    required: false
+    default: 'false'
+
+  make_executable:
+    description: 'If true, chmod +x the script if it exists'
+    required: false
+    default: 'true'
+
+outputs:
+  found:
+    description: 'Whether the script was found'
+    value: ${{ steps.check-script.outputs.found }}
+
+runs:
+  using: composite
+  steps:
+    - id: check-script
+      shell: bash
+      run: |
+        SCRIPT_PATH="${{ inputs.script_path }}"
+        OPTIONAL="${{ inputs.optional }}"
+        ERROR_MSG="${{ inputs.error_message }}"
+        MAKE_EXEC="${{ inputs.make_executable }}"
+
+        if [ ! -f "$SCRIPT_PATH" ]; then
+          if [ "$OPTIONAL" == "true" ]; then
+            echo "⚠️  Script not found (optional): $SCRIPT_PATH"
+            if [ -n "$ERROR_MSG" ]; then
+              echo "$ERROR_MSG"
+            fi
+            echo "found=false" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "❌ CRITICAL: Script not found: $SCRIPT_PATH"
+            if [ -n "$ERROR_MSG" ]; then
+              echo "$ERROR_MSG"
+            fi
+            echo "found=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        fi
+
+        if [ "$MAKE_EXEC" == "true" ]; then
+          if ! chmod +x "$SCRIPT_PATH" 2>/dev/null; then
+            echo "❌ Failed to make script executable: $SCRIPT_PATH"
+            echo "found=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        fi
+
+        echo "✅ Script found and verified: $SCRIPT_PATH"
+        echo "found=true" >> $GITHUB_OUTPUT

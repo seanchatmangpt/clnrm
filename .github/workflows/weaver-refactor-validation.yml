@@ -222,26 +222,34 @@ jobs:
         run: |
           echo "🧹 Cleaning up port 4317..."
 
-          # Check if port 4317 is in use
-          if nc -z localhost 4317 2>/dev/null; then
-            echo "⚠️  Port 4317 is in use, attempting cleanup..."
-
-            # Find and kill process using port 4317
-            PID=$(lsof -ti:4317 || true)
-            if [ -n "$PID" ]; then
-              echo "🛑 Killing process $PID using port 4317..."
-              kill -9 $PID || true
-              sleep 2
-            fi
-
-            # Verify port is now free
-            if nc -z localhost 4317 2>/dev/null; then
-              echo "❌ Failed to free port 4317"
-              exit 1
-            fi
+          PORT=4317
+          # Use portable POSIX approach
+          if command -v netstat &> /dev/null; then
+            PIDS=$(netstat -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | cut -d'/' -f1)
+          elif command -v ss &> /dev/null; then
+            PIDS=$(ss -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | cut -d':' -f1 | grep -oE '[0-9]+')
+          elif command -v lsof &> /dev/null; then
+            PIDS=$(lsof -ti:$PORT 2>/dev/null || true)
           fi
 
-          echo "✅ Port 4317 is available"
+          if [ -n "$PIDS" ]; then
+            echo "Found process on port $PORT: $PIDS"
+            for PID in $PIDS; do
+              if [ -n "$PID" ] && [ "$PID" != "-" ]; then
+                echo "Terminating process $PID..."
+                kill -15 "$PID" 2>/dev/null || kill -9 "$PID" 2>/dev/null || true
+                sleep 1
+              fi
+            done
+          fi
+
+          # Verify port is now free
+          if nc -z localhost $PORT 2>/dev/null; then
+            echo "❌ Failed to free port $PORT"
+            exit 1
+          fi
+
+          echo "✅ Port $PORT is available"
 
       - name: Start Weaver live-check listener
         id: weaver
