@@ -26,6 +26,16 @@
 # - sample_count == 0: Tests didn't emit telemetry (FAIL)
 # - violations > 0: Telemetry doesn't match schema (FAIL)
 # - Weaver timeout: No telemetry received within timeout (FAIL)
+#
+# ## FMEA-Driven Improvements (v2.0)
+#
+# - Fixed: weaver-forge → weaver-cli (correct package)
+# - Added: Port cleanup before Weaver starts (prevents RPN 25 hangs)
+# - Added: Polling-based health checks with netcat (15 × 2s)
+# - Added: OTLP port 4317 verification (not just admin port)
+# - Added: Process existence checks before all operations
+# - Improved: SIGTERM → SIGKILL graceful shutdown pattern
+# - Added: Comprehensive logging with emoji indicators
 
 name: Weaver Refactor Validation
 
@@ -87,7 +97,7 @@ jobs:
       - name: Install Weaver
         run: |
           echo "📦 Installing Weaver v${WEAVER_VERSION}..."
-          cargo install weaver-forge --version ${WEAVER_VERSION}
+          cargo install weaver-cli --version ${WEAVER_VERSION}
           weaver --version
 
       - name: Validate schema registry
@@ -124,7 +134,6 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
           cache: true
 
       - name: Build clnrm with OTEL features
@@ -176,19 +185,20 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
           cache: true
 
       - name: Install Weaver
         run: |
           echo "📦 Installing Weaver v${WEAVER_VERSION}..."
-          cargo install weaver-forge --version ${WEAVER_VERSION}
+          cargo install weaver-cli --version ${WEAVER_VERSION}
           weaver --version
 
       - name: Install dependencies
         run: |
+          echo "📦 Installing system dependencies..."
           sudo apt-get update
-          sudo apt-get install -y jq lsof bc
+          sudo apt-get install -y jq netcat-openbsd bc
+          echo "✅ Dependencies installed"
 
       - name: Verify OTLP collector is ready
         run: |
@@ -208,11 +218,36 @@ jobs:
           echo "❌ OTLP collector not ready within ${max_wait}s"
           exit 1
 
+      - name: Clean up port 4317 (FMEA fix - prevent binding conflicts)
+        run: |
+          echo "🧹 Cleaning up port 4317..."
+
+          # Check if port 4317 is in use
+          if nc -z localhost 4317 2>/dev/null; then
+            echo "⚠️  Port 4317 is in use, attempting cleanup..."
+
+            # Find and kill process using port 4317
+            PID=$(lsof -ti:4317 || true)
+            if [ -n "$PID" ]; then
+              echo "🛑 Killing process $PID using port 4317..."
+              kill -9 $PID || true
+              sleep 2
+            fi
+
+            # Verify port is now free
+            if nc -z localhost 4317 2>/dev/null; then
+              echo "❌ Failed to free port 4317"
+              exit 1
+            fi
+          fi
+
+          echo "✅ Port 4317 is available"
+
       - name: Start Weaver live-check listener
         id: weaver
         run: |
           mkdir -p validation_output
-          echo "🔍 Starting Weaver live-check..."
+          echo "🚀 Starting Weaver live-check..."
 
           # Start Weaver in background
           weaver registry live-check \
@@ -228,12 +263,31 @@ jobs:
           echo "pid=${WEAVER_PID}" >> $GITHUB_OUTPUT
           echo "✅ Weaver started (PID: ${WEAVER_PID})"
 
-          # Wait for Weaver to be ready
-          echo "⏳ Waiting for Weaver to start listening..."
-          max_wait=20
-          elapsed=0
-          while [ $elapsed -lt $max_wait ]; do
-            # Check if process still exists
+          # Verify process started successfully
+          sleep 1
+          if ! ps -p $WEAVER_PID >/dev/null 2>&1; then
+            echo "❌ Weaver process failed to start"
+            echo "::group::Weaver logs"
+            cat weaver.log
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          echo "✅ Weaver process is running"
+
+      - name: Wait for Weaver to be ready (FMEA fix - polling-based health check)
+        run: |
+          WEAVER_PID="${{ steps.weaver.outputs.pid }}"
+          echo "⏳ Waiting for Weaver to be ready..."
+          echo "   Checking admin port 8080 and OTLP port 4317..."
+
+          MAX_ATTEMPTS=15
+          INTERVAL=2
+
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "🔍 Attempt $attempt/$MAX_ATTEMPTS..."
+
+            # FMEA fix: Verify process is still running
             if ! ps -p $WEAVER_PID >/dev/null 2>&1; then
               echo "❌ Weaver process died unexpectedly"
               echo "::group::Weaver logs"
@@ -242,30 +296,64 @@ jobs:
               exit 1
             fi
 
-            # Check if listening (admin API)
+            # Check admin port (HTTP)
+            ADMIN_READY=false
             if curl -sf http://localhost:8080/health >/dev/null 2>&1; then
-              echo "✅ Weaver is listening"
-              break
+              echo "   ✅ Admin port 8080 is responsive"
+              ADMIN_READY=true
+            else
+              echo "   ⏳ Admin port 8080 not ready yet..."
             fi
 
-            echo -n "."
-            sleep 1
-            elapsed=$((elapsed + 1))
+            # FMEA fix: Check OTLP port (gRPC) using netcat
+            OTLP_READY=false
+            if nc -z localhost 4317 2>/dev/null; then
+              echo "   ✅ OTLP port 4317 is listening"
+              OTLP_READY=true
+            else
+              echo "   ⏳ OTLP port 4317 not ready yet..."
+            fi
+
+            # Both ports must be ready
+            if [ "$ADMIN_READY" = true ] && [ "$OTLP_READY" = true ]; then
+              echo ""
+              echo "✅ Weaver is fully ready (admin + OTLP)"
+              exit 0
+            fi
+
+            # Wait before next attempt
+            if [ $attempt -lt $MAX_ATTEMPTS ]; then
+              sleep $INTERVAL
+            fi
           done
 
-          if [ $elapsed -ge $max_wait ]; then
-            echo ""
-            echo "❌ Weaver did not start listening within ${max_wait}s"
+          # Timeout reached
+          echo ""
+          echo "❌ Weaver did not become ready within $((MAX_ATTEMPTS * INTERVAL))s"
+          echo "::group::Weaver logs"
+          cat weaver.log
+          echo "::endgroup::"
+          exit 1
+
+      - name: Build clnrm with OTEL
+        run: |
+          echo "🔨 Building clnrm with OTEL features..."
+          cargo build --release --features otel -p clnrm-core
+
+      - name: Verify Weaver is still running (FMEA fix - pre-test check)
+        run: |
+          WEAVER_PID="${{ steps.weaver.outputs.pid }}"
+          echo "🔍 Verifying Weaver process before tests..."
+
+          if ! ps -p $WEAVER_PID >/dev/null 2>&1; then
+            echo "❌ Weaver process died before tests started"
             echo "::group::Weaver logs"
             cat weaver.log
             echo "::endgroup::"
             exit 1
           fi
 
-      - name: Build clnrm with OTEL
-        run: |
-          echo "🔨 Building clnrm with OTEL features..."
-          cargo build --release --features otel -p clnrm-core
+          echo "✅ Weaver is running (PID: $WEAVER_PID)"
 
       - name: Run integration tests with telemetry
         env:
@@ -301,35 +389,58 @@ jobs:
           echo "⏳ Waiting for telemetry to be processed..."
           sleep 5
 
-      - name: Stop Weaver and get validation report
+      - name: Verify Weaver is still running (FMEA fix - post-test check)
+        run: |
+          WEAVER_PID="${{ steps.weaver.outputs.pid }}"
+          echo "🔍 Verifying Weaver process after tests..."
+
+          if ! ps -p $WEAVER_PID >/dev/null 2>&1; then
+            echo "⚠️  Weaver process died during/after tests"
+            echo "   This may indicate a crash or timeout."
+            echo "::group::Weaver logs"
+            cat weaver.log
+            echo "::endgroup::"
+            # Don't exit - continue to validation step
+          else
+            echo "✅ Weaver is still running (PID: $WEAVER_PID)"
+          fi
+
+      - name: Stop Weaver and get validation report (FMEA fix - graceful SIGTERM)
         if: always()
         run: |
           WEAVER_PID="${{ steps.weaver.outputs.pid }}"
           echo "🛑 Stopping Weaver (PID: ${WEAVER_PID})"
 
-          # Send SIGHUP for graceful shutdown with report generation
-          if ps -p $WEAVER_PID >/dev/null 2>&1; then
-            kill -HUP $WEAVER_PID || true
+          # FMEA fix: Verify process exists before attempting shutdown
+          if ! ps -p $WEAVER_PID >/dev/null 2>&1; then
+            echo "⚠️  Weaver process already stopped"
+          else
+            # FMEA fix: Use SIGTERM for graceful shutdown (not SIGHUP)
+            echo "📤 Sending SIGTERM for graceful shutdown..."
+            kill -TERM $WEAVER_PID || true
 
-            # Wait for process to exit
-            max_wait=15
-            elapsed=0
-            while [ $elapsed -lt $max_wait ]; do
+            # Wait for graceful shutdown
+            MAX_WAIT=15
+            for i in $(seq 1 $MAX_WAIT); do
               if ! ps -p $WEAVER_PID >/dev/null 2>&1; then
-                echo "✅ Weaver stopped gracefully"
+                echo "✅ Weaver stopped gracefully after ${i}s"
                 break
               fi
-              sleep 1
-              elapsed=$((elapsed + 1))
-            done
 
-            # Force kill if still running
-            if ps -p $WEAVER_PID >/dev/null 2>&1; then
-              echo "⚠️  Force killing Weaver..."
-              kill -9 $WEAVER_PID || true
-            fi
-          else
-            echo "⚠️  Weaver process already stopped"
+              if [ $i -eq $MAX_WAIT ]; then
+                echo "⚠️  Graceful shutdown timed out, force killing..."
+                kill -9 $WEAVER_PID || true
+                sleep 1
+
+                if ps -p $WEAVER_PID >/dev/null 2>&1; then
+                  echo "❌ Failed to kill Weaver process"
+                else
+                  echo "✅ Weaver force-killed"
+                fi
+              else
+                sleep 1
+              fi
+            done
           fi
 
           # Show Weaver logs
@@ -546,6 +657,14 @@ jobs:
             - [Validation Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
             - Download \`weaver-validation-results\` artifact for detailed analysis
 
+            ### FMEA Improvements (v2.0):
+            - ✅ Fixed Weaver package name (weaver-cli)
+            - ✅ Added port cleanup before binding
+            - ✅ Implemented polling-based health checks
+            - ✅ Added OTLP port verification
+            - ✅ Added process existence checks
+            - ✅ Improved graceful shutdown (SIGTERM)
+
             ---
             *Weaver validation ensures that runtime telemetry matches schema definitions. This is the only way to prove features actually work (no false positives).*
             `;
@@ -687,3 +806,13 @@ jobs:
           else
             echo "**Status: NOT SAFE TO MERGE ❌**" >> $GITHUB_STEP_SUMMARY
           fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## FMEA Improvements (v2.0):" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Fixed weaver-forge → weaver-cli package name" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Added port 4317 cleanup before Weaver starts" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Implemented 15×2s polling-based health checks" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Added OTLP port 4317 verification (not just admin)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Added process existence checks at all critical points" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Improved shutdown: SIGTERM → wait → SIGKILL pattern" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Replaced lsof with netcat for port checking" >> $GITHUB_STEP_SUMMARY

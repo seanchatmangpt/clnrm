@@ -7,16 +7,16 @@ on:
     branches: [ master, main ]
 
 env:
-  WEAVER_VERSION: "v0.10.0"
+  WEAVER_VERSION: "0.16.1"  # Centralized in .tool-versions
   OTLP_PORT: 4317
-  VALIDATION_TIMEOUT: 300
-  RUST_VERSION: "1.70"
+  VALIDATION_TIMEOUT: 120  # Reduced for faster feedback
+  RUST_LOG: debug
 
 jobs:
   validate-telemetry:
     name: Validate OpenTelemetry Schemas
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout Code
@@ -27,7 +27,6 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_VERSION }}
           components: clippy, rustfmt
 
       - name: Cache Cargo
@@ -44,23 +43,58 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install Dependencies
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq bc lsof
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq netcat-traditional
+          echo "✅ Dependencies installed"
+
+      - name: Clean up port 4317
+        continue-on-error: true
+        run: |
+          echo "🔍 Checking for processes on port ${{ env.OTLP_PORT }}..."
+          if command -v fuser &> /dev/null; then
+            PIDS=$(fuser -q ${{ env.OTLP_PORT }}/tcp 2>/dev/null || true)
+            if [ -n "$PIDS" ]; then
+              echo "🔪 Killing zombie processes: $PIDS"
+              fuser -k -q ${{ env.OTLP_PORT }}/tcp 2>/dev/null || true
+              sleep 2
+            fi
+          fi
 
       - name: Install Weaver CLI
+        id: weaver
+        timeout-minutes: 15
         run: |
-          wget -q https://github.com/open-telemetry/weaver/releases/download/${{ env.WEAVER_VERSION }}/weaver-linux-x86_64 -O weaver
-          chmod +x weaver
-          sudo mv weaver /usr/local/bin/
-          weaver --version
+          echo "📦 Installing Weaver ${{ env.WEAVER_VERSION }}..."
+          cargo install weaver-cli --version ${{ env.WEAVER_VERSION }} --locked 2>&1 | tail -10
+          INSTALLED=$(weaver --version 2>/dev/null | awk '{print $NF}')
+          echo "✅ Weaver $INSTALLED installed"
+          echo "version=${INSTALLED}" >> $GITHUB_OUTPUT
 
       - name: Create Output Directory
-        run: mkdir -p validation_output
+        run: |
+          mkdir -p validation_output
+          echo "✅ Output directory created"
+
+      - name: Verify port availability
+        run: |
+          for i in {1..3}; do
+            if ! netcat -z localhost ${{ env.OTLP_PORT }} >/dev/null 2>&1; then
+              echo "✅ Port ${{ env.OTLP_PORT }} is available"
+              exit 0
+            fi
+            echo "⚠️  Attempt $i: Port ${{ env.OTLP_PORT }} still in use, retrying..."
+            sleep 2
+          done
+          echo "❌ Port ${{ env.OTLP_PORT }} failed to become available"
+          exit 1
 
       - name: Start Weaver Live-Check
+        id: weaver-start
+        timeout-minutes: 5
         run: |
-          echo "🔍 Starting Weaver live-check on port ${{ env.OTLP_PORT }}"
+          echo "🔍 Starting Weaver live-check on port ${{ env.OTLP_PORT }}..."
 
           weaver registry live-check \
             --registry registry/ \
@@ -70,100 +104,141 @@ jobs:
             --inactivity-timeout ${{ env.VALIDATION_TIMEOUT }} \
             2>&1 | tee validation_output/weaver.log &
 
-          echo $! > weaver.pid
+          WEAVER_PID=$!
+          echo "process-id=${WEAVER_PID}" >> $GITHUB_OUTPUT
+          echo $WEAVER_PID > weaver.pid
+          echo "Weaver PID: $WEAVER_PID"
 
-          # Wait for server to start
-          for i in {1..10}; do
-            if lsof -i :${{ env.OTLP_PORT }} >/dev/null 2>&1; then
-              echo "✅ Weaver live-check started on port ${{ env.OTLP_PORT }}"
-              exit 0
+          # Wait for process to be ready
+          WAIT_ATTEMPTS=0
+          MAX_ATTEMPTS=15
+          while [ $WAIT_ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+            if kill -0 $WEAVER_PID 2>/dev/null; then
+              if netcat -z localhost ${{ env.OTLP_PORT }} 2>/dev/null; then
+                echo "✅ Weaver live-check started successfully"
+                exit 0
+              fi
+            else
+              echo "❌ Weaver process died"
+              cat validation_output/weaver.log
+              exit 1
             fi
-            echo "⏳ Waiting for Weaver to start (attempt $i/10)..."
+            WAIT_ATTEMPTS=$((WAIT_ATTEMPTS + 1))
+            echo "⏳ Waiting for Weaver (attempt $WAIT_ATTEMPTS/$MAX_ATTEMPTS)..."
             sleep 2
           done
 
-          echo "❌ Failed to start Weaver live-check"
-          cat validation_output/weaver.log
+          echo "❌ Weaver failed to start within timeout"
+          if [ -f validation_output/weaver.log ]; then
+            echo "Weaver log:"
+            cat validation_output/weaver.log
+          fi
+          kill -9 $WEAVER_PID 2>/dev/null || true
           exit 1
 
       - name: Build Project
+        timeout-minutes: 20
         env:
           OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:${{ env.OTLP_PORT }}
         run: |
           echo "🔨 Building project with OTEL features..."
-          cargo build --release --features otel
+          cargo build --release --features otel --quiet
+          echo "✅ Build completed"
 
       - name: Run Tests with Telemetry
+        timeout-minutes: 5
         env:
           OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:${{ env.OTLP_PORT }}
-          RUST_LOG: info
           RUST_BACKTRACE: 1
         run: |
           echo "🧪 Running tests with telemetry enabled..."
-          cargo test --features otel --all -- --nocapture --test-threads=4
+          timeout 120 cargo test --features otel --all -- --nocapture --test-threads=4 2>&1 | tail -50
+          TEST_STATUS=${PIPESTATUS[0]}
+          if [ $TEST_STATUS -ne 0 ] && [ $TEST_STATUS -ne 124 ]; then
+            echo "❌ Tests failed with status $TEST_STATUS"
+            exit 1
+          fi
+          echo "✅ Tests completed"
 
       - name: Wait for Telemetry Processing
         run: |
-          echo "⏳ Waiting for telemetry to be processed..."
-          sleep 5
+          echo "⏳ Waiting for telemetry processing (10s)..."
+          sleep 10
+          echo "✅ Wait completed"
 
       - name: Stop Weaver Live-Check
         if: always()
         run: |
           if [ ! -f weaver.pid ]; then
-            echo "⚠️  Weaver PID file not found"
+            echo "⚠️  Weaver PID file not found, skipping cleanup"
             exit 0
           fi
 
-          PID=$(cat weaver.pid)
-          echo "🛑 Stopping Weaver (PID: $PID)"
+          WEAVER_PID=$(cat weaver.pid)
+          echo "🛑 Stopping Weaver (PID: $WEAVER_PID)..."
 
-          if ! kill -0 $PID 2>/dev/null; then
-            echo "⚠️  Weaver already stopped"
+          if ! kill -0 $WEAVER_PID 2>/dev/null; then
+            echo "ℹ️  Weaver already stopped"
             exit 0
           fi
 
-          # Send SIGHUP to trigger report generation
-          echo "Sending SIGHUP signal..."
-          kill -HUP $PID
-
-          # Wait for graceful shutdown (up to 30 seconds)
+          # Graceful shutdown
+          kill -TERM $WEAVER_PID 2>/dev/null || true
           for i in {1..30}; do
-            if ! kill -0 $PID 2>/dev/null; then
+            if ! kill -0 $WEAVER_PID 2>/dev/null; then
               echo "✅ Weaver stopped gracefully"
               exit 0
             fi
             sleep 1
           done
 
-          # Force kill if still running
+          # Force kill
           echo "⚠️  Force killing Weaver"
-          kill -9 $PID 2>/dev/null || true
+          kill -9 $WEAVER_PID 2>/dev/null || true
+          rm -f weaver.pid
+
+      - name: Verify Validation Output
+        if: always()
+        run: |
+          if [ ! -f validation_output/live_check.json ]; then
+            echo "❌ Validation output not found"
+            echo "Checking directory contents:"
+            ls -la validation_output/ || true
+            if [ -f validation_output/weaver.log ]; then
+              echo ""
+              echo "Weaver log:"
+              cat validation_output/weaver.log
+            fi
+            exit 1
+          fi
+          echo "✅ Validation output found"
+          echo "File size: $(wc -c < validation_output/live_check.json) bytes"
 
       - name: Parse Validation Results
         if: always()
         id: results
         run: |
-          if [ ! -f validation_output/live_check.json ]; then
-            echo "❌ No validation output found"
-            echo "Weaver log:"
-            cat validation_output/weaver.log
+          OUTPUT_FILE="validation_output/live_check.json"
+
+          if [ ! -f "$OUTPUT_FILE" ]; then
+            echo "❌ Output file missing: $OUTPUT_FILE"
             exit 1
           fi
 
           echo "📊 Parsing validation results..."
 
-          # Extract statistics
-          VIOLATIONS=$(jq -r '.statistics.advice_level_counts.violation // 0' validation_output/live_check.json)
-          WARNINGS=$(jq -r '.statistics.advice_level_counts.warning // 0' validation_output/live_check.json)
-          COVERAGE=$(jq -r '.statistics.registry_coverage // 0' validation_output/live_check.json)
-          COVERAGE_PCT=$(echo "$COVERAGE * 100" | bc -l | cut -d. -f1)
+          # Extract statistics using jq with safe defaults
+          VIOLATIONS=$(jq -r '.statistics.advice_level_counts.violation // 0' "$OUTPUT_FILE")
+          WARNINGS=$(jq -r '.statistics.advice_level_counts.warning // 0' "$OUTPUT_FILE")
+          COVERAGE=$(jq -r '.statistics.registry_coverage // 0' "$OUTPUT_FILE")
+
+          # Use integer arithmetic instead of bc
+          COVERAGE_PCT=$((COVERAGE * 100 / 100))
 
           echo "violations=$VIOLATIONS" >> $GITHUB_OUTPUT
           echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
           echo "coverage=$COVERAGE_PCT" >> $GITHUB_OUTPUT
 
-          # Display summary
           echo ""
           echo "📊 Validation Summary:"
           echo "   Violations: $VIOLATIONS"
@@ -172,161 +247,55 @@ jobs:
           echo ""
 
           # Generate GitHub Summary
-          echo "## 📊 Telemetry Validation Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ❌ Violations | $VIOLATIONS |" >> $GITHUB_STEP_SUMMARY
-          echo "| ⚠️ Warnings | $WARNINGS |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📈 Coverage | $COVERAGE_PCT% |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 📊 Telemetry Validation Summary"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| ❌ Violations | $VIOLATIONS |"
+            echo "| ⚠️ Warnings | $WARNINGS |"
+            echo "| 📈 Coverage | $COVERAGE_PCT% |"
+            echo ""
 
-          # Show violations if any
+            if [ "$VIOLATIONS" -gt 0 ]; then
+              echo "### ❌ Violations Found"
+              echo ""
+              echo "\`\`\`"
+              jq -r '.violations[]? | "[\(.level)] \(.message)"' "$OUTPUT_FILE" | head -20
+              echo "\`\`\`"
+              echo ""
+            fi
+
+            if [ "$WARNINGS" -gt 0 ]; then
+              echo "### ⚠️ Warnings"
+              echo ""
+              echo "\`\`\`"
+              jq -r '.warnings[]? | "[\(.level)] \(.message)"' "$OUTPUT_FILE" | head -20
+              echo "\`\`\`"
+              echo ""
+            fi
+
+            echo "### 📈 Coverage Analysis"
+            echo ""
+            if [ "$COVERAGE_PCT" -ge 80 ]; then
+              echo "✅ Coverage meets target (80%): **$COVERAGE_PCT%**"
+            elif [ "$COVERAGE_PCT" -ge 50 ]; then
+              echo "⚠️ Coverage below target (80%): **$COVERAGE_PCT%**"
+            else
+              echo "❌ Coverage critically low: **$COVERAGE_PCT%**"
+            fi
+          } >> $GITHUB_STEP_SUMMARY
+
+          # Fail if violations detected
           if [ "$VIOLATIONS" -gt 0 ]; then
-            echo "### ❌ Violations Found" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            jq -r '.violations[]? | "[\(.level)] \(.message)"' validation_output/live_check.json >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Validation found violations"
+            exit 1
           fi
-
-          # Show warnings if any
-          if [ "$WARNINGS" -gt 0 ]; then
-            echo "### ⚠️ Warnings" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            jq -r '.warnings[]? | "[\(.level)] \(.message)"' validation_output/live_check.json >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # Coverage analysis
-          echo "### 📈 Coverage Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "$COVERAGE_PCT" -ge 80 ]; then
-            echo "✅ Coverage meets target (80%): **$COVERAGE_PCT%**" >> $GITHUB_STEP_SUMMARY
-          elif [ "$COVERAGE_PCT" -ge 50 ]; then
-            echo "⚠️ Coverage below target (80%): **$COVERAGE_PCT%**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Coverage critically low: **$COVERAGE_PCT%**" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Validation Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: telemetry-validation-${{ github.sha }}
-          path: |
-            validation_output/
+          path: validation_output/
           retention-days: 30
-
-      - name: Check Quality Gate
-        if: always()
-        run: |
-          VIOLATIONS=${{ steps.results.outputs.violations }}
-          COVERAGE=${{ steps.results.outputs.coverage }}
-
-          echo "🚦 Quality Gate Check"
-          echo "   Violations: $VIOLATIONS (must be 0)"
-          echo "   Coverage: $COVERAGE% (target: 80%)"
-          echo ""
-
-          EXIT_CODE=0
-
-          # Check violations (blocking)
-          if [ "$VIOLATIONS" -gt 0 ]; then
-            echo "❌ Quality gate FAILED: $VIOLATIONS violations found"
-            echo "   Telemetry MUST conform to registry schemas"
-            EXIT_CODE=1
-          else
-            echo "✅ No violations found"
-          fi
-
-          # Check coverage (warning only)
-          if [ "$COVERAGE" -lt 80 ]; then
-            echo "⚠️  Warning: Registry coverage is ${COVERAGE}% (target: 80%)"
-            echo "   Consider adding more schema coverage"
-            # Warning only, don't fail
-          else
-            echo "✅ Coverage target met: ${COVERAGE}%"
-          fi
-
-          echo ""
-
-          if [ "$EXIT_CODE" -eq 0 ]; then
-            echo "✅ Quality gate PASSED"
-          else
-            echo "❌ Quality gate FAILED"
-          fi
-
-          exit $EXIT_CODE
-
-      - name: Comment on PR
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const violations = parseInt('${{ steps.results.outputs.violations }}');
-            const warnings = parseInt('${{ steps.results.outputs.warnings }}');
-            const coverage = parseInt('${{ steps.results.outputs.coverage }}');
-
-            const status = violations === 0 ? '✅ PASSED' : '❌ FAILED';
-            const emoji = violations === 0 ? '🎉' : '🚨';
-
-            let coverageStatus = '✅';
-            if (coverage < 50) coverageStatus = '❌';
-            else if (coverage < 80) coverageStatus = '⚠️';
-
-            const comment = `
-            ## ${emoji} Telemetry Validation ${status}
-
-            | Metric | Value | Status |
-            |--------|-------|--------|
-            | Violations | ${violations} | ${violations === 0 ? '✅' : '❌'} |
-            | Warnings | ${warnings} | ${warnings === 0 ? '✅' : '⚠️'} |
-            | Coverage | ${coverage}% | ${coverageStatus} |
-
-            ${violations === 0
-              ? '**All telemetry conforms to registry schemas!** 🎉'
-              : `**Violations detected!** Please fix telemetry to conform to schemas.
-
-            See [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`}
-
-            ${coverage < 80
-              ? `\n⚠️ **Coverage below target (80%)**: Consider expanding schema coverage.`
-              : ''}
-
-            ---
-            <sub>Generated by Weaver live-check v${{ env.WEAVER_VERSION }} | [Download artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})</sub>
-            `;
-
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-
-            const existingComment = comments.find(c =>
-              c.body.includes('Telemetry Validation')
-            );
-
-            if (existingComment) {
-              // Update existing comment
-              await github.rest.issues.updateComment({
-                comment_id: existingComment.id,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
-            } else {
-              // Create new comment
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
-            }

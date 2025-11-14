@@ -1,0 +1,71 @@
+# Composite Action: Process Health Check
+# Monitor and verify background processes with timeouts
+# Usage:
+#   - uses: ./.github/actions/process-health-check
+#     with:
+#       pid-file: 'weaver.pid'
+#       timeout: '30'
+#       check-interval: '2'
+
+name: Process Health Check
+description: 'Monitor background process health with retries'
+
+inputs:
+  pid-file:
+    description: 'File containing process ID'
+    required: true
+  timeout:
+    description: 'Total timeout in seconds'
+    required: false
+    default: '30'
+  check-interval:
+    description: 'Check interval in seconds'
+    required: false
+    default: '2'
+
+outputs:
+  healthy:
+    description: 'Whether process is healthy'
+    value: ${{ steps.monitor.outputs.healthy }}
+  pid:
+    description: 'Process ID'
+    value: ${{ steps.monitor.outputs.pid }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Monitor process health
+      id: monitor
+      shell: bash
+      run: |
+        PID_FILE="${{ inputs.pid-file }}"
+        TIMEOUT=${{ inputs.timeout }}
+        INTERVAL=${{ inputs.check-interval }}
+        ELAPSED=0
+
+        if [ ! -f "$PID_FILE" ]; then
+          echo "❌ PID file not found: $PID_FILE"
+          echo "healthy=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        PID=$(cat "$PID_FILE")
+        echo "pid=${PID}" >> $GITHUB_OUTPUT
+        echo "📊 Monitoring process $PID (timeout: ${TIMEOUT}s)..."
+
+        while [ $ELAPSED -lt $TIMEOUT ]; do
+          if kill -0 $PID 2>/dev/null; then
+            echo "✅ Process $PID is running (${ELAPSED}s elapsed)"
+            echo "healthy=true" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "⚠️  Process $PID not running"
+          fi
+
+          sleep $INTERVAL
+          ELAPSED=$((ELAPSED + INTERVAL))
+        done
+
+        echo "❌ Process $PID failed to start within ${TIMEOUT}s"
+        echo "healthy=false" >> $GITHUB_OUTPUT
+        exit 1
