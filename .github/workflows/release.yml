@@ -175,24 +175,43 @@ jobs:
       - name: Create release archive
         run: |
           echo "📦 Creating release archives..."
-          mkdir release-archives
+          mkdir -p release-archives
 
-          # Create tar.gz archives for each platform
+          # FMEA fix: Proper error handling for archive creation
           for dir in artifacts/clnrm-*; do
             if [ -d "$dir" ]; then
               platform=$(basename "$dir")
+              archive_name="clnrm-${platform}.tar.gz"
+              archive_path="release-archives/${archive_name}"
+
               echo "Creating archive for $platform..."
-              cd "$dir"
-              tar -czf "../../release-archives/clnrm-${platform}.tar.gz" *
-              cd ../..
+
+              # Use proper quoting and error handling
+              if tar -czf "$archive_path" -C "$dir" .; then
+                echo "✅ Created: $archive_path"
+              else
+                echo "❌ Failed to create: $archive_path"
+                exit 1
+              fi
             fi
           done
 
+          # Verify archives were created
+          if [ ! -d release-archives ] || [ -z "$(ls -A release-archives/ 2>/dev/null)" ]; then
+            echo "❌ No archives were created"
+            ls -la artifacts/
+            exit 1
+          fi
+
+          echo "✅ Archives created:"
           ls -la release-archives/
 
       - name: Generate release notes
         run: |
-          echo "# Cleanroom v$(echo ${{ github.ref }} | sed 's|refs/tags/v||')" > release-notes.md
+          # FMEA fix: Use parameter expansion instead of sed
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "# Cleanroom v${VERSION}" > release-notes.md
           echo "" >> release-notes.md
           echo "Release generated on $(date)" >> release-notes.md
           echo "" >> release-notes.md
@@ -241,16 +260,45 @@ jobs:
       - name: Get release info
         id: release-info
         run: |
-          VERSION=$(echo ${{ github.ref }} | sed 's|refs/tags/v||')
+          # FMEA fix: Robust version extraction (parameter expansion instead of sed)
+          REF="${{ github.ref }}"
+          REF_NAME="${{ github.ref_name }}"
+
+          # Extract version from ref (refs/tags/v1.2.3 -> 1.2.3)
+          VERSION="${REF_NAME#v}"
+
+          if [ -z "$VERSION" ]; then
+            echo "❌ Failed to extract version from $REF_NAME"
+            exit 1
+          fi
+
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "tag=${REF_NAME}" >> $GITHUB_OUTPUT
+          echo "✅ Release version: ${VERSION}"
 
       - name: Calculate SHA256
         id: sha256
         run: |
-          SHA256=$(sha256sum homebrew-assets/clnrm | awk '{print $1}')
+          # FMEA fix: Normalize to shasum -a 256 (works on macOS and Linux)
+          BINARY_PATH="homebrew-assets/clnrm"
+
+          # Verify binary exists
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "❌ Binary not found at $BINARY_PATH"
+            ls -la homebrew-assets/
+            exit 1
+          fi
+
+          # Calculate SHA256 using platform-independent command
+          SHA256=$(shasum -a 256 "$BINARY_PATH" | awk '{print $1}')
+
+          if [ -z "$SHA256" ]; then
+            echo "❌ Failed to calculate SHA256"
+            exit 1
+          fi
+
           echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
-          echo "SHA256: ${SHA256}"
+          echo "✅ SHA256: ${SHA256}"
 
       - name: Generate Homebrew formula
         run: |
@@ -338,9 +386,13 @@ jobs:
 
       - name: Generate post-release report
         run: |
+          # FMEA fix: Use parameter expansion instead of sed
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+
           echo "# Post-Release Validation Report" > post-release-report.md
           echo "" >> post-release-report.md
-          echo "Generated on $(date) for version $(echo ${{ github.ref }} | sed 's|refs/tags/v||')" >> post-release-report.md
+          echo "Generated on $(date) for version ${VERSION}" >> post-release-report.md
           echo "" >> post-release-report.md
           echo "## Validation Results" >> post-release-report.md
           echo "- ✅ Binary installation successful" >> post-release-report.md
