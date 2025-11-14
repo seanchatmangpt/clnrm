@@ -89,17 +89,18 @@ jobs:
           cat stats_output.txt
           echo "::endgroup::"
 
-          # Parse required coverage
+          # FMEA fix: Parse required coverage using integer arithmetic (no bc)
           REQUIRED=$(grep "Required attributes:" stats_output.txt | awk '{print $3}')
           TOTAL=$(grep "Total attributes:" stats_output.txt | awk '{print $3}')
 
           if [ ! -z "$REQUIRED" ] && [ ! -z "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
-            COVERAGE=$(echo "scale=2; ($REQUIRED * 100) / $TOTAL" | bc)
+            # Integer arithmetic: (REQUIRED * 100) / TOTAL
+            COVERAGE=$(( (REQUIRED * 100) / TOTAL ))
             echo "coverage=${COVERAGE}" >> $GITHUB_OUTPUT
             echo "📊 Coverage: ${COVERAGE}%"
 
-            # Check if coverage meets threshold (80%)
-            if (( $(echo "$COVERAGE >= 80.0" | bc -l) )); then
+            # FMEA fix: Check if coverage meets threshold (80%) using integer comparison
+            if [ "$COVERAGE" -ge 80 ]; then
               echo "✅ Coverage meets threshold (>= 80%)"
               echo "status=passed" >> $GITHUB_OUTPUT
             else
@@ -117,10 +118,11 @@ jobs:
         run: |
           COVERAGE="${{ steps.stats.outputs.coverage }}"
           if [ ! -z "$COVERAGE" ]; then
+            # FMEA fix: Use integer comparison instead of bc for badge color
             COLOR="red"
-            if (( $(echo "$COVERAGE >= 90.0" | bc -l) )); then COLOR="brightgreen"; fi
-            if (( $(echo "$COVERAGE >= 80.0" | bc -l) )); then COLOR="green"; fi
-            if (( $(echo "$COVERAGE >= 70.0" | bc -l) )); then COLOR="yellow"; fi
+            if [ "$COVERAGE" -ge 90 ]; then COLOR="brightgreen"; fi
+            if [ "$COVERAGE" -ge 80 ]; then COLOR="green"; fi
+            if [ "$COVERAGE" -ge 70 ]; then COLOR="yellow"; fi
 
             echo "Coverage: ${COVERAGE}% (${COLOR})"
           fi
@@ -153,13 +155,27 @@ jobs:
 
       - name: Install Weaver
         run: |
-          curl -sSL https://github.com/open-telemetry/weaver/releases/latest/download/weaver-linux-x86_64 -o weaver
-          chmod +x weaver
-          sudo mv weaver /usr/local/bin/
+          # FMEA fix: Use cargo install instead of curl (platform-independent)
+          cargo install weaver-cli --locked
+          weaver --version
 
       - name: Build clnrm with OTEL features
         run: |
           cargo build --release --features otel
+
+      - name: Clean up ports before Weaver startup
+        continue-on-error: true
+        run: |
+          # FMEA fix: Kill zombie processes on ports 4317 (OTLP) and 8080 (admin)
+          echo "🔍 Cleaning up ports 4317 (OTLP) and 8080 (admin)..."
+
+          if command -v fuser &> /dev/null; then
+            fuser -k -q 4317/tcp 2>/dev/null || true
+            fuser -k -q 8080/tcp 2>/dev/null || true
+            sleep 2
+          fi
+
+          echo "✅ Port cleanup completed"
 
       - name: Start Weaver live-check listener
         id: weaver
@@ -177,10 +193,42 @@ jobs:
 
           WEAVER_PID=$!
           echo "pid=${WEAVER_PID}" >> $GITHUB_OUTPUT
-          echo "✅ Weaver started (PID: ${WEAVER_PID})"
+          echo "📊 Weaver started (PID: ${WEAVER_PID})"
 
-          # Wait for Weaver to be ready
-          sleep 3
+          # FMEA fix: Use polling-based health check instead of fixed sleep
+          echo "⏳ Waiting for Weaver to be ready (timeout: 30s)..."
+          ATTEMPT=0
+          MAX_ATTEMPTS=15
+          RETRY_INTERVAL=2
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            # Check if process is still running
+            if ! kill -0 $WEAVER_PID 2>/dev/null; then
+              echo "❌ Weaver process crashed"
+              exit 1
+            fi
+
+            # Check admin port (8080)
+            if nc -z localhost 8080 2>/dev/null; then
+              echo "✅ Weaver admin port (8080) is ready"
+
+              # Also verify OTLP port (4317)
+              if nc -z localhost 4317 2>/dev/null; then
+                echo "✅ OTLP port (4317) is ready"
+                echo "ready=true" >> $GITHUB_OUTPUT
+                break
+              fi
+            fi
+
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "⏳ Attempt $ATTEMPT/$MAX_ATTEMPTS: Waiting for Weaver ports (retry in ${RETRY_INTERVAL}s)..."
+              sleep $RETRY_INTERVAL
+            else
+              echo "❌ Weaver failed to start within 30s"
+              exit 1
+            fi
+          done
 
       - name: Run integration tests with telemetry
         env:
@@ -197,14 +245,27 @@ jobs:
         if: always()
         run: |
           WEAVER_PID="${{ steps.weaver.outputs.pid }}"
-          echo "🛑 Stopping Weaver (PID: ${WEAVER_PID})"
+          if [ ! -z "$WEAVER_PID" ] && [ "$WEAVER_PID" != "null" ]; then
+            echo "🛑 Stopping Weaver (PID: ${WEAVER_PID})"
 
-          # Send SIGHUP for graceful shutdown
-          kill -HUP $WEAVER_PID || true
-          sleep 2
+            # FMEA fix: Use SIGTERM for graceful shutdown (not SIGHUP)
+            kill -TERM $WEAVER_PID 2>/dev/null || true
 
-          # Force kill if still running
-          kill -9 $WEAVER_PID 2>/dev/null || true
+            # Wait for graceful shutdown (5 seconds)
+            ELAPSED=0
+            while [ $ELAPSED -lt 5 ]; do
+              if ! kill -0 $WEAVER_PID 2>/dev/null; then
+                echo "✅ Weaver shut down gracefully"
+                exit 0
+              fi
+              sleep 1
+              ELAPSED=$((ELAPSED + 1))
+            done
+
+            # Force kill if still running
+            echo "⚠️  Force killing Weaver (graceful shutdown timeout)"
+            kill -9 $WEAVER_PID 2>/dev/null || true
+          fi
 
       - name: Parse validation report
         id: validation
@@ -272,13 +333,15 @@ jobs:
           # Schema check (20 points)
           SCORE=$((SCORE + 20))
 
-          # Coverage (30 points max, scaled)
+          # FMEA fix: Coverage (30 points max, scaled) using integer arithmetic (no bc)
           if [ -f registry-statistics/stats_output.txt ]; then
             REQUIRED=$(grep "Required attributes:" registry-statistics/stats_output.txt | awk '{print $3}')
             TOTAL=$(grep "Total attributes:" registry-statistics/stats_output.txt | awk '{print $3}')
             if [ ! -z "$REQUIRED" ] && [ ! -z "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
-              COVERAGE=$(echo "scale=2; ($REQUIRED * 100) / $TOTAL" | bc)
-              COVERAGE_SCORE=$(echo "scale=0; ($COVERAGE / 100) * 30" | bc)
+              # Integer arithmetic: (REQUIRED * 100) / TOTAL
+              COVERAGE=$(( (REQUIRED * 100) / TOTAL ))
+              # Scale coverage to 30 points: (COVERAGE / 100) * 30 = (COVERAGE * 30) / 100
+              COVERAGE_SCORE=$(( (COVERAGE * 30) / 100 ))
               SCORE=$((SCORE + COVERAGE_SCORE))
               echo "Coverage contribution: ${COVERAGE_SCORE}/30"
             fi
