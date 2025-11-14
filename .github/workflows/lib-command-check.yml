@@ -1,0 +1,54 @@
+name: Check Command Exists
+description: 'Verify that a command exists and is executable, with proper error handling'
+
+inputs:
+  command:
+    description: 'Command name to check (e.g., clnrm, cargo, jq)'
+    required: true
+
+  error_message:
+    description: 'Custom error message if command not found'
+    required: false
+    default: ''
+
+  optional:
+    description: 'If true, fail gracefully; if false, exit with error'
+    required: false
+    default: 'false'
+
+outputs:
+  found:
+    description: 'Whether the command was found'
+    value: ${{ steps.check-command.outputs.found }}
+
+runs:
+  using: composite
+  steps:
+    - id: check-command
+      shell: bash
+      run: |
+        COMMAND="${{ inputs.command }}"
+        OPTIONAL="${{ inputs.optional }}"
+        ERROR_MSG="${{ inputs.error_message }}"
+
+        if command -v "$COMMAND" &> /dev/null; then
+          echo "✅ Command found: $COMMAND"
+          echo "found=true" >> $GITHUB_OUTPUT
+          exit 0
+        else
+          if [ "$OPTIONAL" == "true" ]; then
+            echo "⚠️  Command not found (optional): $COMMAND"
+            if [ -n "$ERROR_MSG" ]; then
+              echo "$ERROR_MSG"
+            fi
+            echo "found=false" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "❌ CRITICAL: Command not found: $COMMAND"
+            if [ -n "$ERROR_MSG" ]; then
+              echo "$ERROR_MSG"
+            fi
+            echo "found=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        fi

@@ -1,0 +1,103 @@
+name: Clean Up Port
+description: 'Kill processes listening on a specific port using portable POSIX commands'
+
+inputs:
+  port:
+    description: 'Port number to clean up'
+    required: true
+
+  force:
+    description: 'If true, use SIGKILL instead of SIGTERM'
+    required: false
+    default: 'false'
+
+  timeout:
+    description: 'Wait this many seconds before force killing (only if force=false)'
+    required: false
+    default: '5'
+
+outputs:
+  cleaned:
+    description: 'Whether any processes were cleaned up'
+    value: ${{ steps.cleanup.outputs.cleaned }}
+
+runs:
+  using: composite
+  steps:
+    - id: cleanup
+      shell: bash
+      run: |
+        PORT=${{ inputs.port }}
+        FORCE="${{ inputs.force }}"
+        TIMEOUT=${{ inputs.timeout }}
+
+        echo "🧹 Cleaning up port $PORT..."
+
+        # Try netstat first (portable, but may not be installed)
+        if command -v netstat &> /dev/null; then
+          PIDS=$(netstat -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | cut -d'/' -f1)
+        # Fall back to ss (more modern Linux)
+        elif command -v ss &> /dev/null; then
+          PIDS=$(ss -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | cut -d':' -f1 | grep -oE '[0-9]+')
+        # Fall back to lsof if available
+        elif command -v lsof &> /dev/null; then
+          PIDS=$(lsof -ti:$PORT 2>/dev/null || true)
+        else
+          echo "⚠️  No suitable port inspection tool found (netstat, ss, or lsof)"
+          echo "cleaned=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        if [ -z "$PIDS" ]; then
+          echo "✅ No processes listening on port $PORT"
+          echo "cleaned=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        echo "Found processes: $PIDS"
+        CLEANED=false
+
+        for PID in $PIDS; do
+          if [ -z "$PID" ] || [ "$PID" == "-" ]; then
+            continue
+          fi
+
+          if [ "$FORCE" == "true" ]; then
+            echo "  Killing PID $PID with SIGKILL..."
+            if kill -9 "$PID" 2>/dev/null; then
+              CLEANED=true
+              echo "  ✅ Killed PID $PID"
+            else
+              echo "  ⚠️  Failed to kill PID $PID"
+            fi
+          else
+            echo "  Terminating PID $PID with SIGTERM..."
+            if kill -15 "$PID" 2>/dev/null; then
+              CLEANED=true
+              echo "  ✅ Sent SIGTERM to PID $PID"
+
+              # Wait for graceful shutdown
+              for i in $(seq 1 $TIMEOUT); do
+                if ! kill -0 "$PID" 2>/dev/null; then
+                  echo "  ✅ Process $PID terminated gracefully"
+                  break
+                fi
+                if [ $i -eq $TIMEOUT ]; then
+                  echo "  ⚠️  Process $PID still running after ${TIMEOUT}s, force killing..."
+                  kill -9 "$PID" 2>/dev/null || true
+                fi
+                sleep 1
+              done
+            else
+              echo "  ⚠️  Failed to send signal to PID $PID"
+            fi
+          fi
+        done
+
+        if [ "$CLEANED" == "true" ]; then
+          echo "✅ Cleaned up port $PORT"
+          echo "cleaned=true" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️  No processes were cleaned up"
+          echo "cleaned=false" >> $GITHUB_OUTPUT
+        fi
