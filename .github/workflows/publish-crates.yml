@@ -382,8 +382,21 @@ jobs:
 
       - name: Wait for crates.io indexing (clnrm-shared)
         run: |
-          echo "Waiting 30 seconds for crates.io indexing..."
-          sleep 30
+          echo "⏳ Waiting for crates.io indexing (with verification)..."
+          sleep 60
+
+          # FMEA fix: Add verification loop instead of fixed sleep
+          for attempt in {1..5}; do
+            echo "Attempt $attempt: Checking if clnrm-shared is indexed..."
+            if cargo search clnrm-shared --limit 1 | grep -q "clnrm-shared ="; then
+              echo "✅ clnrm-shared indexed successfully"
+              break
+            fi
+            if [ $attempt -lt 5 ]; then
+              echo "⏳ Still waiting... (retry in 10s)"
+              sleep 10
+            fi
+          done
 
       - name: Publish clnrm-core
         env:
@@ -395,8 +408,21 @@ jobs:
 
       - name: Wait for crates.io indexing (clnrm-core)
         run: |
-          echo "Waiting 30 seconds for crates.io indexing..."
-          sleep 30
+          echo "⏳ Waiting for crates.io indexing (with verification)..."
+          sleep 60
+
+          # FMEA fix: Add verification loop
+          for attempt in {1..5}; do
+            echo "Attempt $attempt: Checking if clnrm-core is indexed..."
+            if cargo search clnrm-core --limit 1 | grep -q "clnrm-core ="; then
+              echo "✅ clnrm-core indexed successfully"
+              break
+            fi
+            if [ $attempt -lt 5 ]; then
+              echo "⏳ Still waiting... (retry in 10s)"
+              sleep 10
+            fi
+          done
 
       - name: Publish clap-noun-verb
         env:
@@ -408,8 +434,21 @@ jobs:
 
       - name: Wait for crates.io indexing (clap-noun-verb)
         run: |
-          echo "Waiting 30 seconds for crates.io indexing..."
-          sleep 30
+          echo "⏳ Waiting for crates.io indexing (with verification)..."
+          sleep 60
+
+          # FMEA fix: Add verification loop
+          for attempt in {1..5}; do
+            echo "Attempt $attempt: Checking if clap-noun-verb is indexed..."
+            if cargo search clap-noun-verb --limit 1 | grep -q "clap-noun-verb ="; then
+              echo "✅ clap-noun-verb indexed successfully"
+              break
+            fi
+            if [ $attempt -lt 5 ]; then
+              echo "⏳ Still waiting... (retry in 10s)"
+              sleep 10
+            fi
+          done
 
       - name: Publish clnrm
         env:

@@ -253,37 +253,42 @@ jobs:
       - name: Check binary size
         id: check-size
         run: |
-          # Platform-agnostic binary size check
+          # Platform-agnostic binary size check (FMEA fix: use integer arithmetic, no bc)
           BINARY_SIZE=$(du -b target/release/clnrm | cut -f1)
-          BINARY_SIZE_MB=$(echo "scale=2; $BINARY_SIZE / 1024 / 1024" | bc)
+          BINARY_SIZE_KB=$((BINARY_SIZE / 1024))
+          BINARY_SIZE_MB=$((BINARY_SIZE_KB / 1024))
 
-          echo "Binary size: ${BINARY_SIZE_MB}MB"
+          echo "Binary size: ${BINARY_SIZE_MB}MB (${BINARY_SIZE_KB}KB, ${BINARY_SIZE} bytes)"
           echo "binary_size_mb=${BINARY_SIZE_MB}" >> $GITHUB_OUTPUT
 
           # Threshold: 60MB (with 20% buffer over 50MB baseline)
           THRESHOLD_MB=60
 
-          if (( $(echo "$BINARY_SIZE_MB > $THRESHOLD_MB" | bc -l) )); then
+          if [ "$BINARY_SIZE_MB" -gt "$THRESHOLD_MB" ]; then
             echo "::error::Binary size ${BINARY_SIZE_MB}MB exceeds threshold ${THRESHOLD_MB}MB"
             exit 1
           else
-            echo "✅ Binary size within threshold"
+            echo "✅ Binary size within threshold (${BINARY_SIZE_MB}MB < ${THRESHOLD_MB}MB)"
           fi
 
       - name: Generate size report
         run: |
+          BINARY_SIZE_MB=${{ steps.check-size.outputs.binary_size_mb }}
+          THRESHOLD_MB=60
+
           echo "# Binary Size Report" > binary-size-report.md
           echo "" >> binary-size-report.md
           echo "**Binary:** clnrm" >> binary-size-report.md
-          echo "**Size:** ${{ steps.check-size.outputs.binary_size_mb }}MB" >> binary-size-report.md
+          echo "**Size:** ${BINARY_SIZE_MB}MB" >> binary-size-report.md
           echo "**Baseline:** 50MB" >> binary-size-report.md
-          echo "**Threshold:** 60MB" >> binary-size-report.md
+          echo "**Threshold:** ${THRESHOLD_MB}MB" >> binary-size-report.md
           echo "" >> binary-size-report.md
 
-          if (( $(echo "${{ steps.check-size.outputs.binary_size_mb }} > 60" | bc -l) )); then
-            echo "## ⚠️ Size Exceeded" >> binary-size-report.md
+          # FMEA fix: Use integer comparison instead of bc
+          if [ "$BINARY_SIZE_MB" -gt "$THRESHOLD_MB" ]; then
+            echo "## ⚠️ Size Exceeded (${BINARY_SIZE_MB}MB > ${THRESHOLD_MB}MB)" >> binary-size-report.md
           else
-            echo "## ✅ Size OK" >> binary-size-report.md
+            echo "## ✅ Size OK (${BINARY_SIZE_MB}MB ≤ ${THRESHOLD_MB}MB)" >> binary-size-report.md
           fi
 
       - name: Upload size report
