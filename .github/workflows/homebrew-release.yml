@@ -36,7 +36,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -72,13 +71,23 @@ jobs:
       - name: Calculate SHA256
         id: sha256
         run: |
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            SHA256=$(shasum -a 256 clnrm-${{ matrix.bottle_tag }}.tar.gz | cut -d' ' -f1)
-          else
-            SHA256=$(sha256sum clnrm-${{ matrix.bottle_tag }}.tar.gz | cut -d' ' -f1)
+          # FMEA fix: Normalize to shasum -a 256 (works on macOS and Linux)
+          TARBALL="clnrm-${{ matrix.bottle_tag }}.tar.gz"
+
+          # Use shasum which is available on both macOS and Linux
+          SHA256=$(shasum -a 256 "$TARBALL" | awk '{print $1}')
+
+          if [ -z "$SHA256" ]; then
+            echo "❌ Failed to calculate SHA256"
+            exit 1
           fi
+
+          # FMEA fix: Create the .sha256 file referenced in artifact upload
+          echo "$SHA256 $TARBALL" > "${TARBALL}.sha256"
+          echo "✅ Created SHA256 file: ${TARBALL}.sha256"
+
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-          echo "SHA256 for ${{ matrix.bottle_tag }}: $SHA256"
+          echo "📦 SHA256 for ${{ matrix.bottle_tag }}: $SHA256"
 
       - name: Upload bottle
         uses: actions/upload-artifact@v4
@@ -110,8 +119,12 @@ jobs:
           for bottle in bottles/*/clnrm-*.tar.gz; do
             if [ -f "$bottle" ]; then
               filename=$(basename "$bottle")
-              tag=$(echo "$filename" | sed 's/clnrm-\(.*\)\.tar\.gz/\1/')
-              sha256=$(sha256sum "$bottle" | cut -d' ' -f1)
+              # FMEA fix: Use more robust tag extraction
+              tag="${filename#clnrm-}"     # Remove 'clnrm-' prefix
+              tag="${tag%.tar.gz}"          # Remove '.tar.gz' suffix
+
+              # FMEA fix: Normalize to shasum -a 256 (works on all platforms)
+              sha256=$(shasum -a 256 "$bottle" | awk '{print $1}')
               echo "$tag: $sha256"
             fi
           done
@@ -123,11 +136,23 @@ jobs:
           echo "## Bottle SHA256 Hashes for Manual Update"
           echo "Update the bottle block in homebrew/Formula/clnrm.rb with these hashes:"
           echo ""
+
           for bottle in bottles/*/clnrm-*.tar.gz; do
             if [ -f "$bottle" ]; then
               filename=$(basename "$bottle")
-              tag=$(echo "$filename" | sed 's/clnrm-\(.*\)\.tar\.gz/\1/')
-              sha256=$(sha256sum "$bottle" | cut -d' ' -f1)
+
+              # FMEA fix: Use more robust tag extraction (parameter expansion, not sed)
+              tag="${filename#clnrm-}"
+              tag="${tag%.tar.gz}"
+
+              # FMEA fix: Normalize to shasum -a 256 (works on all platforms)
+              sha256=$(shasum -a 256 "$bottle" | awk '{print $1}')
+
+              if [ -z "$sha256" ]; then
+                echo "⚠️  Warning: Could not calculate SHA256 for $filename"
+                continue
+              fi
+
               echo "    sha256 cellar: :any_skip_relocation, $tag: \"$sha256\""
             fi
           done

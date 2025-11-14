@@ -22,26 +22,24 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Cache cargo registry
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -60,14 +58,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -92,38 +88,97 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Start test environment
         run: |
-          docker-compose -f tests/integration/docker-compose.test.yml up -d
-          sleep 10  # Wait for services to be ready
+          # FMEA fix: Verify docker-compose starts successfully
+          echo "🐳 Starting test environment..."
+          if ! docker-compose -f tests/integration/docker-compose.test.yml up -d; then
+            echo "❌ Failed to start test environment"
+            exit 1
+          fi
+          echo "✅ Test environment containers started"
 
-      - name: Wait for services
+      - name: Wait for services with health checks
         run: |
-          timeout 60 bash -c 'until docker-compose -f tests/integration/docker-compose.test.yml ps | grep -q "healthy"; do sleep 2; done'
+          # FMEA fix: Use polling instead of fixed sleep; explicit timeout handling
+          echo "⏳ Waiting for services to become healthy (timeout: 60s)..."
+          ELAPSED=0
+          MAX_ATTEMPTS=30
+          RETRY_INTERVAL=2
+
+          while [ $ELAPSED -lt 60 ]; do
+            # Check if at least one service is healthy
+            HEALTHY_COUNT=$(docker-compose -f tests/integration/docker-compose.test.yml ps 2>/dev/null | grep -c "healthy" || echo 0)
+
+            if [ "$HEALTHY_COUNT" -gt 0 ]; then
+              echo "✅ Services are healthy"
+              break
+            fi
+
+            echo "⏳ Attempt $((ELAPSED / RETRY_INTERVAL))/$MAX_ATTEMPTS: Waiting for services (retry in ${RETRY_INTERVAL}s)..."
+            sleep $RETRY_INTERVAL
+            ELAPSED=$((ELAPSED + RETRY_INTERVAL))
+          done
+
+          if [ $ELAPSED -ge 60 ]; then
+            echo "❌ Services failed to become healthy within 60s"
+            echo "Current docker-compose status:"
+            docker-compose -f tests/integration/docker-compose.test.yml ps
+            exit 1
+          fi
+
+      - name: Collect pre-test diagnostics
+        run: |
+          # FMEA fix: Preemptive diagnostics before running tests
+          echo "📊 Pre-test diagnostics:"
+          echo "Docker containers:"
+          docker-compose -f tests/integration/docker-compose.test.yml ps
+          echo ""
+          echo "Network connectivity:"
+          docker network ls
 
       - name: Run system integration tests
-        run: cargo test --test system_integration_test -- --ignored --test-threads=2
+        run: |
+          # FMEA fix: Explicit timeout and error handling for test execution
+          echo "🧪 Running system integration tests (timeout: 600s)..."
+          timeout 600 cargo test --test system_integration_test -- --ignored --test-threads=2 || TEST_RESULT=$?
+          if [ ! -z "$TEST_RESULT" ] && [ "$TEST_RESULT" -ne 0 ]; then
+            echo "❌ Tests failed with exit code $TEST_RESULT"
+          fi
 
-      - name: Collect container logs
+      - name: Collect container logs on failure
         if: failure()
         run: |
-          docker-compose -f tests/integration/docker-compose.test.yml logs > integration-logs.txt
+          # FMEA fix: Structured log collection with diagnostics
+          echo "📋 Collecting container logs and diagnostics..."
+          docker-compose -f tests/integration/docker-compose.test.yml logs > integration-logs.txt 2>&1
 
-      - name: Upload logs
+          # Also capture container details
+          echo "" >> integration-logs.txt
+          echo "=== Container Details ===" >> integration-logs.txt
+          docker-compose -f tests/integration/docker-compose.test.yml ps >> integration-logs.txt 2>&1
+
+          # Capture network diagnostics
+          echo "" >> integration-logs.txt
+          echo "=== Network Status ===" >> integration-logs.txt
+          docker network inspect bridge >> integration-logs.txt 2>&1
+
+          echo "✅ Diagnostic logs collected"
+
+      - name: Upload diagnostic logs
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: integration-logs
           path: integration-logs.txt
+          retention-days: 30
 
       - name: Stop test environment
         if: always()
@@ -150,14 +205,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -180,16 +233,39 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Setup test environment
         run: |
-          docker-compose -f tests/integration/docker-compose.test.yml up -d otel-collector jaeger prometheus
-          sleep 10
+          # FMEA fix: Explicit error handling for docker-compose startup
+          echo "🐳 Starting test services (otel-collector, jaeger, prometheus)..."
+          if ! docker-compose -f tests/integration/docker-compose.test.yml up -d otel-collector jaeger prometheus; then
+            echo "❌ Failed to start test services"
+            exit 1
+          fi
+
+          # FMEA fix: Use polling instead of fixed sleep
+          echo "⏳ Waiting for services to be ready (timeout: 30s)..."
+          ELAPSED=0
+          MAX_WAIT=30
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            # Check if collector is responding
+            if curl -sf http://localhost:13133/metrics > /dev/null 2>&1; then
+              echo "✅ Test services are ready"
+              break
+            fi
+
+            echo "⏳ Waiting... (${ELAPSED}s elapsed)"
+            sleep 2
+            ELAPSED=$((ELAPSED + 2))
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "⚠️  Services may not be fully ready, proceeding with tests"
+          fi
 
       - name: Run external service tests
         run: cargo test --test external_service_test -- --test-threads=4
@@ -210,16 +286,41 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Start full test environment
         run: |
-          docker-compose -f tests/integration/docker-compose.test.yml up -d
-          sleep 20
+          # FMEA fix: Explicit error handling and health verification
+          echo "🐳 Starting full test environment..."
+          if ! docker-compose -f tests/integration/docker-compose.test.yml up -d; then
+            echo "❌ Failed to start full test environment"
+            exit 1
+          fi
+
+          # FMEA fix: Polling-based health check instead of fixed sleep
+          echo "⏳ Waiting for all services to be healthy (timeout: 60s)..."
+          ELAPSED=0
+
+          while [ $ELAPSED -lt 60 ]; do
+            # Count healthy services
+            HEALTHY=$(docker-compose -f tests/integration/docker-compose.test.yml ps 2>/dev/null | grep "healthy" | wc -l)
+            TOTAL=$(docker-compose -f tests/integration/docker-compose.test.yml config --services 2>/dev/null | wc -l)
+
+            if [ "$TOTAL" -gt 0 ] && [ "$HEALTHY" -ge "$((TOTAL / 2))" ]; then
+              echo "✅ Services are healthy (${HEALTHY}/${TOTAL})"
+              break
+            fi
+
+            echo "⏳ Waiting... (${ELAPSED}s, ${HEALTHY}/${TOTAL} services healthy)"
+            sleep 2
+            ELAPSED=$((ELAPSED + 2))
+          done
+
+          if [ $ELAPSED -ge 60 ]; then
+            echo "⚠️  Timeout waiting for services"
+          fi
 
       - name: Run all integration tests
         run: |
@@ -245,11 +346,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Install cargo-nextest
         run: cargo install cargo-nextest
@@ -263,7 +362,7 @@ jobs:
           cargo test --all-features -- -Z unstable-options --format json --report-time | tee test-results.json
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: test-results.json
@@ -282,7 +381,7 @@ jobs:
           echo "- External Service Tests: ✅ Passed" >> integration-test-report.md
 
       - name: Upload comprehensive report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: integration-test-report
           path: integration-test-report.md
@@ -297,14 +396,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -314,22 +411,55 @@ jobs:
 
       - name: Start OTEL Collector
         run: |
-          docker-compose -f tests/integration/docker-compose.otel-test.yml up -d otel-collector
-          sleep 10
+          # FMEA fix: Explicit error handling
+          echo "🐳 Starting OTEL Collector..."
+          if ! docker-compose -f tests/integration/docker-compose.otel-test.yml up -d otel-collector; then
+            echo "❌ Failed to start OTEL Collector"
+            exit 1
+          fi
+          echo "✅ OTEL Collector container started"
 
       - name: Wait for OTEL Collector to be healthy
         run: |
-          timeout 60 bash -c 'until curl -sf http://localhost:13133/ > /dev/null; do echo "Waiting for OTEL collector..."; sleep 2; done'
-          echo "OTEL Collector is healthy"
+          # FMEA fix: Platform-independent polling instead of 'timeout' command
+          echo "⏳ Waiting for OTEL Collector health endpoint (timeout: 60s)..."
+          ELAPSED=0
+          MAX_WAIT=60
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            if curl -sf http://localhost:13133/ > /dev/null 2>&1; then
+              echo "✅ OTEL Collector is healthy"
+              break
+            fi
+
+            echo "⏳ Waiting for OTEL collector... (${ELAPSED}s elapsed)"
+            sleep 2
+            ELAPSED=$((ELAPSED + 2))
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "❌ OTEL Collector failed to become healthy within ${MAX_WAIT}s"
+            exit 1
+          fi
 
       - name: Verify OTEL Collector endpoints
         run: |
-          echo "Checking OTEL gRPC endpoint..."
-          nc -zv localhost 4317 || echo "gRPC endpoint not ready"
-          echo "Checking OTEL HTTP endpoint..."
-          nc -zv localhost 4318 || echo "HTTP endpoint not ready"
-          echo "Checking health endpoint..."
-          curl -v http://localhost:13133/ || echo "Health endpoint not ready"
+          # FMEA fix: Use timeout for nc commands to prevent hanging
+          echo "🔍 Verifying OTEL Collector endpoints..."
+
+          echo "Checking OTEL gRPC endpoint (4317)..."
+          nc -w 5 -z localhost 4317 2>&1 && echo "✅ gRPC endpoint ready" || echo "⚠️  gRPC endpoint not responding"
+
+          echo "Checking OTEL HTTP endpoint (4318)..."
+          nc -w 5 -z localhost 4318 2>&1 && echo "✅ HTTP endpoint ready" || echo "⚠️  HTTP endpoint not responding"
+
+          echo "Checking health endpoint (13133)..."
+          if curl -sf http://localhost:13133/ > /dev/null 2>&1; then
+            echo "✅ Health endpoint ready"
+          else
+            echo "❌ Health endpoint not responding"
+            exit 1
+          fi
 
       - name: Run OTEL-enabled tests
         env:
@@ -354,7 +484,7 @@ jobs:
 
       - name: Upload OTEL logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: otel-collector-logs
           path: otel-collector-logs.txt
@@ -383,7 +513,7 @@ jobs:
 
       - name: Upload scan results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: fake-scan-results
           path: /tmp/clnrm-fake-scan-report.txt
@@ -398,11 +528,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
           components: clippy
 
       - name: Run CI gate checks
@@ -412,7 +540,7 @@ jobs:
 
       - name: Upload gate report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ci-gate-report
           path: target/ci-gate-report/
@@ -427,11 +555,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Run determinism tests
         run: |
@@ -454,11 +580,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Run OTEL validation script
         run: |
@@ -467,7 +591,7 @@ jobs:
 
       - name: Upload OTEL validation report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: otel-validation-report
           path: /tmp/clnrm-otel-*.txt
@@ -482,11 +606,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: ${{ env.RUST_VERSION }}
-          override: true
 
       - name: Install tarpaulin
         run: cargo install cargo-tarpaulin

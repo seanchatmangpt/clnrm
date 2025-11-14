@@ -1,0 +1,64 @@
+# Composite Action: Install Weaver CLI
+# Centralized, cached, and version-pinned Weaver installation
+# Usage:
+#   - uses: ./.github/actions/install-weaver
+#     with:
+#       version: '0.16.1'
+
+name: Install Weaver CLI
+description: 'Install and cache Weaver CLI with proper error handling'
+
+inputs:
+  version:
+    description: 'Weaver CLI version to install'
+    required: false
+    default: '0.16.1'
+
+outputs:
+  weaver-version:
+    description: 'Installed Weaver version'
+    value: ${{ steps.install.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check if Weaver is cached
+      id: cache-weaver
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/weaver
+        key: weaver-${{ inputs.version }}-${{ runner.os }}
+        lookup-only: true
+
+    - name: Install Weaver CLI
+      id: install
+      shell: bash
+      run: |
+        if [ -f ~/.cargo/bin/weaver ] && weaver --version | grep -q "${{ inputs.version }}"; then
+          echo "✅ Weaver ${{ inputs.version }} found in cache"
+        else
+          echo "📦 Installing Weaver ${{ inputs.version }}..."
+          cargo install weaver-cli --version ${{ inputs.version }} --locked 2>&1 | tail -20
+          if ! command -v weaver &> /dev/null; then
+            echo "❌ Failed to install Weaver"
+            exit 1
+          fi
+        fi
+
+        WEAVER_VERSION=$(weaver --version | awk '{print $NF}')
+        echo "version=${WEAVER_VERSION}" >> $GITHUB_OUTPUT
+        echo "✅ Weaver ${WEAVER_VERSION} ready"
+
+    - name: Save Weaver to cache
+      if: steps.cache-weaver.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cargo/bin/weaver
+        key: weaver-${{ inputs.version }}-${{ runner.os }}
+
+    - name: Verify Weaver installation
+      shell: bash
+      run: |
+        echo "Weaver version: $(weaver --version)"
+        weaver --help > /dev/null || exit 1
+        echo "✅ Weaver verification passed"

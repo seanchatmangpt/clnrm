@@ -30,18 +30,21 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  WEAVER_VERSION: "0.16.1"
 
 jobs:
   validate-setup:
     name: Validate Test Setup
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install Weaver
+        timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version 0.16.1
+          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -65,18 +68,19 @@ jobs:
     name: Basic Live-Check Tests
     needs: validate-setup
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Rust
+        timeout-minutes: 5
         uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
 
       - name: Install Weaver
+        timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version 0.16.1
+          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -84,6 +88,7 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Run basic tests
+        timeout-minutes: 10
         run: |
           ./scripts/tests/run_test_subset.sh --basic
 
@@ -113,18 +118,19 @@ jobs:
     name: Advanced Live-Check Tests
     needs: validate-setup
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Rust
+        timeout-minutes: 5
         uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
 
       - name: Install Weaver
+        timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version 0.16.1
+          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -132,6 +138,7 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Run advanced tests
+        timeout-minutes: 20
         run: |
           ./scripts/tests/run_test_subset.sh --advanced
 
@@ -161,18 +168,19 @@ jobs:
     name: Concurrent & OTLP Tests
     needs: validate-setup
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Rust
+        timeout-minutes: 5
         uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
 
       - name: Install Weaver
+        timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version 0.16.1
+          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -180,10 +188,12 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Build clnrm with OTEL
+        timeout-minutes: 25
         run: |
           cargo build --release --features otel -p clnrm-core
 
       - name: Run concurrent tests
+        timeout-minutes: 20
         run: |
           ./scripts/tests/run_test_subset.sh --concurrent
 
@@ -213,19 +223,20 @@ jobs:
     name: Full Test Suite
     needs: [basic-tests, advanced-tests]
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Rust
+        timeout-minutes: 5
         uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
 
       - name: Install Weaver
+        timeout-minutes: 10
         run: |
-          cargo install weaver-forge --version 0.16.1
+          cargo install weaver-forge --version ${{ env.WEAVER_VERSION }}
 
       - name: Install dependencies
         run: |
@@ -233,10 +244,12 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Build clnrm with OTEL
+        timeout-minutes: 25
         run: |
           cargo build --release --features otel -p clnrm-core
 
       - name: Run full test suite
+        timeout-minutes: 45
         run: |
           ./scripts/tests/test_live_check_comprehensive.sh
 
@@ -295,6 +308,7 @@ jobs:
     name: Generate Test Report
     needs: [basic-tests, advanced-tests, concurrent-tests]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
     steps:
       - name: Download all artifacts
