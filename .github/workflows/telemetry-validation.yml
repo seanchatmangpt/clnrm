@@ -43,6 +43,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install Dependencies
+        timeout-minutes: 10
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq jq netcat-traditional
@@ -63,6 +64,7 @@ jobs:
 
       - name: Install Weaver CLI
         id: weaver
+        timeout-minutes: 15
         run: |
           echo "📦 Installing Weaver ${{ env.WEAVER_VERSION }}..."
           cargo install weaver-cli --version ${{ env.WEAVER_VERSION }} --locked 2>&1 | tail -10
@@ -135,6 +137,7 @@ jobs:
           exit 1
 
       - name: Build Project
+        timeout-minutes: 20
         env:
           OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:${{ env.OTLP_PORT }}
         run: |
@@ -143,6 +146,7 @@ jobs:
           echo "✅ Build completed"
 
       - name: Run Tests with Telemetry
+        timeout-minutes: 5
         env:
           OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:${{ env.OTLP_PORT }}
           RUST_BACKTRACE: 1
