@@ -26,14 +26,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -126,14 +123,11 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -157,7 +151,7 @@ jobs:
           fi
 
       - name: Upload benchmark artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
           path: benchmark-output.txt
@@ -172,11 +166,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
 
       - name: Build Cleanroom CLI
         run: |
@@ -221,7 +212,7 @@ jobs:
           echo "Every example in this report uses clnrm to test clnrm itself." >> dogfooding-report.md
 
       - name: Upload dogfooding report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dogfooding-report
           path: dogfooding-report.md
@@ -271,7 +262,7 @@ jobs:
           echo "Copy workflows from examples/ci-cd/ to .github/workflows/" >> workflow-guide.md
 
       - name: Upload workflow guide
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: workflow-guide
           path: workflow-guide.md

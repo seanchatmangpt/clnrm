@@ -50,9 +50,7 @@ jobs:
 
       - name: Install Weaver CLI
         run: |
-          wget -q https://github.com/open-telemetry/weaver/releases/download/${{ env.WEAVER_VERSION }}/weaver-linux-x86_64 -O weaver
-          chmod +x weaver
-          sudo mv weaver /usr/local/bin/
+          cargo install weaver-cli --locked
           weaver --version
 
       - name: Create Output Directory

@@ -30,14 +30,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -68,7 +64,7 @@ jobs:
           echo "- ✅ Framework self-testing validated" >> pre-release-report.md
 
       - name: Upload test report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pre-release-test-report
           path: pre-release-report.md
@@ -96,15 +92,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
+          targets: ${{ matrix.target }}
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -124,7 +117,7 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: clnrm-${{ matrix.name }}
           path: crates/clnrm/target/${{ matrix.target }}/release/clnrm*
@@ -141,14 +134,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -179,7 +168,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download all binary artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
@@ -244,24 +233,77 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download release assets
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: clnrm-linux-x64
           path: homebrew-assets
 
-      - name: Update Homebrew formula
+      - name: Get release info
+        id: release-info
         run: |
-          echo "🍺 Updating Homebrew formula..."
-          # This would typically update the Homebrew formula
-          # For now, we'll create a placeholder update
-          echo "Homebrew formula would be updated here"
+          VERSION=$(echo ${{ github.ref }} | sed 's|refs/tags/v||')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
 
-      - name: Create Homebrew PR
+      - name: Calculate SHA256
+        id: sha256
         run: |
-          echo "📝 Creating Homebrew PR..."
-          # This would typically create a PR to the Homebrew tap
-          # For now, we'll create a placeholder
-          echo "Homebrew PR would be created here"
+          SHA256=$(sha256sum homebrew-assets/clnrm | awk '{print $1}')
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+          echo "SHA256: ${SHA256}"
+
+      - name: Generate Homebrew formula
+        run: |
+          mkdir -p homebrew-formula
+          cat > homebrew-formula/clnrm.rb << 'EOF'
+          class Clnrm < Formula
+            desc "Cleanroom Testing Framework - High-performance hermetic integration testing"
+            homepage "https://github.com/seanchatmangpt/clnrm"
+            url "https://github.com/seanchatmangpt/clnrm/releases/download/v${{ steps.release-info.outputs.version }}/clnrm-linux-x64.tar.gz"
+            sha256 "${{ steps.sha256.outputs.sha256 }}"
+            license "MIT"
+
+            depends_on "rust" => :build
+
+            def install
+              bin.install "clnrm"
+            end
+
+            test do
+              assert_match /Cleanroom Testing Framework/, shell_output("#{bin}/clnrm --version")
+            end
+          end
+          EOF
+          cat homebrew-formula/clnrm.rb
+
+      - name: Create Homebrew formula documentation
+        run: |
+          mkdir -p homebrew-release-notes
+          cat > homebrew-release-notes/HOMEBREW_UPDATE.md << 'EOF'
+          # Homebrew Formula Update
+
+          **Version:** v${{ steps.release-info.outputs.version }}
+          **SHA256:** ${{ steps.sha256.outputs.sha256 }}
+
+          ## Update Instructions
+
+          To update the Homebrew formula for clnrm:
+
+          1. Fork the Homebrew tap repository
+          2. Update `Formula/clnrm.rb` with the new version and SHA256
+          3. Create a pull request to the main tap repository
+
+          **Note:** Manual approval required for Homebrew tap updates.
+          EOF
+
+      - name: Upload Homebrew artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: |
+            homebrew-formula/
+            homebrew-release-notes/
+          retention-days: 30
 
   # Post-release validation
   post-release-validation:
@@ -312,7 +354,7 @@ jobs:
           echo "- 🍺 Homebrew formula updated" >> post-release-report.md
 
       - name: Upload post-release report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: post-release-report
           path: post-release-report.md
