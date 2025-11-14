@@ -116,7 +116,11 @@ jobs:
         if: ${{ !inputs.skip_validation }}
         run: |
           echo "Installing OTel Weaver..."
-          cargo install weaver_forge --version 0.9.0 --locked
+          cargo install weaver-cli --version 0.16.1 --locked
+          if ! command -v weaver &> /dev/null; then
+            echo "❌ Weaver installation failed"
+            exit 1
+          fi
           weaver --version
 
       - name: Weaver Schema Validation
