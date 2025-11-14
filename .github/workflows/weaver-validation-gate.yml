@@ -169,11 +169,31 @@ jobs:
           # FMEA fix: Kill zombie processes on ports 4317 (OTLP) and 8080 (admin)
           echo "🔍 Cleaning up ports 4317 (OTLP) and 8080 (admin)..."
 
-          if command -v fuser &> /dev/null; then
-            fuser -k -q 4317/tcp 2>/dev/null || true
-            fuser -k -q 8080/tcp 2>/dev/null || true
-            sleep 2
-          fi
+          cleanup_port() {
+            local PORT=$1
+            echo "  Cleaning up port $PORT..."
+
+            # Use portable POSIX approach
+            if command -v netstat &> /dev/null; then
+              PIDS=$(netstat -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | cut -d'/' -f1)
+            elif command -v ss &> /dev/null; then
+              PIDS=$(ss -tulnp 2>/dev/null | grep ":$PORT " | awk '{print $NF}' | cut -d':' -f1 | grep -oE '[0-9]+')
+            elif command -v fuser &> /dev/null; then
+              PIDS=$(fuser -q $PORT/tcp 2>/dev/null || true)
+            fi
+
+            if [ -n "$PIDS" ]; then
+              for PID in $PIDS; do
+                if [ -n "$PID" ] && [ "$PID" != "-" ]; then
+                  kill -15 "$PID" 2>/dev/null || kill -9 "$PID" 2>/dev/null || true
+                fi
+              done
+              sleep 1
+            fi
+          }
+
+          cleanup_port 4317
+          cleanup_port 8080
 
           echo "✅ Port cleanup completed"
 
