@@ -2,13 +2,18 @@
 //!
 //! These tests verify that deterministic execution features work correctly
 //! by running tests multiple times and checking for consistency.
+//!
+//! FEATURE GATE: These tests require Docker daemon to be running.
+//! Enable with `--features docker-integration` or run on CI with `--all-features`.
+//! Without Docker, tests are skipped at compile time.
+
+#![cfg(feature = "docker-integration")]
 
 use clnrm_core::backend::{Backend, Cmd, TestcontainerBackend};
 use clnrm_core::config::DeterminismConfig;
 use clnrm_core::determinism::DeterminismEngine;
 use clnrm_core::error::Result;
 use std::collections::HashSet;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Run a command multiple times and collect outputs

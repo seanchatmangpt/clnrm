@@ -324,6 +324,72 @@ cargo +nightly fuzz run fuzz_target_name              # Fuzz testing
 - Only Weaver validation proves runtime behavior matches schema
 - Traditional tests provide supporting evidence, not proof
 
+## Environment-Dependent Test Strategy
+
+### Docker-Integration Feature Flag (CRITICAL)
+
+Tests that require external dependencies (Docker daemon, services, etc.) are **feature-gated** with `docker-integration`:
+
+**Feature Declaration** (`Cargo.toml`):
+```toml
+[features]
+docker-integration = []      # Enable tests requiring Docker daemon
+full-integration = ["docker-integration"]  # Full test suite with all dependencies
+```
+
+**Test Implementation** (`crates/clnrm-core/tests/determinism_validation.rs`):
+```rust
+#![cfg(feature = "docker-integration")]
+
+#[test]
+fn test_deterministic_random_seed() -> Result<()> {
+    // This test requires Docker
+    let backend = TestcontainerBackend::new("alpine:latest")?;
+    // ...
+}
+```
+
+### CI/CD Test Execution Strategy
+
+**Unit Tests** (Default - No Docker Required):
+```bash
+# Runs WITHOUT docker-integration feature
+# Tests with #[cfg(feature = "docker-integration")] are skipped at compile-time
+cargo test --lib --all-features
+```
+
+**Integration Tests** (With Docker):
+```bash
+# Runs WITH docker-integration feature enabled
+# Both regular tests AND Docker-dependent tests execute
+cargo test --test '*' --all-features
+```
+
+### Workflow Organization
+
+- **`.github/workflows/unit-tests.yml`** - Runs on every PR, both Ubuntu & macOS, no Docker required
+- **`.github/workflows/ci.yml`** - Full suite with integration tests, Docker required
+- Local development: `cargo test --lib --all-features` works everywhere
+
+### Adding New Environment-Dependent Tests
+
+When creating tests that require external dependencies:
+
+1. **Add feature gate at top of file:**
+   ```rust
+   #![cfg(feature = "docker-integration")]
+   ```
+
+2. **Document the requirement:**
+   ```rust
+   //! Integration tests for X functionality
+   //!
+   //! FEATURE GATE: Requires Docker daemon
+   //! Enable with `--features docker-integration` or `--all-features`
+   ```
+
+3. **Never fail silently** - either the test runs (with Docker) or doesn't compile (without feature)
+
 ### Quality Checks
 
 ```bash
