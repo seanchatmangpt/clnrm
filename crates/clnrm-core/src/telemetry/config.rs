@@ -70,18 +70,13 @@ pub enum ExporterConfig {
 }
 
 /// OTLP protocol options
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum OtlpProtocol {
     /// HTTP with protobuf
+    #[default]
     HttpProto,
     /// gRPC
     Grpc,
-}
-
-impl Default for OtlpProtocol {
-    fn default() -> Self {
-        Self::HttpProto
-    }
 }
 
 /// Sampling configuration for traces

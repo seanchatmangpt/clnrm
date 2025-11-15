@@ -6,7 +6,7 @@
 use crate::cli::types::ACCEPTED_EXTENSIONS;
 use crate::cli::utils::discover_test_files;
 use crate::error::{CleanroomError, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
 /// Validate TOML test files
@@ -55,7 +55,7 @@ pub fn validate_config(path: &PathBuf) -> Result<()> {
 }
 
 /// Validate a single test configuration file
-pub fn validate_single_config(path: &PathBuf) -> Result<()> {
+pub fn validate_single_config(path: &Path) -> Result<()> {
     // Check file exists
     if !path.exists() {
         return Err(CleanroomError::validation_error(format!(
