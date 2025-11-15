@@ -136,9 +136,10 @@ struct Step {
 }
 
 /// Step source information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum StepSource {
     /// Step defined inline in code
+    #[default]
     Inline,
     /// Step loaded from file
     /// File-based step
@@ -156,12 +157,6 @@ pub enum StepSource {
         /// External source identifier
         source: String,
     },
-}
-
-impl Default for StepSource {
-    fn default() -> Self {
-        Self::Inline
-    }
 }
 
 impl std::fmt::Display for StepSource {
