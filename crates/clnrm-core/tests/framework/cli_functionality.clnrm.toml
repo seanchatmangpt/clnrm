@@ -1,7 +1,7 @@
 # CLI Functionality Test
 # Tests CLI commands, argument parsing, and validation
 
-[test]
+[test.metadata]
 name = "cli_functionality"
 description = "Tests CLI command parsing and validation"
 

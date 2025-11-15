@@ -2,7 +2,7 @@
 # This test actually runs clnrm and should PASS all validators
 # Expected: PASS (all 7 validators green)
 
-[meta]
+[test.metadata]
 name="legitimate_clnrm_self_test"
 version="1.0"
 description="Legitimate test running actual clnrm with OTEL"
@@ -14,7 +14,6 @@ run="clnrm self-test --otel-exporter stdout"
 artifacts.collect=["spans:default"]
 
 [service.clnrm_image]
-plugin="generic_container"
 image="clnrm:test"  # Assumes clnrm Docker image exists
 env={ "OTEL_SERVICE_NAME"="clnrm", "RUST_LOG"="info" }
 

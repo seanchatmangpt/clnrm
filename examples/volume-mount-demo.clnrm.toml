@@ -10,7 +10,6 @@ description = "Demonstrates volume mounting with file I/O operations"
 # Service with volume mounts
 [services.data_processor]
 type = "generic_container"
-plugin = "alpine"
 image = "alpine:latest"
 
 # Mount host directories into container

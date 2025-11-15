@@ -1,7 +1,7 @@
 # Plugin System Test
 # Tests service plugin loading, execution, and health checking
 
-[test]
+[test.metadata]
 name = "plugin_system"
 description = "Tests service plugin system functionality"
 

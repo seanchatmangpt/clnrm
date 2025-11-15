@@ -10,7 +10,7 @@ dev_endpoint = "http://localhost:4318"
 staging_endpoint = "http://staging-otel:4318"
 prod_endpoint = "http://prod-otel:4318"
 
-[meta]
+[test.metadata]
 name = "multi_env_test_{{ vars.env }}"
 description = "Environment-specific test configuration"
 

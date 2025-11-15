@@ -3,7 +3,7 @@
 # Expected: FAIL on missing spans (no OTEL instrumentation)
 # First Failing Rule: "expect.span[clnrm.run].existence"
 
-[meta]
+[test.metadata]
 name="attack_b_log_mimicry"
 version="1.0"
 description="Attack vector: Fake clnrm logs without real execution"
@@ -15,7 +15,6 @@ run="sh -lc 'echo \"🚀 Executing test: test_1\"; echo \"✅ test_1 - PASS (123
 artifacts.collect=["spans:default"]
 
 [service.red]
-plugin="generic_container"
 image="alpine:latest"
 env={ "ATTACK"="log_mimicry" }
 

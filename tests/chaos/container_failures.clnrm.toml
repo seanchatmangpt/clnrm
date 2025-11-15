@@ -4,7 +4,7 @@
 # Strategy: Kill containers, verify cleanup, validate recovery spans
 # ====================================================================================
 
-[meta]
+[test.metadata]
 name = "chaos_container_failures"
 version = "1.0.1"
 description = "Container kill scenarios with cleanup verification via OTEL"
@@ -37,7 +37,6 @@ resources = {
 # ============================================================================
 [service.chaos_victim_01]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "sleep 1000"]  # Long-running process
 env = { "CHAOS_TARGET" = "true" }
@@ -94,7 +93,6 @@ acyclic = true
 # ============================================================================
 [service.chaos_oom_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 env = { "CHAOS_TARGET" = "true" }
@@ -130,7 +128,6 @@ status = "OK"
 # ============================================================================
 [service.chaos_network_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl && echo ready"]
 env = { "CHAOS_TARGET" = "true" }
@@ -168,7 +165,6 @@ status = "OK"
 # ============================================================================
 [service.chaos_exit_codes]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 wait_for_span = "clnrm.step:exit_code_test"
@@ -199,14 +195,12 @@ status = "OK"
 # ============================================================================
 [service.chaos_concurrent_01]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "sleep 10"]
 wait_for_span = "clnrm.step:concurrent_chaos_01"
 
 [service.chaos_concurrent_02]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "sleep 10"]
 wait_for_span = "clnrm.step:concurrent_chaos_02"
@@ -215,8 +209,8 @@ wait_for_span = "clnrm.step:concurrent_chaos_02"
 name = "concurrent_container_failures"
 parallel_services = ["chaos_concurrent_01", "chaos_concurrent_02"]
 run = [
-    { service = "chaos_concurrent_01", command = "sh -c 'sleep 1 && exit 1'" },
-    { service = "chaos_concurrent_02", command = "sh -c 'sleep 1 && exit 2'" }
+    { service = "chaos_concurrent_01", command = ["sh", "-c", "'sleep", "1", "&&", "exit", "1'"] },
+    { service = "chaos_concurrent_02", command = ["sh", "-c", "'sleep", "1", "&&", "exit", "2'"] }
 ]
 artifacts.collect = ["spans:default"]
 expect_failure = true

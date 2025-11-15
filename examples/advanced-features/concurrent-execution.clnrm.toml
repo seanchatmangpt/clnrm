@@ -5,7 +5,7 @@
 # FIXED: Now uses correct CLI TOML format
 # This validates concurrent execution capabilities from the README
 
-[test]
+[test.metadata]
 name = "concurrent_execution_demo"
 description = "Demonstrates concurrent execution as claimed in the README"
 

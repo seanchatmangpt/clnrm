@@ -1,7 +1,7 @@
 # Simple Test - Minimal working example
 # This demonstrates the correct TOML format for the CLI
 
-[test]
+[test.metadata]
 name = "simple_test"
 description = "A simple test to verify CLI functionality"
 

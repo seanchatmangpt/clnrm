@@ -10,7 +10,6 @@ version = "1.0.0"
 # Test container service - Alpine Linux for lightweight UUID validation
 [services.test_container]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Lightweight container for UUID/ID generation testing"
 

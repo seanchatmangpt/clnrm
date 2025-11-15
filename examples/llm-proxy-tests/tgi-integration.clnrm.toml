@@ -9,7 +9,6 @@ timeout = "300s"
 # TGI Service Configuration
 [services.tgi_service]
 type = "tgi"
-plugin = "tgi"
 endpoint = "http://localhost:8080"
 model_id = "microsoft/DialoGPT-medium"
 max_total_tokens = 2048

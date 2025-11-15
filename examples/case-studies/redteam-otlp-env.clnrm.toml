@@ -21,7 +21,7 @@ freeze_clock = "2025-01-01T00:00:00Z"
 image = "registry/clnrm:latest"
 seed = 42
 
-[meta]
+[test.metadata]
 name = "redteam_otlp_env_validation"
 version = "1.0.0"
 description = "Red-team validation of OTLP exporter via ENV variables - catches fake-green tests"
@@ -43,7 +43,6 @@ use = ["tracecontext", "baggage"]
 
 [service.clnrm]
 type = "generic_container"
-plugin = "generic"
 image = "registry/clnrm:latest"
 env = {
   "OTEL_SERVICE_NAME" = "clnrm",

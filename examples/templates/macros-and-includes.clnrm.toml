@@ -27,7 +27,7 @@ resources = {
 }
 {% endmacro %}
 
-[meta]
+[test.metadata]
 name = "macros_example"
 description = "Demonstrates Tera macros for reusable template blocks"
 

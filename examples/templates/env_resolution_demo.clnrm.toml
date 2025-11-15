@@ -12,7 +12,7 @@
 # - FREEZE_CLOCK → freeze_clock (default: 2025-01-01T00:00:00Z)
 # - OTEL_TOKEN → token (default: "")
 
-[meta]
+[test.metadata]
 name = "{{ svc }}_env_demo"
 version = "1.0.0"
 description = "Demonstrates ENV variable resolution in templates"
@@ -44,7 +44,6 @@ use = ["tracecontext", "baggage"]
 # Service Definition
 # Uses CLNRM_IMAGE ENV variable for container image
 [service.test_runner]
-plugin = "generic_container"
 image = "{{ image }}"
 args = ["sh", "-c", "echo 'Running test in {{ env }} environment'"]
 wait_for_span = "test_runner.start"

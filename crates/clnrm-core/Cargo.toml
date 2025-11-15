@@ -234,6 +234,8 @@ otel-testing = ["opentelemetry_sdk/testing"]
 otel-traces = [] # Feature for OpenTelemetry traces functionality
 otel-metrics = [] # Feature for OpenTelemetry metrics functionality
 otel-logs = [] # Feature for OpenTelemetry logs functionality
+docker-integration = [] # Enable integration tests that require Docker daemon (CI/CD feature)
+full-integration = ["docker-integration"] # Full integration test suite (requires Docker + external services)
 
 # Test timeout enforcement
 [package.metadata.cargo-make]

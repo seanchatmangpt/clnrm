@@ -12,7 +12,6 @@ description = "Test multiple services managed from TOML"
 # SurrealDB Service
 [services.database]
 type = "surrealdb"
-plugin = "surrealdb"
 username = "root"
 password = "root"
 strict = false
@@ -20,7 +19,6 @@ strict = false
 # Generic Alpine Container
 [services.app_server]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 [services.app_server.env]
