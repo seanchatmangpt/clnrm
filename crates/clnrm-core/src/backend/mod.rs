@@ -14,7 +14,7 @@ pub mod testcontainer;
 pub mod volume;
 
 pub use mock::MockBackend;
-pub use pool::{ContainerPool, PoolConfig, PoolStats};
+pub use pool::{ContainerHandle, ContainerPool, PoolConfig, PoolStats};
 pub use testcontainer::TestcontainerBackend;
 pub use volume::{VolumeMount, VolumeValidator};
 
