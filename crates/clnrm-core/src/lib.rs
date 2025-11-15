@@ -11,6 +11,7 @@ pub mod assertions;
 pub mod backend;
 pub mod cache;
 pub mod chaos;
+pub mod chicago_tdd; // v1.5.0: Chicago-TDD-Tools integration framework
 pub mod cleanroom;
 pub mod cli;
 pub mod config;
@@ -23,6 +24,7 @@ pub mod metrics;
 pub mod otel;
 pub mod policy;
 pub mod reporting;
+pub mod sbom; // v1.5.0: SBOM generation
 pub mod scenario;
 pub mod services;
 pub mod stress_test;

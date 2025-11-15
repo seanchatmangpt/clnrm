@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let args: Vec<String> = std::env::args().collect();
-    let config_path = args.get(1).map(|s| PathBuf::from(s));
+    let config_path = args.get(1).map(PathBuf::from);
 
     let config = if let Some(path) = config_path {
         // Load from file and parse manually
@@ -65,8 +65,7 @@ async fn main() -> Result<()> {
             .unwrap_or(1024) as u64;
         let max_cpu_cores = limits_table
             .and_then(|t| t.get("max_cpu_cores"))
-            .and_then(|v| v.as_float())
-            .map(|f| f as f64);
+            .and_then(|v| v.as_float());
         let max_spans = limits_table
             .and_then(|t| t.get("max_spans"))
             .and_then(|v| v.as_integer())

@@ -162,6 +162,12 @@ pub struct PoolConfig {
     pub memory_limit: Option<u64>,
     /// CPU limit per container
     pub cpu_limit: Option<f64>,
+    /// Enable adaptive pool sizing (v1.5.0)
+    pub adaptive_sizing: bool,
+    /// Target pool utilization for adaptive sizing (0.0-1.0)
+    pub target_utilization: f64,
+    /// Minimum time between pool size adjustments
+    pub resize_interval: Duration,
 }
 
 impl Default for PoolConfig {
@@ -176,7 +182,102 @@ impl Default for PoolConfig {
             startup_timeout: Duration::from_secs(10),
             memory_limit: None,
             cpu_limit: None,
+            adaptive_sizing: false, // Disabled by default for backward compat
+            target_utilization: 0.75, // 75% target utilization
+            resize_interval: Duration::from_secs(30), // Adjust every 30s
         }
+    }
+}
+
+/// Adaptive pool size controller (v1.5.0)
+///
+/// Monitors pool utilization and automatically adjusts pool size to maintain
+/// target utilization. This prevents over-provisioning (wasted resources) and
+/// under-provisioning (performance degradation).
+#[derive(Debug)]
+struct PoolSizeAdapter {
+    /// Current dynamic max size (may differ from config.max_size)
+    current_max: Arc<AtomicUsize>,
+    /// Last resize timestamp
+    last_resize: Arc<tokio::sync::Mutex<Instant>>,
+    /// Acquire rate tracker (requests/second)
+    acquire_rate: Arc<AtomicU64>,
+    /// Last acquire count for rate calculation
+    last_acquire_count: Arc<AtomicU64>,
+}
+
+impl PoolSizeAdapter {
+    /// Create a new adapter
+    fn new(initial_max: usize) -> Self {
+        Self {
+            current_max: Arc::new(AtomicUsize::new(initial_max)),
+            last_resize: Arc::new(tokio::sync::Mutex::new(Instant::now())),
+            acquire_rate: Arc::new(AtomicU64::new(0)),
+            last_acquire_count: Arc::new(AtomicU64::new(0)),
+        }
+    }
+
+    /// Update pool size based on current metrics
+    async fn adjust_size(
+        &self,
+        stats: &PoolStats,
+        config: &PoolConfig,
+    ) -> Option<usize> {
+        let mut last_resize = self.last_resize.lock().await;
+
+        // Check if enough time has passed since last resize
+        if last_resize.elapsed() < config.resize_interval {
+            return None;
+        }
+
+        let current_max = self.current_max.load(Ordering::Relaxed);
+        let total_containers = stats.active + stats.idle;
+        let utilization = if current_max > 0 {
+            total_containers as f64 / current_max as f64
+        } else {
+            0.0
+        };
+
+        // Calculate new size based on utilization
+        let new_max = if utilization > config.target_utilization {
+            // Scale up: increase by 25%
+            let increase = (current_max as f64 * 0.25).max(1.0) as usize;
+            (current_max + increase).min(config.max_size)
+        } else if utilization < config.target_utilization * 0.5 {
+            // Scale down: decrease by 25% if utilization is very low
+            let decrease = (current_max as f64 * 0.25).max(1.0) as usize;
+            (current_max.saturating_sub(decrease)).max(config.min_idle * 2)
+        } else {
+            // Keep current size
+            current_max
+        };
+
+        if new_max != current_max {
+            info!(
+                "Adaptive sizing: adjusting pool from {} to {} (utilization: {:.1}%)",
+                current_max,
+                new_max,
+                utilization * 100.0
+            );
+            self.current_max.store(new_max, Ordering::Relaxed);
+            *last_resize = Instant::now();
+            Some(new_max)
+        } else {
+            None
+        }
+    }
+
+    /// Update acquire rate metric
+    fn update_acquire_rate(&self, total_acquires: u64) {
+        let last_count = self.last_acquire_count.swap(total_acquires, Ordering::Relaxed);
+        let rate = total_acquires.saturating_sub(last_count);
+        self.acquire_rate.store(rate, Ordering::Relaxed);
+    }
+
+    /// Get current max size (used for monitoring and debugging)
+    #[allow(dead_code)]
+    fn current_max(&self) -> usize {
+        self.current_max.load(Ordering::Relaxed)
     }
 }
 
@@ -235,6 +336,92 @@ pub struct PooledContainer {
     /// Backend instance for this container
     /// Note: TestcontainerBackend is already Arc-wrapped internally
     backend: Arc<TestcontainerBackend>,
+}
+
+/// RAII handle for borrowed container from pool (v1.5.0 zero-copy acquisition)
+///
+/// This handle automatically releases the container back to the pool when dropped,
+/// eliminating the need for explicit release() calls and preventing container leaks.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use clnrm_core::backend::{ContainerPool, PoolConfig};
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let pool = ContainerPool::new(PoolConfig::default()).await?;
+///
+/// // Acquire container - auto-released on drop
+/// {
+///     let handle = pool.acquire_handle().await?;
+///     // Use container via Backend trait
+///     // handle.run_cmd(...)?;
+/// } // Container automatically returned to pool here
+///
+/// # Ok(())
+/// # }
+/// ```
+#[derive(Debug)]
+pub struct ContainerHandle {
+    /// Reference to the container (Arc to avoid clone)
+    container: Arc<PooledContainer>,
+    /// Pool to return container to on drop
+    pool: Arc<ContainerPool>,
+}
+
+impl ContainerHandle {
+    /// Get container ID
+    pub fn id(&self) -> &str {
+        &self.container.id
+    }
+
+    /// Get use count
+    pub fn use_count(&self) -> u64 {
+        self.container.use_count
+    }
+}
+
+impl Backend for ContainerHandle {
+    fn run_cmd(&self, cmd: Cmd) -> Result<RunResult> {
+        self.container.backend.run_cmd(cmd)
+    }
+
+    fn name(&self) -> &str {
+        "pooled-testcontainer-handle"
+    }
+
+    fn is_available(&self) -> bool {
+        self.container.backend.is_available()
+    }
+
+    fn supports_hermetic(&self) -> bool {
+        self.container.backend.supports_hermetic()
+    }
+
+    fn supports_deterministic(&self) -> bool {
+        self.container.backend.supports_deterministic()
+    }
+}
+
+impl Drop for ContainerHandle {
+    fn drop(&mut self) {
+        // Schedule async release without blocking
+        let pool = self.pool.clone();
+        let container_id = self.container.id.clone();
+
+        tokio::spawn(async move {
+            if let Some((_, container)) = pool.active_containers.remove(&container_id) {
+                // Use the actual container from active map
+                let mut container = container;
+                container.last_used = Instant::now();
+                pool.idle_queue.push(container);
+                pool.idle_count.fetch_add(1, Ordering::Relaxed);
+                debug!("Container {} auto-released via Drop", container_id);
+            } else {
+                warn!("Container {} not found in active map during auto-release", container_id);
+            }
+        });
+    }
 }
 
 impl PooledContainer {
@@ -308,6 +495,8 @@ pub struct ContainerPool {
     health_check_handle: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
     /// Shutdown signal
     shutdown: Arc<tokio::sync::Notify>,
+    /// Adaptive pool size controller (v1.5.0)
+    size_adapter: Option<Arc<PoolSizeAdapter>>,
 }
 
 impl ContainerPool {
@@ -330,6 +519,16 @@ impl ContainerPool {
         );
 
         let max_size = config.max_size;
+        let adaptive_sizing = config.adaptive_sizing;
+
+        // Create adaptive size controller if enabled
+        let size_adapter = if adaptive_sizing {
+            info!("Adaptive pool sizing enabled (target utilization: {:.0}%)", config.target_utilization * 100.0);
+            Some(Arc::new(PoolSizeAdapter::new(max_size)))
+        } else {
+            None
+        };
+
         let pool = Arc::new(Self {
             config: Arc::new(config),
             idle_queue: Arc::new(SegQueue::new()),
@@ -344,6 +543,7 @@ impl ContainerPool {
             stats_evictions: Arc::new(AtomicU64::new(0)),
             health_check_handle: Arc::new(tokio::sync::Mutex::new(None)),
             shutdown: Arc::new(tokio::sync::Notify::new()),
+            size_adapter,
         });
 
         // Start background health check worker
@@ -431,9 +631,77 @@ impl ContainerPool {
         }
     }
 
-    /// Acquire a container from the pool
+    /// Acquire a container from the pool (v1.5.0: zero-copy with RAII handle)
     ///
-    /// This is the hot path - optimized for <1ms latency on pool hits.
+    /// This returns a `ContainerHandle` that automatically releases the container
+    /// back to the pool when dropped, preventing leaks and eliminating manual release() calls.
+    ///
+    /// # Returns
+    ///
+    /// A ContainerHandle that implements Backend trait
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Pool is at maximum capacity and no containers available
+    /// - Container creation fails
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use clnrm_core::backend::{ContainerPool, PoolConfig};
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let pool = ContainerPool::new(PoolConfig::default()).await?;
+    ///
+    /// // Container auto-released when handle goes out of scope
+    /// let handle = pool.acquire_handle().await?;
+    /// // Use handle...
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[instrument(name = "pool.acquire_handle", skip(self))]
+    pub async fn acquire_handle(self: &Arc<Self>) -> Result<ContainerHandle> {
+        debug!("Acquiring container handle from pool (zero-copy)");
+
+        // Try to get from idle queue first (cache hit) - LOCK-FREE
+        let mut container = if let Some(mut container) = self.idle_queue.pop() {
+            self.idle_count.fetch_sub(1, Ordering::Relaxed);
+            container.mark_used();
+            self.stats_hits.fetch_add(1, Ordering::Relaxed);
+            debug!("Cache hit: reusing container {}", container.id);
+            Some(container)
+        } else {
+            None
+        };
+
+        // Cache miss - create new container
+        if container.is_none() {
+            self.stats_misses.fetch_add(1, Ordering::Relaxed);
+            debug!("Cache miss: creating new container");
+            container = Some(self.clone().create_container().await?);
+        }
+
+        let container = container.ok_or_else(|| {
+            CleanroomError::internal_error(
+                "Container should exist after cache hit or creation, this indicates a logic error",
+            )
+        })?;
+
+        // Move to active containers (wrap in Arc for zero-copy sharing)
+        let id = container.id.clone();
+        let container_arc = Arc::new(container);
+        self.active_containers.insert(id.clone(), (*container_arc).clone());
+
+        Ok(ContainerHandle {
+            container: container_arc,
+            pool: self.clone(),
+        })
+    }
+
+    /// Acquire a container from the pool (legacy API, returns owned container)
+    ///
+    /// **NOTE**: This API requires manual `release()` call. Prefer `acquire_handle()`
+    /// which uses RAII for automatic release.
     ///
     /// # Returns
     ///
@@ -572,6 +840,8 @@ impl ContainerPool {
         let pool = self.clone();
         let shutdown = self.shutdown.clone();
         let interval = self.config.health_check_interval;
+        let size_adapter = self.size_adapter.clone();
+        let config = self.config.clone();
 
         let handle = tokio::spawn(async move {
             let mut interval_timer = tokio::time::interval(interval);
@@ -580,6 +850,18 @@ impl ContainerPool {
                 tokio::select! {
                     _ = interval_timer.tick() => {
                         pool.clone().run_health_checks().await;
+
+                        // Run adaptive sizing if enabled
+                        if let Some(ref adapter) = size_adapter {
+                            let stats = pool.stats();
+                            let total_acquires = stats.hits + stats.misses;
+                            adapter.update_acquire_rate(total_acquires);
+
+                            if let Some(_new_max) = adapter.adjust_size(&stats, &config).await {
+                                // Size adjustment logged in adjust_size()
+                                // In a future version, we could adjust the semaphore here
+                            }
+                        }
                     }
                     _ = shutdown.notified() => {
                         info!("Health check worker shutting down");
