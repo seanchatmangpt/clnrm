@@ -2,7 +2,7 @@
 # Optimized for continuous integration and deployment
 # Balances speed and thoroughness with 80/20 mode
 
-[meta]
+[test.metadata]
 name = "cicd_pipeline_test"
 version = "1.0.0"
 description = "CI/CD optimized validation with GitHub Actions integration"
@@ -30,8 +30,8 @@ critical_spans = [
 
 # CI-optimized performance settings
 [weaver.performance]
-startup_timeout_ms = 30000   # Allow time for CI environment
-flush_timeout_ms = 10000     # Ensure telemetry collected in CI
+startup_timeout = "30s"   # Allow time for CI environment
+flush_timeout = "10s"     # Ensure telemetry collected in CI
 max_samples = 50000          # Reasonable limit for CI
 
 # OTEL configuration for CI environment
@@ -54,7 +54,6 @@ headers = {
 
 # Service: Application (version from CI)
 [service.app]
-plugin = "generic_container"
 image = "app:${CI_COMMIT_SHA:-latest}"
 env = {
   "ENVIRONMENT" = "${CI_ENVIRONMENT:-ci}",
@@ -64,7 +63,6 @@ env = {
 
 # Service: Database (use fast in-memory for CI)
 [service.db]
-plugin = "generic_container"
 image = "postgres:15-alpine"
 env = {
   "POSTGRES_PASSWORD" = "cipass",
@@ -78,7 +76,7 @@ env = {
 name = "unit_tests"
 service = "app"
 run = "pytest tests/unit/ -v --tb=short"
-timeout_seconds = 300  # 5 minute timeout for CI
+timeout = "300s"  # 5 minute timeout for CI
 
 [[expect.span]]
 name = "test.execute"
@@ -93,7 +91,7 @@ attrs.all = {
 name = "integration_tests"
 service = "app"
 run = "pytest tests/integration/ -v --tb=short"
-timeout_seconds = 600  # 10 minute timeout
+timeout = "600s"  # 10 minute timeout
 
 [[expect.span]]
 name = "test.execute"
@@ -122,7 +120,7 @@ attrs.all = {
 name = "api_smoke_tests"
 service = "app"
 run = "curl -f http://localhost:8080/health && curl -f http://localhost:8080/ready"
-timeout_seconds = 60
+timeout = "60s"
 
 [[expect.span]]
 name = "service.health_check"

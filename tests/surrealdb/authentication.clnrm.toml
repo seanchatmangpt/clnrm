@@ -8,7 +8,7 @@
 [test.metadata]
 name = "surrealdb_authentication"
 description = "Verify SurrealDB authentication and authorization"
-timeout_seconds = 60
+timeout = "60s"
 
 [services.surrealdb]
 type = "surrealdb"

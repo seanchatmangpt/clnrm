@@ -38,8 +38,6 @@ timeout = "90s"
 # Test container - Alpine with shell for env var verification
 [services.env_test_container]
 type = "generic_container"
-plugin = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 # Service-level environment variables (set by framework)

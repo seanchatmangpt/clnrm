@@ -10,7 +10,7 @@
 [test.metadata]
 name = "surrealdb_crud_operations"
 description = "Verify complete CRUD lifecycle with SurrealDB"
-timeout_seconds = 90
+timeout = "90s"
 
 [services.surrealdb]
 type = "surrealdb"

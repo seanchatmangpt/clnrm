@@ -17,7 +17,6 @@ timeout = "90s"
 # OTEL Collector - internal only
 [services.otel_collector]
 type = "otel_collector"
-plugin = "generic_container"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -30,7 +29,6 @@ external_access = false
 # Isolated service A - no external access
 [services.isolated_service_a]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 [services.isolated_service_a.env]
@@ -49,7 +47,6 @@ cpu_limit = "0.5"
 # Isolated service B - communicates only with A
 [services.isolated_service_b]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 [services.isolated_service_b.env]

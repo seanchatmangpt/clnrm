@@ -5,7 +5,7 @@
 # FIXED: Now uses correct CLI TOML format
 # This validates the "🔒 Hermetic Isolation ✅" claim from the README
 
-[test]
+[test.metadata]
 name = "hermetic_isolation_demo"
 description = "Demonstrates hermetic isolation as claimed in the README"
 

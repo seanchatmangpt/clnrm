@@ -4,7 +4,7 @@
 # Strategy: Combine container, network, resource, and timeout chaos concurrently
 # ====================================================================================
 
-[meta]
+[test.metadata]
 name = "chaos_concurrent_multi_failure"
 version = "1.0.1"
 description = "Concurrent multi-failure chaos scenarios testing system resilience"
@@ -35,21 +35,18 @@ resources = {
 # ============================================================================
 [service.concurrent_container_01]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 wait_for_span = "clnrm.step:concurrent_01"
 
 [service.concurrent_container_02]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 wait_for_span = "clnrm.step:concurrent_02"
 
 [service.concurrent_container_03]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 wait_for_span = "clnrm.step:concurrent_03"
@@ -60,18 +57,18 @@ parallel_services = ["concurrent_container_01", "concurrent_container_02", "conc
 run = [
     {
         service = "concurrent_container_01",
-        command = "sh -c 'sleep 2 && exit 1'",
-        timeout_ms = 5000
+        command = ["sh", "-c", "'sleep", "2", "&&", "exit", "1'"],
+        timeout = "5s"
     },
     {
         service = "concurrent_container_02",
-        command = "sh -c 'sleep 3 && kill -9 $$'",
-        timeout_ms = 5000
+        command = ["sh", "-c", "'sleep", "3", "&&", "kill", "-9", "$$'"],
+        timeout = "5s"
     },
     {
         service = "concurrent_container_03",
-        command = "sh -c 'sleep 10'",
-        timeout_ms = 5000
+        command = ["sh", "-c", "'sleep", "10'"],
+        timeout = "5s"
     }
 ]
 artifacts.collect = ["spans:default", "logs:all"]
@@ -104,7 +101,6 @@ attrs.all = {
 # ============================================================================
 [service.network_resource_chaos]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl iproute2 && echo ready"]
 capabilities = ["NET_ADMIN"]
@@ -145,7 +141,7 @@ run = """
     echo "Combined chaos test complete"
     '
 """
-timeout_ms = 15000
+timeout = "15s"
 artifacts.collect = ["spans:default"]
 expect_partial_failure = true
 
@@ -169,21 +165,18 @@ attrs.all = { "result" = "pass", "degraded" = "true" }
 # ============================================================================
 [service.cascade_primary]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache netcat-openbsd && nc -l -p 8080"]
 wait_for_span = "clnrm.step:cascade_primary"
 
 [service.cascade_secondary]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache netcat-openbsd && echo ready"]
 wait_for_span = "clnrm.step:cascade_secondary"
 
 [service.cascade_tertiary]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache netcat-openbsd && echo ready"]
 wait_for_span = "clnrm.step:cascade_tertiary"
@@ -194,8 +187,8 @@ parallel_services = ["cascade_primary", "cascade_secondary", "cascade_tertiary"]
 run = [
     {
         service = "cascade_primary",
-        command = "sh -c 'sleep 2 && exit 1'",  # Primary fails first
-        timeout_ms = 5000
+        command = ["sh", "-c", "'sleep", "2", "&&", "exit", "1'"],  # Primary fails first
+        timeout = "5s"
     },
     {
         service = "cascade_secondary",
@@ -206,7 +199,7 @@ run = [
             exit 2
             '
         """,
-        timeout_ms = 10000
+        timeout = "10s"
     },
     {
         service = "cascade_tertiary",
@@ -217,7 +210,7 @@ run = [
             exit 3
             '
         """,
-        timeout_ms = 10000
+        timeout = "10s"
     }
 ]
 artifacts.collect = ["spans:default"]
@@ -250,7 +243,6 @@ attrs.all = { "result" = "error", "exit.code" = "3" }
 # ============================================================================
 [service.chaos_monkey_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { memory_mb = 256 }
@@ -287,7 +279,7 @@ run = """
     echo "Chaos Monkey test complete"
     '
 """
-timeout_ms = 20000
+timeout = "20s"
 artifacts.collect = ["spans:default", "logs:all"]
 expect_partial_failure = true
 
@@ -305,35 +297,30 @@ attrs.all = {
 # ============================================================================
 [service.stress_01]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { memory_mb = 64, cpu_millicores = 100 }
 
 [service.stress_02]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { memory_mb = 64, cpu_millicores = 100 }
 
 [service.stress_03]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { memory_mb = 64, cpu_millicores = 100 }
 
 [service.stress_04]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { memory_mb = 64, cpu_millicores = 100 }
 
 [service.stress_05]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { memory_mb = 64, cpu_millicores = 100 }
@@ -342,11 +329,11 @@ limits = { memory_mb = 64, cpu_millicores = 100 }
 name = "maximum_concurrent_stress"
 parallel_services = ["stress_01", "stress_02", "stress_03", "stress_04", "stress_05"]
 run = [
-    { service = "stress_01", command = "sh -c 'yes > /dev/null & sleep 5'", timeout_ms = 3000 },
-    { service = "stress_02", command = "sh -c 'dd if=/dev/zero of=/tmp/mem bs=1M count=100'", timeout_ms = 3000 },
-    { service = "stress_03", command = "sh -c 'sleep 10'", timeout_ms = 2000 },
-    { service = "stress_04", command = "sh -c 'exit 1'", timeout_ms = 3000 },
-    { service = "stress_05", command = "sh -c 'kill -9 $$'", timeout_ms = 3000 }
+    { service = "stress_01", command = ["sh", "-c", "'yes", ">", "/dev/null", "&", "sleep", "5'"], timeout = "3s" },
+    { service = "stress_02", command = ["sh", "-c", "'dd", "if=/dev/zero", "of=/tmp/mem", "bs=1M", "count=100'"], timeout = "3s" },
+    { service = "stress_03", command = ["sh", "-c", "'sleep", "10'"], timeout = "2s" },
+    { service = "stress_04", command = ["sh", "-c", "'exit", "1'"], timeout = "3s" },
+    { service = "stress_05", command = ["sh", "-c", "'kill", "-9", "$$'"], timeout = "3s" }
 ]
 artifacts.collect = ["spans:default"]
 expect_failure = true
@@ -372,7 +359,6 @@ status = "OK"
 # ============================================================================
 [service.recovery_test]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { memory_mb = 256 }
@@ -415,7 +401,7 @@ run = """
     echo "Recovery test complete"
     '
 """
-timeout_ms = 20000
+timeout = "20s"
 artifacts.collect = ["spans:default"]
 
 # Validate recovery phases
@@ -504,4 +490,4 @@ networks = "always"
 volumes = "always"
 verify_cleanup = true
 parallel_cleanup = true
-cleanup_timeout_ms = 30000
+cleanup_timeout = "30s"

@@ -20,7 +20,6 @@ timeout = "120s"
 # OTEL Collector service managed by framework
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]

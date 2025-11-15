@@ -9,7 +9,7 @@
 [test.metadata]
 name = "surrealdb_namespace_database"
 description = "Verify namespace and database isolation in SurrealDB"
-timeout_seconds = 90
+timeout = "90s"
 
 [services.surrealdb]
 type = "surrealdb"

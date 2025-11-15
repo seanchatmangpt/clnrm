@@ -28,7 +28,6 @@ freeze_clock = "2025-10-17T12:00:00Z"
 # Service configuration - Alpine container for testing
 [services.test_container]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 # =============================================================================

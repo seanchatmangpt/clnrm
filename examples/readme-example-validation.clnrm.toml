@@ -5,7 +5,7 @@
 #
 # Run: clnrm validate examples/readme-example-validation.clnrm.toml
 
-[meta]
+[test.metadata]
 name = "api_with_database"
 version = "1.0.0"
 description = "API service with database - Weaver validates telemetry structure"
@@ -27,11 +27,9 @@ exporter = "otlp-http"
 
 # Multiple services working together
 [service.api]
-plugin = "generic_container"
 image = "alpine:latest"
 
 [service.database]
-plugin = "generic_container"
 image = "postgres:15-alpine"
 
 # Scenario that emits rich telemetry

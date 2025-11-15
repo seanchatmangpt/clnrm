@@ -16,7 +16,6 @@ timeout = "300s"
 # The framework will instantiate this as a SurrealDbPlugin
 [services.app_database]
 type = "surrealdb"
-plugin = "surrealdb"
 username = "admin"
 password = "secure_pass_123"
 strict = true

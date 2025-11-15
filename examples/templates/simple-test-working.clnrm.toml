@@ -4,7 +4,7 @@ service_name = "test_service"
 image_name = "alpine:latest"
 test_message = "Hello from template"
 
-[meta]
+[test.metadata]
 name = "{{vars.service_name}}"
 description = "Template test with {{vars.image_name}}"
 

@@ -9,7 +9,6 @@ description = "Validate clnrm functionality by analyzing OTEL spans emitted duri
 # OTEL Collector service - captures spans from clnrm
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -21,7 +20,6 @@ ENABLE_ZPAGES = "false"
 # clnrm container - the system under test
 [services.clnrm_test]
 type = "generic_container"
-plugin = "generic_container"
 image = "clnrm:test"
 
 [services.clnrm_test.env]
