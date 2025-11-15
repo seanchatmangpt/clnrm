@@ -45,7 +45,7 @@ Validation Strategy:
 """
 tags = ["rosetta-stone", "documentation", "validation", "meta-test"]
 version = "1.0.0"
-timeout_seconds = 180
+timeout = "180s"
 
 ################################################################################
 # SECTION 1: SERVICE DEFINITIONS
@@ -53,25 +53,21 @@ timeout_seconds = 180
 
 [services.file_validator]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Alpine container for file system validation operations"
 
 [services.toml_parser]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Alpine container for TOML syntax validation"
 
 [services.command_validator]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Alpine container for command pattern validation"
 
 [services.metrics_validator]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Alpine container for documentation metrics validation"
 
@@ -175,7 +171,7 @@ expected_output_contains = "TOML syntax valid"
 name = "validate_toml_metadata_section"
 description = "Verify test.metadata section TOML syntax"
 service = "toml_parser"
-command = ["sh", "-c", "cat > /tmp/test.toml << 'EOF' && echo 'TOML syntax valid'\n[test.metadata]\nname = \"example_rosetta_test\"\ndescription = \"Example test\"\ntags = [\"rosetta-stone\", \"validation\"]\nversion = \"1.0.0\"\ntimeout_seconds = 300\nEOF"]
+command = ["sh", "-c", "cat > /tmp/test.toml << 'EOF' && echo 'TOML syntax valid'\n[test.metadata]\nname = \"example_rosetta_test\"\ndescription = \"Example test\"\ntags = [\"rosetta-stone\", \"validation\"]\nversion = \"1.0.0\"\ntimeout = "300s"\nEOF"]
 expected_exit_code = 0
 expected_output_contains = "TOML syntax valid"
 

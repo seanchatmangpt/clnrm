@@ -16,7 +16,6 @@ tags = ["rosetta-stone", "string-transforms", "validation", "deterministic"]
 # Test container - lightweight Alpine for command execution
 [services.test_container]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Container for executing string transformation tests"
 

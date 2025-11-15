@@ -1,4 +1,4 @@
-[meta]
+[test.metadata]
 name = "functional_test"
 version = "1.0.0"
 description = "Valid test configuration for functional testing"
@@ -9,7 +9,6 @@ service = "test_service"
 run = "echo 'test output'"
 
 [service.test_service]
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["echo", "hello world"]
 

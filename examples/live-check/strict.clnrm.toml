@@ -2,7 +2,7 @@
 # Validates 100% of telemetry with zero tolerance
 # Use for production releases and final certification
 
-[meta]
+[test.metadata]
 name = "strict_validation"
 version = "1.0.0"
 description = "Strict mode validation - comprehensive and thorough"
@@ -20,8 +20,8 @@ fail_on_improvements = true    # Enforce style guidelines
 
 # Performance tuning for comprehensive validation
 [weaver.performance]
-startup_timeout_ms = 10000     # Longer timeout for strict mode
-flush_timeout_ms = 5000        # Ensure all telemetry collected
+startup_timeout = "10s"     # Longer timeout for strict mode
+flush_timeout = "5s"        # Ensure all telemetry collected
 max_samples = 1000000          # No limit on samples
 
 # OTEL configuration - comprehensive instrumentation
@@ -48,7 +48,6 @@ propagators.use = ["tracecontext", "baggage"]
 
 # Service: API Gateway
 [service.gateway]
-plugin = "generic_container"
 image = "envoyproxy/envoy:v1.28-latest"
 env = {
   "LOG_LEVEL" = "debug"
@@ -56,7 +55,6 @@ env = {
 
 # Service: Application Server
 [service.app]
-plugin = "generic_container"
 image = "app:production"
 env = {
   "ENVIRONMENT" = "production",
@@ -65,7 +63,6 @@ env = {
 
 # Service: Database
 [service.db]
-plugin = "generic_container"
 image = "postgres:15-alpine"
 env = {
   "POSTGRES_PASSWORD" = "prod_password",
@@ -74,7 +71,6 @@ env = {
 
 # Service: Cache
 [service.cache]
-plugin = "generic_container"
 image = "redis:7-alpine"
 
 # Scenario: Complete integration test

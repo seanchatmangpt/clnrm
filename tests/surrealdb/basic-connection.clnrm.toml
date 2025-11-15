@@ -9,7 +9,7 @@
 [test.metadata]
 name = "surrealdb_basic_connection"
 description = "Verify SurrealDB container starts and accepts connections"
-timeout_seconds = 60
+timeout = "60s"
 
 [services.surrealdb]
 type = "surrealdb"

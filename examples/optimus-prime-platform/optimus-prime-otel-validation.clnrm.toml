@@ -9,7 +9,6 @@ description = "Validate Optimus Prime platform functionality through OTEL span a
 # OTEL Collector - Captures all telemetry from the app
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -20,7 +19,6 @@ ENABLE_PROMETHEUS = "false"
 # Optimus Prime Platform - Next.js app with OTEL instrumentation
 [services.optimus_prime]
 type = "generic_container"
-plugin = "generic_container"
 image = "node:20-slim"
 workdir = "/app"
 

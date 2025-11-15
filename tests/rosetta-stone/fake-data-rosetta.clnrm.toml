@@ -28,7 +28,6 @@ tags = ["rosetta-stone", "fake-data", "validation", "generators"]
 
 [services.test_container]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Lightweight Alpine Linux container for testing fake data generators"
 

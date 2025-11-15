@@ -30,7 +30,7 @@ log_level = "INFO"
 
 # Numeric variables
 port = 8080
-timeout_seconds = 30
+timeout = "30s"
 max_retries = 3
 thread_count = 4
 
@@ -64,7 +64,7 @@ max_memory = "256mb"
 [vars.api]
 base_url = "https://api.example.com"
 version = "v2"
-timeout_ms = 5000
+timeout = "5s"
 rate_limit = 1000
 
 # [vars.features] - Feature flags
@@ -79,7 +79,6 @@ experimental_mode = "false"
 
 [services.test_container]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Alpine Linux container for POSIX-compliant variable testing"
 

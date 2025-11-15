@@ -1,7 +1,7 @@
 # Test custom exit code validation
 # Demonstrates the ability to specify expected exit codes for error handling tests
 
-[meta]
+[test.metadata]
 name = "custom_exit_codes"
 version = "1.0.0"
 description = "Test custom exit code validation for error handling scenarios"

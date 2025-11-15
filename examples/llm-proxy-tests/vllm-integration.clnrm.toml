@@ -9,7 +9,6 @@ timeout = "300s"
 # vLLM Service Configuration
 [services.vllm_service]
 type = "vllm"
-plugin = "vllm"
 endpoint = "http://localhost:8000"
 model = "microsoft/DialoGPT-medium"
 max_num_seqs = 100

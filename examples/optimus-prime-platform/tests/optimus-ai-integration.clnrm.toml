@@ -12,42 +12,42 @@ timeout = "300s"
 # Test AI-powered orchestration capabilities
 [[steps]]
 name = "test_ai_orchestration"
-command = "echo 'Testing AI Orchestration: Predictive failure analysis, autonomous optimization, adaptive resource management'"
+command = ["echo", "'Testing", "AI", "Orchestration:", "Predictive", "failure", "analysis,", "autonomous", "optimization,", "adaptive", "resource", "management'"]
 expected_exit_code = 0
 
 [[steps]]
 name = "verify_ai_services"
-command = "echo 'Verifying AI Services: SurrealDB + Ollama integration'"
+command = ["echo", "'Verifying", "AI", "Services:", "SurrealDB", "+", "Ollama", "integration'"]
 expected_exit_code = 0
 
 [[steps]]
 name = "test_predictive_analytics"
-command = "echo 'Testing Predictive Analytics: Failure pattern analysis, risk assessment, mitigation strategies'"
+command = ["echo", "'Testing", "Predictive", "Analytics:", "Failure", "pattern", "analysis,", "risk", "assessment,", "mitigation", "strategies'"]
 expected_exit_code = 0
 
 [[steps]]
 name = "test_optimization_engine"
-command = "echo 'Testing Optimization Engine: Execution order, resource allocation, parallel execution'"
+command = ["echo", "'Testing", "Optimization", "Engine:", "Execution", "order,", "resource", "allocation,", "parallel", "execution'"]
 expected_exit_code = 0
 
 [[steps]]
 name = "test_autonomous_monitoring"
-command = "echo 'Testing Autonomous Monitoring: Anomaly detection, proactive healing, AI-powered alerting'"
+command = ["echo", "'Testing", "Autonomous", "Monitoring:", "Anomaly", "detection,", "proactive", "healing,", "AI-powered", "alerting'"]
 expected_exit_code = 0
 
 [[steps]]
 name = "test_real_ai_intelligence"
-command = "echo 'Testing Real AI Intelligence: SurrealDB data persistence + Ollama AI processing'"
+command = ["echo", "'Testing", "Real", "AI", "Intelligence:", "SurrealDB", "data", "persistence", "+", "Ollama", "AI", "processing'"]
 expected_exit_code = 0
 
 [[steps]]
 name = "simulate_test_execution"
-command = "sleep 1 && echo 'Test execution completed successfully'"
+command = ["sleep", "1", "&&", "echo", "'Test", "execution", "completed", "successfully'"]
 expected_exit_code = 0
 
 [[steps]]
 name = "verify_ai_insights"
-command = "echo 'AI Insights: Performance optimization, reliability improvements, resource efficiency'"
+command = ["echo", "'AI", "Insights:", "Performance", "optimization,", "reliability", "improvements,", "resource", "efficiency'"]
 expected_exit_code = 0
 
 # Assertions to validate AI functionality

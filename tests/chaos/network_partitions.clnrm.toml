@@ -4,7 +4,7 @@
 # Strategy: Network delays, disconnects, packet loss with hermetic validation
 # ====================================================================================
 
-[meta]
+[test.metadata]
 name = "chaos_network_partitions"
 version = "1.0.1"
 description = "Network chaos scenarios with connectivity validation via OTEL"
@@ -35,7 +35,6 @@ resources = {
 # ============================================================================
 [service.latency_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl iproute2 && echo ready"]
 env = { "NETWORK_CHAOS" = "latency" }
@@ -85,7 +84,6 @@ attrs.all = {
 # ============================================================================
 [service.packet_loss_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl iproute2 && echo ready"]
 capabilities = ["NET_ADMIN"]
@@ -122,7 +120,6 @@ events.any = ["network.packet_loss.detected"]
 # ============================================================================
 [service.partition_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl iptables && echo ready"]
 capabilities = ["NET_ADMIN"]
@@ -173,7 +170,6 @@ parent = "clnrm.network.partition"
 # ============================================================================
 [service.node_a]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl netcat-openbsd && nc -l -p 8080"]
 env = { "NODE_ID" = "A" }
@@ -181,7 +177,6 @@ wait_for_span = "clnrm.step:split_brain_test"
 
 [service.node_b]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl netcat-openbsd && echo ready"]
 env = { "NODE_ID" = "B" }
@@ -223,7 +218,6 @@ attrs.all = {
 # ============================================================================
 [service.timeout_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl && echo ready"]
 wait_for_span = "clnrm.step:timeout_test"
@@ -258,7 +252,6 @@ events.any = ["timeout.1s", "timeout.10s", "timeout.100ms"]
 # ============================================================================
 [service.connection_refused]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "apk add --no-cache curl && echo ready"]
 wait_for_span = "clnrm.step:connection_refused"

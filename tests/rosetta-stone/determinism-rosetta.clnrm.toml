@@ -29,7 +29,6 @@ freeze_clock = "2025-01-15T12:00:00Z"
 # =============================================================================
 [services.test_container]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 description = "Lightweight Alpine Linux container for determinism testing"
 

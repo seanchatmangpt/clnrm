@@ -17,7 +17,6 @@ timeout = "180s"
 # OTEL Collector service
 [services.otel_collector]
 type = "otel_collector"
-plugin = "otel_collector"
 image = "otel/opentelemetry-collector:latest"
 
 [services.otel_collector.env]
@@ -29,7 +28,6 @@ ENABLE_ZPAGES = "true"
 # Application service with OTEL instrumentation
 [services.app]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 [services.app.env]

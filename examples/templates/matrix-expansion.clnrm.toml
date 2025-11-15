@@ -11,7 +11,7 @@ exporters = [
     { name = "jaeger", endpoint = "http://localhost:14250", requires_endpoint = true }
 ]
 
-[meta]
+[test.metadata]
 name = "matrix_expansion_test"
 description = "Test with multiple OTEL exporters via matrix expansion"
 

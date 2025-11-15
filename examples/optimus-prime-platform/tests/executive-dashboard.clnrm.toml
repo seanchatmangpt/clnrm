@@ -8,7 +8,6 @@ timeout = "45s"
 
 [services.dashboard_service]
 type = "generic_container"
-plugin = "node"
 image = "node:alpine"
 
 [[steps]]

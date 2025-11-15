@@ -7,7 +7,7 @@ ci_job_id = "{{ env(name='CI_JOB_ID', default='local') }}"
 git_commit = "{{ env(name='GIT_COMMIT', default='unknown') }}"
 service_name = "clnrm"
 
-[meta]
+[test.metadata]
 name = "ci_integration_test"
 description = "Test configured for CI/CD pipeline execution"
 created_at = "{{ now_rfc3339() }}"

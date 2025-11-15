@@ -10,7 +10,7 @@
 # - Attack Vector B: Missing edges (no parent-child relationships)
 # - Attack Vector C: Wrong counts (too few lifecycle events)
 
-[meta]
+[test.metadata]
 name="clnrm_redteam_catch_verbose"
 version="1.0"
 description="Red team case study: fake-green detection with 8-layer validation"
@@ -37,7 +37,6 @@ resources={ "service.name"="clnrm", "service.version"="1.0.0", "env"="ci" }
 use=["tracecontext","baggage"]
 
 [service.clnrm]
-plugin="generic_container"
 image="clnrm:test"
 args=["self-test","--otel-exporter","stdout"]
 env={ "OTEL_TRACES_EXPORTER"="stdout", "RUST_LOG"="info" }

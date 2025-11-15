@@ -18,7 +18,6 @@ tags = ["service-management", "integration", "multi-service", "ai-powered"]
 # Service 1: Database Service (PostgreSQL simulation)
 [services.database]
 type = "generic_container"
-plugin = "postgres"
 image = "postgres:15-alpine"
 environment = { POSTGRES_PASSWORD = "testpass", POSTGRES_DB = "testdb", POSTGRES_USER = "testuser" }
 ports = [5432]
@@ -26,14 +25,12 @@ ports = [5432]
 # Service 2: Redis Cache Service
 [services.cache]
 type = "generic_container"
-plugin = "redis"
 image = "redis:7-alpine"
 ports = [6379]
 
 # Service 3: Node.js Application Service
 [services.app]
 type = "generic_container"
-plugin = "node"
 image = "node:20-alpine"
 environment = { NODE_ENV = "test", PORT = "3000" }
 ports = [3000]
@@ -42,7 +39,6 @@ depends_on = ["database", "cache"]
 # Service 4: Nginx Reverse Proxy
 [services.proxy]
 type = "generic_container"
-plugin = "nginx"
 image = "nginx:alpine"
 ports = [8080]
 depends_on = ["app"]

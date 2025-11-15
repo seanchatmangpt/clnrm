@@ -4,7 +4,7 @@
 # Strategy: Memory limits, CPU throttling, disk exhaustion with recovery validation
 # ====================================================================================
 
-[meta]
+[test.metadata]
 name = "chaos_resource_exhaustion"
 version = "1.0.1"
 description = "Resource exhaustion scenarios with graceful degradation validation"
@@ -35,7 +35,6 @@ resources = {
 # ============================================================================
 [service.memory_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 env = { "MEMORY_LIMIT" = "128M" }
@@ -84,7 +83,6 @@ events.any = ["memory.allocation.failed", "oom.handled"]
 # ============================================================================
 [service.cpu_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { cpu_millicores = 100 }  # 10% of one CPU core
@@ -136,7 +134,6 @@ duration_ms = { min = 2000 }  # Should take longer due to throttling
 # ============================================================================
 [service.disk_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 env = { "DISK_LIMIT" = "100M" }
@@ -193,7 +190,6 @@ events.any = ["disk.write.failed", "disk.full.handled"]
 # ============================================================================
 [service.fd_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 env = { "FD_LIMIT" = "256" }
@@ -243,7 +239,6 @@ attrs.all = {
 # ============================================================================
 [service.concurrent_victim]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = {
@@ -308,7 +303,6 @@ attrs.all = { "result" = "pass", "degraded" = "true", "stable" = "true" }
 # ============================================================================
 [service.recovery_test]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 args = ["sh", "-c", "echo ready"]
 limits = { memory_mb = 256 }

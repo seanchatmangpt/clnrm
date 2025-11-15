@@ -14,7 +14,6 @@ timeout = "60s"
 # Service configuration for OTEL-enabled container
 [services.otel_service]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 [services.otel_service.env]
