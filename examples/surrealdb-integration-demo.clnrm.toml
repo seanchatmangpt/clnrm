@@ -18,7 +18,6 @@ description = "Test SurrealDB service managed entirely from TOML configuration"
 # - Make it available for test steps
 [services.my_database]
 type = "surrealdb"
-plugin = "surrealdb"
 username = "root"
 password = "root"
 strict = false

@@ -18,7 +18,7 @@ description = "Execute echo command to trigger full test lifecycle"
 command = ["echo", "telemetry_validation_success"]
 expected_output_regex = "telemetry_validation_success"
 service = "alpine_container"
-timeout_seconds = 10
+timeout = "10s"
 
 [[steps]]
 name = "verify_container_state"
@@ -26,7 +26,7 @@ description = "Verify container is running and healthy"
 command = ["whoami"]
 expected_output_regex = "root"
 service = "alpine_container"
-timeout_seconds = 5
+timeout = "5s"
 
 [assertions]
 container_should_have_executed_commands = 2

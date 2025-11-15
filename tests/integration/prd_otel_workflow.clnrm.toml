@@ -1,7 +1,7 @@
 # PRD v1.0 OTEL Workflow Integration Test
 # This test validates the complete Tera → TOML → Execute → OTEL → Validate workflow
 
-[meta]
+[test.metadata]
 name = "prd_otel_workflow_integration"
 version = "1.0.0"
 description = "Integration test for PRD v1.0 OTEL workflow with hermetic execution"
@@ -28,7 +28,6 @@ sample_ratio = 1.0
 
 # Test service - hermetic container
 [service.test_container]
-plugin = "generic_container"
 image = "alpine:latest"
 
 [service.test_container.env]

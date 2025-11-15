@@ -5,9 +5,9 @@
 service_name = "clnrm"
 version = "0.6.0"
 exporter = "stdout"
-timeout_ms = 5000
+timeout = "5s"
 
-[meta]
+[test.metadata]
 name = "{{ vars.service_name }}_simple_test"
 description = "Simple test with variable substitution (v{{ vars.version }})"
 version = "{{ vars.version }}"

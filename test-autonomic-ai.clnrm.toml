@@ -1,4 +1,4 @@
-[test]
+[test.metadata]
 metadata = { name = "autonomic-ai-orchestration-test", description = "Test for autonomic hyper-intelligence AI orchestration capabilities" }
 
 [services]

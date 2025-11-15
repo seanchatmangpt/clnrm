@@ -2,7 +2,7 @@
 # Validates critical 20% of telemetry for 80% bug coverage
 # 6x faster than strict mode
 
-[meta]
+[test.metadata]
 name = "eighty_twenty_mode"
 version = "1.0.0"
 description = "80/20 validation mode - fast and effective"
@@ -37,7 +37,6 @@ resources = {
 
 # Service: HTTP API
 [service.api]
-plugin = "generic_container"
 image = "nginx:alpine"
 env = {
   "PORT" = "8080"
@@ -45,7 +44,6 @@ env = {
 
 # Service: Database
 [service.db]
-plugin = "generic_container"
 image = "postgres:15-alpine"
 env = {
   "POSTGRES_PASSWORD" = "testpass",

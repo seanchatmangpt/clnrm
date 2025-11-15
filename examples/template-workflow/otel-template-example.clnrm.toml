@@ -20,7 +20,6 @@ resources = { "service.name" = "clnrm", "service.version" = "0.6.0" }
 # Service configuration with templating
 [services.clnrm]
 type = "generic_container"
-plugin = "generic_container"
 image = "{{ vars.image | default(value='alpine:latest') }}"
 
 # Test steps

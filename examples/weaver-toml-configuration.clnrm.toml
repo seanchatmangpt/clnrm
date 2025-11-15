@@ -3,7 +3,7 @@
 # This example demonstrates how to configure Weaver live-checking
 # directly in your TOML test files.
 
-[meta]
+[test.metadata]
 name = "weaver_validation_example"
 version = "1.0.0"
 description = "Example test with Weaver live-checking enabled"
@@ -29,7 +29,6 @@ resources = {
 
 # Service definition
 [service.test_service]
-plugin = "generic_container"
 image = "alpine:latest"
 
 # Test scenario

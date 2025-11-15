@@ -8,7 +8,6 @@ timeout = "60s"
 
 [services.intelligence_engine]
 type = "generic_container"
-plugin = "node"
 image = "node:alpine"
 
 [[steps]]

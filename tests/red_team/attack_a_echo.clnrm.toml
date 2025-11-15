@@ -3,7 +3,7 @@
 # Expected: FAIL on missing root span "clnrm.run"
 # First Failing Rule: "expect.span[clnrm.run].existence"
 
-[meta]
+[test.metadata]
 name="attack_a_echo_pass"
 version="1.0"
 description="Attack vector: Echo success message without execution"
@@ -15,7 +15,6 @@ run="sh -lc 'echo \"✅ All tests passed\"; exit 0'"
 artifacts.collect=["spans:default"]
 
 [service.red]
-plugin="generic_container"
 image="alpine:latest"
 env={ "ATTACK"="echo_pass" }
 

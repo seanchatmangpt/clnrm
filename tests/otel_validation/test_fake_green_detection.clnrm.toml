@@ -14,7 +14,6 @@ timeout = "30s"
 # Service configuration
 [services.validation_target]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 # Execute exactly 5 commands to validate span count accuracy

@@ -8,7 +8,6 @@ version = "1.0.0"
 # Service: Ollama AI for LLM generation
 [services.ollama_ai]
 type = "generic_container"
-plugin = "ollama"
 image = "ollama/ollama:latest"
 ports = ["11434:11434"]
 healthcheck = { command = ["ollama", "list"], interval = "10s", timeout = "5s", retries = 5 }
@@ -17,7 +16,6 @@ volumes = ["/tmp/ollama:/root/.ollama"]
 # Service: Next.js application server
 [services.nextjs_server]
 type = "generic_container"
-plugin = "generic"
 image = "node:18-alpine"
 working_dir = "/app"
 command = ["sh", "-c", "npm install && npm run dev"]

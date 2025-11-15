@@ -13,7 +13,6 @@ timeout = "60s"
 # Service configuration - Multi-service test
 [services.primary_service]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 [services.primary_service.env]
@@ -21,7 +20,6 @@ SERVICE_TYPE = "primary"
 
 [services.secondary_service]
 type = "generic_container"
-plugin = "generic_container"
 image = "alpine:latest"
 
 [services.secondary_service.env]

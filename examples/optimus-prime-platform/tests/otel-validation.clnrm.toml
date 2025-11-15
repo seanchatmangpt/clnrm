@@ -7,7 +7,6 @@ tags = ["otel", "observability", "e2e", "integration"]
 
 [services.ollama_ai]
 type = "generic_container"
-plugin = "ollama"
 image = "ollama/ollama:latest"
 ports = ["11434:11434"]
 env = []
@@ -16,7 +15,6 @@ wait_for_ready = true
 
 [services.nextjs_app]
 type = "generic_container"
-plugin = "generic"
 image = "node:18-alpine"
 ports = ["3000:3000"]
 working_dir = "/app"

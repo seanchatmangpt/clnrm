@@ -2,7 +2,7 @@
 # This test validates all v0.6.0 features: Tera templating, validators, reporting, determinism
 # Expected: 100/100 pass rate with identical digest across runs
 
-[meta]
+[test.metadata]
 name = "clnrm_v0_6_0_self_validation"
 version = "0.6.0"
 description = "Comprehensive self-validation test for v0.6.0 features"
@@ -46,7 +46,6 @@ use = ["tracecontext", "baggage"]
 # SERVICE DEFINITIONS
 # ========================================
 [service.validation_service]
-plugin = "generic_container"
 image = "{{ vars.container_image }}"
 args = ["sh", "-c", "echo 'Self-validation service starting' && sleep 1 && echo 'Service ready'"]
 wait_for_span = "validation_service.start"

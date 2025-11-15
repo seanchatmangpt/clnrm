@@ -77,10 +77,10 @@ jobs:
     - name: Run cargo clippy
       run: cargo clippy --all-features -- -D warnings -A clippy::unnecessary_unwrap
 
-    - name: Run unit tests
+    - name: Run unit tests (core functionality - Docker-independent)
       run: cargo test --lib --all-features
 
-    - name: Run integration tests
+    - name: Run integration tests (full suite with Docker)
       run: cargo test --test '*' --all-features
 
     - name: Build release binary

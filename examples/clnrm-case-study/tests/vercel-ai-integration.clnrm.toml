@@ -10,7 +10,6 @@ timeout = "300s"
 # AI Service Configuration - Using generic container plugin for Ollama testing
 [services.ai_service]
 type = "generic_container"
-plugin = "ollama"
 image = "ollama/ollama:latest"
 model = "qwen3-coder:30b"
 endpoint = "http://localhost:11434"

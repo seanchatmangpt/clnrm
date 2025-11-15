@@ -1,4 +1,4 @@
-[meta]
+[test.metadata]
 name = "invalid_test"
 version = "1.0.0"
 

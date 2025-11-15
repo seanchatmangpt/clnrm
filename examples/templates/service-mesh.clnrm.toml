@@ -15,7 +15,7 @@ services = [
     { name = "cache", image = "redis:7-alpine", port = 6379, enabled = false }
 ]
 
-[meta]
+[test.metadata]
 name = "{{ vars.test_name }}"
 description = "Service mesh integration test with multiple microservices"
 

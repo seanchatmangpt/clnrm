@@ -1,7 +1,7 @@
 # Basic Weaver Live-Check Example
 # This is the simplest possible configuration for live-check validation
 
-[meta]
+[test.metadata]
 name = "basic_live_check"
 version = "1.0.0"
 description = "Minimal live-check configuration example"
@@ -12,7 +12,6 @@ enabled = true
 
 # Service definition
 [service.app]
-plugin = "generic_container"
 image = "alpine:latest"
 
 # Simple test scenario

@@ -16,7 +16,6 @@ timeout = "120s"
 
 [services.framework_test]
 type = "generic_container"
-plugin = "alpine"
 image = "alpine:latest"
 
 [[steps]]

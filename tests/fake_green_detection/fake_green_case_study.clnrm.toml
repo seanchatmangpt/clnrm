@@ -4,7 +4,7 @@
 # Failure Mode: A wrapper script echoes "Passed" and exits 0 without actually running tests
 # Expected: Analyzer detects missing lifecycle events, parent-child edges, and hermetic violations
 
-[meta]
+[test.metadata]
 name="clnrm_otel_full_surface"
 version="1.0"
 description="Telemetry-only, flat TOML, full schema surface - catches fake-green runs"
@@ -31,14 +31,12 @@ Authorization="Bearer example-token"
 use=["tracecontext","baggage"]
 
 [service.clnrm]
-plugin="generic_container"
 image="registry/clnrm:1.0.0"
 args=["self-test","--otel-exporter","otlp","--otel-endpoint","http://localhost:4318"]
 env={ "OTEL_TRACES_EXPORTER"="otlp", "OTEL_EXPORTER_OTLP_ENDPOINT"="http://localhost:4318", "RUST_LOG"="info" }
 wait_for_span="clnrm.run"
 
 [service.db]
-plugin="generic_container"
 image="surrealdb/surrealdb:latest"
 args=["start","--log","info"]
 env={ "SURREAL_LOG"="info" }

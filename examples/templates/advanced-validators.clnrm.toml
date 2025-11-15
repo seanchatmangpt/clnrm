@@ -12,7 +12,7 @@ lifecycle_phases = [
     { phase = "stop", expected_status = "OK" }
 ]
 
-[meta]
+[test.metadata]
 name = "advanced_validators_test"
 description = "Demonstrates order and status validators with template expansion"
 
