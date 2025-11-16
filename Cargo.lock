@@ -817,6 +817,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
+name = "chicago-tdd-tools"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42fc94ff169c29c1521577d703ed6b3e53526c0d09da4e550c45a13ce4bf0e0d"
+dependencies = [
+ "chicago-tdd-tools-proc-macros",
+ "chrono",
+ "futures",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "chicago-tdd-tools-proc-macros"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd50ff46640bd7aeff629f9a0030f2709652a3a74ae1d4df8833675308492d52"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -970,6 +998,7 @@ version = "1.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "chicago-tdd-tools",
  "chrono",
  "clap",
  "clap-noun-verb 0.1.0",
