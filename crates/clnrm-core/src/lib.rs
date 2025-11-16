@@ -10,9 +10,15 @@
 pub mod assertions;
 pub mod backend;
 pub mod cache;
+pub mod capabilities; // v1.7.0: Capability-aware scenario framework
 pub mod chaos;
 pub mod chicago_tdd; // v1.5.0: Chicago-TDD-Tools integration framework
 pub mod cleanroom;
+pub mod environment; // v1.7.0: Σ*-aware environment compiler (Phase 2)
+pub mod receipts;    // v1.7.0: Test receipt infrastructure (Γₜ) (Phase 3)
+pub mod timing;      // v1.7.0: μ-Kernel timing & τ validation (Phase 4)
+pub mod synthesis;   // v1.7.0: Scenario synthesis engine (Phase 5)
+pub mod scheduler;   // v1.7.0: Swarm-scale scheduler & resource governance (Phase 6)
 pub mod cli;
 pub mod config;
 pub mod coverage;
