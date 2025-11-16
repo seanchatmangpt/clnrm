@@ -8,11 +8,20 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 // Module structure for backends
+pub mod capabilities;
+pub mod extensions;
 pub mod mock;
 pub mod pool;
 pub mod testcontainer;
 pub mod volume;
 
+pub use capabilities::{
+    BackendCapability as BackendCapabilityType, BackendCapabilityRegistry, CapabilityCategory,
+    CapabilityDiscoveryProvider, CapabilityDiscoveryService, CapabilityFeature,
+    CapabilityRegistryStatistics, CapabilityRequirement, FeatureType, RequirementType,
+    StandardCapabilities,
+};
+pub use extensions::{BackendExt, EnhancedBackend, ExecutionMode, ResourceLimits};
 pub use mock::MockBackend;
 pub use pool::{ContainerHandle, ContainerPool, PoolConfig, PoolStats};
 pub use testcontainer::TestcontainerBackend;

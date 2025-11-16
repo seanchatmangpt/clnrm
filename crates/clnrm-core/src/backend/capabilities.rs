@@ -6,7 +6,6 @@
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::fmt;
 
 /// Backend capability registry
 pub struct BackendCapabilityRegistry {
