@@ -1,427 +1,264 @@
-# Cleanroom Testing Framework
+# Cleanroom Testing Framework (clnrm)
 
 [![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)](https://github.com/seanchatmangpt/clnrm)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/clnrm.svg)](https://crates.io/crates/clnrm)
 [![Release](https://img.shields.io/github/v/release/seanchatmangpt/clnrm)](https://github.com/seanchatmangpt/clnrm/releases)
 
-A high-performance hermetic integration testing framework that executes tests in isolated Docker containers with OpenTelemetry validation. Version 1.4.1 introduces container pooling for 80% faster test startup and 10x throughput improvements. Define tests declaratively using TOML configuration files and validate runtime behavior with Weaver schema validation.
+A high-performance hermetic integration testing framework for running tests in isolated Docker containers with OpenTelemetry behavior validation. Define tests declaratively using TOML and validate they actually work through schema validation.
 
-## What's New in v1.4.1
+## What clnrm Solves
 
-**Performance Revolution: Container Pooling**
-
-- **80% faster test startup**: 2-5s → 0.1-0.5s through container pre-warming
-- **10x higher throughput**: 500-1000 concurrent tests (vs 50-100 in v1.3.0)
-- **Configurable pooling**: Tune pool size, idle timeout, and health checks
-- **Seamless integration**: Enable with `CLNRM_ENABLE_POOLING=1` environment variable
-- **Production-grade**: Lock-free hot paths, background health checks, comprehensive metrics
-
-See [Migration Guide](docs/MIGRATION_V1_4_0_TO_V1_4_1.md) for upgrade instructions from v1.4.0, or [v1.3 to v1.4 Migration](docs/MIGRATION_V1_3_TO_V1_4.md) for older versions.
-
-## Installation
-
-### Homebrew
+**The False Positive Problem:**
+Traditional testing only checks exit codes. A test can "pass" while actually doing nothing:
 
 ```bash
-brew tap seanchatmangpt/clnrm
-brew install clnrm
+#!/bin/bash
+echo "✅ Test passed"
+exit 0  # Passes! But did we actually test anything?
 ```
 
-### Cargo
+**The clnrm Solution:**
+Validate behavior through OpenTelemetry telemetry. Your test fails if:
+- ❌ API never actually handled the request (no HTTP span)
+- ❌ Database was never queried (no DB span)
+- ❌ Services didn't communicate (no parent-child relationship)
+- ❌ Operations happened in wrong order (temporal violation)
+- ❌ Test leaked to external services (hermiticity violation)
 
-```bash
-cargo install clnrm
-```
-
-### Requirements
-
-- Rust 1.70 or later (for building from source)
-- Docker or Podman (for container execution)
-- 4GB+ RAM recommended (8GB+ for container pooling)
+clnrm catches **fake-green tests** that traditional testing misses.
 
 ## Quick Start
 
-### Basic Usage
-
+### Install
 ```bash
-# Run tests (auto-discovers all *.clnrm.toml files)
-clnrm run
+# Homebrew
+brew tap seanchatmangpt/clnrm
+brew install clnrm
 
-# Run specific test with container pooling (80% faster)
-CLNRM_ENABLE_POOLING=1 clnrm run tests/api_with_database.clnrm.toml
-
-# Run with maximum concurrency
-CLNRM_ENABLE_POOLING=1 clnrm run --parallel --jobs 16
-
-# Run with Weaver live-check validation
-clnrm run --live-check --registry registry/
+# Cargo
+cargo install clnrm
 ```
 
-### Performance Example
+### Run Your First Test (5 minutes)
+```bash
+# See GETTING_STARTED.md for the complete walkthrough
+clnrm init              # Create project structure
+clnrm run               # Run tests
+```
 
-Test an API service with database integration. With container pooling enabled, startup time drops from 2-5s to 0.1-0.5ms per test.
+**→ Read [Getting Started Guide](docs/GETTING_STARTED.md) for step-by-step instructions**
 
+## Documentation
+
+clnrm documentation is organized using the [Diataxis framework](https://diataxis.fr/), which means:
+
+### 🎓 [Tutorials](docs/tutorials/) — Learn by Doing
+Complete beginner-friendly guides with real examples:
+- **[Getting Started](docs/tutorials/01-getting-started/)** — Run your first test (15 min)
+- **[Container Pooling](docs/tutorials/02-container-pooling/)** — Enable 80% faster startup (10 min)
+- **[Weaver Validation](docs/tutorials/03-weaver-validation/)** — Catch false positives (15 min)
+- **[Custom Plugins](docs/tutorials/04-custom-plugins/)** — Extend clnrm (20 min)
+- **[OpenTelemetry Setup](docs/tutorials/05-otel-integration/)** — Add observability (15 min)
+
+**Start here if you're new to clnrm.**
+
+### 🛠️ [How-To Guides](docs/how-to/) — Solve Specific Problems
+Practical solutions for concrete tasks:
+- **Execution & Performance** — Parallel testing, optimization, scaling
+- **Integration** — GitHub Actions, GitLab CI, Jenkins, CI/CD
+- **Configuration** — Pooling, backends, templates, multi-environment
+- **Troubleshooting** — Fix Docker issues, debug failures, handle flaky tests
+- **Advanced** — Custom validators, stress testing, plugins
+
+**Use these when you have a specific task to accomplish.**
+
+### 📚 [Reference](docs/reference/) — Look Up Details
+Technical specifications and complete information:
+- **[CLI Commands](docs/reference/cli.md)** — All `clnrm` commands and flags
+- **[TOML Configuration](docs/reference/toml-schema.md)** — Configuration format reference
+- **[API Documentation](docs/reference/api.md)** — Rust API for plugins
+- **[Environment Variables](docs/reference/environment-variables.md)** — `CLNRM_*` configuration
+- **[Built-in Plugins](docs/reference/plugins.md)** — Available service plugins
+
+**Use these for complete technical details and specifications.**
+
+### 💡 [Explanations](docs/explanation/) — Understand Concepts
+Conceptual guides explaining "why" and design principles:
+- **[Architecture Overview](docs/explanation/architecture.md)** — How clnrm works
+- **[Weaver Validation](docs/explanation/weaver-validation.md)** — Why behavior validation matters
+- **[Container Pooling](docs/explanation/container-pooling.md)** — How 80% speedup works
+- **[Concurrency Model](docs/explanation/concurrency.md)** — Parallel test execution
+- **[Plugin System](docs/explanation/plugins.md)** — Why plugins, extensibility model
+- **[Hermiticity](docs/explanation/hermiticity.md)** — Test isolation principles
+
+**Read these to deepen your understanding of clnrm.**
+
+---
+
+## Key Features
+
+### Define Tests Declaratively
+Write tests in TOML without code:
+```toml
+[[scenario]]
+name = "api_handles_requests"
+service = "api"
+run = "my-api --server"
+
+[[expect.span]]
+name = "http.server.request"
+attrs.all = { "http.method" = "GET" }
+```
+
+### Validate Actual Behavior (Not Just Exit Codes)
+Unlike traditional testing:
+- **Span expectations** — Validate telemetry spans emitted
+- **Graph structure** — Ensure services communicate correctly
+- **Temporal ordering** — Prove operations occur in correct sequence
+- **Hermeticity** — Catch accidental external service calls
+- **Schema validation** — Weaver validates against OpenTelemetry standards
+
+### High Performance with Container Pooling
+- **80% faster startup** — 2-5s → 0.1-0.5ms per test
+- **10x higher throughput** — 500-1000 concurrent tests
+- **Production-grade** — Lock-free concurrency, background health checks
+- **Easy to enable** — One environment variable: `CLNRM_ENABLE_POOLING=1`
+
+### Extensive Integration
+- **OpenTelemetry support** — Export to Jaeger, DataDog, New Relic
+- **Weaver live-checking** — Automatic schema validation
+- **CI/CD integration** — GitHub Actions, GitLab CI, Jenkins
+- **Container backends** — Docker, Podman, testcontainers
+- **Built-in plugins** — Generic containers, databases, LLMs
+
+---
+
+## Architecture Highlights
+
+**Why clnrm is different:**
+
+1. **Schema-First Validation** — Weaver validates telemetry against OpenTelemetry schemas, catching fake-green tests
+2. **Behavior Not Exit Codes** — Tests fail if code doesn't actually execute, even with exit code 0
+3. **Plugin Architecture** — Extend with custom services, not hardcoded integrations
+4. **Hermetic Isolation** — Each test runs in isolated Docker container, no cross-test pollution
+5. **Production-Grade Performance** — Lock-free concurrency, container pooling, resource management
+
+See [Architecture Overview](docs/explanation/architecture.md) for design details.
+
+---
+
+## Requirements
+
+- **Rust** 1.70+ (for building from source)
+- **Docker** or **Podman** (for container execution)
+- **RAM** 4GB+ (8GB+ for container pooling)
+
+---
+
+## What's New in v1.4.1
+
+**Performance Revolution**: Container pooling reduces test startup from 2-5 seconds to 0.1-0.5 milliseconds through pre-warming containers.
+
+- **80% faster** — Pool pre-warmed containers
+- **10x throughput** — 500-1000 concurrent tests
+- **Lock-free hot paths** — Zero-contention performance tracking
+- **Configurable** — Pool size, idle timeout, health checks
+- **Production-ready** — Weaver-validated, comprehensive metrics
+
+→ See [Migration Guide](docs/MIGRATION_V1_3_TO_V1_4.md) to upgrade from v1.3.0.
+
+---
+
+## Security
+
+⚠️ **Advisory**: clnrm v1.4.1 depends on `tokio-tar` with [RUSTSEC-2025-0111](https://rustsec.org/advisories/RUSTSEC-2025-0111).
+
+**Risk: LOW** for normal usage (trusted images, ephemeral filesystems). See [Security Policy](SECURITY.md) for complete details.
+
+---
+
+## Examples
+
+### Basic Integration Test
 ```toml
 [meta]
 name = "api_with_database"
-version = "1.0.0"
-description = "API service with database - Weaver validates telemetry structure"
+description = "API service with database integration"
 
 # Enable Weaver schema validation
 [weaver]
 enabled = true
 registry_path = "registry"
-otlp_port = 0        # Auto-discover available port
-admin_port = 0       # Auto-discover available port
 
-# Configure OpenTelemetry export to Weaver
-[otel]
-exporter = "otlp-http"
-resources = {
-  "service.name" = "api_service",
-  "deployment.environment" = "test"
-}
-
-# Multiple services working together
+# Multiple services
 [service.api]
 plugin = "generic_container"
 image = "my-api:latest"
 
-[service.database]
+[service.db]
 plugin = "generic_container"
 image = "postgres:15-alpine"
 
-# Scenario that emits rich telemetry
+# Test scenario
 [[scenario]]
-name = "api_handles_user_request"
+name = "api_queries_database"
 service = "api"
-run = "my-api --endpoint /api/v1/users"
-artifacts.collect = ["spans:default"]
+run = "my-api --endpoint /api/users"
 
-# Validate HTTP server span
+# Validate HTTP span
 [[expect.span]]
 name = "http.server.request"
 kind = "server"
-attrs.all = {
-  "http.method" = "GET",
-  "http.route" = "/api/v1/users"
-}
 
-# Validate database query span (must be child of HTTP span)
+# Validate DB span
 [[expect.span]]
 name = "db.query"
 kind = "client"
 parent = "http.server.request"
-attrs.all = {
-  "db.system" = "postgresql",
-  "db.operation" = "SELECT"
-}
 
-# Validate trace graph structure - proves services actually communicated
+# Validate trace structure
 [expect.graph]
-must_include = [
-  ["http.server.request", "db.query"]  # HTTP span must have DB child
-]
-acyclic = true  # No cycles allowed (proves correct trace structure)
-
-# Validate temporal ordering - proves operations happened in correct sequence
-[expect.order]
-must_precede = [
-  ["http.server.request", "db.query"],        # Request must come before query
-  ["db.query", "http.server.response"]       # Query must come before response
-]
-
-# Ensure no external service leaks - catch accidental production calls
-[expect.hermeticity]
-no_external_services = true
-span_attrs.forbid_keys = ["net.peer.name"]  # Forbid external hostnames
+must_include = [["http.server.request", "db.query"]]
+acyclic = true
 ```
 
-### Why This Matters
-
-This test validates **behavior**, not just exit codes. Consider what traditional testing misses:
-
-**Traditional Testing Problem:**
+### Parallel Execution (10x Speedup)
 ```bash
-#!/bin/bash
-# Fake-green test - passes but does nothing
-echo "✅ Test passed"
-exit 0
-# ❌ Database never queried
-# ❌ API never handled request  
-# ❌ Services never interacted
-# ✅ Traditional testing: PASS (exit code 0)
+CLNRM_ENABLE_POOLING=1 clnrm run --parallel --jobs 16
 ```
-
-**OTEL-First Validation Solution:**
-Your test fails if:
-- ❌ **No HTTP server span exists** → API never actually ran (just returned exit code 0)
-- ❌ **No database query span** → Database was never accessed (test is fake-green)
-- ❌ **Graph structure wrong** → Services didn't actually communicate (no parent-child edge)
-- ❌ **Temporal ordering violated** → Operations happened in wrong sequence (bug in execution)
-- ❌ **External service calls detected** → Test leaked to production (hermeticity violation)
-- ❌ **Semantic conventions violated** → Instrumentation incorrect (Weaver catches this)
-
-**OTEL-first validation** requires **proof of execution** through telemetry:
-- ✅ **Graph structure** proves service interaction happened (HTTP → DB edge exists)
-- ✅ **Temporal ordering** proves operations occurred in correct sequence (request before query)
-- ✅ **Hermeticity** catches accidental external service calls (forbidden attributes)
-- ✅ **Semantic conventions** validated automatically by Weaver (correct attribute names)
-
-Weaver automatically validates all of this against OpenTelemetry schemas—no manual trace inspection needed. The test fails if your code doesn't actually execute correctly, even if it returns exit code 0.
-
-## Features
-
-**Core Testing**
-- TOML-based test definitions
-- Docker container isolation per test step
-- Automatic test discovery
-- Template variable support with Tera
-
-**OpenTelemetry Integration**
-- **Weaver live-checking** - Automatic schema validation during test execution
-- OTLP export for telemetry collection (HTTP/gRPC)
-- Resource attribute configuration
-- Custom headers and propagators (tracecontext, baggage)
-- Sample ratio control
-
-**Behavior Validation (Not Just Exit Codes)**
-Unlike traditional testing that only checks return codes, clnrm validates actual execution through telemetry:
-- **Span expectations** - Validate name, kind, attributes, events, duration
-- **Graph structure** - Ensure correct parent-child relationships and acyclic traces
-- **Temporal ordering** - Prove operations occur in the correct sequence
-- **Count/cardinality** - Validate span, event, and error counts match expectations
-- **Temporal windows** - Ensure spans occur within expected time boundaries
-- **Status codes** - Validate span status (OK, ERROR, UNSET) across the trace
-- **Hermeticity** - Catch accidental external service calls or forbidden attributes
-
-**CLI Commands**
-- `clnrm init` - Initialize new test project
-- `clnrm run` - Execute test files with optional pooling and Weaver validation
-  - `--parallel` - Enable parallel test execution
-  - `--jobs N` - Set concurrency limit (default: 4)
-  - `CLNRM_ENABLE_POOLING=1` - Enable container pooling (80% faster, env var)
-  - `--live-check` - Enable Weaver live-check validation
-- `clnrm validate` - Validate TOML configuration
-- `clnrm plugins` - List available service plugins
-- `clnrm self-test` - Run framework self-validation
-- `clnrm health` - Check system health (Docker, resources)
-
-See [CLI Guide](docs/CLI_GUIDE.md) for complete reference.
-
-## OpenTelemetry TOML Configuration
-
-Cleanroom supports comprehensive OpenTelemetry configuration directly in TOML test files:
 
 ### Weaver Live-Checking
-
-Enable automatic schema validation:
-
-```toml
-[weaver]
-enabled = true                    # Enable Weaver validation
-registry_path = "registry"        # Path to schema registry
-otlp_port = 0                     # Auto-discover (0) or fixed port
-admin_port = 0                    # Auto-discover (0) or fixed port
-output_dir = "./validation_output" # Validation report directory
-stream = false                    # Streaming output (real-time)
-fail_fast = false                 # Stop on first violation
+```bash
+clnrm run --live-check --registry registry/
 ```
-
-### OTEL Export Configuration
-
-```toml
-[otel]
-exporter = "otlp-http"            # Export format: stdout, otlp-http, otlp-grpc
-endpoint = "http://localhost:4318" # OTLP endpoint URL
-protocol = "http/protobuf"        # Protocol: http/protobuf, grpc, http/json
-sample_ratio = 1.0               # Sampling rate (0.0-1.0)
-
-# Resource attributes
-resources = {
-  "service.name" = "my_service",
-  "service.version" = "1.0.0",
-  "deployment.environment" = "test"
-}
-
-# Custom headers
-headers = {
-  "Authorization" = "Bearer token"
-}
-
-# Context propagators
-propagators.use = ["tracecontext", "baggage"]
-```
-
-### Span Expectations
-
-Validate span structure and attributes:
-
-```toml
-[[expect.span]]
-name = "http.request"              # Span name (supports globs)
-kind = "server"                   # Span kind: internal, client, server, producer, consumer
-parent = "http.server.request"    # Parent span name
-
-# Attribute validation
-attrs.all = {                     # All attributes must match
-  "http.method" = "GET",
-  "http.route" = "/api/users"
-}
-attrs.any = {                      # Any attribute must match
-  "http.status_code" = "200"
-}
-
-# Event validation
-events.all = ["http.request.received", "http.response.sent"]
-events.any = ["exception"]
-
-# Duration bounds
-duration_ms = { min = 10.0, max = 1000.0 }
-```
-
-### Graph Structure Validation
-
-Validate trace topology:
-
-```toml
-[expect.graph]
-# Required edges
-must_include = [
-  ["http.server.request", "db.query"],
-  ["db.query", "cache.get"]
-]
-
-# Forbidden edges
-must_not_cross = [
-  ["external.service", "internal.service"]
-]
-
-acyclic = true                    # Ensure no cycles
-```
-
-### Count/Cardinality Validation
-
-```toml
-[expect.counts]
-spans_total = { gte = 1, lte = 100 }    # Total span count bounds
-events_total = { gte = 5 }             # Total event count
-errors_total = { eq = 0 }              # Must have zero errors
-
-# Per-span-name counts
-by_name = {
-  "http.request" = { eq = 10 },        # Exactly 10 http.request spans
-  "db.query" = { gte = 1 }              # At least 1 db.query span
-}
-```
-
-### Temporal Ordering Validation
-
-```toml
-[expect.order]
-# First must precede second
-must_precede = [
-  ["auth.check", "db.query"],
-  ["db.query", "cache.set"]
-]
-
-# First must follow second
-must_follow = [
-  ["response.sent", "request.received"]
-]
-```
-
-### Temporal Window Validation
-
-```toml
-[[expect.window]]
-outer = "http.server.request"     # Outer span defining time window
-contains = [                       # Spans that must be within window
-  "db.query",
-  "cache.get",
-  "auth.check"
-]
-```
-
-### Status Code Validation
-
-```toml
-[expect.status]
-all = "OK"                        # All spans must have OK status
-
-# Or per-span-name
-by_name = {
-  "http.request" = "OK",
-  "error.*" = "ERROR"             # Supports glob patterns
-}
-```
-
-### Hermeticity Validation
-
-Ensure tests don't leak to external services:
-
-```toml
-[expect.hermeticity]
-no_external_services = true      # Forbid external service calls
-
-# Resource attributes must match exactly
-resource_attrs.must_match = {
-  "service.name" = "my_service",
-  "deployment.environment" = "test"
-}
-
-# Forbid certain span attributes (e.g., external network calls)
-span_attrs.forbid_keys = [
-  "net.peer.name",                # No external hosts
-  "http.url"                       # No external URLs
-]
-```
-
-## Security
-
-⚠️ **Security Advisory**: clnrm v1.4.1 depends on `tokio-tar` which has [RUSTSEC-2025-0111](https://rustsec.org/advisories/RUSTSEC-2025-0111), a file smuggling vulnerability.
-
-**Risk Assessment**: **LOW** for normal clnrm usage because:
-- Container images from trusted registries only (Docker Hub official images)
-- Extraction happens in isolated testcontainer environments
-- Filesystems are ephemeral (destroyed after tests)
-- No user-provided tar archives are processed
-
-**User Guidance**: See [SECURITY.md](SECURITY.md) for complete details, mitigation strategies, and best practices.
-
-**Resolution Plan**:
-- v1.4.1: Risk documented, monitoring for upstream fix
-- v1.4.2: Upgrade when tokio-tar releases security patch
-- v1.5.0: Consider migration to alternative tar implementation
-
-For security concerns, see our [Security Policy](SECURITY.md#reporting-security-issues).
 
 ---
 
-## Documentation
+## Navigation Quick Links
 
-**Getting Started**
-- [Quick Start Guide](docs/quick-start.md) - Get started in 5 minutes
-- [CLI Guide](docs/CLI_GUIDE.md) - Complete command-line reference
-- [Migrating to v1.4.1](docs/MIGRATION_V1_3_TO_V1_4.md) - Upgrade guide from v1.3.0
+| I want to... | Where to go |
+|---|---|
+| **Get started in 5 minutes** | [Getting Started Guide](docs/GETTING_STARTED.md) |
+| **Run my first test** | [Tutorial 1: Getting Started](docs/tutorials/01-getting-started/) |
+| **Speed up my tests** | [Tutorial 2: Container Pooling](docs/tutorials/02-container-pooling/) |
+| **Catch false positives** | [Tutorial 3: Weaver Validation](docs/tutorials/03-weaver-validation/) |
+| **Do something specific** | [How-To Guides](docs/how-to/) |
+| **Look up technical details** | [Reference Docs](docs/reference/) |
+| **Understand how it works** | [Explanations](docs/explanation/) |
+| **Upgrade from v1.3** | [Migration Guide](docs/MIGRATION_V1_3_TO_V1_4.md) |
+| **Understand architecture** | [Architecture Overview](docs/explanation/architecture.md) |
+| **Report a bug or feature** | [GitHub Issues](https://github.com/seanchatmangpt/clnrm/issues) |
 
-**Performance & Optimization**
-- [Container Pooling](docs/CONTAINER_POOLING.md) - Enable 80% faster test startup
-- [Performance Tuning](docs/PERFORMANCE_TUNING.md) - Optimize for your workload
-- [Concurrency Architecture](docs/V1_4_0_CONCURRENCY_ARCHITECTURE.md) - Technical deep-dive
+---
 
-**Configuration & Validation**
-- [TOML Reference](book/src/reference/toml-schema.md) - Configuration format
-- [Weaver TOML Configuration](docs/WEAVER_TOML_CONFIGURATION.md) - Weaver live-checking setup
-- [Advanced Users Guide](book/) - Comprehensive documentation (mdbook)
+## Community
 
-**Reference**
-- [Documentation Index](docs/INDEX.md) - Complete navigation hub
+- **GitHub** — [seanchatmangpt/clnrm](https://github.com/seanchatmangpt/clnrm)
+- **Issues** — [Bug reports & feature requests](https://github.com/seanchatmangpt/clnrm/issues)
+- **Contributing** — See [CONTRIBUTING.md](CONTRIBUTING.md)
 
-## Contributing
-
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+---
 
 ## License
 
@@ -429,4 +266,9 @@ Licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-Repository: [github.com/seanchatmangpt/clnrm](https://github.com/seanchatmangpt/clnrm)
+## Acknowledgments
+
+- **OpenTelemetry** — Semantic conventions and schema validation
+- **Weaver** — Registry and live-check validation
+- **testcontainers-rs** — Container orchestration
+- **Tokio** — Async runtime and performance
