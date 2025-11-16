@@ -19,6 +19,7 @@ pub mod receipts;    // v1.7.0: Test receipt infrastructure (Γₜ) (Phase 3)
 pub mod timing;      // v1.7.0: μ-Kernel timing & τ validation (Phase 4)
 pub mod synthesis;   // v1.7.0: Scenario synthesis engine (Phase 5)
 pub mod scheduler;   // v1.7.0: Swarm-scale scheduler & resource governance (Phase 6)
+pub mod phases;      // v1.8.0: Phases 8-10 determinism, conformance, & contracts
 pub mod cli;
 pub mod config;
 pub mod coverage;
@@ -57,6 +58,15 @@ pub use telemetry::{Export, OtelConfig, OtelGuard};
 pub use telemetry::weaver_coordination::{
     Running, Stopped, Unstarted, WeaverConfig as TypeSafeWeaverConfig,
     WeaverController as TypeSafeWeaverController,
+};
+
+// Phase 8-10 exports (Infrastructure for Determinism, Conformance, & Resource Contracts)
+pub use phases::{
+    ExecutionOutcome, ReplayMode, ScheduleCertificate, ScheduleLedger, ScheduleLedgerEntry,
+    BackendConformanceHarness, BackendConformanceReport, BackendExecutionResult,
+    BackendInvariantChecker, EquivalenceViolation, EquivalenceStatus, ExhaustionOutcome,
+    ResourceAccountingEntry, ResourceAccountingLedger, ResourceContract, ResourceContractBuilder,
+    ResourceContractError, CpuNanos, MemoryBytes, NetworkBytes,
 };
 
 pub use assertions::{cache, database, email_service, UserAssertions};
