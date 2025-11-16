@@ -10,6 +10,7 @@
 pub mod assertions;
 pub mod backend;
 pub mod cache;
+pub mod capabilities; // v1.7.0: Capability-aware scenario framework
 pub mod chaos;
 pub mod chicago_tdd; // v1.5.0: Chicago-TDD-Tools integration framework
 pub mod cleanroom;
