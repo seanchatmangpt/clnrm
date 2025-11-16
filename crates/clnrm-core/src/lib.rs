@@ -14,6 +14,8 @@ pub mod capabilities; // v1.7.0: Capability-aware scenario framework
 pub mod chaos;
 pub mod chicago_tdd; // v1.5.0: Chicago-TDD-Tools integration framework
 pub mod cleanroom;
+pub mod environment; // v1.7.0: Σ*-aware environment compiler (Phase 2)
+pub mod receipts;    // v1.7.0: Test receipt infrastructure (Γₜ) (Phase 3)
 pub mod cli;
 pub mod config;
 pub mod coverage;

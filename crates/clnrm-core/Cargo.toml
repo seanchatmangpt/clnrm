@@ -87,7 +87,9 @@ nix = { version = "0.27", features = ["signal", "fs"] }
 
 # Template rendering - Full-featured template engine for test configuration
 clnrm-template = { path = "../clnrm-template", version = "1.4.1" }
-sha2 = "0.10"                                   # Still needed for other modules
+sha2 = "0.10"                                   # For content hashing in Σ* system
+hex = "0.4"                                     # For hex encoding content hashes
+ed25519-dalek = { version = "2.1", optional = true }  # For receipt signature verification
 
 [dev-dependencies]
 # Property-based testing
@@ -239,6 +241,7 @@ otel-metrics = [] # Feature for OpenTelemetry metrics functionality
 otel-logs = [] # Feature for OpenTelemetry logs functionality
 docker-integration = [] # Enable integration tests that require Docker daemon (CI/CD feature)
 full-integration = ["docker-integration"] # Full integration test suite (requires Docker + external services)
+crypto = ["dep:ed25519-dalek"] # Cryptographic receipt signatures (Ed25519)
 
 # Test timeout enforcement
 [package.metadata.cargo-make]
