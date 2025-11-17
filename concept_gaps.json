@@ -1,0 +1,66 @@
+{
+  "gaps": [
+    {
+      "concept_id": "C_CODE_AS_PROJECTION",
+      "reason": "No evidence found",
+      "evidence_count": 0,
+      "max_strength": null,
+      "suggested_domains": [
+        "universe",
+        "timing"
+      ],
+      "suggested_search_patterns": [
+        "**/src/**/*.rs",
+        "**/docs/**/*.md"
+      ]
+    },
+    {
+      "concept_id": "C_MU_KERNEL_PHYSICS",
+      "reason": "No evidence found",
+      "evidence_count": 0,
+      "max_strength": null,
+      "suggested_domains": [
+        "universe",
+        "timing"
+      ],
+      "suggested_search_patterns": [
+        "**/src/**/*.rs",
+        "**/docs/**/*.md"
+      ]
+    },
+    {
+      "concept_id": "C_KNHK_GRAPH_PRIMARY",
+      "reason": "No evidence found",
+      "evidence_count": 0,
+      "max_strength": null,
+      "suggested_domains": [
+        "universe",
+        "timing"
+      ],
+      "suggested_search_patterns": [
+        "**/src/**/*.rs",
+        "**/docs/**/*.md"
+      ]
+    },
+    {
+      "concept_id": "C_DFLSS_FLOW",
+      "reason": "No evidence found",
+      "evidence_count": 0,
+      "max_strength": null,
+      "suggested_domains": [
+        "universe",
+        "timing"
+      ],
+      "suggested_search_patterns": [
+        "**/src/**/*.rs",
+        "**/docs/**/*.md"
+      ]
+    }
+  ],
+  "summary": {
+    "total_gaps": 4,
+    "critical_gaps": 4,
+    "weak_gaps": 0,
+    "generated_at": "2025-11-17T00:26:27Z"
+  }
+}

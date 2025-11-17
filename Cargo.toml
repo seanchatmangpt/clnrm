@@ -7,6 +7,7 @@ members = [
   "crates/clnrm-shared",
   "crates/clnrm-template",
   "crates/clap-noun-verb",
+  "crates/evidence-graph",
 ]
 
 # Default members for core functionality (template excluded - experimental)
@@ -15,6 +16,7 @@ default-members = [
   "crates/clnrm-core",
   "crates/clnrm-shared",
   "crates/clap-noun-verb",
+  "crates/evidence-graph",
 ]
 
 [workspace.package]
