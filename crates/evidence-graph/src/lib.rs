@@ -58,8 +58,14 @@ pub mod phase5_excerpts;
 pub mod phase6_synthesis;
 pub mod phase7_graphconstruction;
 pub mod orchestrator;
+pub mod extended_analysis;
+pub mod multi_repo;
+pub mod advanced_reporting;
 
 pub use concepts::ConceptRegistry;
 pub use outputs::*;
 pub use schemas::*;
 pub use orchestrator::{Pipeline, PipelineConfig};
+pub use extended_analysis::ExtendedAnalysis;
+pub use multi_repo::{MultiRepoConfig, MultiRepoAnalysis, ExternalRepo};
+pub use advanced_reporting::{AdvancedReport, ReportFormat};
