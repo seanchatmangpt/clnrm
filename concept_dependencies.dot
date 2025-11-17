@@ -1,0 +1,27 @@
+digraph ConceptDependencies {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+
+  "C_TIMING_BOUNDS_ENFORCED" [fillcolor="lightblue", style="filled"];
+  "C_RECEIPTS_AND_PROOFS" [fillcolor="lightgray", style="filled"];
+  "C_GGEN_PROJECTION_ENGINE" [fillcolor="lightcoral", style="filled"];
+  "C_MU_KERNEL_PHYSICS" [fillcolor="lightgray", style="filled"];
+  "C_KNHK_GRAPH_PRIMARY" [fillcolor="lightgreen", style="filled"];
+  "C_NOMRG_GRAPH_OVERLAY" [fillcolor="lightgray", style="filled"];
+  "C_GRAPH_UNIVERSE_PRIMARY" [fillcolor="lightgray", style="filled"];
+  "C_CTT_12_PHASE_VERIFICATION" [fillcolor="lightyellow", style="filled"];
+  "C_DFLSS_FLOW" [fillcolor="lightgray", style="filled"];
+  "C_CLNRM_HERMETIC_TESTING" [fillcolor="lightgray", style="filled"];
+  "C_AHI_GOVERNANCE" [fillcolor="lightgray", style="filled"];
+  "C_CODE_AS_PROJECTION" [fillcolor="lightcoral", style="filled"];
+
+  "C_GRAPH_UNIVERSE_PRIMARY" -> "C_CODE_AS_PROJECTION" [label="enables", style="dashed"];
+  "C_GRAPH_UNIVERSE_PRIMARY" -> "C_RECEIPTS_AND_PROOFS" [label="requires", style="solid"];
+  "C_MU_KERNEL_PHYSICS" -> "C_TIMING_BOUNDS_ENFORCED" [label="refines", style="dotted"];
+  "C_KNHK_GRAPH_PRIMARY" -> "C_CODE_AS_PROJECTION" [label="enables", style="dashed"];
+  "C_KNHK_GRAPH_PRIMARY" -> "C_DFLSS_FLOW" [label="requires", style="solid"];
+  "C_CTT_12_PHASE_VERIFICATION" -> "C_CLNRM_HERMETIC_TESTING" [label="requires", style="solid"];
+  "C_DFLSS_FLOW" -> "C_AHI_GOVERNANCE" [label="requires", style="solid"];
+  "C_GGEN_PROJECTION_ENGINE" -> "C_CODE_AS_PROJECTION" [label="enables", style="dashed"];
+  "C_NOMRG_GRAPH_OVERLAY" -> "C_GRAPH_UNIVERSE_PRIMARY" [label="refines", style="dotted"];
+}
