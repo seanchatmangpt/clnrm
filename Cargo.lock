@@ -1041,6 +1041,7 @@ dependencies = [
  "hex",
  "hostname",
  "junit-report",
+ "linkme",
  "log",
  "mockall",
  "nix",
