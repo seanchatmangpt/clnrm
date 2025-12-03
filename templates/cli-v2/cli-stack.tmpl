@@ -1,0 +1,318 @@
+---
+# ============================================================================
+# clnrm v2.0 CLI Stack Generator
+# ============================================================================
+# One template generates the entire CLI structure from RDF definition
+# 
+# Usage from clnrm-cli/ directory:
+#   ggen project gen ../templates/cli-v2/cli-stack.tmpl
+#
+# The template references RDF files in frontmatter (relative to template dir).
+# ============================================================================
+
+# RDF files can be passed via CLI -r flag (takes precedence)
+# Or uncomment below to use filesystem-routed discovery:
+# rdf:
+#   - "../../docs/clnrm-cli-v2.ttl"
+
+sparql:
+  # Project metadata
+  project_info: |
+    PREFIX cli: <http://ggen.dev/schema/cli#>
+    
+    SELECT ?name ?version ?description ?authors ?edition ?license
+    WHERE {
+      ?project a cli:CliProject ;
+               cli:hasName ?name ;
+               cli:hasVersion ?version ;
+               cli:hasDescription ?description ;
+               cli:hasAuthors ?authors ;
+               cli:hasEdition ?edition ;
+               cli:hasLicense ?license .
+    }
+  
+  # All nouns with their descriptions
+  nouns: |
+    PREFIX cli: <http://ggen.dev/schema/cli#>
+    PREFIX cnv: <http://ggen.dev/schema/clap-noun-verb#>
+    
+    SELECT ?nounName ?nounDesc ?modulePath
+    WHERE {
+      ?project cli:hasNoun ?noun .
+      ?noun cnv:nounName ?nounName ;
+            cnv:nounDescription ?nounDesc .
+      OPTIONAL { ?noun cnv:nounModulePath ?modulePath }
+    }
+    ORDER BY ?nounName
+  
+  # All verbs for all nouns
+  verbs: |
+    PREFIX cli: <http://ggen.dev/schema/cli#>
+    PREFIX cnv: <http://ggen.dev/schema/clap-noun-verb#>
+    
+    SELECT ?nounName ?verbName ?verbDesc ?verbAlias
+    WHERE {
+      ?project cli:hasNoun ?noun .
+      ?noun cnv:nounName ?nounName ;
+            cnv:hasVerb ?verb .
+      ?verb cnv:verbName ?verbName ;
+            cnv:verbDescription ?verbDesc .
+      OPTIONAL { ?verb cnv:verbAlias ?verbAlias }
+    }
+    ORDER BY ?nounName ?verbName
+  
+  # Arguments for each verb
+  verb_arguments: |
+    PREFIX cli: <http://ggen.dev/schema/cli#>
+    PREFIX cnv: <http://ggen.dev/schema/clap-noun-verb#>
+    
+    SELECT ?nounName ?verbName ?argName ?argLong ?argShort ?argHelp 
+           ?argRequired ?argDefault ?argValueName ?argPosition ?typeName ?argMultiple
+    WHERE {
+      ?project cli:hasNoun ?noun .
+      ?noun cnv:nounName ?nounName ;
+            cnv:hasVerb ?verb .
+      ?verb cnv:verbName ?verbName ;
+            cnv:hasArgument ?arg .
+      ?arg cnv:argName ?argName ;
+           cnv:argHelp ?argHelp .
+      OPTIONAL { ?arg cnv:argLong ?argLong }
+      OPTIONAL { ?arg cnv:argShort ?argShort }
+      OPTIONAL { ?arg cnv:argRequired ?argRequired }
+      OPTIONAL { ?arg cnv:argDefault ?argDefault }
+      OPTIONAL { ?arg cnv:argValueName ?argValueName }
+      OPTIONAL { ?arg cnv:argPosition ?argPosition }
+      OPTIONAL { ?arg cnv:argMultiple ?argMultiple }
+      OPTIONAL {
+        ?arg cnv:hasType ?type .
+        ?type cnv:typeName ?typeName
+      }
+    }
+    ORDER BY ?nounName ?verbName ?argPosition ?argName
+  
+  # Dependencies
+  dependencies: |
+    PREFIX cli: <http://ggen.dev/schema/cli#>
+    PREFIX cnv: <http://ggen.dev/schema/clap-noun-verb#>
+    
+    SELECT ?depName ?depVersion ?features
+    WHERE {
+      ?project cli:hasDependency ?dep .
+      ?dep cnv:depName ?depName ;
+           cnv:depVersion ?depVersion .
+      OPTIONAL { ?dep cnv:depFeatures ?features }
+    }
+    ORDER BY ?depName
+---
+
+{# ============================================================================ #}
+{# CARGO.TOML #}
+{# ============================================================================ #}
+{# FILE: Cargo.toml #}
+[package]
+name = "clnrm-cli"
+version = "{{ sparql_first(results=sparql_results.project_info, column='version') | default:'2.0.0' }}"
+edition = "{{ sparql_first(results=sparql_results.project_info, column='edition') | default:'2021' }}"
+authors = ["{{ sparql_first(results=sparql_results.project_info, column='authors') | default:'Sean Chatman' }}"]
+license = "{{ sparql_first(results=sparql_results.project_info, column='license') | default:'MIT' }}"
+description = "Cleanroom CLI - Generated from RDF definitions (no domain logic)"
+
+[[bin]]
+name = "clnrm"
+path = "src/main.rs"
+
+[dependencies]
+{% for dep in sparql_results.dependencies %}
+{{ dep.depName }} = { version = "{{ dep.depVersion }}"{% if dep.features %}, features = ["{{ dep.features }}"]{% endif %} }
+{% endfor %}
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde = { version = "1.0", features = ["derive"] }
+
+{# ============================================================================ #}
+{# MAIN.RS - Entry point with clap-noun-verb #}
+{# ============================================================================ #}
+{# FILE: src/main.rs #}
+use clap_noun_verb::{run_cli, noun, verb, VerbArgs, Result};
+
+fn main() -> Result<()> {
+    run_cli(|cli| {
+        {% set project_name = sparql_first(results=sparql_results.project_info, column='name') | default:'clnrm' %}
+        {% set project_desc = sparql_first(results=sparql_results.project_info, column='description') | default:'Cleanroom CLI' %}
+        {% set project_version = sparql_first(results=sparql_results.project_info, column='version') | default:'2.0.0' %}
+        
+        cli.name("{{ project_name }}")
+            .about("{{ project_desc }}")
+            .version("{{ project_version }}");
+        
+        {% if sparql_results.nouns | length == 0 %}
+        // No nouns defined - return error via cli callback
+        // This will be handled by run_cli
+        {% else %}
+        {% for noun_row in sparql_results.nouns %}
+        {% set noun_name = noun_row.nounName %}
+        {% set noun_desc = noun_row.nounDesc %}
+        
+        cli.noun(noun!("{{ noun_name }}", "{{ noun_desc }}", [
+            {% for verb_row in sparql_results.verbs %}
+            {% if verb_row.nounName == noun_name %}
+            {% set verb_name = verb_row.verbName %}
+            verb!("{{ verb_name }}", "{{ verb_row.verbDesc }}", |args: &VerbArgs| -> Result<()> {
+                crate::cmds::{{ noun_name }}::{{ verb_name }}::run(args)
+            }),
+            {% endif %}
+            {% endfor %}
+        ]));
+        {% endfor %}
+        {% endif %}
+        
+        cli
+    })
+}
+
+{# ============================================================================ #}
+{# CMDS/MOD.RS - Command module exports #}
+{# ============================================================================ #}
+{# FILE: src/cmds/mod.rs #}
+//! Command modules for {{ sparql_first(results=sparql_results.project_info, column='name') }} v2.0
+//! Generated from RDF definitions
+
+{% for noun_row in sparql_results.nouns %}
+pub mod {{ noun_row.nounName }};
+{% endfor %}
+
+{# ============================================================================ #}
+{# NOUN MODULES - One per noun #}
+{# ============================================================================ #}
+{% for noun_row in sparql_results.nouns %}
+{% set noun_name = noun_row.nounName %}
+{% set noun_desc = noun_row.nounDesc %}
+
+{# FILE: src/cmds/{{ noun_name }}/mod.rs #}
+//! {{ noun_desc }} commands
+//! Generated from RDF definitions
+
+        {% for verb_row in sparql_results.verbs %}
+        {% if verb_row.nounName == noun_name %}
+        {% set verb_name_temp = verb_row.verbName %}
+        pub mod {{ verb_name_temp }};
+        {% endif %}
+        {% endfor %}
+
+{# ============================================================================ #}
+{# VERB IMPLEMENTATIONS - One per verb #}
+{# ============================================================================ #}
+{% for verb_row in sparql_results.verbs %}
+{% if verb_row.nounName == noun_name %}
+{% set verb_name = verb_row.verbName %}
+{# FILE: src/cmds/{{ noun_name }}/{{ verb_name }}.rs #}
+//! {{ verb_row.verbDesc }}
+//! Generated from RDF definitions
+
+use clap_noun_verb::{VerbArgs, Result};
+use tracing::{info, debug};
+
+pub fn run(args: &VerbArgs) -> Result<()> {
+    {% for arg_row in sparql_results.verb_arguments %}
+    {% if arg_row.nounName == noun_name and arg_row.verbName == verb_name %}
+    // Extract {{ arg_row.argName }}
+    {% if arg_row.argRequired == "true" or arg_row.argPosition %}
+    let {{ arg_row.argName }} = args.get_one::<{{ arg_row.typeName | default:"String" }}>("{{ arg_row.argName }}")?;
+    {% else %}
+    {% if arg_row.argMultiple == "true" %}
+    let {{ arg_row.argName }} = args.get_many_opt::<{{ arg_row.typeName | default:"String" }}>("{{ arg_row.argName }}");
+    {% else %}
+    {% if arg_row.typeName == "bool" %}
+    let {{ arg_row.argName }} = args.is_flag_set("{{ arg_row.argName }}");
+    {% else %}
+    let {{ arg_row.argName }} = args.get_one_opt::<{{ arg_row.typeName | default:"String" }}>("{{ arg_row.argName }}");
+    {% if arg_row.argDefault %}
+    let {{ arg_row.argName }} = {{ arg_row.argName }}.unwrap_or("{{ arg_row.argDefault }}".to_string());
+    {% else %}
+    let {{ arg_row.argName }} = {{ arg_row.argName }}.unwrap_or_default();
+    {% endif %}
+    {% endif %}
+    {% endif %}
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+    
+    {% if verb_name == "run" %}
+    // This is the main test execution command - integrate with clnrm-core
+    info!("Executing {{ noun_name }} {{ verb_name }} with Weaver validation (always enabled in v2.0)");
+    unimplemented!("{{ noun_name }} {{ verb_name }}: integrate with clnrm-core test execution and Weaver validation")
+    {% else %}
+    // {{ verb_row.verbDesc }}
+    info!("Executing {{ noun_name }} {{ verb_name }}");
+    unimplemented!("{{ noun_name }} {{ verb_name }}: implement command logic")
+    {% endif %}
+}
+
+{% endif %}
+{% endfor %}
+
+{% endfor %}
+
+{# ============================================================================ #}
+{# README.MD #}
+{# ============================================================================ #}
+{# FILE: README.md #}
+# {{ sparql_first(results=sparql_results.project_info, column='name') | default:'clnrm' }} v{{ sparql_first(results=sparql_results.project_info, column='version') | default:'2.0.0' }}
+
+{{ sparql_first(results=sparql_results.project_info, column='description') | default:'Cleanroom CLI - Generated from RDF' }}
+
+## Generated from RDF
+
+This entire CLI was generated from a single RDF definition (`docs/clnrm-cli-v2.ttl`) using ggen template engine.
+
+## Commands
+
+{% for noun_row in sparql_results.nouns %}
+### `{{ noun_row.nounName }}` - {{ noun_row.nounDesc }}
+
+{% for verb_row in sparql_results.verbs %}
+{% if verb_row.nounName == noun_row.nounName %}
+- `{{ noun_row.nounName }} {{ verb_row.verbName }}` - {{ verb_row.verbDesc }}
+{% endif %}
+{% endfor %}
+
+{% endfor %}
+
+## Usage
+
+```bash
+# Build the CLI
+cargo build --release
+
+# Run commands
+./target/release/{{ sparql_first(results=sparql_results.project_info, column='name') }} {{ sparql_results.nouns[0].nounName }} {{ sparql_results.verbs[0].verbName }}
+```
+
+## Generated Structure
+
+```
+src/
+├── main.rs              # Entry point with clap-noun-verb
+└── cmds/
+    ├── mod.rs          # Command module exports
+    {% for noun_row in sparql_results.nouns %}
+    ├── {{ noun_row.nounName }}/
+    │   ├── mod.rs
+    {% for verb_row in sparql_results.verbs %}
+    {% if verb_row.nounName == noun_row.nounName %}
+    │   └── {{ verb_row.verbName }}.rs
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+```
+
+## Next Steps
+
+1. Implement the logic in each verb module
+2. Integrate with clnrm-core functionality
+3. Add tests
+4. Update documentation
+

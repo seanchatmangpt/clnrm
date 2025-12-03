@@ -1,0 +1,449 @@
+name: Quality Gates
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Gate 1: TOML Syntax Validation
+  toml-validation:
+    name: "Gate 1: TOML Syntax"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate TOML examples
+        run: |
+          chmod +x scripts/doc-validation/validate-toml-examples.sh
+          ./scripts/doc-validation/validate-toml-examples.sh
+
+      - name: Upload validation report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: toml-validation-report
+          path: |
+            docs/
+            examples/
+          retention-days: 7
+
+  # Gate 2: Weaver Schema Validation (Source of Truth)
+  schema-validation:
+    name: "Gate 2: Weaver Schema"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Install Weaver CLI
+        run: |
+          echo "📦 Installing Weaver CLI..."
+          cargo install weaver-cli --locked
+          echo "✅ Weaver installed: $(weaver --version)"
+
+      - name: Validate registry schema
+        run: |
+          echo "🔍 Running Weaver registry check (source of truth)..."
+          weaver registry check -r registry/
+
+      - name: Check schema files exist
+        run: |
+          echo "📋 Verifying schema files..."
+          for schema in registry/**/*.yaml; do
+            if [ -f "$schema" ]; then
+              echo "✅ Found: $schema"
+            else
+              echo "❌ Missing: $schema"
+              exit 1
+            fi
+          done
+
+      - name: Upload schema validation report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-validation-report
+          path: registry/
+          retention-days: 7
+
+  # Gate 3: Example TOML Tests (Config Parser Integration)
+  example-tests:
+    name: "Gate 3: Example TOML Tests"
+    runs-on: ubuntu-latest
+    needs: toml-validation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run TOML examples validation tests
+        run: |
+          echo "🧪 Running comprehensive TOML example validation..."
+          cargo test --test toml_examples_validation -- --nocapture
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-test-results
+          path: target/
+          retention-days: 7
+
+  # Gate 4: Clippy Zero Warnings
+  clippy:
+    name: "Gate 4: Clippy (Zero Warnings)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable with clippy
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          cache: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-clippy-
+            ${{ runner.os }}-cargo-
+
+      - name: Run clippy with zero warnings enforcement
+        run: |
+          echo "🔍 Running clippy with -D warnings (zero tolerance)..."
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Upload clippy report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clippy-report
+          path: target/
+          retention-days: 7
+
+  # Gate 5: Unwrap Detection in Production Code
+  unwrap-detection:
+    name: "Gate 5: No New Unwraps"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect unwraps in production code
+        run: |
+          echo "🔍 Scanning for .unwrap() and .expect() in production code..."
+          echo ""
+          echo "Checking: crates/clnrm-core/src/ (excluding tests)"
+          echo "=========================================="
+
+          # Find all .rs files in production code
+          FOUND_UNWRAPS=0
+
+          for file in $(find crates/clnrm-core/src -name "*.rs" -type f | grep -v "/tests/"); do
+            # Find the line number where #[cfg(test)] starts (if any)
+            TEST_START=$(grep -n "^#\[cfg(test)\]" "$file" | head -1 | cut -d: -f1)
+
+            if [ -n "$TEST_START" ]; then
+              # Only check lines before the test module
+              UNWRAPS=$(head -n $((TEST_START - 1)) "$file" | grep -n "\.unwrap()\|\.expect(" | grep -v "// OK: " || true)
+            else
+              # No test module, check entire file
+              UNWRAPS=$(grep -n "\.unwrap()\|\.expect(" "$file" | grep -v "// OK: " || true)
+            fi
+
+            if [ -n "$UNWRAPS" ]; then
+              echo "❌ Found unwraps in: $file"
+              echo "$UNWRAPS" | sed 's/^/   Line /'
+              FOUND_UNWRAPS=1
+            fi
+          done
+
+          if [ $FOUND_UNWRAPS -eq 1 ]; then
+            echo ""
+            echo "🚨 CRITICAL: Production code MUST NOT use .unwrap() or .expect()"
+            echo "   Use proper Result<T, CleanroomError> error handling instead."
+            echo ""
+            echo "If this is a false positive (e.g., in const initialization), add comment:"
+            echo "   // OK: Safe unwrap - <reason>"
+            exit 1
+          else
+            echo "✅ SUCCESS: No unwraps/expects found in production code!"
+          fi
+
+      - name: Upload unwrap detection report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unwrap-detection-report
+          path: |
+            crates/clnrm-core/src/**/*.rs
+          retention-days: 7
+
+  # Gate 6: Rustfmt Check
+  rustfmt:
+    name: "Gate 6: Code Formatting"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable with rustfmt
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          cache: true
+
+      - name: Check formatting
+        run: |
+          echo "🎨 Checking code formatting..."
+          cargo fmt --all -- --check
+
+  # Gate 7: Unit Tests
+  unit-tests:
+    name: "Gate 7: Unit Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-
+            ${{ runner.os }}-cargo-
+
+      - name: Run unit tests
+        run: |
+          echo "🧪 Running unit tests..."
+          cargo test --lib --workspace -- --nocapture
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: target/
+          retention-days: 7
+
+  # Gate 8: Build Validation
+  build:
+    name: "Gate 8: Build with All Features"
+    runs-on: ubuntu-latest
+    needs: [clippy, rustfmt]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
+            ${{ runner.os }}-cargo-
+
+      - name: Build with all features
+        run: |
+          echo "🔨 Building with all features..."
+          cargo build --workspace --release --all-features
+
+      - name: Verify binaries
+        run: |
+          echo "✅ Verifying binaries exist..."
+          test -f target/release/clnrm || (echo "❌ clnrm binary not found" && exit 1)
+          echo "✅ clnrm binary found"
+
+  # Quality Gate Summary
+  quality-gate-summary:
+    name: "Quality Gate Summary"
+    runs-on: ubuntu-latest
+    needs:
+      - toml-validation
+      - schema-validation
+      - example-tests
+      - clippy
+      - unwrap-detection
+      - rustfmt
+      - unit-tests
+      - build
+    if: always()
+    steps:
+      - name: Check all gates passed
+        run: |
+          echo "╔═══════════════════════════════════════════════════════════╗"
+          echo "║         Quality Gate Summary                              ║"
+          echo "╠═══════════════════════════════════════════════════════════╣"
+
+          ALL_PASSED=true
+
+          if [ "${{ needs.toml-validation.result }}" != "success" ]; then
+            echo "║ ❌ Gate 1: TOML Syntax Validation          FAILED        ║"
+            ALL_PASSED=false
+          else
+            echo "║ ✅ Gate 1: TOML Syntax Validation          PASSED        ║"
+          fi
+
+          if [ "${{ needs.schema-validation.result }}" != "success" ]; then
+            echo "║ ❌ Gate 2: Weaver Schema Validation        FAILED        ║"
+            ALL_PASSED=false
+          else
+            echo "║ ✅ Gate 2: Weaver Schema Validation        PASSED        ║"
+          fi
+
+          if [ "${{ needs.example-tests.result }}" != "success" ]; then
+            echo "║ ❌ Gate 3: Example TOML Tests              FAILED        ║"
+            ALL_PASSED=false
+          else
+            echo "║ ✅ Gate 3: Example TOML Tests              PASSED        ║"
+          fi
+
+          if [ "${{ needs.clippy.result }}" != "success" ]; then
+            echo "║ ❌ Gate 4: Clippy (Zero Warnings)          FAILED        ║"
+            ALL_PASSED=false
+          else
+            echo "║ ✅ Gate 4: Clippy (Zero Warnings)          PASSED        ║"
+          fi
+
+          if [ "${{ needs.unwrap-detection.result }}" != "success" ]; then
+            echo "║ ❌ Gate 5: No New Unwraps                  FAILED        ║"
+            ALL_PASSED=false
+          else
+            echo "║ ✅ Gate 5: No New Unwraps                  PASSED        ║"
+          fi
+
+          if [ "${{ needs.rustfmt.result }}" != "success" ]; then
+            echo "║ ❌ Gate 6: Code Formatting                 FAILED        ║"
+            ALL_PASSED=false
+          else
+            echo "║ ✅ Gate 6: Code Formatting                 PASSED        ║"
+          fi
+
+          if [ "${{ needs.unit-tests.result }}" != "success" ]; then
+            echo "║ ❌ Gate 7: Unit Tests                      FAILED        ║"
+            ALL_PASSED=false
+          else
+            echo "║ ✅ Gate 7: Unit Tests                      PASSED        ║"
+          fi
+
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "║ ❌ Gate 8: Build with All Features         FAILED        ║"
+            ALL_PASSED=false
+          else
+            echo "║ ✅ Gate 8: Build with All Features         PASSED        ║"
+          fi
+
+          echo "╚═══════════════════════════════════════════════════════════╝"
+
+          if [ "$ALL_PASSED" = "false" ]; then
+            echo ""
+            echo "❌ Quality gates FAILED - Review artifacts for details"
+            echo ""
+            echo "💡 Next steps:"
+            echo "   1. Check failed job logs above"
+            echo "   2. Download artifacts for detailed reports"
+            echo "   3. Fix issues locally before pushing"
+            echo ""
+            echo "🚨 CRITICAL STANDARDS:"
+            echo "   - No .unwrap() or .expect() in production code"
+            echo "   - Zero clippy warnings tolerance"
+            echo "   - All TOML examples must be valid"
+            echo "   - Weaver schema validation is source of truth"
+            exit 1
+          else
+            echo ""
+            echo "✅ All quality gates PASSED!"
+            echo ""
+            echo "🎉 Code meets production standards:"
+            echo "   ✅ Valid TOML syntax"
+            echo "   ✅ Schema validated by Weaver"
+            echo "   ✅ Config parser integration working"
+            echo "   ✅ Zero clippy warnings"
+            echo "   ✅ No unwraps in production code"
+            echo "   ✅ Properly formatted"
+            echo "   ✅ Unit tests passing"
+            echo "   ✅ Builds successfully"
+          fi
+
+      - name: Fail if any gate failed
+        if: |
+          needs.toml-validation.result != 'success' ||
+          needs.schema-validation.result != 'success' ||
+          needs.example-tests.result != 'success' ||
+          needs.clippy.result != 'success' ||
+          needs.unwrap-detection.result != 'success' ||
+          needs.rustfmt.result != 'success' ||
+          needs.unit-tests.result != 'success' ||
+          needs.build.result != 'success'
+        run: exit 1
