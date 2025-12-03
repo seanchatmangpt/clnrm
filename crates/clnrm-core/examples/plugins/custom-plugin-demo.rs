@@ -25,43 +25,31 @@ impl ServicePlugin for PostgresPlugin {
         "postgres"
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        // Use tokio::task::block_in_place to run async code in sync context
-        tokio::task::block_in_place(|| {
-            let rt = tokio::runtime::Handle::current();
-            rt.block_on(async {
-                println!("🚀 Starting PostgreSQL plugin...");
+    async fn start(&self) -> Result<ServiceHandle> {
+        println!("🚀 Starting PostgreSQL plugin...");
 
-                // Simulate database startup
-                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+        // Simulate database startup
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-                Ok(ServiceHandle {
-                    id: "postgres-123".to_string(),
-                    service_name: "postgres".to_string(),
-                    metadata: {
-                        let mut map = HashMap::new();
-                        map.insert(
-                            "connection_string".to_string(),
-                            self.connection_string.clone(),
-                        );
-                        map.insert("status".to_string(), "running".to_string());
-                        map
-                    },
-                })
-            })
+        Ok(ServiceHandle {
+            id: "postgres-123".to_string(),
+            service_name: "postgres".to_string(),
+            metadata: {
+                let mut map = HashMap::new();
+                map.insert(
+                    "connection_string".to_string(),
+                    self.connection_string.clone(),
+                );
+                map.insert("status".to_string(), "running".to_string());
+                map
+            },
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        // Use tokio::task::block_in_place to run async code in sync context
-        tokio::task::block_in_place(|| {
-            let rt = tokio::runtime::Handle::current();
-            rt.block_on(async {
-                println!("⏹️  Stopping PostgreSQL plugin...");
-                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-                Ok(())
-            })
-        })
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        println!("⏹️  Stopping PostgreSQL plugin...");
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        Ok(())
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -88,41 +76,29 @@ impl ServicePlugin for RedisPlugin {
         "redis"
     }
 
-    fn start(&self) -> Result<ServiceHandle> {
-        // Use tokio::task::block_in_place to run async code in sync context
-        tokio::task::block_in_place(|| {
-            let rt = tokio::runtime::Handle::current();
-            rt.block_on(async {
-                println!("🚀 Starting Redis plugin...");
+    async fn start(&self) -> Result<ServiceHandle> {
+        println!("🚀 Starting Redis plugin...");
 
-                // Simulate Redis startup
-                tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+        // Simulate Redis startup
+        tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
 
-                Ok(ServiceHandle {
-                    id: "redis-456".to_string(),
-                    service_name: "redis".to_string(),
-                    metadata: {
-                        let mut map = HashMap::new();
-                        map.insert("host".to_string(), self.host.clone());
-                        map.insert("port".to_string(), self.port.to_string());
-                        map.insert("status".to_string(), "running".to_string());
-                        map
-                    },
-                })
-            })
+        Ok(ServiceHandle {
+            id: "redis-456".to_string(),
+            service_name: "redis".to_string(),
+            metadata: {
+                let mut map = HashMap::new();
+                map.insert("host".to_string(), self.host.clone());
+                map.insert("port".to_string(), self.port.to_string());
+                map.insert("status".to_string(), "running".to_string());
+                map
+            },
         })
     }
 
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        // Use tokio::task::block_in_place to run async code in sync context
-        tokio::task::block_in_place(|| {
-            let rt = tokio::runtime::Handle::current();
-            rt.block_on(async {
-                println!("⏹️  Stopping Redis plugin...");
-                tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
-                Ok(())
-            })
-        })
+    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        println!("⏹️  Stopping Redis plugin...");
+        tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+        Ok(())
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {

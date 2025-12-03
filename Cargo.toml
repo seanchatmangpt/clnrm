@@ -6,7 +6,6 @@ members = [
   "crates/clnrm-core",
   "crates/clnrm-shared",
   "crates/clnrm-template",
-  "crates/clap-noun-verb",
   "crates/evidence-graph",
 ]
 
@@ -15,7 +14,6 @@ default-members = [
   "crates/clnrm",
   "crates/clnrm-core",
   "crates/clnrm-shared",
-  "crates/clap-noun-verb",
   "crates/evidence-graph",
 ]
 

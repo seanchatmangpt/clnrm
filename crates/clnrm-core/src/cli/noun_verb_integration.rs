@@ -1,15 +1,17 @@
-//! CLI integration with noun-verb pattern
+//! CLI integration with noun-verb pattern (v5.3.0 compatibility)
+//!
+//! This module provides integration with clap-noun-verb v5.3.0 for services and collector
+//! management commands. Services and collector verbs are defined with proc macros and
+//! auto-discovered via linkme distributed slices.
 
-use crate::cli::commands::{collector_noun_verb, services_noun_verb};
 use crate::error::{CleanroomError, Result};
-use clap_noun_verb::{run_cli, CliBuilder};
 
-/// Run CLI with noun-verb pattern for services and collector commands
-pub async fn run_noun_verb_cli() -> Result<()> {
-    run_cli(|cli: CliBuilder| {
-        cli.about("Cleanroom Testing Platform - Hermetic Integration Testing")
-            .noun(services_noun_verb::services_command())
-            .noun(collector_noun_verb::collector_command())
-    })
-    .map_err(|e| CleanroomError::internal_error(format!("CLI execution failed: {}", e)))
+/// Run CLI with noun-verb pattern for services and collector commands (v5.3.0)
+///
+/// This uses the v5.3.0 API with auto-discovery via linkme. The services and collector
+/// nouns should be defined with #[noun] macros and will be automatically registered.
+pub fn run_noun_verb_cli() -> Result<()> {
+    // v5.3.0 uses auto-discovery via linkme - no manual registration needed
+    clap_noun_verb::run()
+        .map_err(|e| CleanroomError::internal_error(format!("CLI execution failed: {}", e)))
 }
