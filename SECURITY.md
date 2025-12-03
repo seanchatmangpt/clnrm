@@ -275,9 +275,9 @@ let backend = TestcontainerBackend::new("alpine:latest")?
 
 ## Contact
 
-Security Team: [Your contact - TODO]
+Security Team: seanchatmangpt@gmail.com
 GitHub: https://github.com/seanchatmangpt/clnrm/security
-PGP Key: [Public key fingerprint - TODO]
+Advisory URL: https://github.com/seanchatmangpt/clnrm/security/advisories
 
 ---
 
