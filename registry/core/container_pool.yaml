@@ -1,0 +1,304 @@
+# Container Pooling Telemetry Schema (v1.4.0+)
+#
+# This schema validates the container pooling feature that reduces
+# container acquisition latency from 2-5s to 0.1-0.5ms (pool hit).
+#
+# KEY VALIDATIONS:
+# - Pool acquisition time <1ms (pool hit) vs 2-5s (pool miss)
+# - Pool hit rate >90% after warm-up
+# - No container leaks (all acquired containers released)
+# - Graceful degradation when pool exhausted
+#
+# WHY THIS MATTERS:
+# Container pooling is the v1.4.0 performance breakthrough.
+# Without Weaver validation, we can't PROVE it works in production.
+# Tests can pass while pool hits actually fail - only telemetry proves behavior.
+
+groups:
+  # Container Pool Lifecycle Span
+  - id: span.clnrm.container_pool_lifecycle
+    type: span
+    brief: Tracks complete lifecycle of a container pool from creation to shutdown
+    note: |
+      This span validates the container pool feature (v1.4.0).
+
+      VALIDATION STRATEGY:
+      - pool.created_at proves pool initialization
+      - pool.config.* attributes prove configuration
+      - pool.warmup_time proves pre-warming worked
+      - pool.shutdown_at proves graceful cleanup
+
+      Missing shutdown_at indicates pool leak.
+    attributes:
+      - id: pool.id
+        type: string
+        brief: Unique pool identifier
+        requirement_level: required
+        note: PRIMARY KEY for pool tracking
+        examples:
+          - "pool-550e8400-e29b-41d4-a716-446655440000"
+        stability: stable
+
+      - id: pool.image
+        type: string
+        brief: Container image for pooled containers
+        requirement_level: required
+        examples:
+          - "alpine:latest"
+          - "postgres:15"
+        stability: stable
+
+      - id: pool.config.max_size
+        type: int
+        brief: Maximum number of containers in pool
+        requirement_level: required
+        examples:
+          - 50
+          - 100
+        stability: stable
+
+      - id: pool.config.min_idle
+        type: int
+        brief: Minimum idle containers to maintain
+        requirement_level: required
+        examples:
+          - 10
+          - 20
+        stability: stable
+
+      - id: pool.config.max_idle_time_ms
+        type: int
+        brief: Maximum idle time before container eviction (milliseconds)
+        requirement_level: required
+        examples:
+          - 300000
+          - 600000
+        stability: stable
+
+      - id: pool.created_at
+        type: string
+        brief: ISO 8601 timestamp when pool was created
+        requirement_level: required
+        examples:
+          - "2025-12-02T18:00:00.000Z"
+        stability: stable
+
+      - id: pool.warmup_time_ms
+        type: int
+        brief: Time taken to pre-warm min_idle containers (milliseconds)
+        requirement_level: required
+        note: Validates that warm-up actually happened
+        examples:
+          - 5000
+          - 10000
+        stability: stable
+
+      - id: pool.shutdown_at
+        type: string
+        brief: ISO 8601 timestamp when pool was shut down
+        requirement_level: required
+        note: "CRITICAL: Missing indicates pool leak"
+        examples:
+          - "2025-12-02T18:10:00.000Z"
+        stability: stable
+
+      - id: pool.shutdown_success
+        type: boolean
+        brief: Whether pool shutdown completed successfully
+        requirement_level: required
+        note: Must be true - false indicates resource leak
+        examples:
+          - true
+        stability: stable
+
+    stability: stable
+    span_kind: internal
+
+  # Container Acquisition Span
+  - id: span.clnrm.container_acquisition
+    type: span
+    brief: Tracks acquisition of a container from the pool
+    note: |
+      This span validates the core pool performance claim:
+      acquisition <1ms on pool hit vs 2-5s on pool miss.
+
+      VALIDATION STRATEGY:
+      - acquisition.source = "pool" proves pool hit
+      - acquisition.source = "created" proves pool miss
+      - acquisition.latency_ms <1 for pool hits
+      - acquisition.latency_ms ~2000-5000 for pool miss
+      - acquisition.wait_time_ms proves queuing behavior
+
+      If pool hits have >1ms latency, pool is broken.
+    attributes:
+      - id: acquisition.pool_id
+        type: string
+        brief: Pool this container was acquired from
+        requirement_level: required
+        note: Links to pool.id in pool_lifecycle span
+        examples:
+          - "pool-550e8400-e29b-41d4-a716-446655440000"
+        stability: stable
+
+      - id: acquisition.container_id
+        type: string
+        brief: Container that was acquired
+        requirement_level: required
+        note: Links to container.id in container_lifecycle span
+        examples:
+          - "550e8400-e29b-41d4-a716-446655440000"
+        stability: stable
+
+      - id: acquisition.source
+        type:
+          allow_custom_values: false
+          members:
+            - id: pool
+              value: pool
+              brief: Container acquired from pool (warm container)
+              stability: stable
+            - id: created
+              value: created
+              brief: Container created fresh (pool miss)
+              stability: stable
+        brief: Source of the acquired container
+        requirement_level: required
+        note: "CRITICAL: pool = cache hit, created = cache miss"
+        stability: stable
+
+      - id: acquisition.latency_ms
+        type: int
+        brief: Time to acquire container (milliseconds)
+        requirement_level: required
+        note: |
+          PERFORMANCE VALIDATION:
+          - Pool hit: MUST be <1ms (target: 0.1-0.5ms)
+          - Pool miss: Expected 2000-5000ms (fresh creation)
+
+          Values >1ms for pool hits indicate performance regression.
+        examples:
+          - 0
+          - 1
+          - 2500
+        stability: stable
+
+      - id: acquisition.wait_time_ms
+        type: int
+        brief: Time spent waiting for available container (milliseconds)
+        requirement_level: recommended
+        note: ">0 indicates pool exhaustion (all containers in use)"
+        examples:
+          - 0
+          - 100
+          - 500
+        stability: stable
+
+      - id: acquisition.pool_size_before
+        type: int
+        brief: Number of idle containers before acquisition
+        requirement_level: recommended
+        note: Validates pool has containers available
+        examples:
+          - 10
+          - 5
+          - 0
+        stability: stable
+
+      - id: acquisition.pool_size_after
+        type: int
+        brief: Number of idle containers after acquisition
+        requirement_level: recommended
+        examples:
+          - 9
+          - 4
+          - 0
+        stability: stable
+
+      - id: acquisition.timestamp
+        type: string
+        brief: ISO 8601 timestamp when acquisition completed
+        requirement_level: required
+        examples:
+          - "2025-12-02T18:00:01.234Z"
+        stability: stable
+
+    stability: stable
+    span_kind: internal
+
+  # Container Release Span
+  - id: span.clnrm.container_release
+    type: span
+    brief: Tracks release of a container back to the pool
+    note: |
+      This span validates container lifecycle completion.
+
+      VALIDATION STRATEGY:
+      - Every acquisition MUST have matching release
+      - release.action proves what happened to container
+      - Leaked containers show acquisition without release
+
+      Missing release spans indicate container leaks.
+    attributes:
+      - id: release.pool_id
+        type: string
+        brief: Pool this container is released to
+        requirement_level: required
+        examples:
+          - "pool-550e8400-e29b-41d4-a716-446655440000"
+        stability: stable
+
+      - id: release.container_id
+        type: string
+        brief: Container being released
+        requirement_level: required
+        note: Links to container.id in acquisition span
+        examples:
+          - "550e8400-e29b-41d4-a716-446655440000"
+        stability: stable
+
+      - id: release.action
+        type:
+          allow_custom_values: false
+          members:
+            - id: returned
+              value: returned
+              brief: Container returned to pool (healthy)
+              stability: stable
+            - id: destroyed
+              value: destroyed
+              brief: Container destroyed (unhealthy or pool full)
+              stability: stable
+        brief: Action taken when releasing container
+        requirement_level: required
+        note: Destroyed containers may indicate pool pressure
+        stability: stable
+
+      - id: release.container_healthy
+        type: boolean
+        brief: Whether container passed health check
+        requirement_level: required
+        note: Unhealthy containers must be destroyed
+        examples:
+          - true
+          - false
+        stability: stable
+
+      - id: release.pool_size_after
+        type: int
+        brief: Number of idle containers after release
+        requirement_level: recommended
+        examples:
+          - 11
+          - 6
+        stability: stable
+
+      - id: release.timestamp
+        type: string
+        brief: ISO 8601 timestamp when release completed
+        requirement_level: required
+        examples:
+          - "2025-12-02T18:00:02.567Z"
+        stability: stable
+
+    stability: stable
+    span_kind: internal
