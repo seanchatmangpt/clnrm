@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# Explicit permissions (following principle of least privilege)
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -24,49 +28,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
+    - name: Setup Rust with cache
+      uses: ./.github/actions/setup-rust-cache
       with:
-        toolchain: ${{ matrix.rust }}
-        components: rustfmt, clippy
-
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-registry-
-
-    - name: Cache cargo index
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-index-
-
-    - name: Cache target directory
-      uses: actions/cache@v4
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-build-target-
+        components: 'rustfmt, clippy'
+        cache-key-prefix: 'ci-${{ matrix.os }}'
 
     - name: Install Weaver
-      run: |
-        # FMEA fix: Explicit error handling instead of error suppression
-        echo "📦 Installing Weaver CLI..."
-        if ! command -v weaver &> /dev/null; then
-          cargo install --locked weaver-cli || {
-            echo "❌ Failed to install Weaver CLI"
-            exit 1
-          }
-        else
-          echo "✅ Weaver CLI already cached"
-        fi
-        weaver --version
+      uses: ./.github/actions/install-cargo-tool
+      with:
+        tool-name: weaver
+        version: '0.16.1'
 
     - name: Run cargo check
       run: cargo check --all-features
@@ -119,7 +91,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
+
+    - name: Setup Rust with cache
+      uses: ./.github/actions/setup-rust-cache
+      with:
+        cache-key-prefix: 'security'
 
     - name: Run cargo audit
       continue-on-error: true
@@ -181,20 +157,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
+
+    - name: Setup Rust with cache
+      uses: ./.github/actions/setup-rust-cache
+      with:
+        cache-key-prefix: 'coverage'
 
     - name: Install tarpaulin
-      run: |
-        # FMEA fix: Explicit error handling for tool installation
-        echo "📦 Installing cargo-tarpaulin..."
-        if ! command -v cargo-tarpaulin &> /dev/null; then
-          if ! cargo install cargo-tarpaulin; then
-            echo "❌ Failed to install cargo-tarpaulin"
-            exit 1
-          fi
-        else
-          echo "✅ cargo-tarpaulin already cached"
-        fi
+      uses: ./.github/actions/install-cargo-tool
+      with:
+        tool-name: cargo-tarpaulin
+        version: '0.31.2'
 
     - name: Generate coverage
       run: |

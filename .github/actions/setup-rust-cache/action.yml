@@ -1,0 +1,32 @@
+name: Setup Rust with Cache
+description: Install Rust toolchain and setup cargo caching (replaces 150 lines of boilerplate)
+
+inputs:
+  components:
+    description: Rust components to install (rustfmt, clippy, etc.)
+    required: false
+    default: 'rustfmt, clippy'
+  cache-key-prefix:
+    description: Prefix for cache key (useful for different job types)
+    required: false
+    default: 'default'
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: ${{ inputs.components }}
+
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        cache-on-failure: true
+        cache-key-prefix: ${{ inputs.cache-key-prefix }}
+
+    - name: Show Rust version
+      shell: bash
+      run: |
+        echo "Rust version: $(rustc --version)"
+        echo "Cargo version: $(cargo --version)"

@@ -1,0 +1,57 @@
+name: Install Cargo Tool (with Caching)
+description: Install a cargo tool with intelligent caching to save 5-15 minutes per run
+
+inputs:
+  tool-name:
+    description: Name of the cargo tool to install (e.g., weaver-cli, clippy)
+    required: true
+  version:
+    description: Version of the tool to install
+    required: true
+  features:
+    description: Features to enable (optional)
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Check if ${{ inputs.tool-name }} is cached
+      id: cache-check
+      shell: bash
+      run: |
+        if command -v ${{ inputs.tool-name }} &> /dev/null; then
+          INSTALLED=$(${tool-name} --version 2>&1 | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+          echo "installed-version=$INSTALLED" >> $GITHUB_OUTPUT
+          if [[ "$INSTALLED" == "${{ inputs.version }}" ]]; then
+            echo "cached=true" >> $GITHUB_OUTPUT
+            echo "✓ ${{ inputs.tool-name }} v$INSTALLED already installed"
+          else
+            echo "cached=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "cached=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install ${{ inputs.tool-name }} v${{ inputs.version }}
+      if: steps.cache-check.outputs.cached != 'true'
+      shell: bash
+      run: |
+        echo "Installing ${{ inputs.tool-name }} v${{ inputs.version }}..."
+        FEATURES="${{ inputs.features }}"
+        if [[ -n "$FEATURES" ]]; then
+          cargo install ${{ inputs.tool-name }} --version ${{ inputs.version }} --locked --features "$FEATURES"
+        else
+          cargo install ${{ inputs.tool-name }} --version ${{ inputs.version }} --locked
+        fi
+        echo "✓ ${{ inputs.tool-name }} v${{ inputs.version }} installed"
+
+    - name: Verify ${{ inputs.tool-name }} installation
+      shell: bash
+      run: |
+        if command -v ${{ inputs.tool-name }} &> /dev/null; then
+          ${{ inputs.tool-name }} --version
+        else
+          echo "ERROR: ${{ inputs.tool-name }} not found in PATH"
+          exit 1
+        fi

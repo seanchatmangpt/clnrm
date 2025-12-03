@@ -46,15 +46,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust with cache
+        uses: ./.github/actions/setup-rust-cache
         with:
-          components: rustfmt, clippy
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
+          components: 'rustfmt, clippy'
+          cache-key-prefix: 'pre-publish'
 
       # ------------------------------------------------------------------------
       # LEVEL 0: Version & Changelog Validation
@@ -114,14 +110,10 @@ jobs:
 
       - name: Install Weaver
         if: ${{ !inputs.skip_validation }}
-        run: |
-          echo "Installing OTel Weaver..."
-          cargo install weaver-cli --version 0.16.1 --locked
-          if ! command -v weaver &> /dev/null; then
-            echo "❌ Weaver installation failed"
-            exit 1
-          fi
-          weaver --version
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          tool-name: weaver
+          version: '0.16.1'
 
       - name: Weaver Schema Validation
         if: ${{ !inputs.skip_validation }}
@@ -294,11 +286,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
+      - name: Setup Rust with cache
+        uses: ./.github/actions/setup-rust-cache
+        with:
+          cache-key-prefix: 'dry-run'
 
       - name: Dry-run publish (clnrm-shared)
         run: |
@@ -359,11 +350,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
+      - name: Setup Rust with cache
+        uses: ./.github/actions/setup-rust-cache
+        with:
+          cache-key-prefix: 'publish'
 
       - name: Verify CRATES_IO_TOKEN
         run: |
