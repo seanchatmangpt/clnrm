@@ -2,6 +2,9 @@
 # Pre-push hook for comprehensive validation
 # Runs: Full test suite, Weaver schema checks, integration tests
 # Target: Complete validation before pushing to remote
+#
+# NOTE: This hook can be slow (~60-120 seconds). To skip it:
+#   git push --no-verify origin branch
 
 set -e
 
@@ -24,12 +27,17 @@ START_TIME=$(date +%s)
 echo -e "${YELLOW}🧪 Running full test suite...${NC}"
 echo -e "${BLUE}This may take a minute...${NC}\n"
 
-if ! cargo test --workspace --all-features 2>&1; then
-    echo -e "${RED}✗ Test suite failed${NC}"
-    echo -e "${YELLOW}Fix: Address test failures above${NC}"
-    exit 1
+# Allow skipping tests with SKIP_TESTS env var (for local development)
+if [ "$SKIP_TESTS" = "1" ]; then
+    echo -e "${YELLOW}⚠ Skipping tests (SKIP_TESTS=1)${NC}\n"
+else
+    if ! cargo test --workspace --all-features 2>&1; then
+        echo -e "${RED}✗ Test suite failed${NC}"
+        echo -e "${YELLOW}Fix: Address test failures above${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ All tests passed${NC}\n"
 fi
-echo -e "${GREEN}✓ All tests passed${NC}\n"
 
 # =============================================================================
 # 2. Weaver Schema Validation (if available)
