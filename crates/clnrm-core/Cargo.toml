@@ -86,7 +86,7 @@ crossbeam = "0.8"  # Lock-free concurrent data structures (SegQueue)
 nix = { version = "0.27", features = ["signal", "fs"] }
 
 # Template rendering - Full-featured template engine for test configuration
-clnrm-template = { path = "../clnrm-template", version = "1.4.1" }
+clnrm-template = { path = "../clnrm-template", version = "1.7.0" }
 sha2 = "0.10"                                   # For content hashing in Σ* system
 hex = "0.4"                                     # For hex encoding content hashes
 ed25519-dalek = { version = "2.1", optional = true }  # For receipt signature verification
