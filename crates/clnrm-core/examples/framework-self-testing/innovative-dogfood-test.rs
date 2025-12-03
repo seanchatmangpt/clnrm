@@ -55,6 +55,8 @@ async fn main() -> Result<()> {
                 "echo".to_string(),
                 "Framework regex validation working correctly".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 
@@ -136,6 +138,8 @@ async fn main() -> Result<()> {
         .execute_in_container(
             "non_existent_container",
             &["echo".to_string(), "test".to_string()],
+            None,
+            None,
         )
         .await
     {
@@ -161,6 +165,8 @@ async fn main() -> Result<()> {
                 "-c".to_string(),
                 "echo 'Timeout test completed' && sleep 0.1".to_string(),
             ],
+            None,
+            None,
         )
         .await?;
 
