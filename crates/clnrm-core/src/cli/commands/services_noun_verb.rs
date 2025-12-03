@@ -1,11 +1,10 @@
 //! Services command implementation using noun-verb pattern (v5.3.0)
 //!
 //! Provides noun-verb commands for managing application services.
-//! Uses #[verb] proc macro from clap_noun_verb_macros v5.3.0.
-//! Noun "services" is auto-inferred from filename.
+//! Uses #[noun] and #[verb] proc macros from clap_noun_verb_macros v5.3.0.
 
 use clap_noun_verb::Result as CnvResult;
-use clap_noun_verb_macros::verb;
+use clap_noun_verb_macros::{noun, verb};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -100,13 +99,14 @@ pub struct ServiceActionOutput {
 
 // ============================================================================
 // CLI Layer (Thin Wrappers - Input Validation + Output Shaping)
-// Noun "services" auto-inferred from filename services_noun_verb.rs → services
+// Uses explicit #[noun] + #[verb] to set noun="services"
 // ============================================================================
 
 /// Show status of all active services
 ///
 /// Lists all services currently running, their IDs, and metadata.
 /// Returns JSON output suitable for machine parsing.
+#[noun("services", "Manage application services")]
 #[verb("status")]
 fn services_status() -> CnvResult<ServiceStatusOutput> {
     Ok(get_service_status_impl())
@@ -118,7 +118,8 @@ fn services_status() -> CnvResult<ServiceStatusOutput> {
 ///
 /// # Arguments
 /// * `service` - Name of the service to get logs for
-/// * `lines` - Number of log lines to show [default: 50]
+/// * `lines` - Number of log lines to show (default 50)
+#[noun("services", "Manage application services")]
 #[verb("logs")]
 fn services_logs(service: String, lines: Option<usize>) -> CnvResult<ServiceLogsOutput> {
     let lines = lines.unwrap_or(50);
@@ -132,6 +133,7 @@ fn services_logs(service: String, lines: Option<usize>) -> CnvResult<ServiceLogs
 /// # Arguments
 /// * `name` - Name of the service to start
 /// * `force` - Force restart if already running
+#[noun("services", "Manage application services")]
 #[verb("start")]
 fn services_start(name: String, force: Option<bool>) -> CnvResult<ServiceActionOutput> {
     let force = force.unwrap_or(false);
@@ -144,7 +146,8 @@ fn services_start(name: String, force: Option<bool>) -> CnvResult<ServiceActionO
 ///
 /// # Arguments
 /// * `name` - Name of the service to stop
-/// * `timeout` - Graceful shutdown timeout in seconds [default: 30]
+/// * `timeout` - Graceful shutdown timeout in seconds (default 30)
+#[noun("services", "Manage application services")]
 #[verb("stop")]
 fn services_stop(name: String, timeout: Option<u64>) -> CnvResult<ServiceActionOutput> {
     let timeout = timeout.unwrap_or(30);

@@ -1,11 +1,10 @@
 //! Collector command implementation using noun-verb pattern (v5.3.0)
 //!
 //! Provides noun-verb commands for managing the OpenTelemetry collector.
-//! Uses #[verb] proc macro from clap_noun_verb_macros v5.3.0.
-//! Noun "collector" is auto-inferred from filename.
+//! Uses #[noun] and #[verb] proc macros from clap_noun_verb_macros v5.3.0.
 
 use clap_noun_verb::Result as CnvResult;
-use clap_noun_verb_macros::verb;
+use clap_noun_verb_macros::{noun, verb};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -137,7 +136,7 @@ pub struct CollectorLogsOutput {
 
 // ============================================================================
 // CLI Layer (Thin Wrappers - Input Validation + Output Shaping)
-// Noun "collector" auto-inferred from filename collector_noun_verb.rs → collector
+// Uses explicit #[noun] + #[verb] to set noun="collector"
 // ============================================================================
 
 /// Start the OpenTelemetry collector
@@ -145,10 +144,11 @@ pub struct CollectorLogsOutput {
 /// Starts the collector service and opens HTTP and gRPC ports for receiving telemetry data.
 ///
 /// # Arguments
-/// * `image` - Docker image to use [default: "ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector:latest"]
-/// * `http_port` - HTTP port [default: 4318]
-/// * `grpc_port` - gRPC port [default: 4317]
+/// * `image` - Docker image to use (defaults to official OTEL collector image)
+/// * `http_port` - HTTP port (default 4318)
+/// * `grpc_port` - gRPC port (default 4317)
 /// * `detach` - Run in background
+#[noun("collector", "Manage OpenTelemetry collector")]
 #[verb("up")]
 fn collector_up(
     image: Option<String>,
@@ -173,6 +173,7 @@ fn collector_up(
 ///
 /// # Arguments
 /// * `volumes` - Remove associated volumes
+#[noun("collector", "Manage OpenTelemetry collector")]
 #[verb("down")]
 fn collector_down(volumes: Option<bool>) -> CnvResult<CollectorActionOutput> {
     let volumes = volumes.unwrap_or(false);
@@ -182,6 +183,7 @@ fn collector_down(volumes: Option<bool>) -> CnvResult<CollectorActionOutput> {
 /// Show collector status
 ///
 /// Displays the current status of the collector service, including endpoints and uptime.
+#[noun("collector", "Manage OpenTelemetry collector")]
 #[verb("status")]
 fn collector_status() -> CnvResult<CollectorStatusOutput> {
     Ok(get_collector_status_impl())
@@ -192,8 +194,9 @@ fn collector_status() -> CnvResult<CollectorStatusOutput> {
 /// Retrieves and displays recent log entries from the collector service.
 ///
 /// # Arguments
-/// * `lines` - Number of log lines to show [default: 50]
+/// * `lines` - Number of log lines to show (default 50)
 /// * `follow` - Follow log output in real-time
+#[noun("collector", "Manage OpenTelemetry collector")]
 #[verb("logs")]
 fn collector_logs(lines: Option<usize>, follow: Option<bool>) -> CnvResult<CollectorLogsOutput> {
     let lines = lines.unwrap_or(50);
