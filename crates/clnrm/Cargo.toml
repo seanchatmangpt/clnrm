@@ -23,7 +23,7 @@ test = false
 default = []
 
 [dependencies]
-clnrm-core = { path = "../clnrm-core", version = "1.7.0" }
+clnrm-core = { path = "../clnrm-core" }
 tokio = { workspace = true }
 clap = { workspace = true }
 env_logger = { workspace = true }
