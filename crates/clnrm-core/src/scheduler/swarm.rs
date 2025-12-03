@@ -3,7 +3,9 @@
 //! Multi-tenant scheduler supporting trillions of agents with policy-driven
 //! resource governance and effect budget enforcement.
 
-use crate::capabilities::{CapabilityScenario, ConstraintSet, EffectBudget, LatencyBand, ScenarioId};
+use crate::capabilities::{
+    CapabilityScenario, ConstraintSet, EffectBudget, LatencyBand, ScenarioId,
+};
 use crate::error::{CleanroomError, Result};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
@@ -189,12 +191,10 @@ impl ResourceGovernor {
         let tenant_limit = self
             .tenant_limits
             .entry(request.tenant.clone())
-            .or_insert_with(|| {
-                Arc::new(Semaphore::new(request.capability_budget.max_concurrent))
-            });
+            .or_insert_with(|| Arc::new(Semaphore::new(request.capability_budget.max_concurrent)));
 
         if tenant_limit.available_permits() == 0 {
-            return Err(CleanroomError::internal_error(&format!(
+            return Err(CleanroomError::internal_error(format!(
                 "Tenant {} resource capacity exhausted",
                 request.tenant.0
             )));
@@ -207,7 +207,7 @@ impl ResourceGovernor {
             .or_insert_with(|| Arc::new(AtomicU64::new(0)));
 
         if count.load(AtomicOrdering::Relaxed) >= request.capability_budget.max_per_hour as u64 {
-            return Err(CleanroomError::internal_error(&format!(
+            return Err(CleanroomError::internal_error(format!(
                 "Tenant {} rate limit exceeded",
                 request.tenant.0
             )));
@@ -220,7 +220,7 @@ impl ResourceGovernor {
             .or_insert_with(|| Arc::new(RwLock::new(0.0)));
 
         if *cost.read().await >= request.capability_budget.max_cost {
-            return Err(CleanroomError::internal_error(&format!(
+            return Err(CleanroomError::internal_error(format!(
                 "Tenant {} cost budget exceeded",
                 request.tenant.0
             )));
@@ -237,22 +237,21 @@ impl ResourceGovernor {
             .clone()
             .acquire_owned()
             .await
-            .map_err(|e| CleanroomError::internal_error(&format!("Failed to acquire global permit: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to acquire global permit: {}", e))
+            })?;
 
         // Acquire tenant permit (lazy initialization)
         let tenant_semaphore = self
             .tenant_limits
             .entry(request.tenant.clone())
-            .or_insert_with(|| {
-                Arc::new(Semaphore::new(request.capability_budget.max_concurrent))
-            })
+            .or_insert_with(|| Arc::new(Semaphore::new(request.capability_budget.max_concurrent)))
             .value()
             .clone();
 
-        let tenant_permit = tenant_semaphore
-            .acquire_owned()
-            .await
-            .map_err(|e| CleanroomError::internal_error(&format!("Failed to acquire tenant permit: {}", e)))?;
+        let tenant_permit = tenant_semaphore.acquire_owned().await.map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to acquire tenant permit: {}", e))
+        })?;
 
         // Increment execution count (lazy initialization)
         let count = self
@@ -331,7 +330,10 @@ impl PolicyEngine {
             }
 
             // Verify latency band is compatible
-            if !policy.latency_band.allows(request.latency_target.max_duration()) {
+            if !policy
+                .latency_band
+                .allows(request.latency_target.max_duration())
+            {
                 return Err(CleanroomError::internal_error(
                     "Scenario latency target exceeds tenant policy",
                 ));
@@ -345,7 +347,7 @@ impl PolicyEngine {
                 .forbidden_capabilities
                 .contains(&cap.0)
             {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Capability {} is forbidden by budget",
                     cap.0
                 )));
@@ -357,7 +359,7 @@ impl PolicyEngine {
                     .allowed_capabilities
                     .contains(&cap.0)
             {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Capability {} is not in allowed list",
                     cap.0
                 )));
@@ -460,8 +462,12 @@ impl SwarmScheduler {
         queue.push(request.clone());
         let queue_position = queue.len();
 
-        self.stats.total_admitted.fetch_add(1, AtomicOrdering::Relaxed);
-        self.stats.queue_depth.store(queue.len() as u64, AtomicOrdering::Relaxed);
+        self.stats
+            .total_admitted
+            .fetch_add(1, AtomicOrdering::Relaxed);
+        self.stats
+            .queue_depth
+            .store(queue.len() as u64, AtomicOrdering::Relaxed);
 
         Ok(AdmissionTicket {
             request_id: request.request_id,

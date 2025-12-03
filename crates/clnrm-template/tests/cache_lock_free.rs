@@ -2,7 +2,9 @@
 //!
 //! Verifies that the cache handles concurrent access without lock poisoning.
 
+#[allow(unused_imports)]
 use clnrm_template::cache::{CacheStats, TemplateCache};
+#[allow(unused_imports)]
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;

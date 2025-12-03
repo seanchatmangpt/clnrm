@@ -41,7 +41,8 @@ read_only = false
 
 # Expose HTTP port
 [[services.optimus_prime.ports]]
-3000
+container = 3000
+host = 3000
 
 # Test Steps - Exercise the application
 
@@ -116,24 +117,17 @@ max_overhead_ms = 500.0
 [[otel_validation.expected_spans]]
 name = "POST /api/chat"
 required = true
-attributes = {}
-
-[[otel_validation.expected_spans.attributes]]
-"chat.mode" = "child"
+attributes = { "chat.mode" = "child" }
 
 [[otel_validation.expected_spans]]
 name = "handleChildChat"
 required = true
-
-[[otel_validation.expected_spans.attributes]]
-"chat.child.virtue" = "kindness"
+attributes = { "chat.child.virtue" = "kindness" }
 
 [[otel_validation.expected_spans]]
 name = "event.message_sent"
 required = true
-
-[[otel_validation.expected_spans.attributes]]
-"event" = "message_sent"
+attributes = { "event" = "message_sent" }
 
 [[otel_validation.expected_spans]]
 name = "event.virtue_detected"

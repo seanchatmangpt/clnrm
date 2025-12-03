@@ -20,12 +20,12 @@ fail_fast = false                 # Collect all violations, don't stop early
 
 # OTEL configuration (automatically exports to Weaver when enabled)
 [otel]
-exporter = "otlp-http"
+exporter = "otlp"
 endpoint = "http://localhost:4318"
-resources = {
-  "service.name" = "weaver_example",
-  "deployment.environment" = "test"
-}
+
+[otel.resources]
+"service.name" = "weaver_example"
+"deployment.environment" = "test"
 
 # Service definition
 [service.test_service]

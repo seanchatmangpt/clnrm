@@ -19,6 +19,7 @@ pub mod live_check_executor;
 pub mod scenario;
 pub mod services;
 pub mod single;
+pub mod test_runner;
 pub mod watch;
 use crate::cache::{Cache, CacheManager};
 use crate::cli::types::{CliConfig, OutputFormat};
@@ -46,6 +47,9 @@ pub use scenario::execute_scenario;
 
 // Re-export watch functionality
 pub use watch::watch_and_run;
+
+// Re-export test runner
+pub use test_runner::run_test;
 
 /// Resolve registry path relative to clnrm installation
 ///

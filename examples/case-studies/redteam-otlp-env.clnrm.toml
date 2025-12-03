@@ -44,12 +44,12 @@ use = ["tracecontext", "baggage"]
 [service.clnrm]
 type = "generic_container"
 image = "registry/clnrm:latest"
-env = {
-  "OTEL_SERVICE_NAME" = "clnrm",
-  "OTEL_EXPORTER_OTLP_ENDPOINT" = "http://localhost:4318",
-  "OTEL_TRACES_EXPORTER" = "otlp",
-  "RUST_LOG" = "info"
-}
+
+[service.clnrm.env]
+OTEL_SERVICE_NAME = "clnrm"
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
+OTEL_TRACES_EXPORTER = "otlp"
+RUST_LOG = "info"
 
 [[scenario]]
 name = "otel_env_proof"
@@ -65,10 +65,7 @@ kind = "internal"
 description = "Root span for test execution"
 
 [expect.span.attrs]
-all = {
-  "clnrm.version" = "0.7.0",
-  "test.hermetic" = "true"
-}
+all = { "clnrm.version" = "0.7.0", "test.hermetic" = "true" }
 
 [[expect.span]]
 name = "clnrm.step:run_test"
@@ -134,10 +131,7 @@ description = "Validates hermetic execution and OTEL SDK usage"
 no_external_services = true
 
 [expect.hermeticity.resource_attrs]
-must_match = {
-  "service.name" = "clnrm",
-  "deployment.environment" = "ci"
-}
+must_match = { "service.name" = "clnrm", "deployment.environment" = "ci" }
 
 [expect.hermeticity.span_attrs]
 forbid_keys = [
@@ -152,9 +146,9 @@ freeze_clock = "2025-01-01T00:00:00Z"
 
 [report]
 json = "redteam-otlp-validation.report.json"
-digest = "redteam-otlp-validation.trace.sha256"
 
 [report.digest]
+path = "redteam-otlp-validation.trace.sha256"
 algorithm = "sha256"
 include_timestamps = false
 

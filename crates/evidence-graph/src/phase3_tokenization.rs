@@ -106,7 +106,8 @@ impl TokenExtractor {
 
             // Extract all tokens
             for (col, word) in line.split_whitespace().enumerate() {
-                let cleaned = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '_' && c != '-');
+                let cleaned =
+                    word.trim_matches(|c: char| !c.is_alphanumeric() && c != '_' && c != '-');
                 if !cleaned.is_empty() && !cleaned.starts_with('#') {
                     index.add_token(cleaned, line_num, col);
                 }

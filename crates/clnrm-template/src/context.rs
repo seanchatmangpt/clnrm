@@ -362,13 +362,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_context_builder_fluent_api() {
-        let context = TemplateContext::builder()
-            .var("service", "my-service")
-            .var("version", "1.0.0")
-            .matrix("browsers", vec!["chrome", "firefox"])
-            .otel("endpoint", "http://localhost:4318")
-            .build();
+    fn test_context_insert_vars() {
+        let mut context = TemplateContext::with_defaults();
+        context
+            .vars
+            .insert("service".to_string(), serde_json::json!("my-service"));
+        context
+            .vars
+            .insert("version".to_string(), serde_json::json!("1.0.0"));
+        context.matrix.insert(
+            "browsers".to_string(),
+            serde_json::json!(vec!["chrome", "firefox"]),
+        );
+        context.otel.insert(
+            "endpoint".to_string(),
+            serde_json::json!("http://localhost:4318"),
+        );
 
         assert_eq!(
             context.vars["service"],

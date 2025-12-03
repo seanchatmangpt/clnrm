@@ -6,7 +6,7 @@ name = "simple_test"
 description = "A simple test to verify CLI functionality"
 
 [services]
-test_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+test_container = { type = "container", plugin = "generic_container", image = "alpine:latest" }
 
 [[steps]]
 name = "hello_world"

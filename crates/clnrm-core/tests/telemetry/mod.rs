@@ -6,4 +6,5 @@ pub mod export_edge_cases;
 pub mod otlp_export;
 pub mod stop_coordinator_tests;
 pub mod validation_tests;
+pub mod validator_integration;
 pub mod weaver_integration;

@@ -9,17 +9,20 @@ timeout = "180s"
 # AI Services
 [services.ollama_service]
 type = "ollama"
+image = "ollama/ollama:latest"
 model = "qwen3-coder:30b"
 endpoint = "http://localhost:11434"
 
 [services.character_ai]
 type = "character_ai"
+image = "python:3.11-alpine"
 personality = "friendly_robot"
 context = "You are a helpful AI assistant for a children's toy company"
 
 # Character Interaction Tests
 [[steps]]
-command = ["node", "-e", "
+name = "setup_character_ai"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function setup() {
@@ -29,11 +32,12 @@ async function setup() {
   console.log('Setup complete');
 }
 setup();
-"]name = "setup_character_ai"
+"""]
 expected_output_regex = "Setup complete"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_character_greeting"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -56,11 +60,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_character_greeting"
+"""]
 expected_output_regex = "Character greeting test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_character_helpfulness"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -83,11 +88,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_character_helpfulness"
+"""]
 expected_output_regex = "Helpfulness test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_character_safety"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -113,11 +119,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_character_safety"
+"""]
 expected_output_regex = "Safety test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_character_consistency"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -150,11 +157,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_character_consistency"
+"""]
 expected_output_regex = "Consistency test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_character_engagement"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -180,7 +188,7 @@ async function test() {
   }
 }
 test();
-"]name = "test_character_engagement"
+"""]
 expected_output_regex = "Engagement test passed"
 
 # Test Assertions

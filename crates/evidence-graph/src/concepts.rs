@@ -1,6 +1,6 @@
 //! Concept Registry
 //!
-//! Defines the 15 core concepts for the Evidence Graph and their match rules.
+//! Defines the 13 core concepts for the Evidence Graph and their match rules.
 //! Each concept has:
 //! - must_include_any: tokens that must be present
 //! - boost_if_present: tokens that increase confidence
@@ -28,13 +28,13 @@ pub struct ConceptDefinition {
     pub threshold: f64,
 }
 
-/// Concept registry holding all 15 concepts
+/// Concept registry holding all 13 concepts
 pub struct ConceptRegistry {
     concepts: HashMap<String, ConceptDefinition>,
 }
 
 impl ConceptRegistry {
-    /// Create a new registry with all 15 core concepts
+    /// Create a new registry with all 13 core concepts
     pub fn new() -> Self {
         let mut concepts = HashMap::new();
 
@@ -158,8 +158,7 @@ impl ConceptRegistry {
             "C_TIMING_BOUNDS_ENFORCED".to_string(),
             ConceptDefinition {
                 concept_id: "C_TIMING_BOUNDS_ENFORCED".to_string(),
-                description: "Timing constraints are enforced in code, tests, and docs"
-                    .to_string(),
+                description: "Timing constraints are enforced in code, tests, and docs".to_string(),
                 domain: "timing".to_string(),
                 must_include_any: vec![
                     "timing".to_string(),
@@ -218,8 +217,9 @@ impl ConceptRegistry {
             "C_DFLSS_FLOW".to_string(),
             ConceptDefinition {
                 concept_id: "C_DFLSS_FLOW".to_string(),
-                description: "Design for Lean Six Sigma as agent-only closed-world optimization flow"
-                    .to_string(),
+                description:
+                    "Design for Lean Six Sigma as agent-only closed-world optimization flow"
+                        .to_string(),
                 domain: "knowledge".to_string(),
                 must_include_any: vec![
                     "DFLSS".to_string(),
@@ -278,8 +278,7 @@ impl ConceptRegistry {
             "C_CTT_12_PHASE_VERIFICATION".to_string(),
             ConceptDefinition {
                 concept_id: "C_CTT_12_PHASE_VERIFICATION".to_string(),
-                description: "Chicago TDD Tools as multi-phase verification pipeline"
-                    .to_string(),
+                description: "Chicago TDD Tools as multi-phase verification pipeline".to_string(),
                 domain: "verification".to_string(),
                 must_include_any: vec![
                     "Chicago".to_string(),
@@ -331,8 +330,7 @@ impl ConceptRegistry {
             "C_CNV_AGENT_CLI".to_string(),
             ConceptDefinition {
                 concept_id: "C_CNV_AGENT_CLI".to_string(),
-                description: "clap-noun-verb (CNV) as agent-grade capability surface"
-                    .to_string(),
+                description: "clap-noun-verb (CNV) as agent-grade capability surface".to_string(),
                 domain: "surface".to_string(),
                 must_include_any: vec![
                     "CNV".to_string(),
@@ -422,11 +420,7 @@ impl ConceptRegistry {
     }
 
     /// Calculate match score for a set of tokens
-    pub fn score_match(
-        &self,
-        concept_id: &str,
-        tokens: &[&str],
-    ) -> Option<f64> {
+    pub fn score_match(&self, concept_id: &str, tokens: &[&str]) -> Option<f64> {
         let concept = self.get(concept_id)?;
 
         // Check if any must_include_any token is present
@@ -440,7 +434,7 @@ impl ConceptRegistry {
         }
 
         // Count matching tokens
-        let mut score = 0.5; // Base score for meeting requirements
+        let mut score: f64 = 0.5; // Base score for meeting requirements
 
         // Boost for additional matches
         for token in tokens {
@@ -456,7 +450,7 @@ impl ConceptRegistry {
             }
         }
 
-        Some((score as f64).clamp(0.0, 1.0))
+        Some(score.clamp(0.0, 1.0))
     }
 }
 
@@ -471,9 +465,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_registry_has_all_15_concepts() {
+    fn test_registry_has_all_13_concepts() {
         let registry = ConceptRegistry::new();
-        assert_eq!(registry.concepts.len(), 15);
+        assert_eq!(registry.concepts.len(), 13);
     }
 
     #[test]

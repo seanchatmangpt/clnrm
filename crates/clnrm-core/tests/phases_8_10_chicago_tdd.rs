@@ -111,7 +111,12 @@ fn test_schedule_certificate_generation_and_verification() {
     );
     // Mark as started and finished
     entry.mark_started(101);
-    entry.mark_finished(102, ExecutionOutcome::Success { duration_nanos: 1000 });
+    entry.mark_finished(
+        102,
+        ExecutionOutcome::Success {
+            duration_nanos: 1000,
+        },
+    );
 
     ledger.append(entry).unwrap();
 
@@ -218,10 +223,7 @@ fn test_backend_invariant_failure_tracking() {
 #[test]
 fn test_conformance_report_equivalence_analysis() {
     // Arrange
-    let mut report = BackendConformanceReport::new(
-        "scenario1".to_string(),
-        "run1".to_string(),
-    );
+    let mut report = BackendConformanceReport::new("scenario1".to_string(), "run1".to_string());
 
     let result1 = BackendExecutionResult {
         backend_type: "container".to_string(),
@@ -467,7 +469,9 @@ fn test_phases_8_9_10_integration() {
         .unwrap();
     assert!(conformance_report.is_equivalent());
 
-    let contract = ResourceContract::builder("tenant1".to_string()).build().unwrap();
+    let contract = ResourceContract::builder("tenant1".to_string())
+        .build()
+        .unwrap();
     let accounting_ledger = ResourceAccountingLedger::new();
     assert!(accounting_ledger.validate_accounting(&contract).is_ok());
 }

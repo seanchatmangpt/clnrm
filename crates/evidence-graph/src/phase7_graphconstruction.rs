@@ -67,9 +67,7 @@ impl GraphConstructor {
 
         for node in evidence_nodes {
             let system_id = Self::infer_system_id(&node.repo_id);
-            let entry = systems
-                .entry(system_id.clone())
-                .or_insert((0, Vec::new()));
+            let entry = systems.entry(system_id.clone()).or_insert((0, Vec::new()));
             entry.0 += 1;
             entry.1.push(node.concept_id.clone());
         }
@@ -143,15 +141,24 @@ impl GraphConstructor {
 
     /// Infer domain from concept ID
     fn infer_domain(concept_id: &str) -> String {
-        if concept_id.contains("UNIVERSE") || concept_id.contains("PROJECTION") || concept_id.contains("RECEIPTS") {
+        if concept_id.contains("UNIVERSE")
+            || concept_id.contains("PROJECTION")
+            || concept_id.contains("RECEIPTS")
+        {
             "universe".to_string()
         } else if concept_id.contains("KERNEL") || concept_id.contains("TIMING") {
             "timing".to_string()
-        } else if concept_id.contains("KNHK") || concept_id.contains("DFLSS") || concept_id.contains("AHI") {
+        } else if concept_id.contains("KNHK")
+            || concept_id.contains("DFLSS")
+            || concept_id.contains("AHI")
+        {
             "knowledge".to_string()
         } else if concept_id.contains("CTT") || concept_id.contains("CLNRM") {
             "verification".to_string()
-        } else if concept_id.contains("CNV") || concept_id.contains("NOMRG") || concept_id.contains("GGEN") {
+        } else if concept_id.contains("CNV")
+            || concept_id.contains("NOMRG")
+            || concept_id.contains("GGEN")
+        {
             "surface".to_string()
         } else {
             "unknown".to_string()
@@ -179,8 +186,7 @@ impl GraphConstructor {
         };
 
         GraphMetadata {
-            generated_at: chrono::Utc::now()
-                .to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+            generated_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
             schema_version: "1.0.0".to_string(),
             total_evidence,
             total_concepts,
@@ -190,10 +196,7 @@ impl GraphConstructor {
     }
 
     /// Find connected concepts (transitive closure)
-    pub fn find_related_concepts(
-        graph: &EvidenceGraph,
-        concept_id: &str,
-    ) -> Vec<String> {
+    pub fn find_related_concepts(graph: &EvidenceGraph, concept_id: &str) -> Vec<String> {
         let mut related = Vec::new();
         let mut visited = HashSet::new();
 

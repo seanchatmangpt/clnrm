@@ -43,8 +43,9 @@ pub mod store;
 // Re-export commonly used types
 pub use compiler::{
     CompiledEnvironment, ContainerGraph, ContainerNode, DependencyEdge, DependencyType,
-    EnvironmentCompiler, HealthCheck, NetworkConfig, ProofMetadata, ResourceLimits as CompilerResourceLimits,
-    ServiceInstrumentation, TelemetryConfig, VolumeConfig, VolumeMount,
+    EnvironmentCompiler, HealthCheck, NetworkConfig, ProofMetadata,
+    ResourceLimits as CompilerResourceLimits, ServiceInstrumentation, TelemetryConfig,
+    VolumeConfig, VolumeMount,
 };
 pub use delta::{
     NetworkModification, ServiceModification, SigmaDelta, SigmaDeltaBuilder, VolumeModification,

@@ -2,6 +2,7 @@
 //!
 //! Runs all 7 phases and generates the three output artifacts.
 
+use crate::outputs::*;
 use crate::phase1_discovery::build_catalog;
 use crate::phase3_tokenization::tokenize_file;
 use crate::phase4_matching::BatchMatcher;
@@ -9,7 +10,6 @@ use crate::phase5_excerpts::ExcerptExtractor;
 use crate::phase6_synthesis::EvidenceSynthesizer;
 use crate::phase7_graphconstruction::GraphConstructor;
 use crate::schemas::EvidenceGraph;
-use crate::outputs::*;
 use std::collections::HashMap;
 
 /// Pipeline configuration
@@ -89,7 +89,11 @@ impl Pipeline {
             // Try to read the file content
             if let Ok(content) = std::fs::read_to_string(&concept_match.file_path) {
                 let file_excerpts = ExcerptExtractor::extract_from_match(
-                    &concept_match.file_path.split('/').next().unwrap_or("unknown"),
+                    concept_match
+                        .file_path
+                        .split('/')
+                        .next()
+                        .unwrap_or("unknown"),
                     &concept_match.file_path,
                     &content,
                     concept_match,
@@ -138,21 +142,24 @@ impl Pipeline {
     }
 
     /// Generate coverage report
-    fn generate_coverage_report(nodes: &[crate::schemas::EvidenceNode]) -> anyhow::Result<ConceptCoverageReport> {
+    fn generate_coverage_report(
+        nodes: &[crate::schemas::EvidenceNode],
+    ) -> anyhow::Result<ConceptCoverageReport> {
         let mut concepts: HashMap<String, ConceptCoverageSummary> = HashMap::new();
 
         for node in nodes {
-            let entry = concepts
-                .entry(node.concept_id.clone())
-                .or_insert_with(|| ConceptCoverageSummary {
-                    concept_id: node.concept_id.clone(),
-                    evidence_count: 0,
-                    systems: Vec::new(),
-                    min_strength: 1.0,
-                    max_strength: 0.0,
-                    avg_strength: 0.0,
-                    evidence_ids: Vec::new(),
-                });
+            let entry =
+                concepts
+                    .entry(node.concept_id.clone())
+                    .or_insert_with(|| ConceptCoverageSummary {
+                        concept_id: node.concept_id.clone(),
+                        evidence_count: 0,
+                        systems: Vec::new(),
+                        min_strength: 1.0,
+                        max_strength: 0.0,
+                        avg_strength: 0.0,
+                        evidence_ids: Vec::new(),
+                    });
 
             entry.evidence_count += 1;
             entry.min_strength = entry.min_strength.min(node.strength);
@@ -197,8 +204,7 @@ impl Pipeline {
                 total_evidence_nodes: total_evidence,
                 avg_evidence_per_concept: avg_evidence,
                 overall_avg_strength,
-                generated_at: chrono::Utc::now()
-                    .to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+                generated_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
             },
         })
     }
@@ -253,7 +259,10 @@ impl Pipeline {
         }
 
         let critical_gaps = gaps.iter().filter(|g| g.evidence_count == 0).count();
-        let weak_gaps = gaps.iter().filter(|g| g.evidence_count > 0 && g.max_strength.unwrap_or(0.0) < 0.5).count();
+        let weak_gaps = gaps
+            .iter()
+            .filter(|g| g.evidence_count > 0 && g.max_strength.unwrap_or(0.0) < 0.5)
+            .count();
 
         let total_gaps = gaps.len();
         Ok(ConceptGapsReport {
@@ -262,8 +271,7 @@ impl Pipeline {
                 total_gaps,
                 critical_gaps,
                 weak_gaps,
-                generated_at: chrono::Utc::now()
-                    .to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+                generated_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
             },
         })
     }

@@ -511,7 +511,7 @@ mod tests {
         .unwrap();
 
         // Test that function is registered (would need actual Tera rendering to test fully)
-        assert!(tera.get_function("test_func").is_some());
+        assert!(tera.get_function("test_func").is_ok());
     }
 
     #[test]
@@ -539,7 +539,7 @@ mod tests {
     #[test]
     fn test_function_registry() {
         let registry = FunctionRegistry::new()
-            .add_function(CustomFunction::new("test1", |args| {
+            .add_function(CustomFunction::new("test1", |_args| {
                 Ok(Value::String("test1".to_string()))
             }))
             .add_filter(CustomFilter::new("test2", |value, _args| Ok(value.clone())));

@@ -24,7 +24,7 @@ impl ExcerptExtractor {
         // Find line ranges where matched tokens occur
         let mut relevant_lines = Vec::new();
 
-        for line_idx in 0..lines.len() {
+        for (line_idx, _line) in lines.iter().enumerate() {
             let line = lines[line_idx].to_lowercase();
             for token in &concept_match.matched_tokens {
                 if line.contains(&token.to_lowercase()) {
@@ -102,7 +102,7 @@ impl ExcerptExtractor {
         boost_tokens: &[String],
         matched_in_range: &[String],
     ) -> f64 {
-        let mut score = 0.5; // Base score
+        let mut score: f64 = 0.5; // Base score
 
         // Boost for matched must-include tokens
         for token in matched_in_range {
@@ -113,7 +113,7 @@ impl ExcerptExtractor {
             }
         }
 
-        (score as f64).clamp(0.0, 1.0)
+        score.clamp(0.0, 1.0)
     }
 
     /// Filter excerpts by score

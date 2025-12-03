@@ -35,10 +35,7 @@ impl ConceptMatcher {
     pub fn match_file(&self, index: &TokenIndex) -> Vec<ConceptMatch> {
         let mut matches = Vec::new();
         let unique = index.unique_tokens();
-        let tokens: Vec<&str> = unique
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+        let tokens: Vec<&str> = unique.iter().map(|s| s.as_str()).collect();
 
         for concept in self.registry.all() {
             let score = self.score_match(&concept.concept_id, &tokens);
@@ -83,9 +80,7 @@ impl ConceptMatcher {
 
     /// Score a match using registry rules
     fn score_match(&self, concept_id: &str, tokens: &[&str]) -> f64 {
-        self.registry
-            .score_match(concept_id, tokens)
-            .unwrap_or(0.0)
+        self.registry.score_match(concept_id, tokens).unwrap_or(0.0)
     }
 }
 
@@ -129,11 +124,7 @@ impl BatchMatcher {
     }
 
     /// Get top N matches per concept
-    pub fn top_matches_per_concept(
-        &self,
-        matches: &[ConceptMatch],
-        n: usize,
-    ) -> Vec<ConceptMatch> {
+    pub fn top_matches_per_concept(&self, matches: &[ConceptMatch], n: usize) -> Vec<ConceptMatch> {
         let mut concept_counts: std::collections::HashMap<String, usize> =
             std::collections::HashMap::new();
 
@@ -160,7 +151,7 @@ mod tests {
     #[test]
     fn test_concept_matcher_creation() {
         let matcher = ConceptMatcher::new(0.6);
-        assert!(matcher.registry.all().len() > 0);
+        assert!(!matcher.registry.all().is_empty());
     }
 
     #[test]

@@ -7,7 +7,7 @@
 //! - Quality metrics
 
 use crate::schemas::EvidenceNode;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Meta-claim: combination of multiple concepts supporting a higher-level claim
 #[derive(Debug, Clone)]
@@ -53,7 +53,7 @@ impl ExtendedAnalysis {
         let mut meta_claims = Vec::new();
 
         // Meta-claim 1: "Code is projected from ontology"
-        let code_concepts = vec![
+        let code_concepts = [
             "C_GRAPH_UNIVERSE_PRIMARY",
             "C_CODE_AS_PROJECTION",
             "C_GGEN_PROJECTION_ENGINE",
@@ -79,7 +79,7 @@ impl ExtendedAnalysis {
         }
 
         // Meta-claim 2: "Timing is formally bounded"
-        let timing_concepts = vec![
+        let timing_concepts = [
             "C_MU_KERNEL_PHYSICS",
             "C_TIMING_BOUNDS_ENFORCED",
             "C_CTT_12_PHASE_VERIFICATION",
@@ -105,7 +105,7 @@ impl ExtendedAnalysis {
         }
 
         // Meta-claim 3: "Knowledge drives execution"
-        let knowledge_concepts = vec![
+        let knowledge_concepts = [
             "C_KNHK_GRAPH_PRIMARY",
             "C_CODE_AS_PROJECTION",
             "C_GGEN_PROJECTION_ENGINE",
@@ -131,7 +131,7 @@ impl ExtendedAnalysis {
         }
 
         // Meta-claim 4: "Autonomic optimization with governance"
-        let autonomic_concepts = vec![
+        let autonomic_concepts = [
             "C_DFLSS_FLOW",
             "C_AHI_GOVERNANCE",
             "C_GRAPH_UNIVERSE_PRIMARY",
@@ -157,7 +157,7 @@ impl ExtendedAnalysis {
         }
 
         // Meta-claim 5: "Hermetic verification with proof chains"
-        let verification_concepts = vec![
+        let verification_concepts = [
             "C_CLNRM_HERMETIC_TESTING",
             "C_CTT_12_PHASE_VERIFICATION",
             "C_RECEIPTS_AND_PROOFS",
@@ -252,11 +252,7 @@ impl ExtendedAnalysis {
     }
 
     /// Calculate concept maturity based on evidence strength and count
-    pub fn calculate_maturity(
-        concept_id: &str,
-        evidence_count: usize,
-        avg_strength: f64,
-    ) -> f64 {
+    pub fn calculate_maturity(_concept_id: &str, evidence_count: usize, avg_strength: f64) -> f64 {
         // Maturity = (evidence_count / 100) * 0.5 + avg_strength * 0.5
         // Combines evidence volume and quality
         let count_factor = (evidence_count as f64 / 100.0).min(1.0) * 0.5;
@@ -283,7 +279,7 @@ impl ExtendedAnalysis {
         EvidenceQuality {
             evidence_id: evidence_id.to_string(),
             quality_score,
-            recency: 0.85,    // Placeholder - would compute from file dates
+            recency: 0.85, // Placeholder - would compute from file dates
             depth: (strength).min(1.0),
             corroboration: 0.75, // Placeholder - would count supporting evidence
         }

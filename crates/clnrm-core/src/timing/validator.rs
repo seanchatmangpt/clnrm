@@ -102,11 +102,7 @@ impl TimingValidator {
         let mut cold_paths = Vec::new();
         let mut tau_violations = Vec::new();
 
-        let total_start = spans
-            .iter()
-            .map(|s| s.start_time_nanos)
-            .min()
-            .unwrap_or(0);
+        let total_start = spans.iter().map(|s| s.start_time_nanos).min().unwrap_or(0);
         let total_end = spans.iter().map(|s| s.end_time_nanos).max().unwrap_or(0);
         let total_duration = Duration::from_nanos(total_end.saturating_sub(total_start));
 
@@ -204,9 +200,7 @@ impl TimingValidator {
         mu_receipts: &[MuKernelReceipt],
     ) -> Result<()> {
         // Find matching μ-kernel receipt for this span
-        let matching_receipt = mu_receipts
-            .iter()
-            .find(|r| r.operation_id == span.name);
+        let matching_receipt = mu_receipts.iter().find(|r| r.operation_id == span.name);
 
         if let Some(receipt) = matching_receipt {
             // Verify timing consistency between OTEL and μ-kernel
@@ -219,7 +213,7 @@ impl TimingValidator {
             let diff = span_nanos.abs_diff(mu_nanos);
 
             if diff > tolerance {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Timing mismatch between OTEL and μ-kernel for operation '{}': \
                      OTEL={:?}, μ-kernel={}ns, diff={}ns",
                     span.name, span.duration, mu_nanos, diff
@@ -229,7 +223,7 @@ impl TimingValidator {
             // Verify τ constraint if specified
             if let Some(tau_expected) = receipt.tau_expected {
                 if receipt.cycles > tau_expected {
-                    return Err(CleanroomError::internal_error(&format!(
+                    return Err(CleanroomError::internal_error(format!(
                         "μ-kernel τ violation for operation '{}': \
                          cycles={}, expected_max={}",
                         span.name, receipt.cycles, tau_expected
@@ -255,7 +249,7 @@ impl TimingValidator {
                 })
                 .collect();
 
-            return Err(CleanroomError::internal_error(&format!(
+            return Err(CleanroomError::internal_error(format!(
                 "Timing violations detected:\n{}",
                 violations.join("\n")
             )));
@@ -395,7 +389,9 @@ mod tests {
         }];
 
         // Act
-        let footprint = validator.validate_spans(&spans, Some(&mu_receipts)).unwrap();
+        let footprint = validator
+            .validate_spans(&spans, Some(&mu_receipts))
+            .unwrap();
 
         // Assert
         assert!(footprint.tau_violations.is_empty());

@@ -475,12 +475,14 @@ command = ["echo"]
 async fn test_template_rendering() -> Result<()> {
     use crate::{TemplateContext, TemplateRenderer};
 
-    let mut renderer = TemplateRenderer::new()?;
     let mut context = TemplateContext::new();
     context.vars.insert(
         "name".to_string(),
         serde_json::Value::String("test".to_string()),
     );
+
+    // Connect context to renderer
+    let mut renderer = TemplateRenderer::new()?.with_context(context);
 
     let template = "Hello {{ name }}!";
     let rendered = renderer.render_str(template, "test").map_err(|e| {

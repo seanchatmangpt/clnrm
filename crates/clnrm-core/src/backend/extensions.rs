@@ -3,8 +3,8 @@
 //! This module provides extension traits for backend capabilities,
 //! allowing backends to expose additional functionality beyond the base trait.
 
-use crate::error::Result;
 use crate::backend::{Backend, Cmd, RunResult};
+use crate::error::Result;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -12,16 +12,16 @@ use std::time::Duration;
 pub trait BackendExt: Backend {
     /// Get backend capabilities
     fn capabilities(&self) -> BackendCapabilities;
-    
+
     /// Check if backend supports a specific capability
     fn supports_capability(&self, capability: &BackendCapability) -> bool;
-    
+
     /// Get backend metadata
     fn metadata(&self) -> BackendMetadata;
-    
+
     /// Get backend health status
     fn health_status(&self) -> BackendHealthStatus;
-    
+
     /// Get backend performance metrics
     fn performance_metrics(&self) -> BackendPerformanceMetrics;
 }
@@ -152,19 +152,19 @@ pub struct ResourceUsage {
 pub trait EnhancedBackend: BackendExt {
     /// Execute command with enhanced options
     fn execute_enhanced(&self, cmd: Cmd, options: ExecutionOptions) -> Result<RunResult>;
-    
+
     /// Execute multiple commands in batch
     fn execute_batch(&self, commands: Vec<Cmd>) -> Result<Vec<RunResult>>;
-    
+
     /// Execute command with streaming output
     fn execute_streaming(&self, cmd: Cmd) -> Result<Box<dyn std::io::Read + Send>>;
-    
+
     /// Get backend statistics
     fn get_statistics(&self) -> BackendStatistics;
-    
+
     /// Reset backend statistics
     fn reset_statistics(&mut self);
-    
+
     /// Configure backend
     fn configure(&mut self, config: BackendConfiguration) -> Result<()>;
 }
@@ -261,7 +261,7 @@ impl BackendCapabilityChecker {
     ) -> Result<()> {
         for capability in required_capabilities {
             if !backend.supports_capability(capability) {
-                return Err(crate::error::CleanroomError::internal_error(&format!(
+                return Err(crate::error::CleanroomError::internal_error(format!(
                     "Backend does not support required capability: {:?}",
                     capability
                 )));
@@ -269,7 +269,7 @@ impl BackendCapabilityChecker {
         }
         Ok(())
     }
-    
+
     /// Get missing capabilities
     pub fn get_missing_capabilities(
         backend: &dyn BackendExt,
@@ -281,14 +281,14 @@ impl BackendCapabilityChecker {
             .cloned()
             .collect()
     }
-    
+
     /// Check if backend meets minimum requirements
     pub fn meets_minimum_requirements(backend: &dyn BackendExt) -> bool {
-        let required_capabilities = vec![
+        let required_capabilities = [
             BackendCapability::HermeticExecution,
             BackendCapability::ResourceMonitoring,
         ];
-        
+
         required_capabilities
             .iter()
             .all(|capability| backend.supports_capability(capability))
@@ -302,7 +302,7 @@ impl BackendPerformanceAnalyzer {
     /// Analyze backend performance
     pub fn analyze_performance(backend: &dyn BackendExt) -> PerformanceAnalysis {
         let metrics = backend.performance_metrics();
-        
+
         PerformanceAnalysis {
             overall_score: Self::calculate_overall_score(&metrics),
             performance_trend: Self::analyze_performance_trend(&metrics),
@@ -310,7 +310,7 @@ impl BackendPerformanceAnalyzer {
             recommendations: Self::generate_recommendations(&metrics),
         }
     }
-    
+
     /// Calculate overall performance score
     fn calculate_overall_score(metrics: &BackendPerformanceMetrics) -> f64 {
         let success_rate_score = metrics.success_rate * 100.0;
@@ -319,17 +319,17 @@ impl BackendPerformanceAnalyzer {
         } else {
             0.0
         };
-        
+
         (success_rate_score + efficiency_score) / 2.0
     }
-    
+
     /// Analyze performance trend
     fn analyze_performance_trend(_metrics: &BackendPerformanceMetrics) -> PerformanceTrend {
         // Simplified trend analysis - in real implementation, this would
         // analyze historical data to determine trend direction
         PerformanceTrend::Stable
     }
-    
+
     /// Analyze resource efficiency
     fn analyze_resource_efficiency(metrics: &BackendPerformanceMetrics) -> ResourceEfficiency {
         ResourceEfficiency {
@@ -346,19 +346,22 @@ impl BackendPerformanceAnalyzer {
             overall_efficiency: 0.0, // Would be calculated based on all resources
         }
     }
-    
+
     /// Generate performance recommendations
-    fn generate_recommendations(metrics: &BackendPerformanceMetrics) -> Vec<PerformanceRecommendation> {
+    fn generate_recommendations(
+        metrics: &BackendPerformanceMetrics,
+    ) -> Vec<PerformanceRecommendation> {
         let mut recommendations = Vec::new();
-        
+
         if metrics.success_rate < 0.95 {
             recommendations.push(PerformanceRecommendation {
                 category: RecommendationCategory::Reliability,
                 priority: RecommendationPriority::High,
-                description: "Success rate is below 95%. Consider investigating failure causes.".to_string(),
+                description: "Success rate is below 95%. Consider investigating failure causes."
+                    .to_string(),
             });
         }
-        
+
         if metrics.avg_execution_time > Duration::from_secs(30) {
             recommendations.push(PerformanceRecommendation {
                 category: RecommendationCategory::Performance,
@@ -366,15 +369,16 @@ impl BackendPerformanceAnalyzer {
                 description: "Average execution time is high. Consider optimization.".to_string(),
             });
         }
-        
+
         if metrics.resource_usage.cpu_usage_percent > 80.0 {
             recommendations.push(PerformanceRecommendation {
                 category: RecommendationCategory::ResourceUsage,
                 priority: RecommendationPriority::High,
-                description: "High CPU usage detected. Consider scaling or optimization.".to_string(),
+                description: "High CPU usage detected. Consider scaling or optimization."
+                    .to_string(),
             });
         }
-        
+
         recommendations
     }
 }

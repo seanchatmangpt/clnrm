@@ -10,14 +10,12 @@
 //! - Scenario-capability integration
 //! - State-based verification (not mocks)
 
-use clnrm_core::capabilities::{
-    CapabilityScenario, CapabilityScenarioBuilder,
-    Effect, EffectSet, EffectBudget, EffectUsage,
-    ConstraintSet, ExecutionMetrics, LatencyBand, ResourceLimits,
-    PrivilegeType, StorageMode,
-};
 use clnrm_core::backend::capabilities::{
     BackendCapability as BackendCapabilityType, BackendCapabilityRegistry, CapabilityCategory,
+};
+use clnrm_core::capabilities::{
+    CapabilityScenario, CapabilityScenarioBuilder, ConstraintSet, Effect, EffectBudget, EffectSet,
+    EffectUsage, ExecutionMetrics, LatencyBand, PrivilegeType, ResourceLimits, StorageMode,
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -41,14 +39,17 @@ fn scenario_with_valid_capability_validates_successfully() {
     };
     registry.register_capability(capability).unwrap();
 
-    let scenario = CapabilityScenario::new("valid-test", "Valid Test")
-        .with_capability("hermetic_execution");
+    let scenario =
+        CapabilityScenario::new("valid-test", "Valid Test").with_capability("hermetic_execution");
 
     // Act: Validate scenario against registry
     let result = scenario.validate(&registry);
 
     // Assert: Validation succeeds
-    assert!(result.is_ok(), "Scenario with valid capability must validate successfully");
+    assert!(
+        result.is_ok(),
+        "Scenario with valid capability must validate successfully"
+    );
 }
 
 #[test]
@@ -63,9 +64,15 @@ fn scenario_with_unknown_capability_fails_validation() {
     let result = scenario.validate(&registry);
 
     // Assert: Validation fails
-    assert!(result.is_err(), "Scenario with unknown capability must fail validation");
     assert!(
-        result.unwrap_err().to_string().contains("non_existent_capability"),
+        result.is_err(),
+        "Scenario with unknown capability must fail validation"
+    );
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("non_existent_capability"),
         "Error message must mention the missing capability"
     );
 }
@@ -93,7 +100,10 @@ fn scenario_effect_subset_validates_correctly() {
     let is_subset = scenario_effects.is_subset_of(&allowed_effects);
 
     // Assert: Scenario effects are subset of allowed effects
-    assert!(is_subset, "Scenario effects must be subset of capability-allowed effects");
+    assert!(
+        is_subset,
+        "Scenario effects must be subset of capability-allowed effects"
+    );
 }
 
 #[test]
@@ -132,11 +142,11 @@ fn execution_within_budget_passes_validation() {
     let budget = EffectBudget::default();
 
     let usage = EffectUsage {
-        network_bytes: 1_000_000, // 1MB (within 1GB limit)
+        network_bytes: 1_000_000,   // 1MB (within 1GB limit)
         storage_bytes: 100_000_000, // 100MB (within 10GB limit)
-        execution_seconds: 60, // 1 min (within 5 min limit)
-        process_spawns: 10, // (within 100 limit)
-        memory_bytes: 512_000_000, // 512MB (within 4GB limit)
+        execution_seconds: 60,      // 1 min (within 5 min limit)
+        process_spawns: 10,         // (within 100 limit)
+        memory_bytes: 512_000_000,  // 512MB (within 4GB limit)
     };
 
     // Act: Validate usage against budget
@@ -163,7 +173,10 @@ fn network_usage_exceeding_budget_fails_validation() {
     let result = budget.validate_usage(&excessive_usage);
 
     // Assert: Validation fails
-    assert!(result.is_err(), "Exceeding network budget must fail validation");
+    assert!(
+        result.is_err(),
+        "Exceeding network budget must fail validation"
+    );
     assert!(
         result.unwrap_err().to_string().contains("Network usage"),
         "Error must mention network budget violation"
@@ -196,18 +209,21 @@ fn budget_validation_catches_multiple_violations() {
     let budget = EffectBudget::restrictive();
 
     let multi_violation_usage = EffectUsage {
-        network_bytes: 100_000_000, // Exceeds limit
+        network_bytes: 100_000_000,   // Exceeds limit
         storage_bytes: 1_000_000_000, // Exceeds limit
-        execution_seconds: 200, // Exceeds limit
-        process_spawns: 50, // Exceeds limit
-        memory_bytes: 1_000_000_000, // Exceeds limit
+        execution_seconds: 200,       // Exceeds limit
+        process_spawns: 50,           // Exceeds limit
+        memory_bytes: 1_000_000_000,  // Exceeds limit
     };
 
     // Act: Validate usage with multiple violations
     let result = budget.validate_usage(&multi_violation_usage);
 
     // Assert: Validation fails (at least one violation caught)
-    assert!(result.is_err(), "Multiple budget violations must be detected");
+    assert!(
+        result.is_err(),
+        "Multiple budget violations must be detected"
+    );
 }
 
 // ============================================================================
@@ -234,7 +250,10 @@ fn hot_path_constraint_enforces_sub_millisecond_latency() {
     let result = constraints.validate_execution(&fast_metrics);
 
     // Assert: Validation passes
-    assert!(result.is_ok(), "Hot-path execution within latency limit must pass");
+    assert!(
+        result.is_ok(),
+        "Hot-path execution within latency limit must pass"
+    );
 }
 
 #[test]
@@ -257,7 +276,10 @@ fn hot_path_violation_detected() {
     let result = constraints.validate_execution(&slow_metrics);
 
     // Assert: Validation fails
-    assert!(result.is_err(), "Hot-path latency violation must be detected");
+    assert!(
+        result.is_err(),
+        "Hot-path latency violation must be detected"
+    );
     assert!(
         result.unwrap_err().to_string().contains("latency"),
         "Error must mention latency violation"
@@ -353,8 +375,14 @@ fn hot_band_classifies_sub_millisecond_durations() {
     let slow_duration = Duration::from_millis(2);
 
     // Act & Assert: Check classification
-    assert!(band.allows(fast_duration), "500μs should be allowed in hot band");
-    assert!(!band.allows(slow_duration), "2ms should be rejected by hot band");
+    assert!(
+        band.allows(fast_duration),
+        "500μs should be allowed in hot band"
+    );
+    assert!(
+        !band.allows(slow_duration),
+        "2ms should be rejected by hot band"
+    );
 }
 
 #[test]
@@ -366,8 +394,14 @@ fn warm_band_classifies_millisecond_durations() {
     let excessive_duration = Duration::from_millis(150);
 
     // Act & Assert: Check classification
-    assert!(band.allows(acceptable_duration), "50ms should be allowed in warm band");
-    assert!(!band.allows(excessive_duration), "150ms should be rejected by warm band");
+    assert!(
+        band.allows(acceptable_duration),
+        "50ms should be allowed in warm band"
+    );
+    assert!(
+        !band.allows(excessive_duration),
+        "150ms should be rejected by warm band"
+    );
 }
 
 #[test]
@@ -379,8 +413,14 @@ fn cold_band_classifies_second_durations() {
     let excessive_duration = Duration::from_secs(90);
 
     // Act & Assert: Check classification
-    assert!(band.allows(acceptable_duration), "30s should be allowed in cold band");
-    assert!(!band.allows(excessive_duration), "90s should be rejected by cold band");
+    assert!(
+        band.allows(acceptable_duration),
+        "30s should be allowed in cold band"
+    );
+    assert!(
+        !band.allows(excessive_duration),
+        "90s should be rejected by cold band"
+    );
 }
 
 // ============================================================================
@@ -431,7 +471,10 @@ fn builder_validation_catches_invalid_capability() {
         .build_and_validate(&registry);
 
     // Assert: Build-and-validate fails
-    assert!(result.is_err(), "Builder validation must catch invalid capabilities");
+    assert!(
+        result.is_err(),
+        "Builder validation must catch invalid capabilities"
+    );
 }
 
 // ============================================================================
@@ -481,9 +524,15 @@ fn full_scenario_lifecycle_validates_end_to_end() {
     let metrics_result = scenario.validate_execution_metrics(&metrics);
 
     // Assert: Full lifecycle succeeds
-    assert!(metrics_result.is_ok(), "Full scenario lifecycle must validate successfully");
+    assert!(
+        metrics_result.is_ok(),
+        "Full scenario lifecycle must validate successfully"
+    );
     assert_eq!(scenario.capabilities.len(), 2);
-    assert_eq!(scenario.constraints.latency_band, LatencyBand::Warm { max_ms: 100 });
+    assert_eq!(
+        scenario.constraints.latency_band,
+        LatencyBand::Warm { max_ms: 100 }
+    );
 }
 
 // ============================================================================
@@ -518,9 +567,7 @@ fn effect_set_subset_is_transitive() {
         mode: StorageMode::ReadOnly,
         paths: vec![],
     });
-    set_c.add(Effect::ProcessSpawn {
-        executables: None,
-    });
+    set_c.add(Effect::ProcessSpawn { executables: None });
 
     // Act: Check subset relationships
     let a_subset_b = set_a.is_subset_of(&set_b);
@@ -530,7 +577,10 @@ fn effect_set_subset_is_transitive() {
     // Assert: Transitivity holds
     assert!(a_subset_b, "A must be subset of B");
     assert!(b_subset_c, "B must be subset of C");
-    assert!(a_subset_c, "Transitivity: A subset B, B subset C => A subset C");
+    assert!(
+        a_subset_c,
+        "Transitivity: A subset B, B subset C => A subset C"
+    );
 }
 
 #[test]
@@ -549,7 +599,10 @@ fn empty_effect_set_is_universal_subset() {
     let empty_subset_empty = empty.is_subset_of(&empty);
 
     // Assert: Empty set is subset of everything
-    assert!(empty_subset_non_empty, "Empty set must be subset of any set");
+    assert!(
+        empty_subset_non_empty,
+        "Empty set must be subset of any set"
+    );
     assert!(empty_subset_empty, "Empty set must be subset of itself");
 }
 
@@ -577,7 +630,10 @@ fn constraint_set_defaults_are_hermetic() {
 
     // Assert: Defaults enforce hermeticity
     assert!(constraints.hermetic, "Default constraints must be hermetic");
-    assert!(constraints.idempotent, "Default constraints must be idempotent");
+    assert!(
+        constraints.idempotent,
+        "Default constraints must be idempotent"
+    );
     assert_eq!(
         constraints.max_execution_time,
         Some(Duration::from_secs(300))

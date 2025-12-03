@@ -10,13 +10,16 @@
 //! - `project` - Project-level cleanroom configuration
 //! - `loader` - File loading and parsing functions
 //! - `deserializers` - Custom serde deserializers
+//! - `validation` - FMEA poka-yoke validation (fail-fast error checking)
 
 pub mod deserializers;
 pub mod loader;
 pub mod otel;
 pub mod project;
 pub mod services;
+pub mod spec;
 pub mod types;
+pub mod validation;
 pub mod weaver;
 
 // Re-export commonly used types for backward compatibility
@@ -45,3 +48,6 @@ pub use project::{
 pub use weaver::WeaverConfig;
 
 pub use loader::{load_config_from_file, parse_toml_config};
+
+// Config types (canonical format)
+pub use spec::{Config, ContainerSpec, RetryConfig, Step, StepAssertions, TestSection, VolumeSpec};

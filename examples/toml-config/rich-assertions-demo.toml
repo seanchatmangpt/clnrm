@@ -77,30 +77,23 @@ execution_should_be_hermetic = true
 database_should_have_user_count = 5
 database_should_have_order_count = 10
 database_should_be_accessible = true
-database_should_have_table = "users"
-database_should_have_table = "orders"
+database_should_have_tables = ["users", "orders"]
 
 # Cache-specific assertions
 cache_should_have_key_count = 3
 cache_should_have_read_count = 15
 cache_should_have_write_count = 8
 cache_should_be_accessible = true
-cache_should_have_key = "user_sessions"
-cache_should_have_key = "api_tokens"
-cache_should_have_key = "config_data"
+cache_should_have_keys = ["user_sessions", "api_tokens", "config_data"]
 
 # API-specific assertions
 api_should_be_accessible = true
 api_should_return_status = 200
-api_should_have_endpoint = "/health"
-api_should_have_endpoint = "/users"
-api_should_have_endpoint = "/orders"
+api_should_have_endpoints = ["/health", "/users", "/orders"]
 api_should_respond_within_ms = 100
 
 # Service health assertions
-service_should_be_healthy = "database"
-service_should_be_healthy = "cache"
-service_should_be_healthy = "api_server"
+services_should_be_healthy = ["database", "cache", "api_server"]
 all_services_should_be_healthy = true
 
 # File system assertions
@@ -110,11 +103,11 @@ directory_should_exist = "/tmp/test_output"
 directory_should_contain_files = { path = "/tmp/test_output", count = 3 }
 
 # Network assertions
-api_should_return_json = { url = "http://localhost:8080/health", json_path = "$.status" }
-api_should_return_json = { url = "http://localhost:8080/users", json_path = "$.count" }
-network_should_be_accessible = "http://localhost:8080"
-network_should_be_accessible = "http://localhost:5432"
-network_should_be_accessible = "http://localhost:6379"
+api_should_return_json = [
+  { url = "http://localhost:8080/health", json_path = "$.status" },
+  { url = "http://localhost:8080/users", json_path = "$.count" }
+]
+network_should_be_accessible = ["http://localhost:8080", "http://localhost:5432", "http://localhost:6379"]
 
 # Performance assertions
 response_time_should_be_under_ms = 200

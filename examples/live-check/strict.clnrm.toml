@@ -26,22 +26,14 @@ max_samples = 1000000          # No limit on samples
 
 # OTEL configuration - comprehensive instrumentation
 [otel]
-exporter = "otlp-http"
+exporter = "otlp"
 protocol = "http/protobuf"
 sample_ratio = 1.0  # Sample everything in strict mode
 
-resources = {
-  "service.name" = "strict_validation_test",
-  "service.version" = "1.0.0",
-  "deployment.environment" = "production",
-  "service.namespace" = "clnrm"
-}
+resources = { "service.name" = "strict_validation_test", "service.version" = "1.0.0", "deployment.environment" = "production", "service.namespace" = "clnrm" }
 
 # Custom headers for production environment
-headers = {
-  "x-environment" = "production",
-  "x-validation-mode" = "strict"
-}
+headers = { "x-environment" = "production", "x-validation-mode" = "strict" }
 
 # Context propagators
 propagators.use = ["tracecontext", "baggage"]
@@ -49,25 +41,17 @@ propagators.use = ["tracecontext", "baggage"]
 # Service: API Gateway
 [service.gateway]
 image = "envoyproxy/envoy:v1.28-latest"
-env = {
-  "LOG_LEVEL" = "debug"
-}
+env = { "LOG_LEVEL" = "debug" }
 
 # Service: Application Server
 [service.app]
 image = "app:production"
-env = {
-  "ENVIRONMENT" = "production",
-  "LOG_LEVEL" = "info"
-}
+env = { "ENVIRONMENT" = "production", "LOG_LEVEL" = "info" }
 
 # Service: Database
 [service.db]
 image = "postgres:15-alpine"
-env = {
-  "POSTGRES_PASSWORD" = "prod_password",
-  "POSTGRES_DB" = "production_db"
-}
+env = { "POSTGRES_PASSWORD" = "prod_password", "POSTGRES_DB" = "production_db" }
 
 # Service: Cache
 [service.cache]
@@ -83,55 +67,32 @@ run = "./run_integration_tests.sh"
 [[expect.span]]
 name = "test.execute"
 kind = "internal"
-attrs.all = {
-  "test.name" = "full_integration_test",
-  "test.isolated" = "true",
-  "test.cleanup_performed" = "true",
-  "container.id" = "*",
-  "deployment.environment" = "production"
-}
-events.all = ["test.started", "test.completed"]
+attrs = { all = { "test.name" = "full_integration_test", "test.isolated" = "true", "test.cleanup_performed" = "true", "container.id" = "*", "deployment.environment" = "production" } }
+events = { all = ["test.started", "test.completed"] }
 duration_ms = { min = 100.0, max = 30000.0 }
 
 [[expect.span]]
 name = "http.server.request"
 kind = "server"
 parent = "test.execute"
-attrs.all = {
-  "http.method" = "GET",
-  "http.route" = "/api/v1/*",
-  "http.status_code" = "200"
-}
+attrs = { all = { "http.method" = "GET", "http.route" = "/api/v1/*", "http.status_code" = "200" } }
 
 [[expect.span]]
 name = "db.query"
 kind = "client"
 parent = "http.server.request"
-attrs.all = {
-  "db.system" = "postgresql",
-  "db.name" = "production_db",
-  "db.operation" = "SELECT"
-}
+attrs = { all = { "db.system" = "postgresql", "db.name" = "production_db", "db.operation" = "SELECT" } }
 
 [[expect.span]]
 name = "cache.get"
 kind = "client"
 parent = "http.server.request"
-attrs.all = {
-  "cache.system" = "redis",
-  "cache.operation" = "GET"
-}
+attrs = { all = { "cache.system" = "redis", "cache.operation" = "GET" } }
 
 # Container lifecycle validation
 [[expect.span]]
 name = "container.lifecycle"
-attrs.all = {
-  "container.created_at" = "*",
-  "container.started_at" = "*",
-  "container.destroyed_at" = "*",
-  "cleanup.success" = "true",
-  "cleanup.orphaned_resources" = "0"
-}
+attrs = { all = { "container.created_at" = "*", "container.started_at" = "*", "container.destroyed_at" = "*", "cleanup.success" = "true", "cleanup.orphaned_resources" = "0" } }
 
 # Graph structure validation - ensure proper service interaction
 [expect.graph]
@@ -170,13 +131,12 @@ spans_total = { gte = 20, lte = 200 }  # Expected span range
 events_total = { gte = 10 }            # Minimum events
 errors_total = { eq = 0 }              # Zero errors allowed
 
-by_name = {
-  "test.execute" = { eq = 1 },
-  "container.lifecycle" = { eq = 4 },    # Gateway, app, db, cache
-  "http.server.request" = { gte = 5 },   # Multiple requests
-  "db.query" = { gte = 3 },              # Multiple queries
-  "cache.get" = { gte = 2 }              # Cache hits
-}
+[expect.counts.by_name]
+"test.execute" = { eq = 1 }
+"container.lifecycle" = { eq = 4 }    # Gateway, app, db, cache
+"http.server.request" = { gte = 5 }   # Multiple requests
+"db.query" = { gte = 3 }              # Multiple queries
+"cache.get" = { gte = 2 }              # Cache hits
 
 # Status validation - all spans must succeed
 [expect.status]
@@ -186,13 +146,8 @@ all = "OK"  # No errors allowed in production
 [expect.hermeticity]
 no_external_services = true
 
-resource_attrs.must_match = {
-  "service.name" = "strict_validation_test",
-  "deployment.environment" = "production"
-}
+[expect.hermeticity.resource_attrs]
+must_match = { "service.name" = "strict_validation_test", "deployment.environment" = "production" }
 
-span_attrs.forbid_keys = [
-  "net.peer.name",        # No external hostnames
-  "http.url",             # No external URLs
-  "db.connection_string"  # No connection strings in spans
-]
+[expect.hermeticity.span_attrs]
+forbid_keys = ["net.peer.name", "http.url", "db.connection_string"]

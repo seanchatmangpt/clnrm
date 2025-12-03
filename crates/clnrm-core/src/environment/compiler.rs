@@ -10,9 +10,7 @@ use super::sigma::{ContentHash, SigmaBase};
 use super::store::OntologyStore;
 use crate::capabilities::ConstraintSet;
 use crate::error::{CleanroomError, Result};
-use crate::receipts::receipt::{
-    HermeticityWitness, ImageDigest, TestReceipt, TimingFootprint,
-};
+use crate::receipts::receipt::{HermeticityWitness, ImageDigest, TestReceipt, TimingFootprint};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -235,11 +233,7 @@ impl EnvironmentCompiler {
         let telemetry = self.wire_telemetry(&merged)?;
 
         // 8. Generate proof metadata
-        let proof = self.generate_proof_metadata(
-            &merged,
-            delta.map(|d| &d.base),
-            constraints,
-        )?;
+        let proof = self.generate_proof_metadata(&merged, delta.map(|d| &d.base), constraints)?;
 
         Ok(CompiledEnvironment {
             sigma_hash: merged.hash.clone(),
@@ -272,7 +266,9 @@ impl EnvironmentCompiler {
         for modification in &delta.service_modifications {
             match modification {
                 super::delta::ServiceModification::Replace(service) => {
-                    merged.services.insert(service.id.clone(), service.clone());
+                    merged
+                        .services
+                        .insert(service.id.clone(), (**service).clone());
                 }
                 super::delta::ServiceModification::Update {
                     id,
@@ -332,7 +328,7 @@ impl EnvironmentCompiler {
                 if let Some(cpu_limit) = resources.cpu_limit {
                     if let Some(max_cpu) = constraints.resource_limits.max_cpu_percent {
                         if cpu_limit * 100.0 > max_cpu {
-                            return Err(CleanroomError::internal_error(&format!(
+                            return Err(CleanroomError::internal_error(format!(
                                 "Service '{}' CPU limit {} exceeds constraint {}",
                                 service_id, cpu_limit, max_cpu
                             )));
@@ -413,7 +409,7 @@ impl EnvironmentCompiler {
 
         for edge in edges {
             adj.entry(edge.to.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(edge.from.clone());
             *in_degree.entry(edge.from.clone()).or_insert(0) += 1;
         }
@@ -544,8 +540,9 @@ impl EnvironmentCompiler {
         use sha2::{Digest, Sha256};
 
         // Hash constraints for proof
-        let constraints_serialized = serde_json::to_string(constraints)
-            .map_err(|e| CleanroomError::internal_error(&format!("Failed to serialize constraints: {}", e)))?;
+        let constraints_serialized = serde_json::to_string(constraints).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to serialize constraints: {}", e))
+        })?;
         let mut hasher = Sha256::new();
         hasher.update(constraints_serialized.as_bytes());
         let constraints_hash = hex::encode(hasher.finalize());

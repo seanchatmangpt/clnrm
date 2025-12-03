@@ -48,24 +48,24 @@
 //! let gaps = pipeline.gaps_report();
 //! ```
 
+pub mod advanced_reporting;
 pub mod concepts;
+pub mod extended_analysis;
+pub mod multi_repo;
+pub mod orchestrator;
 pub mod outputs;
-pub mod schemas;
 pub mod phase1_discovery;
 pub mod phase3_tokenization;
 pub mod phase4_matching;
 pub mod phase5_excerpts;
 pub mod phase6_synthesis;
 pub mod phase7_graphconstruction;
-pub mod orchestrator;
-pub mod extended_analysis;
-pub mod multi_repo;
-pub mod advanced_reporting;
+pub mod schemas;
 
+pub use advanced_reporting::{AdvancedReport, ReportFormat};
 pub use concepts::ConceptRegistry;
+pub use extended_analysis::ExtendedAnalysis;
+pub use multi_repo::{ExternalRepo, MultiRepoAnalysis, MultiRepoConfig};
+pub use orchestrator::{Pipeline, PipelineConfig};
 pub use outputs::*;
 pub use schemas::*;
-pub use orchestrator::{Pipeline, PipelineConfig};
-pub use extended_analysis::ExtendedAnalysis;
-pub use multi_repo::{MultiRepoConfig, MultiRepoAnalysis, ExternalRepo};
-pub use advanced_reporting::{AdvancedReport, ReportFormat};

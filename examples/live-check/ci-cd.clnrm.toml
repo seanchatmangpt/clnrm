@@ -19,7 +19,7 @@ mode = "80_20"  # Fast validation for CI
 fail_on_violations = true
 fail_on_improvements = false  # Don't block on style in CI
 
-[weaver.eighty_twenty]
+[weaver.80_20]
 critical_spans = [
     "test.execute",
     "container.start",
@@ -36,40 +36,38 @@ max_samples = 50000          # Reasonable limit for CI
 
 # OTEL configuration for CI environment
 [otel]
-exporter = "otlp-http"
+exporter = "otlp"
 sample_ratio = 1.0
 
-resources = {
-  "service.name" = "cicd_test",
-  "service.version" = "${CI_COMMIT_SHA:-dev}",
-  "deployment.environment" = "${CI_ENVIRONMENT:-ci}",
-  "ci.pipeline.id" = "${CI_PIPELINE_ID:-local}",
-  "ci.pipeline.url" = "${CI_PIPELINE_URL:-}"
-}
+[otel.resources]
+"service.name" = "cicd_test"
+"service.version" = "${CI_COMMIT_SHA:-dev}"
+"deployment.environment" = "${CI_ENVIRONMENT:-ci}"
+"ci.pipeline.id" = "${CI_PIPELINE_ID:-local}"
+"ci.pipeline.url" = "${CI_PIPELINE_URL:-}"
 
-headers = {
-  "x-ci-run-id" = "${CI_RUN_ID:-}",
-  "x-ci-run-number" = "${CI_RUN_NUMBER:-}"
-}
+[otel.headers]
+"x-ci-run-id" = "${CI_RUN_ID:-}"
+"x-ci-run-number" = "${CI_RUN_NUMBER:-}"
 
 # Service: Application (version from CI)
 [service.app]
 image = "app:${CI_COMMIT_SHA:-latest}"
-env = {
-  "ENVIRONMENT" = "${CI_ENVIRONMENT:-ci}",
-  "LOG_LEVEL" = "info",
-  "CI" = "true"
-}
+
+[service.app.env]
+ENVIRONMENT = "${CI_ENVIRONMENT:-ci}"
+LOG_LEVEL = "info"
+CI = "true"
 
 # Service: Database (use fast in-memory for CI)
 [service.db]
 image = "postgres:15-alpine"
-env = {
-  "POSTGRES_PASSWORD" = "cipass",
-  "POSTGRES_DB" = "ci_test",
-  "POSTGRES_INITDB_ARGS" = "--no-sync",  # Faster init for CI
-  "PGDATA" = "/dev/shm/pgdata"  # In-memory for speed
-}
+
+[service.db.env]
+POSTGRES_PASSWORD = "cipass"
+POSTGRES_DB = "ci_test"
+POSTGRES_INITDB_ARGS = "--no-sync"  # Faster init for CI
+PGDATA = "/dev/shm/pgdata"  # In-memory for speed
 
 # Scenario 1: Unit tests
 [[scenario]]
@@ -80,11 +78,7 @@ timeout = "300s"  # 5 minute timeout for CI
 
 [[expect.span]]
 name = "test.execute"
-attrs.all = {
-  "test.name" = "unit_tests",
-  "test.isolated" = "true",
-  "ci.pipeline.id" = "*"
-}
+attrs = { all = { "test.name" = "unit_tests", "test.isolated" = "true", "ci.pipeline.id" = "*" } }
 
 # Scenario 2: Integration tests
 [[scenario]]
@@ -95,25 +89,17 @@ timeout = "600s"  # 10 minute timeout
 
 [[expect.span]]
 name = "test.execute"
-attrs.all = {
-  "test.name" = "integration_tests",
-  "test.isolated" = "true"
-}
+attrs = { all = { "test.name" = "integration_tests", "test.isolated" = "true" } }
 
 [[expect.span]]
 name = "http.server.request"
 parent = "test.execute"
-attrs.all = {
-  "http.method" = "*",
-  "http.status_code" = "200"
-}
+attrs = { all = { "http.method" = "*", "http.status_code" = "200" } }
 
 [[expect.span]]
 name = "db.query"
 parent = "http.server.request"
-attrs.all = {
-  "db.system" = "postgresql"
-}
+attrs = { all = { "db.system" = "postgresql" } }
 
 # Scenario 3: API smoke tests
 [[scenario]]
@@ -124,9 +110,7 @@ timeout = "60s"
 
 [[expect.span]]
 name = "service.health_check"
-attrs.all = {
-  "health.status" = "healthy"
-}
+attrs = { all = { "health.status" = "healthy" } }
 
 # Graph validation - ensure services interact correctly
 [expect.graph]
@@ -139,25 +123,18 @@ acyclic = true
 # Count validation - ensure all tests ran
 [expect.counts]
 spans_total = { gte = 10 }  # At least 10 spans generated
-
-by_name = {
-  "test.execute" = { eq = 3 },        # 3 scenarios
-  "container.start" = { eq = 2 },     # app + db
-  "container.stop" = { eq = 2 },      # app + db
-  "service.health_check" = { gte = 1 }
-}
+"test.execute" = { eq = 3 }        # 3 scenarios
+"container.start" = { eq = 2 }     # app + db
+"container.stop" = { eq = 2 }      # app + db
+"service.health_check" = { gte = 1 }
 
 # Status validation - all tests must pass in CI
 [expect.status]
-by_name = {
-  "test.execute" = "OK",           # All tests passed
-  "container.start" = "OK",        # All containers started
-  "container.stop" = "OK",         # All containers stopped
-  "service.health_check" = "OK"    # Health checks passed
-}
-
-# Zero errors allowed in CI
-errors_total = { eq = 0 }
+errors_total = { eq = 0 }  # Zero errors allowed in CI
+"test.execute" = "OK"           # All tests passed
+"container.start" = "OK"        # All containers started
+"container.stop" = "OK"         # All containers stopped
+"service.health_check" = "OK"    # Health checks passed
 
 # Hermeticity - ensure tests don't leak to external services
 [expect.hermeticity]

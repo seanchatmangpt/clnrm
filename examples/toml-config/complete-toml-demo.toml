@@ -157,10 +157,7 @@ cache_should_be_ready = true
 web_server_should_be_ready = true
 
 # Plugin assertions
-plugin_should_be_loaded = "postgres"
-plugin_should_be_loaded = "redis"
-plugin_should_be_loaded = "nginx"
-plugin_should_be_loaded = "curl"
+plugins_should_be_loaded = ["postgres", "redis", "nginx", "curl"]
 
 # Data assertions
 database_should_have_table = "users"

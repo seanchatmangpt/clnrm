@@ -23,10 +23,7 @@ pub enum ScheduleLedgerError {
     /// Invariant violated during append
     InvariantViolation(String),
     /// Divergence detected in replay mode
-    ReplayDivergence {
-        expected: String,
-        actual: String,
-    },
+    ReplayDivergence { expected: String, actual: String },
     /// Certificate validation failed
     CertificateInvalid(String),
     /// Scheduler decision not recorded
@@ -39,7 +36,11 @@ impl fmt::Display for ScheduleLedgerError {
             Self::LedgerSealed => write!(f, "Ledger is sealed and cannot be modified"),
             Self::InvariantViolation(msg) => write!(f, "Ledger invariant violated: {}", msg),
             Self::ReplayDivergence { expected, actual } => {
-                write!(f, "Replay divergence: expected {}, got {}", expected, actual)
+                write!(
+                    f,
+                    "Replay divergence: expected {}, got {}",
+                    expected, actual
+                )
             }
             Self::CertificateInvalid(msg) => write!(f, "Invalid certificate: {}", msg),
             Self::UnrecordedDecision => write!(f, "Scheduler decision was not recorded in ledger"),
@@ -177,11 +178,13 @@ impl ScheduleLedger {
     }
 
     /// Append an entry (fails if ledger is sealed)
-    pub fn append(&self, mut entry: ScheduleLedgerEntry) -> Result<String> {
+    pub fn append(&self, entry: ScheduleLedgerEntry) -> Result<String> {
         // Check if sealed
-        if *self.sealed.lock().map_err(|_| {
-            ScheduleLedgerError::InvariantViolation("Mutex poisoned".to_string())
-        })? {
+        if *self
+            .sealed
+            .lock()
+            .map_err(|_| ScheduleLedgerError::InvariantViolation("Mutex poisoned".to_string()))?
+        {
             return Err(ScheduleLedgerError::LedgerSealed.into());
         }
 
@@ -209,9 +212,10 @@ impl ScheduleLedger {
 
     /// Get all entries for a run (immutable reference)
     pub fn entries_for_run(&self, run_id: &str) -> Result<Vec<ScheduleLedgerEntry>> {
-        let entries = self.entries.lock().map_err(|_| {
-            CleanroomError::internal_error("Entries mutex poisoned")
-        })?;
+        let entries = self
+            .entries
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Entries mutex poisoned"))?;
 
         if let Some(indices) = self.runs_index.get(run_id) {
             let result = indices
@@ -228,9 +232,10 @@ impl ScheduleLedger {
     /// Get a specific entry by ID (immutable reference)
     pub fn get_entry(&self, entry_id: &str) -> Result<Option<ScheduleLedgerEntry>> {
         if let Some(idx) = self.entry_index.get(entry_id) {
-            let entries = self.entries.lock().map_err(|_| {
-                CleanroomError::internal_error("Entries mutex poisoned")
-            })?;
+            let entries = self
+                .entries
+                .lock()
+                .map_err(|_| CleanroomError::internal_error("Entries mutex poisoned"))?;
             Ok(entries.get(*idx.value()).cloned())
         } else {
             Ok(None)
@@ -249,25 +254,28 @@ impl ScheduleLedger {
 
     /// Seal the ledger (no more appends allowed)
     pub fn seal(&self) -> Result<()> {
-        let mut sealed = self.sealed.lock().map_err(|_| {
-            CleanroomError::internal_error("Sealed flag mutex poisoned")
-        })?;
+        let mut sealed = self
+            .sealed
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Sealed flag mutex poisoned"))?;
         *sealed = true;
         Ok(())
     }
 
     /// Check if ledger is sealed
     pub fn is_sealed(&self) -> Result<bool> {
-        self.sealed.lock().map_err(|_| {
-            CleanroomError::internal_error("Sealed flag mutex poisoned")
-        }).map(|s| *s)
+        self.sealed
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Sealed flag mutex poisoned"))
+            .map(|s| *s)
     }
 
     /// Create an iterator over all entries
     pub fn iter(&self) -> Result<Vec<ScheduleLedgerEntry>> {
-        let entries = self.entries.lock().map_err(|_| {
-            CleanroomError::internal_error("Entries mutex poisoned")
-        })?;
+        let entries = self
+            .entries
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Entries mutex poisoned"))?;
         Ok(entries.iter().cloned().collect())
     }
 
@@ -331,12 +339,7 @@ impl ReplayMode {
     }
 
     /// Verify a decision matches replay ledger (if in replay mode)
-    pub fn verify_decision(
-        &self,
-        run_id: &str,
-        tenant_id: &str,
-        scenario_id: &str,
-    ) -> Result<()> {
+    pub fn verify_decision(&self, run_id: &str, tenant_id: &str, scenario_id: &str) -> Result<()> {
         if let ReplayMode::Replay(ledger) = self {
             // Verify next entry matches
             let entries = ledger
@@ -353,7 +356,8 @@ impl ReplayMode {
             Err(ScheduleLedgerError::ReplayDivergence {
                 expected: scenario_id.to_string(),
                 actual: "not found in replay ledger".to_string(),
-            }.into())
+            }
+            .into())
         } else {
             Ok(())
         }
@@ -429,13 +433,15 @@ impl ScheduleCertificate {
         if self.certificate_hash.is_empty() {
             return Err(ScheduleLedgerError::CertificateInvalid(
                 "Certificate hash is empty".to_string(),
-            ).into());
+            )
+            .into());
         }
 
         if self.entry_count == 0 {
             return Err(ScheduleLedgerError::CertificateInvalid(
                 "Certificate has no entries".to_string(),
-            ).into());
+            )
+            .into());
         }
 
         Ok(())

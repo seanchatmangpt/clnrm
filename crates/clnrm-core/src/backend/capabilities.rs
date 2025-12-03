@@ -128,56 +128,57 @@ impl BackendCapabilityRegistry {
     /// Register a capability
     pub fn register_capability(&mut self, capability: BackendCapability) -> Result<()> {
         let name = capability.name.clone();
-        
+
         // Check for conflicts
         if self.capabilities.contains_key(&name) {
-            return Err(crate::error::CleanroomError::internal_error(&format!(
+            return Err(crate::error::CleanroomError::internal_error(format!(
                 "Capability '{}' is already registered",
                 name
             )));
         }
-        
+
         // Validate capability
         self.validate_capability(&capability)?;
-        
+
         // Register capability
         self.capabilities.insert(name.clone(), capability);
-        
+
         // Register dependencies
         for requirement in &self.capabilities[&name].requirements {
             if requirement.mandatory {
-                self.dependencies.entry(name.clone())
-                    .or_insert_with(Vec::new)
+                self.dependencies
+                    .entry(name.clone())
+                    .or_default()
                     .push(requirement.name.clone());
             }
         }
-        
+
         Ok(())
     }
 
     /// Unregister a capability
     pub fn unregister_capability(&mut self, name: &str) -> Result<()> {
         if !self.capabilities.contains_key(name) {
-            return Err(crate::error::CleanroomError::internal_error(&format!(
+            return Err(crate::error::CleanroomError::internal_error(format!(
                 "Capability '{}' is not registered",
                 name
             )));
         }
-        
+
         // Check if other capabilities depend on this one
         for (cap_name, deps) in &self.dependencies {
             if deps.contains(&name.to_string()) {
-                return Err(crate::error::CleanroomError::internal_error(&format!(
+                return Err(crate::error::CleanroomError::internal_error(format!(
                     "Cannot unregister capability '{}' because '{}' depends on it",
                     name, cap_name
                 )));
             }
         }
-        
+
         self.capabilities.remove(name);
         self.dependencies.remove(name);
         self.conflicts.remove(name);
-        
+
         Ok(())
     }
 
@@ -192,7 +193,10 @@ impl BackendCapabilityRegistry {
     }
 
     /// Get capabilities by category
-    pub fn get_capabilities_by_category(&self, category: &CapabilityCategory) -> Vec<&BackendCapability> {
+    pub fn get_capabilities_by_category(
+        &self,
+        category: &CapabilityCategory,
+    ) -> Vec<&BackendCapability> {
         self.capabilities
             .values()
             .filter(|cap| &cap.category == category)
@@ -216,20 +220,24 @@ impl BackendCapabilityRegistry {
 
     /// Add capability conflict
     pub fn add_conflict(&mut self, capability1: &str, capability2: &str) -> Result<()> {
-        if !self.capabilities.contains_key(capability1) || !self.capabilities.contains_key(capability2) {
+        if !self.capabilities.contains_key(capability1)
+            || !self.capabilities.contains_key(capability2)
+        {
             return Err(crate::error::CleanroomError::internal_error(
-                "Both capabilities must be registered to add conflict"
+                "Both capabilities must be registered to add conflict",
             ));
         }
-        
-        self.conflicts.entry(capability1.to_string())
-            .or_insert_with(Vec::new)
+
+        self.conflicts
+            .entry(capability1.to_string())
+            .or_default()
             .push(capability2.to_string());
-        
-        self.conflicts.entry(capability2.to_string())
-            .or_insert_with(Vec::new)
+
+        self.conflicts
+            .entry(capability2.to_string())
+            .or_default()
             .push(capability1.to_string());
-        
+
         Ok(())
     }
 
@@ -238,7 +246,7 @@ impl BackendCapabilityRegistry {
         if let Some(conflicts) = self.conflicts.get_mut(capability1) {
             conflicts.retain(|c| c != capability2);
         }
-        
+
         if let Some(conflicts) = self.conflicts.get_mut(capability2) {
             conflicts.retain(|c| c != capability1);
         }
@@ -247,43 +255,43 @@ impl BackendCapabilityRegistry {
     /// Validate capability set
     pub fn validate_capability_set(&self, capabilities: &[String]) -> Result<()> {
         let capability_set: HashSet<String> = capabilities.iter().cloned().collect();
-        
+
         // Check if all capabilities exist
         for cap_name in capabilities {
             if !self.has_capability(cap_name) {
-                return Err(crate::error::CleanroomError::internal_error(&format!(
+                return Err(crate::error::CleanroomError::internal_error(format!(
                     "Capability '{}' is not registered",
                     cap_name
                 )));
             }
         }
-        
+
         // Check for conflicts
         for cap_name in capabilities {
             let conflicts = self.get_conflicts(cap_name);
             for conflict in conflicts {
                 if capability_set.contains(&conflict) {
-                    return Err(crate::error::CleanroomError::internal_error(&format!(
+                    return Err(crate::error::CleanroomError::internal_error(format!(
                         "Capabilities '{}' and '{}' are in conflict",
                         cap_name, conflict
                     )));
                 }
             }
         }
-        
+
         // Check dependencies
         for cap_name in capabilities {
             let dependencies = self.get_dependencies(cap_name);
             for dep in dependencies {
                 if !capability_set.contains(&dep) {
-                    return Err(crate::error::CleanroomError::internal_error(&format!(
+                    return Err(crate::error::CleanroomError::internal_error(format!(
                         "Capability '{}' requires '{}' which is not included",
                         cap_name, dep
                     )));
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -302,7 +310,7 @@ impl BackendCapabilityRegistry {
             };
             *categories.entry(category_name.to_string()).or_insert(0) += 1;
         }
-        
+
         CapabilityRegistryStatistics {
             total_capabilities: self.capabilities.len(),
             categories,
@@ -316,54 +324,54 @@ impl BackendCapabilityRegistry {
         // Check if name is not empty
         if capability.name.is_empty() {
             return Err(crate::error::CleanroomError::internal_error(
-                "Capability name cannot be empty"
+                "Capability name cannot be empty",
             ));
         }
-        
+
         // Check if description is not empty
         if capability.description.is_empty() {
             return Err(crate::error::CleanroomError::internal_error(
-                "Capability description cannot be empty"
+                "Capability description cannot be empty",
             ));
         }
-        
+
         // Check if version is not empty
         if capability.version.is_empty() {
             return Err(crate::error::CleanroomError::internal_error(
-                "Capability version cannot be empty"
+                "Capability version cannot be empty",
             ));
         }
-        
+
         // Validate requirements
         for requirement in &capability.requirements {
             if requirement.name.is_empty() {
                 return Err(crate::error::CleanroomError::internal_error(
-                    "Requirement name cannot be empty"
+                    "Requirement name cannot be empty",
                 ));
             }
-            
+
             if requirement.description.is_empty() {
                 return Err(crate::error::CleanroomError::internal_error(
-                    "Requirement description cannot be empty"
+                    "Requirement description cannot be empty",
                 ));
             }
         }
-        
+
         // Validate features
         for feature in &capability.features {
             if feature.name.is_empty() {
                 return Err(crate::error::CleanroomError::internal_error(
-                    "Feature name cannot be empty"
+                    "Feature name cannot be empty",
                 ));
             }
-            
+
             if feature.description.is_empty() {
                 return Err(crate::error::CleanroomError::internal_error(
-                    "Feature description cannot be empty"
+                    "Feature description cannot be empty",
                 ));
             }
         }
-        
+
         Ok(())
     }
 }
@@ -464,24 +472,23 @@ impl StandardCapabilities {
                 description: "Execute commands in isolated environment".to_string(),
                 version: "1.0.0".to_string(),
                 category: CapabilityCategory::Execution,
-                requirements: vec![
-                    CapabilityRequirement {
-                        name: "container_runtime".to_string(),
-                        requirement_type: RequirementType::System,
-                        value: "docker".to_string(),
-                        description: "Container runtime required".to_string(),
-                        mandatory: true,
-                    },
-                ],
-                features: vec![
-                    CapabilityFeature {
-                        name: "isolation_level".to_string(),
-                        description: "Level of isolation".to_string(),
-                        feature_type: FeatureType::Enum(vec!["full".to_string(), "partial".to_string()]),
-                        parameters: HashMap::new(),
-                        default_value: Some("full".to_string()),
-                    },
-                ],
+                requirements: vec![CapabilityRequirement {
+                    name: "container_runtime".to_string(),
+                    requirement_type: RequirementType::System,
+                    value: "docker".to_string(),
+                    description: "Container runtime required".to_string(),
+                    mandatory: true,
+                }],
+                features: vec![CapabilityFeature {
+                    name: "isolation_level".to_string(),
+                    description: "Level of isolation".to_string(),
+                    feature_type: FeatureType::Enum(vec![
+                        "full".to_string(),
+                        "partial".to_string(),
+                    ]),
+                    parameters: HashMap::new(),
+                    default_value: Some("full".to_string()),
+                }],
                 metadata: HashMap::new(),
             },
             BackendCapability {
@@ -490,15 +497,16 @@ impl StandardCapabilities {
                 version: "1.0.0".to_string(),
                 category: CapabilityCategory::Execution,
                 requirements: vec![],
-                features: vec![
-                    CapabilityFeature {
-                        name: "seed_source".to_string(),
-                        description: "Source of randomness seed".to_string(),
-                        feature_type: FeatureType::Enum(vec!["fixed".to_string(), "random".to_string()]),
-                        parameters: HashMap::new(),
-                        default_value: Some("random".to_string()),
-                    },
-                ],
+                features: vec![CapabilityFeature {
+                    name: "seed_source".to_string(),
+                    description: "Source of randomness seed".to_string(),
+                    feature_type: FeatureType::Enum(vec![
+                        "fixed".to_string(),
+                        "random".to_string(),
+                    ]),
+                    parameters: HashMap::new(),
+                    default_value: Some("random".to_string()),
+                }],
                 metadata: HashMap::new(),
             },
         ]
@@ -513,15 +521,13 @@ impl StandardCapabilities {
                 version: "1.0.0".to_string(),
                 category: CapabilityCategory::ResourceManagement,
                 requirements: vec![],
-                features: vec![
-                    CapabilityFeature {
-                        name: "max_cpu_percent".to_string(),
-                        description: "Maximum CPU usage percentage".to_string(),
-                        feature_type: FeatureType::Numeric,
-                        parameters: HashMap::new(),
-                        default_value: Some("100.0".to_string()),
-                    },
-                ],
+                features: vec![CapabilityFeature {
+                    name: "max_cpu_percent".to_string(),
+                    description: "Maximum CPU usage percentage".to_string(),
+                    feature_type: FeatureType::Numeric,
+                    parameters: HashMap::new(),
+                    default_value: Some("100.0".to_string()),
+                }],
                 metadata: HashMap::new(),
             },
             BackendCapability {
@@ -530,15 +536,13 @@ impl StandardCapabilities {
                 version: "1.0.0".to_string(),
                 category: CapabilityCategory::ResourceManagement,
                 requirements: vec![],
-                features: vec![
-                    CapabilityFeature {
-                        name: "max_memory_bytes".to_string(),
-                        description: "Maximum memory usage in bytes".to_string(),
-                        feature_type: FeatureType::Numeric,
-                        parameters: HashMap::new(),
-                        default_value: Some("1073741824".to_string()), // 1GB
-                    },
-                ],
+                features: vec![CapabilityFeature {
+                    name: "max_memory_bytes".to_string(),
+                    description: "Maximum memory usage in bytes".to_string(),
+                    feature_type: FeatureType::Numeric,
+                    parameters: HashMap::new(),
+                    default_value: Some("1073741824".to_string()), // 1GB
+                }],
                 metadata: HashMap::new(),
             },
         ]
@@ -546,25 +550,25 @@ impl StandardCapabilities {
 
     /// Get standard security capabilities
     pub fn security_capabilities() -> Vec<BackendCapability> {
-        vec![
-            BackendCapability {
-                name: "network_isolation".to_string(),
-                description: "Isolate network access".to_string(),
-                version: "1.0.0".to_string(),
-                category: CapabilityCategory::Security,
-                requirements: vec![],
-                features: vec![
-                    CapabilityFeature {
-                        name: "isolation_mode".to_string(),
-                        description: "Network isolation mode".to_string(),
-                        feature_type: FeatureType::Enum(vec!["none".to_string(), "partial".to_string(), "full".to_string()]),
-                        parameters: HashMap::new(),
-                        default_value: Some("full".to_string()),
-                    },
-                ],
-                metadata: HashMap::new(),
-            },
-        ]
+        vec![BackendCapability {
+            name: "network_isolation".to_string(),
+            description: "Isolate network access".to_string(),
+            version: "1.0.0".to_string(),
+            category: CapabilityCategory::Security,
+            requirements: vec![],
+            features: vec![CapabilityFeature {
+                name: "isolation_mode".to_string(),
+                description: "Network isolation mode".to_string(),
+                feature_type: FeatureType::Enum(vec![
+                    "none".to_string(),
+                    "partial".to_string(),
+                    "full".to_string(),
+                ]),
+                parameters: HashMap::new(),
+                default_value: Some("full".to_string()),
+            }],
+            metadata: HashMap::new(),
+        }]
     }
 
     /// Get all standard capabilities

@@ -398,6 +398,7 @@ trait Watcher {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
     use tempfile::tempdir;
 
     #[test]

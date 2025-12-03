@@ -10,7 +10,7 @@ name = "concurrent_execution_demo"
 description = "Demonstrates concurrent execution as claimed in the README"
 
 [services]
-concurrent_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+concurrent_container = { type = "container", plugin = "generic_container", image = "alpine:latest" }
 
 [[steps]]
 name = "concurrent_step_1"

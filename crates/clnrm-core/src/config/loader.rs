@@ -131,6 +131,14 @@ pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
 
     // Parse rendered TOML (now all templates are substituted)
     let config = parse_toml_config(&rendered_content)?;
+
+    // Run existing validate() method
     config.validate()?;
+
+    // Run comprehensive FMEA poka-yoke validation pipeline
+    // This catches 6 additional failure modes (FM-004, FM-007, FM-008, FM-010, FM-011, FM-012)
+    // All validations return exit code 2 with clear remediation guidance
+    crate::config::validation::validate_configuration(&config)?;
+
     Ok(config)
 }

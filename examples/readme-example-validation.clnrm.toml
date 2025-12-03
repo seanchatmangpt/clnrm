@@ -19,7 +19,7 @@ admin_port = 0             # Auto-discover available port
 
 # Configure OpenTelemetry export to Weaver
 [otel]
-exporter = "otlp-http"
+exporter = "otlp"
 
 [otel.resources]
 "service.name" = "api_service"
@@ -41,25 +41,20 @@ artifacts.collect = ["spans:default"]
 
 # Validate HTTP server span
 [[expect.span]]
-attrs.all = {
-  "http.method" = "GET",
-
-}
-
 name = "http.server.request"
 kind = "server"
-"http.route" = "/api/v1/users"
+
+[expect.span.attrs]
+all = { "http.method" = "GET", "http.route" = "/api/v1/users" }
+
 # Validate database query span (must be child of HTTP span)
 [[expect.span]]
-attrs.all = {
-  "db.system" = "postgresql",
-
-}
-
 name = "db.query"
 kind = "client"
 parent = "http.server.request"
-"db.operation" = "SELECT"
+
+[expect.span.attrs]
+all = { "db.system" = "postgresql", "db.operation" = "SELECT" }
 # Validate trace graph structure
 [expect.graph]
 must_include = [["http.server.request", "db.query"]]

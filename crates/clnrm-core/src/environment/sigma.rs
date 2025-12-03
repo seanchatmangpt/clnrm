@@ -44,7 +44,11 @@ pub struct SemVer {
 
 impl SemVer {
     pub fn new(major: u32, minor: u32, patch: u32) -> Self {
-        Self { major, minor, patch }
+        Self {
+            major,
+            minor,
+            patch,
+        }
     }
 }
 
@@ -58,7 +62,7 @@ impl From<&str> for SemVer {
     fn from(s: &str) -> Self {
         let parts: Vec<&str> = s.split('.').collect();
         Self {
-            major: parts.get(0).and_then(|p| p.parse().ok()).unwrap_or(0),
+            major: parts.first().and_then(|p| p.parse().ok()).unwrap_or(0),
             minor: parts.get(1).and_then(|p| p.parse().ok()).unwrap_or(0),
             patch: parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0),
         }
@@ -297,8 +301,8 @@ impl SigmaBase {
     /// Note: The hash field itself is excluded from the computation
     /// to avoid circular dependency
     pub fn compute_hash(&self) -> ContentHash {
-        use sha2::{Digest, Sha256};
         use serde::Serialize;
+        use sha2::{Digest, Sha256};
 
         // Create a hashable version without the hash field
         #[derive(Serialize)]
@@ -326,8 +330,8 @@ impl SigmaBase {
             created_at: &self.created_at,
         };
 
-        let serialized = serde_json::to_string(&hashable)
-            .expect("Failed to serialize SigmaBase for hashing");
+        let serialized =
+            serde_json::to_string(&hashable).expect("Failed to serialize SigmaBase for hashing");
 
         let mut hasher = Sha256::new();
         hasher.update(serialized.as_bytes());
@@ -342,7 +346,7 @@ impl SigmaBase {
         for (service_id, service) in &self.services {
             for dep in &service.depends_on {
                 if !self.services.contains_key(dep) {
-                    return Err(crate::error::CleanroomError::internal_error(&format!(
+                    return Err(crate::error::CleanroomError::internal_error(format!(
                         "Service '{}' depends on non-existent service '{}'",
                         service_id, dep
                     )));
@@ -353,7 +357,7 @@ impl SigmaBase {
         // Check that all volume mounts reference existing volumes
         for (service_id, mounts) in &self.volume_mounts {
             if !self.services.contains_key(service_id) {
-                return Err(crate::error::CleanroomError::internal_error(&format!(
+                return Err(crate::error::CleanroomError::internal_error(format!(
                     "Volume mounts defined for non-existent service '{}'",
                     service_id
                 )));
@@ -361,7 +365,7 @@ impl SigmaBase {
 
             for mount in mounts {
                 if !self.volumes.contains_key(&mount.volume_id) {
-                    return Err(crate::error::CleanroomError::internal_error(&format!(
+                    return Err(crate::error::CleanroomError::internal_error(format!(
                         "Service '{}' mounts non-existent volume '{}'",
                         service_id, mount.volume_id
                     )));

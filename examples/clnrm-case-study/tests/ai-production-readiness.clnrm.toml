@@ -9,16 +9,19 @@ timeout = "900s"
 # Production AI Services
 [services.production_ai]
 type = "ollama"
+image = "ollama/ollama:latest"
 model = "qwen3-coder:30b"
 endpoint = "http://localhost:11434"
 
 [services.monitoring_service]
 type = "ai_monitoring"
+image = "prom/prometheus:latest"
 endpoint = "http://localhost:3000/api/monitoring"
 
 # Production Readiness Tests
 [[steps]]
-command = ["node", "-e", "
+name = "validate_ai_service_availability"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -38,11 +41,12 @@ async function test() {
   }
 }
 test();
-"]name = "validate_ai_service_availability"
+"""]
 expected_output_regex = "Availability test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_ai_scalability"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -89,11 +93,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_ai_scalability"
+"""]
 expected_output_regex = "Scalability test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "validate_ai_safety_measures"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -163,17 +168,18 @@ async function test() {
   }
 }
 test();
-"]name = "validate_ai_safety_measures"
+"""]
 expected_output_regex = "Safety validation passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_ai_monitoring_integration"
+command = ["node", "-e", """
 const { openai } = require('@ai-sdk/openai');
 const { generateText } = require('ai');
 
 async function test() {
   console.log('Testing AI monitoring integration...');
-  
+
   const metrics = {
     requests: 0,
     errors: 0,
@@ -181,7 +187,7 @@ async function test() {
     averageLatency: 0,
     startTime: Date.now()
   };
-  
+
   // Simulate monitored requests
   for (let i = 1; i <= 3; i++) {
     const requestStart = Date.now();
@@ -191,14 +197,14 @@ async function test() {
         prompt: 'Monitoring test ' + i,
         maxTokens: 10,
       });
-      
+
       const requestEnd = Date.now();
       const latency = requestEnd - requestStart;
-      
+
       metrics.requests++;
       metrics.totalTokens += result.usage?.totalTokens || 0;
       metrics.averageLatency = (metrics.averageLatency * (metrics.requests - 1) + latency) / metrics.requests;
-      
+
       console.log('Request', i, 'monitored successfully');
       console.log('- Latency:', latency + 'ms');
       console.log('- Tokens:', result.usage?.totalTokens || 0);
@@ -207,10 +213,10 @@ async function test() {
       console.log('Request', i, 'failed:', error.message);
     }
   }
-  
+
   const endTime = Date.now();
   const totalTime = endTime - metrics.startTime;
-  
+
   console.log('Monitoring integration results:');
   console.log('- Total requests:', metrics.requests);
   console.log('- Successful requests:', metrics.requests - metrics.errors);
@@ -218,7 +224,7 @@ async function test() {
   console.log('- Total tokens used:', metrics.totalTokens);
   console.log('- Average latency:', Math.round(metrics.averageLatency) + 'ms');
   console.log('- Total test time:', totalTime + 'ms');
-  
+
   if (metrics.requests > 0 && metrics.errors < metrics.requests) {
     console.log('Monitoring integration test passed: Metrics collected successfully');
   } else {
@@ -227,17 +233,18 @@ async function test() {
   }
 }
 test();
-"]name = "test_ai_monitoring_integration"
+"""]
 expected_output_regex = "Monitoring integration test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "validate_ai_cost_optimization"
+command = ["node", "-e", """
 const { openai } = require('@ai-sdk/openai');
 const { generateText } = require('ai');
 
 async function test() {
   console.log('Validating AI cost optimization...');
-  
+
   const costTests = [
     {
       name: 'Short response optimization',
@@ -258,10 +265,10 @@ async function test() {
       expectedCost: 'high'
     }
   ];
-  
+
   let totalTokens = 0;
   let totalCost = 0;
-  
+
   for (const test of costTests) {
     try {
       const result = await generateText({
@@ -269,13 +276,13 @@ async function test() {
         prompt: test.prompt,
         maxTokens: test.maxTokens,
       });
-      
+
       const tokens = result.usage?.totalTokens || 0;
       const estimatedCost = tokens * 0.000002; // Rough estimate
-      
+
       totalTokens += tokens;
       totalCost += estimatedCost;
-      
+
       console.log(test.name + ':');
       console.log('- Tokens used:', tokens);
       console.log('- Estimated cost: $' + estimatedCost.toFixed(6));
@@ -284,12 +291,12 @@ async function test() {
       console.log(test.name + ': ERROR -', error.message);
     }
   }
-  
+
   console.log('Cost optimization summary:');
   console.log('- Total tokens used:', totalTokens);
   console.log('- Total estimated cost: $' + totalCost.toFixed(6));
   console.log('- Average cost per request: $' + (totalCost / costTests.length).toFixed(6));
-  
+
   if (totalCost < 0.01) { // Less than 1 cent
     console.log('Cost optimization test passed: AI usage is cost-effective');
   } else {
@@ -297,7 +304,7 @@ async function test() {
   }
 }
 test();
-"]name = "validate_ai_cost_optimization"
+"""]
 expected_output_regex = "Cost optimization test passed"
 
 # Production Readiness Assertions

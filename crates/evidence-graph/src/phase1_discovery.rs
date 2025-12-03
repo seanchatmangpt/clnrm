@@ -143,7 +143,7 @@ impl FileDiscovery {
                 kind,
                 language,
                 line_count,
-                is_test: is_test_file(&entry.path()),
+                is_test: is_test_file(entry.path()),
             });
         }
 
@@ -258,7 +258,11 @@ pub fn build_catalog(root_path: &str) -> anyhow::Result<RepoCatalog> {
     // Calculate statistics
     let total_code_files = files.iter().filter(|f| f.kind == "code").count();
     let total_doc_files = files.iter().filter(|f| f.kind == "doc").count();
-    let total_lines_of_code: usize = files.iter().filter(|f| f.kind == "code").map(|f| f.line_count).sum();
+    let total_lines_of_code: usize = files
+        .iter()
+        .filter(|f| f.kind == "code")
+        .map(|f| f.line_count)
+        .sum();
 
     let stats = CatalogStats {
         total_repos: discovery.repositories.len(),

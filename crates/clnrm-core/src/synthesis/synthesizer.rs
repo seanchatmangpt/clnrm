@@ -6,16 +6,13 @@
 use super::coverage::{CapabilityGap, CoverageAnalyzer, HermeticityGap, OntologyGap};
 use crate::backend::capabilities::BackendCapabilityRegistry;
 use crate::capabilities::{
-    CapabilityId, CapabilityScenario, CapabilityScenarioBuilder, ConstraintSet, EffectBudget,
-    EffectSet, EnvironmentDescriptor, LatencyBand, ResourceLimits, ScenarioId,
+    CapabilityScenario, CapabilityScenarioBuilder, ConstraintSet, LatencyBand, ScenarioId,
 };
-use crate::environment::sigma::{ContentHash, ServiceId};
+use crate::environment::sigma::ServiceId;
 use crate::environment::store::OntologyStore;
-use crate::error::{CleanroomError, Result};
+use crate::error::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Synthesized scenario variant
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,7 +61,7 @@ pub struct ScenarioSynthesizer {
     capabilities: Arc<BackendCapabilityRegistry>,
 
     /// Ontology store
-    ontologies: Arc<OntologyStore>,
+    _ontologies: Arc<OntologyStore>,
 
     /// Synthesis configuration
     config: SynthesisConfig,
@@ -107,7 +104,7 @@ impl ScenarioSynthesizer {
         Self {
             analyzer,
             capabilities,
-            ontologies,
+            _ontologies: ontologies,
             config: SynthesisConfig::default(),
         }
     }
@@ -122,7 +119,7 @@ impl ScenarioSynthesizer {
         Self {
             analyzer,
             capabilities,
-            ontologies,
+            _ontologies: ontologies,
             config,
         }
     }
@@ -235,29 +232,25 @@ impl ScenarioSynthesizer {
             return Ok(vec![]);
         }
 
-        let mut scenarios = Vec::new();
-
-        // Network partition variant
-        scenarios.push(self.generate_adversarial_variant(
-            baseline,
-            AdversarialCondition::NetworkDelay { delay_ms: 100 },
-        )?);
-
-        // Resource exhaustion variant
-        scenarios.push(self.generate_adversarial_variant(
-            baseline,
-            AdversarialCondition::ResourceExhaustion {
-                resource: "memory".to_string(),
-            },
-        )?);
-
-        // Partial failure variant
-        scenarios.push(self.generate_adversarial_variant(
-            baseline,
-            AdversarialCondition::PartialFailure {
-                failure_rate: 0.1,
-            },
-        )?);
+        let scenarios = vec![
+            // Network partition variant
+            self.generate_adversarial_variant(
+                baseline,
+                AdversarialCondition::NetworkDelay { delay_ms: 100 },
+            )?,
+            // Resource exhaustion variant
+            self.generate_adversarial_variant(
+                baseline,
+                AdversarialCondition::ResourceExhaustion {
+                    resource: "memory".to_string(),
+                },
+            )?,
+            // Partial failure variant
+            self.generate_adversarial_variant(
+                baseline,
+                AdversarialCondition::PartialFailure { failure_rate: 0.1 },
+            )?,
+        ];
 
         Ok(scenarios)
     }
@@ -273,11 +266,12 @@ impl ScenarioSynthesizer {
                 .join("_")
         ));
 
-        let mut builder = CapabilityScenarioBuilder::new(scenario_id.0.as_str(), "Synthesized Scenario")
-            .description(&format!(
-                "Auto-generated scenario to test capability combination: {:?}",
-                gap.capability_combination
-            ));
+        let mut builder =
+            CapabilityScenarioBuilder::new(scenario_id.0.as_str(), "Synthesized Scenario")
+                .description(format!(
+                    "Auto-generated scenario to test capability combination: {:?}",
+                    gap.capability_combination
+                ));
 
         // Add all capabilities from the gap
         for capability in &gap.capability_combination {
@@ -285,7 +279,9 @@ impl ScenarioSynthesizer {
         }
 
         // Use default constraints
-        Ok(builder.constraints(self.config.default_constraints.clone()).build())
+        Ok(builder
+            .constraints(self.config.default_constraints.clone())
+            .build())
     }
 
     /// Generate scenario for ontology gap
@@ -295,14 +291,16 @@ impl ScenarioSynthesizer {
             gap.untested_services.join("_")
         ));
 
-        Ok(CapabilityScenarioBuilder::new(scenario_id.0.as_str(), "Ontology Test Scenario")
-            .description(&format!(
-                "Auto-generated scenario to test untested services: {:?}",
-                gap.untested_services
-            ))
-            .capability("ontology_execution")
-            .constraints(self.config.default_constraints.clone())
-            .build())
+        Ok(
+            CapabilityScenarioBuilder::new(scenario_id.0.as_str(), "Ontology Test Scenario")
+                .description(format!(
+                    "Auto-generated scenario to test untested services: {:?}",
+                    gap.untested_services
+                ))
+                .capability("ontology_execution")
+                .constraints(self.config.default_constraints.clone())
+                .build(),
+        )
     }
 
     /// Generate scenario for hermeticity gap
@@ -316,11 +314,13 @@ impl ScenarioSynthesizer {
         let mut constraints = self.config.default_constraints.clone();
         constraints.hermetic = true;
 
-        Ok(CapabilityScenarioBuilder::new(scenario_id.0.as_str(), "Hermeticity Test Scenario")
-            .description(&gap.reason)
-            .capability("hermetic_execution")
-            .constraints(constraints)
-            .build())
+        Ok(
+            CapabilityScenarioBuilder::new(scenario_id.0.as_str(), "Hermeticity Test Scenario")
+                .description(&gap.reason)
+                .capability("hermetic_execution")
+                .constraints(constraints)
+                .build(),
+        )
     }
 
     /// Generate adversarial variant of baseline scenario
@@ -347,11 +347,9 @@ impl ScenarioSynthesizer {
             }
         };
 
-        let mut builder = CapabilityScenarioBuilder::new(variant_name.as_str(), "Adversarial Variant")
-            .description(&format!(
-                "Chaos testing variant: {:?}",
-                condition
-            ));
+        let mut builder =
+            CapabilityScenarioBuilder::new(variant_name.as_str(), "Adversarial Variant")
+                .description(format!("Chaos testing variant: {:?}", condition));
 
         // Copy capabilities from baseline
         for cap in &baseline.capabilities {
@@ -387,8 +385,7 @@ mod tests {
         ));
 
         // Act
-        let synthesizer =
-            ScenarioSynthesizer::new(analyzer, capabilities, ontologies);
+        let synthesizer = ScenarioSynthesizer::new(analyzer, capabilities, ontologies);
 
         // Assert
         assert_eq!(synthesizer.config.max_scenarios_per_gap, 3);
@@ -405,8 +402,7 @@ mod tests {
             ontologies.clone(),
             receipts,
         ));
-        let synthesizer =
-            ScenarioSynthesizer::new(analyzer, capabilities.clone(), ontologies);
+        let synthesizer = ScenarioSynthesizer::new(analyzer, capabilities.clone(), ontologies);
 
         // Act
         let result = synthesizer.synthesize_all_gaps();
@@ -427,8 +423,7 @@ mod tests {
             ontologies.clone(),
             receipts,
         ));
-        let synthesizer =
-            ScenarioSynthesizer::new(analyzer, capabilities.clone(), ontologies);
+        let synthesizer = ScenarioSynthesizer::new(analyzer, capabilities.clone(), ontologies);
 
         let baseline = CapabilityScenarioBuilder::new("baseline", "Baseline Scenario")
             .capability("test_capability")

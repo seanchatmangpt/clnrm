@@ -147,7 +147,7 @@ impl EffectSet {
                 .difference(&capability_effects.effects)
                 .collect();
 
-            return Err(CleanroomError::internal_error(&format!(
+            return Err(CleanroomError::internal_error(format!(
                 "Scenario uses unauthorized effects: {:?}",
                 unauthorized
             )));
@@ -186,7 +186,7 @@ pub struct EffectBudget {
 impl Default for EffectBudget {
     fn default() -> Self {
         Self {
-            max_network_bytes: Some(1_000_000_000), // 1GB
+            max_network_bytes: Some(1_000_000_000),  // 1GB
             max_storage_bytes: Some(10_000_000_000), // 10GB
             max_execution_seconds: Some(300),        // 5 minutes
             max_process_spawns: Some(100),
@@ -210,7 +210,7 @@ impl EffectBudget {
     /// Create restrictive budget (for untrusted scenarios)
     pub fn restrictive() -> Self {
         Self {
-            max_network_bytes: Some(10_000_000), // 10MB
+            max_network_bytes: Some(10_000_000),  // 10MB
             max_storage_bytes: Some(100_000_000), // 100MB
             max_execution_seconds: Some(60),      // 1 minute
             max_process_spawns: Some(10),
@@ -222,7 +222,7 @@ impl EffectBudget {
     pub fn validate_usage(&self, usage: &EffectUsage) -> Result<()> {
         if let (Some(max), actual) = (self.max_network_bytes, usage.network_bytes) {
             if actual > max {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Network usage {} exceeds budget {}",
                     actual, max
                 )));
@@ -231,7 +231,7 @@ impl EffectBudget {
 
         if let (Some(max), actual) = (self.max_storage_bytes, usage.storage_bytes) {
             if actual > max {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Storage usage {} exceeds budget {}",
                     actual, max
                 )));
@@ -240,7 +240,7 @@ impl EffectBudget {
 
         if let (Some(max), actual) = (self.max_execution_seconds, usage.execution_seconds) {
             if actual > max {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Execution time {} exceeds budget {}",
                     actual, max
                 )));
@@ -249,7 +249,7 @@ impl EffectBudget {
 
         if let (Some(max), actual) = (self.max_process_spawns, usage.process_spawns) {
             if actual > max {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Process spawns {} exceeds budget {}",
                     actual, max
                 )));
@@ -258,7 +258,7 @@ impl EffectBudget {
 
         if let (Some(max), actual) = (self.max_memory_bytes, usage.memory_bytes) {
             if actual > max {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Memory usage {} exceeds budget {}",
                     actual, max
                 )));

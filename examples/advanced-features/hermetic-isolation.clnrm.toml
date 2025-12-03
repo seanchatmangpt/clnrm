@@ -10,7 +10,7 @@ name = "hermetic_isolation_demo"
 description = "Demonstrates hermetic isolation as claimed in the README"
 
 [services]
-isolated_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+isolated_container = { type = "container", plugin = "generic_container", image = "alpine:latest" }
 
 [[steps]]
 name = "test_environment_isolation"

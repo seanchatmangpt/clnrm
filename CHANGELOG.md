@@ -5,6 +5,42 @@ All notable changes to the clnrm project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-12-03
+
+### Breaking Changes
+
+- **Config format renamed**: `[services.X]` → `[containers.X]`
+- **Step format changed**: `service = "X"` → `container = "X"`
+- **Command format changed**: `command = "..."` → `exec = [...]`
+- **Metadata section**: `[test.metadata]` → `[test]`
+- Removed deprecated `type = "generic_container"` field
+- Removed deprecated `plugin = "..."` field
+
+### Added
+- **Comprehensive doctests** for config and error modules (20+ examples)
+- **New documentation** for v2.0.0:
+  - `docs/V2_0_0_ARCHITECTURE.md` - C4 diagrams and architecture overview
+  - `docs/V2_0_0_MIGRATION_GUIDE.md` - v1.x to v2.0.0 migration
+  - `docs/V2_0_0_CONFIG_REFERENCE.md` - Complete TOML reference
+  - `docs/DOCTEST_GUIDE.md` - Doctest patterns for clnrm
+- **Documentation archive**: Historical docs moved to `docs/archive/`
+
+### Fixed
+- **CRITICAL: Environment variables now work in container steps**
+  - Prior versions created NEW containers per step, losing env vars
+  - v2.0.0 uses `docker exec` semantics - commands run in RUNNING containers
+  - Env vars persist across all steps in the same container
+
+### Changed
+- README.md updated with v2.0.0 canonical format
+- SECURITY.md TODO fixed with proper contact information
+
+### Migration
+
+See `docs/V2_0_0_MIGRATION_GUIDE.md` for step-by-step migration instructions.
+
+---
+
 ## [1.7.0] - 2025-12-03
 
 ### Added

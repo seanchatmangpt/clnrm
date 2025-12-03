@@ -83,7 +83,7 @@ pub struct MultiPoolStats {
     /// Total acquisitions requiring container creation
     total_misses: Arc<AtomicU64>,
     /// Timestamp when multi-pool was created
-    created_at: Instant,
+    _created_at: Instant,
 }
 
 impl MultiPoolStats {
@@ -95,7 +95,7 @@ impl MultiPoolStats {
             total_destroyed: Arc::new(AtomicU64::new(0)),
             total_hits: Arc::new(AtomicU64::new(0)),
             total_misses: Arc::new(AtomicU64::new(0)),
-            created_at: Instant::now(),
+            _created_at: Instant::now(),
         }
     }
 
@@ -127,9 +127,10 @@ impl MultiPoolStats {
 
     /// Get total containers across all pools
     pub fn total_containers(&self) -> u64 {
-        self.per_image.iter().map(|entry| {
-            entry.value().active + entry.value().idle
-        }).sum()
+        self.per_image
+            .iter()
+            .map(|entry| entry.value().active + entry.value().idle)
+            .sum()
     }
 
     /// Get total containers created
@@ -149,20 +150,12 @@ impl MultiPoolStats {
 
     /// Update statistics from pool
     fn update_from_pool(&self, image_id: &str, stats: PoolStats) {
-        let hits_delta = stats.hits
-            .saturating_sub(
-                self.per_image
-                    .get(image_id)
-                    .map(|s| s.hits)
-                    .unwrap_or(0),
-            );
-        let misses_delta = stats.misses
-            .saturating_sub(
-                self.per_image
-                    .get(image_id)
-                    .map(|s| s.misses)
-                    .unwrap_or(0),
-            );
+        let hits_delta = stats
+            .hits
+            .saturating_sub(self.per_image.get(image_id).map(|s| s.hits).unwrap_or(0));
+        let misses_delta = stats
+            .misses
+            .saturating_sub(self.per_image.get(image_id).map(|s| s.misses).unwrap_or(0));
 
         self.total_hits.fetch_add(hits_delta, Ordering::Relaxed);
         self.total_misses.fetch_add(misses_delta, Ordering::Relaxed);
@@ -176,6 +169,7 @@ impl MultiPoolStats {
 /// This structure maintains separate container pools for each image,
 /// enabling efficient concurrent execution of multi-service test suites.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct MultiImagePoolManager {
     /// Map of image_id → ContainerPool
     pools: Arc<DashMap<String, Arc<ContainerPool>>>,
@@ -191,8 +185,10 @@ impl MultiImagePoolManager {
     /// Create a new multi-image pool manager
     #[instrument(name = "multi_pool.create", skip(config))]
     pub async fn new(config: PoolConfig) -> Result<Arc<Self>> {
-        info!("Creating multi-image pool manager with default config: max_size={}, min_idle={}",
-              config.max_size, config.min_idle);
+        info!(
+            "Creating multi-image pool manager with default config: max_size={}, min_idle={}",
+            config.max_size, config.min_idle
+        );
 
         let manager = Arc::new(Self {
             pools: Arc::new(DashMap::new()),
@@ -226,11 +222,10 @@ impl MultiImagePoolManager {
                 info!("Pool created for image: {}", image_id);
                 Ok(pool)
             }
-            Err(e) => {
-                Err(CleanroomError::internal_error(
-                    format!("Failed to create pool for image {}: {}", image_id, e)
-                ))
-            }
+            Err(e) => Err(CleanroomError::internal_error(format!(
+                "Failed to create pool for image {}: {}",
+                image_id, e
+            ))),
         }
     }
 
@@ -244,14 +239,17 @@ impl MultiImagePoolManager {
 
         match pool.acquire().await {
             Ok(container) => {
-                debug!("Acquired container for image: {} (container_id: {})", image_id, container.id());
+                debug!(
+                    "Acquired container for image: {} (container_id: {})",
+                    image_id,
+                    container.id()
+                );
                 Ok((pool, container))
             }
-            Err(e) => {
-                Err(CleanroomError::internal_error(
-                    format!("Failed to acquire container for image {}: {}", image_id, e)
-                ))
-            }
+            Err(e) => Err(CleanroomError::internal_error(format!(
+                "Failed to acquire container for image {}: {}",
+                image_id, e
+            ))),
         }
     }
 
@@ -266,16 +264,16 @@ impl MultiImagePoolManager {
                     debug!("Released container for image: {}", image_id);
                     Ok(())
                 }
-                Err(e) => {
-                    Err(CleanroomError::internal_error(
-                        format!("Failed to release container for image {}: {}", image_id, e)
-                    ))
-                }
+                Err(e) => Err(CleanroomError::internal_error(format!(
+                    "Failed to release container for image {}: {}",
+                    image_id, e
+                ))),
             }
         } else {
-            Err(CleanroomError::internal_error(
-                format!("No pool found for image: {}", image_id)
-            ))
+            Err(CleanroomError::internal_error(format!(
+                "No pool found for image: {}",
+                image_id
+            )))
         }
     }
 
@@ -291,7 +289,12 @@ impl MultiImagePoolManager {
             match pool.acquire().await {
                 Ok(container) => {
                     pool.release(container).await.ok();
-                    debug!("Pre-loaded container {}/{} for image: {}", i + 1, count, image_id);
+                    debug!(
+                        "Pre-loaded container {}/{} for image: {}",
+                        i + 1,
+                        count,
+                        image_id
+                    );
                 }
                 Err(e) => {
                     warn!("Failed to pre-load container {}/{}: {}", i + 1, count, e);
@@ -322,9 +325,7 @@ impl MultiImagePoolManager {
 
     /// Get statistics for a specific image
     pub async fn image_stats(&self, image_id: &str) -> Option<PoolStats> {
-        self.pools
-            .get(image_id)
-            .map(|pool_ref| pool_ref.stats())
+        self.pools.get(image_id).map(|pool_ref| pool_ref.stats())
     }
 
     /// Shutdown all pools and clean up resources
@@ -353,9 +354,10 @@ impl MultiImagePoolManager {
         self.pools.clear();
 
         if !errors.is_empty() {
-            return Err(CleanroomError::internal_error(
-                format!("Errors during shutdown: {} pools failed", errors.len())
-            ));
+            return Err(CleanroomError::internal_error(format!(
+                "Errors during shutdown: {} pools failed",
+                errors.len()
+            )));
         }
 
         info!("Multi-image pool manager shut down successfully");
