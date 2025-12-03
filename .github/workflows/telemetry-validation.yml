@@ -17,6 +17,8 @@ jobs:
     name: Validate OpenTelemetry Schemas
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout Code
@@ -24,23 +26,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust with cache
+        uses: ./.github/actions/setup-rust-cache
         with:
           components: clippy, rustfmt
-
-      - name: Cache Cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          cache-key-prefix: telemetry-validation
 
       - name: Install Dependencies
         timeout-minutes: 10
@@ -78,12 +68,10 @@ jobs:
       - name: Install Weaver CLI
         id: weaver
         timeout-minutes: 15
-        run: |
-          echo "📦 Installing Weaver ${{ env.WEAVER_VERSION }}..."
-          cargo install weaver-cli --version ${{ env.WEAVER_VERSION }} --locked 2>&1 | tail -10
-          INSTALLED=$(weaver --version 2>/dev/null | awk '{print $NF}')
-          echo "✅ Weaver $INSTALLED installed"
-          echo "version=${INSTALLED}" >> $GITHUB_OUTPUT
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          tool-name: weaver-cli
+          version: '0.16.1'
 
       - name: Create Output Directory
         run: |

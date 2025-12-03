@@ -15,6 +15,8 @@ jobs:
     name: Validate Telemetry Schemas
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -23,14 +25,10 @@ jobs:
           fetch-depth: 0  # Needed for breaking change detection
 
       - name: Install Weaver
-        run: |
-          # FMEA fix: Explicit error handling for tool installation
-          echo "📦 Installing Weaver CLI..."
-          if ! cargo install weaver-cli --locked; then
-            echo "❌ Failed to install Weaver CLI"
-            exit 1
-          fi
-          weaver --version
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          tool-name: weaver-cli
+          version: '0.16.1'
 
       - name: Run Schema Syntax Validation
         continue-on-error: true
@@ -195,6 +193,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
