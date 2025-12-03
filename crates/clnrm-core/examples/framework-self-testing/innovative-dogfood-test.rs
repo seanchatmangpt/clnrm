@@ -212,35 +212,23 @@ impl clnrm_core::ServicePlugin for FrameworkSelfTestPlugin {
         &self.name
     }
 
-    fn start(&self) -> Result<clnrm_core::ServiceHandle> {
-        // Use tokio::task::block_in_place to run async code in sync context
-        tokio::task::block_in_place(|| {
-            let rt = tokio::runtime::Handle::current();
-            rt.block_on(async {
-                // Simulate startup time without blocking the runtime
-                tokio::task::yield_now().await;
-                Ok(clnrm_core::ServiceHandle {
-                    id: format!("framework_test_{}", uuid::Uuid::new_v4()),
-                    service_name: "framework_self_test".to_string(),
-                    metadata: std::collections::HashMap::from([
-                        ("test_type".to_string(), "framework_self_test".to_string()),
-                        ("status".to_string(), "running".to_string()),
-                        ("innovation".to_string(), "eating_own_dog_food".to_string()),
-                    ]),
-                })
-            })
+    async fn start(&self) -> Result<clnrm_core::ServiceHandle> {
+        // Simulate startup time without blocking the runtime
+        tokio::task::yield_now().await;
+        Ok(clnrm_core::ServiceHandle {
+            id: format!("framework_test_{}", uuid::Uuid::new_v4()),
+            service_name: "framework_self_test".to_string(),
+            metadata: std::collections::HashMap::from([
+                ("test_type".to_string(), "framework_self_test".to_string()),
+                ("status".to_string(), "running".to_string()),
+                ("innovation".to_string(), "eating_own_dog_food".to_string()),
+            ]),
         })
     }
 
-    fn stop(&self, _handle: clnrm_core::ServiceHandle) -> Result<()> {
-        // Use tokio::task::block_in_place to run async code in sync context
-        tokio::task::block_in_place(|| {
-            let rt = tokio::runtime::Handle::current();
-            rt.block_on(async {
-                tokio::task::yield_now().await;
-                Ok(())
-            })
-        })
+    async fn stop(&self, _handle: clnrm_core::ServiceHandle) -> Result<()> {
+        tokio::task::yield_now().await;
+        Ok(())
     }
 
     fn health_check(&self, _handle: &clnrm_core::ServiceHandle) -> clnrm_core::HealthStatus {
