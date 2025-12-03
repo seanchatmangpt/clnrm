@@ -5,6 +5,44 @@ All notable changes to the clnrm project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2025-12-03
+
+### Added
+- **Canonical Config Format** with proper `docker exec` semantics
+  - New `[test]`, `[containers.X]`, `[[steps]]` config structure
+  - Environment variables now work correctly (critical fix)
+  - Commands execute via `docker exec` into running containers (not new containers)
+  - Parse-time validation for all container and step references
+- **`run_test_with_fallback()` function** for 80/20 backward compatibility
+  - Tries new Config format first (docker exec semantics)
+  - Falls back to legacy TestConfig for existing tests
+  - Seamless migration path for existing test files
+- **Sample test file** `examples/advanced-features/env-vars-test.clnrm.toml`
+  - Validates environment variables work in docker exec
+  - Demonstrates new canonical config format
+
+### Fixed
+- **CRITICAL: Environment variables now work in container steps**
+  - Prior to v1.7.0, `execute_in_service()` created NEW containers, so env vars were lost
+  - Now uses `docker exec` semantics - commands run in the SAME container where env vars are set
+  - Validated with Docker: 4/4 steps passed in env-vars-test
+- **Container keepalive** - containers now stay running for step execution
+  - Added `command = ["sh", "-c", "while true; do sleep 1; done"]` pattern
+
+### Changed
+- Test execution path now prefers new Config format over legacy TestConfig
+- Error messages improved for config parsing failures
+- Clearer separation between new and legacy config formats
+
+### Documentation
+- Added `examples/advanced-features/env-vars-test.clnrm.toml` as reference
+- Plan file documents v2 architecture design decisions
+
+### Testing
+- ✅ Docker validation: 4/4 steps passed in env-vars test
+- ✅ Environment variables verified: MY_VAR, ANOTHER_VAR, DB_HOST
+- ✅ Backward compatibility with legacy TestConfig format
+
 ## [1.6.0] - 2025-11-15
 
 ### Added

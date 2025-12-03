@@ -41,12 +41,57 @@ use std::time::Duration;
 use tracing::{debug, error, info};
 
 use super::single::run_single_test;
+use super::test_runner;
+
+/// Try to run test using new Config format (docker exec semantics).
+/// Falls back to legacy TestConfig format if new format fails to parse.
+///
+/// This is the 80/20 bridge: new configs use docker exec (correct behavior),
+/// legacy configs continue working via CleanroomEnvironment (for backward compat).
+async fn run_test_with_fallback(path: &PathBuf, _config: &CliConfig) -> Result<Option<String>> {
+    // Try new config format first (has [containers] section)
+    match test_runner::run_test(path.as_path()).await {
+        Ok(result) => {
+            // Convert ExecutionResult to Option<String> (first container ID for telemetry)
+            let container_id = result.containers_used.first().cloned();
+            if result.passed {
+                Ok(container_id)
+            } else {
+                Err(CleanroomError::validation_error(result.summary))
+            }
+        }
+        Err(e) => {
+            // Check if this is a parse error (new format didn't work)
+            let error_msg = e.to_string();
+            if error_msg.contains("missing field `test`")
+                || error_msg.contains("missing field `containers`")
+                || error_msg.contains("At least one step is required")
+            {
+                // Fall back to legacy TestConfig format
+                debug!(
+                    "New config format failed, falling back to legacy format: {}",
+                    path.display()
+                );
+                run_single_test(path, _config).await
+            } else {
+                // Real error from new format - propagate it
+                Err(e)
+            }
+        }
+    }
+}
 
 /// Run tests sequentially and return results
 pub async fn run_tests_sequential_with_results(
     paths: &[PathBuf],
     config: &CliConfig,
 ) -> Result<Vec<CliTestResult>> {
+    // MANDATORY PRE-FLIGHT CHECK: Docker availability
+    // FMEA FM-001 (RPN 480): Docker daemon must be available before test execution
+    // Exit code 3: System error (Docker unavailable)
+    crate::backend::TestcontainerBackend::verify_docker_available()?;
+    tracing::info!("✅ Docker daemon available and responding");
+
     let mut results = Vec::new();
 
     for path in paths {
@@ -69,7 +114,7 @@ pub async fn run_tests_sequential_with_results(
         let telemetry_builder = TestExecutionBuilder::new(test_name.clone(), test_suite);
 
         let start_time = std::time::Instant::now();
-        match run_single_test(path, config).await {
+        match run_test_with_fallback(path, config).await {
             Ok(container_id_opt) => {
                 let duration = start_time.elapsed().as_millis() as u64;
                 info!("Test passed: {}", path.display());
@@ -195,6 +240,12 @@ pub async fn run_tests_parallel_with_results(
     use tokio::sync::Semaphore;
     use tokio::task::JoinSet;
 
+    // MANDATORY PRE-FLIGHT CHECK: Docker availability
+    // FMEA FM-001 (RPN 480): Docker daemon must be available before test execution
+    // Exit code 3: System error (Docker unavailable)
+    crate::backend::TestcontainerBackend::verify_docker_available()?;
+    tracing::info!("✅ Docker daemon available and responding");
+
     // Create semaphore to limit concurrent test executions
     let semaphore = Arc::new(Semaphore::new(config.jobs));
     let mut join_set = JoinSet::new();
@@ -268,8 +319,8 @@ pub async fn run_tests_parallel_with_results(
             let telemetry_builder = TestExecutionBuilder::new(test_name.clone(), test_suite);
             let start_time = std::time::Instant::now();
 
-            // Note: run_single_test will be updated in single.rs to use pool
-            let result = run_single_test(&path_clone, &config_clone).await;
+            // Use the new test_runner with docker exec semantics, fallback to legacy
+            let result = run_test_with_fallback(&path_clone, &config_clone).await;
             let duration = start_time.elapsed().as_millis() as u64;
 
             // Permit is automatically released when dropped
