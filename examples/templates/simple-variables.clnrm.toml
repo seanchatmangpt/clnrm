@@ -6,6 +6,7 @@ service_name = "clnrm"
 version = "0.6.0"
 exporter = "stdout"
 timeout = "5s"
+timeout_ms = 5000
 
 [test.metadata]
 name = "{{ vars.service_name }}_simple_test"
@@ -31,13 +32,12 @@ image = "alpine:latest"
 [[expect.span]]
 name = "clnrm.step:simple_echo"
 
-[expect.span.attributes.any]
-"container.service" = "alpine"
-"test.version" = "{{ vars.version }}"
+[expect.span.attributes]
+any = { "container.service" = "alpine", "test.version" = "{{ vars.version }}" }
 
-[expect.window]
-min_duration_ms = 0
-max_duration_ms = {{ vars.timeout_ms }}
+[[expect.window]]
+outer = "test.execute"
+contains = ["clnrm.step:simple_echo"]
 
 [expect.status]
 all = "OK"

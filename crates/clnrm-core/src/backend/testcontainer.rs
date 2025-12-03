@@ -5,7 +5,7 @@
 
 use crate::backend::volume::{VolumeMount, VolumeValidator};
 use crate::backend::{Backend, Cmd, RunResult};
-use crate::error::{BackendError, Result};
+use crate::error::{BackendError, CleanroomError, Result};
 use crate::policy::Policy;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -318,9 +318,110 @@ impl TestcontainerBackend {
     }
 
     /// Check if testcontainers is available
+    ///
+    /// Performs actual Docker daemon availability check:
+    /// 1. Checks if `docker` command exists in PATH
+    /// 2. Verifies Docker daemon is running via `docker info`
+    ///
+    /// Returns error with exit code 3 and remediation steps if Docker unavailable.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Docker command not found in PATH
+    /// - Docker daemon not running
+    /// - Docker daemon not responding
     pub fn is_available() -> bool {
-        // For now, assume Docker is available if we can create a GenericImage
-        true
+        // Synchronous Docker availability check
+        // Use std::process::Command for sync execution (trait method must be sync)
+
+        // Check 1: Docker command exists in PATH
+        let docker_version = std::process::Command::new("docker")
+            .arg("--version")
+            .output();
+
+        if docker_version.is_err() {
+            return false;
+        }
+
+        // Check 2: Docker daemon running (docker info)
+        let docker_info = std::process::Command::new("docker").arg("info").output();
+
+        match docker_info {
+            Ok(output) => output.status.success(),
+            Err(_) => false,
+        }
+    }
+
+    /// Check Docker availability with detailed error reporting
+    ///
+    /// This is the MANDATORY pre-flight check that MUST be called before
+    /// any test execution. Following FMEA poka-yoke principle: fail fast
+    /// at entry point with clear, actionable error messages.
+    ///
+    /// # Exit Code Strategy
+    ///
+    /// - Exit code 3: System error (Docker unavailable)
+    /// - Provides clear remediation steps for users
+    ///
+    /// # Errors
+    ///
+    /// Returns error with exit code 3 if:
+    /// - Docker command not found in PATH
+    /// - Docker daemon not running
+    /// - Docker daemon not responding
+    pub fn verify_docker_available() -> Result<()> {
+        use std::process::Command;
+
+        // Check 1: Docker command exists in PATH
+        let docker_cmd = Command::new("docker").arg("--version").output();
+
+        if docker_cmd.is_err() {
+            return Err(CleanroomError::container_error(
+                "Docker command not found in PATH\n\n\
+                 Remediation:\n\
+                 Install Docker: https://docs.docker.com/get-docker/\n\
+                 After installation, ensure 'docker' is in your PATH\n\n\
+                 Exit code: 3",
+            ));
+        }
+
+        // Check 2: Docker daemon running (docker info)
+        let docker_info = Command::new("docker").arg("info").output();
+
+        match docker_info {
+            Ok(output) => {
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    return Err(CleanroomError::container_error(format!(
+                        "Docker daemon not responding: {}\n\n\
+                                 Remediation:\n\
+                                 Start Docker daemon:\n\
+                                 macOS:  open -a Docker\n\
+                                 Linux:  sudo systemctl start docker\n\
+                                 \n\
+                                 Verify with: docker info\n\n\
+                                 Exit code: 3",
+                        stderr
+                    )));
+                }
+
+                // Docker is available and responding
+                Ok(())
+            }
+            Err(e) => Err(CleanroomError::container_error(format!(
+                "Docker daemon not running: {}\n\n\
+                             Remediation:\n\
+                             Start Docker daemon:\n\
+                             macOS:  open -a Docker\n\
+                             Linux:  sudo systemctl start docker\n\
+                             Windows: Start Docker Desktop\n\
+                             \n\
+                             Verify with: docker info\n\n\
+                             Exit code: 3",
+                e
+            ))),
+        }
     }
 
     /// Validate OpenTelemetry instrumentation (if enabled)

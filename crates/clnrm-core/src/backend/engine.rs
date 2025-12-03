@@ -153,6 +153,7 @@ pub struct ResourceUsage {
 }
 
 /// Docker/Podman backend
+#[allow(dead_code)]
 pub struct ContainerEngine {
     /// Container pool (from existing implementation)
     // pool: Option<Arc<crate::backend::pool::ContainerPool>>,
@@ -201,7 +202,7 @@ impl ExecutionEngine for ContainerEngine {
         BackendType::Container
     }
 
-    async fn start(&self, env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
+    async fn start(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
         // TODO: Integrate with existing ContainerPool
         // For now, create a minimal handle
         Ok(EnvironmentHandle {
@@ -289,6 +290,7 @@ impl ExecutionEngine for ContainerEngine {
 }
 
 /// WASI/WebAssembly runtime backend
+#[allow(dead_code)]
 pub struct WasiEngine {
     /// WASI config
     config: WasiConfig,

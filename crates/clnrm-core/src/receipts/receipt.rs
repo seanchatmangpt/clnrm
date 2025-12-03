@@ -260,7 +260,7 @@ impl TestReceipt {
         // Verify receipt ID matches computed hash
         let computed_id = self.compute_id();
         if self.id != computed_id {
-            return Err(crate::error::CleanroomError::internal_error(&format!(
+            return Err(crate::error::CleanroomError::internal_error(format!(
                 "Receipt ID mismatch: declared {}, computed {}",
                 self.id, computed_id
             )));
@@ -275,7 +275,7 @@ impl TestReceipt {
 
         // Verify hermeticity witness consistency
         if self.constraints.hermetic && !self.hermeticity_witness.external_connections.is_empty() {
-            return Err(crate::error::CleanroomError::internal_error(&format!(
+            return Err(crate::error::CleanroomError::internal_error(format!(
                 "Hermeticity violation: {} external connections detected",
                 self.hermeticity_witness.external_connections.len()
             )));
@@ -290,14 +290,14 @@ impl TestReceipt {
         if let Some(sig) = &self.signature {
             // Decode public key and signature
             let public_key_bytes = hex::decode(&sig.public_key).map_err(|e| {
-                crate::error::CleanroomError::internal_error(&format!(
+                crate::error::CleanroomError::internal_error(format!(
                     "Failed to decode public key: {}",
                     e
                 ))
             })?;
 
             let signature_bytes = hex::decode(&sig.signature).map_err(|e| {
-                crate::error::CleanroomError::internal_error(&format!(
+                crate::error::CleanroomError::internal_error(format!(
                     "Failed to decode signature: {}",
                     e
                 ))
@@ -305,7 +305,7 @@ impl TestReceipt {
 
             // Verify algorithm
             if sig.algorithm != "ed25519" {
-                return Err(crate::error::CleanroomError::internal_error(&format!(
+                return Err(crate::error::CleanroomError::internal_error(format!(
                     "Unsupported signature algorithm: {}",
                     sig.algorithm
                 )));
@@ -317,28 +317,25 @@ impl TestReceipt {
             // Verify signature using Ed25519
             use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
-            let public_key = VerifyingKey::from_bytes(
-                &public_key_bytes
-                    .try_into()
-                    .map_err(|_| crate::error::CleanroomError::internal_error("Invalid public key length"))?,
-            )
-            .map_err(|e| {
-                crate::error::CleanroomError::internal_error(&format!(
-                    "Failed to parse public key: {}",
-                    e
-                ))
-            })?;
+            let public_key =
+                VerifyingKey::from_bytes(&public_key_bytes.try_into().map_err(|_| {
+                    crate::error::CleanroomError::internal_error("Invalid public key length")
+                })?)
+                .map_err(|e| {
+                    crate::error::CleanroomError::internal_error(format!(
+                        "Failed to parse public key: {}",
+                        e
+                    ))
+                })?;
 
-            let signature = Signature::from_bytes(
-                &signature_bytes
-                    .try_into()
-                    .map_err(|_| crate::error::CleanroomError::internal_error("Invalid signature length"))?,
-            );
+            let signature = Signature::from_bytes(&signature_bytes.try_into().map_err(|_| {
+                crate::error::CleanroomError::internal_error("Invalid signature length")
+            })?);
 
             public_key
                 .verify(message.as_str().as_bytes(), &signature)
                 .map_err(|e| {
-                    crate::error::CleanroomError::internal_error(&format!(
+                    crate::error::CleanroomError::internal_error(format!(
                         "Signature verification failed: {}",
                         e
                     ))

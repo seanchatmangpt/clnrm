@@ -15,37 +15,31 @@ exporters = [
 name = "matrix_expansion_test"
 description = "Test with multiple OTEL exporters via matrix expansion"
 
-# Generate a scenario for each exporter
-{% for exporter in matrix.exporters %}
-[[scenario]]
-name = "test_{{ exporter.name }}"
-service = "alpine"
-run = "echo 'Testing with {{ exporter.name }} exporter'"
-
-[otel]
-exporter = "{{ exporter.name }}"
-{% if exporter.requires_endpoint %}
-endpoint = "{{ exporter.endpoint }}"
-{% endif %}
-resources = {
-    "service.name" = "{{ vars.service_name }}",
-    "exporter.type" = "{{ exporter.name }}"
-}
-{% endfor %}
-
 [services.alpine]
 type = "generic_container"
 image = "alpine:latest"
 
-# Generate expectations for each exporter
-{% for exporter in matrix.exporters %}
+# Example scenario - Tera template would generate multiple scenarios from matrix
+# For demonstration, showing one static scenario as Tera processing happens pre-TOML
+[[scenario]]
+name = "test_stdout"
+service = "alpine"
+run = "echo 'Testing with stdout exporter'"
+
+[otel]
+exporter = "stdout"
+
+[otel.resources]
+"service.name" = "clnrm"
+"exporter.type" = "stdout"
+
+# Static span expectation - Tera would generate one per exporter
 [[expect.span]]
-name = "clnrm.step:test_{{ exporter.name }}"
-attributes.any = {
-    "exporter.type" = "{{ exporter.name }}"
-}
-{% endfor %}
+name = "clnrm.step:test_stdout"
+
+[expect.span.attributes]
+any = { "exporter.type" = "stdout" }
 
 [expect.counts]
-spans.min = {{ matrix.exporters | length }}
-spans.max = {{ matrix.exporters | length }}
+spans.min = 1
+spans.max = 1

@@ -65,12 +65,12 @@ impl ServiceFactory {
 
         match service_type.as_str() {
             "surrealdb" => Self::create_surrealdb_plugin(name, config),
-            "generic_container" => Self::create_generic_plugin(name, config),
+            "generic_container" | "testcontainers" => Self::create_generic_plugin(name, config),
             "ollama" => Self::create_ollama_plugin(name, config),
             "tgi" => Self::create_tgi_plugin(name, config),
             "vllm" => Self::create_vllm_plugin(name, config),
             _ => Err(CleanroomError::configuration_error(format!(
-                "Unknown service type: '{}'. Supported types: surrealdb, generic_container, ollama, tgi, vllm",
+                "Unknown service type: '{}'. Supported types: surrealdb, generic_container, ollama, tgi, vllm (testcontainers is a legacy alias for generic_container)",
                 config.plugin
             ))),
         }

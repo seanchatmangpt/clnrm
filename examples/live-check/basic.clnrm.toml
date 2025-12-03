@@ -23,7 +23,4 @@ run = "echo 'Hello from clnrm'"
 # Validate that test executed in container
 [[expect.span]]
 name = "test.execute"
-attrs.all = {
-  "test.isolated" = "true",
-  "container.id" = "*"
-}
+attrs = { all = { "test.isolated" = "true", "container.id" = "*" } }

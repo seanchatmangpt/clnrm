@@ -218,11 +218,7 @@ impl PoolSizeAdapter {
     }
 
     /// Update pool size based on current metrics
-    async fn adjust_size(
-        &self,
-        stats: &PoolStats,
-        config: &PoolConfig,
-    ) -> Option<usize> {
+    async fn adjust_size(&self, stats: &PoolStats, config: &PoolConfig) -> Option<usize> {
         let mut last_resize = self.last_resize.lock().await;
 
         // Check if enough time has passed since last resize
@@ -269,7 +265,9 @@ impl PoolSizeAdapter {
 
     /// Update acquire rate metric
     fn update_acquire_rate(&self, total_acquires: u64) {
-        let last_count = self.last_acquire_count.swap(total_acquires, Ordering::Relaxed);
+        let last_count = self
+            .last_acquire_count
+            .swap(total_acquires, Ordering::Relaxed);
         let rate = total_acquires.saturating_sub(last_count);
         self.acquire_rate.store(rate, Ordering::Relaxed);
     }
@@ -418,7 +416,10 @@ impl Drop for ContainerHandle {
                 pool.idle_count.fetch_add(1, Ordering::Relaxed);
                 debug!("Container {} auto-released via Drop", container_id);
             } else {
-                warn!("Container {} not found in active map during auto-release", container_id);
+                warn!(
+                    "Container {} not found in active map during auto-release",
+                    container_id
+                );
             }
         });
     }
@@ -523,7 +524,10 @@ impl ContainerPool {
 
         // Create adaptive size controller if enabled
         let size_adapter = if adaptive_sizing {
-            info!("Adaptive pool sizing enabled (target utilization: {:.0}%)", config.target_utilization * 100.0);
+            info!(
+                "Adaptive pool sizing enabled (target utilization: {:.0}%)",
+                config.target_utilization * 100.0
+            );
             Some(Arc::new(PoolSizeAdapter::new(max_size)))
         } else {
             None
@@ -690,7 +694,8 @@ impl ContainerPool {
         // Move to active containers (wrap in Arc for zero-copy sharing)
         let id = container.id.clone();
         let container_arc = Arc::new(container);
-        self.active_containers.insert(id.clone(), (*container_arc).clone());
+        self.active_containers
+            .insert(id.clone(), (*container_arc).clone());
 
         Ok(ContainerHandle {
             container: container_arc,

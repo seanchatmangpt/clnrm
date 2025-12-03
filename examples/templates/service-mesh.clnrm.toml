@@ -1,5 +1,9 @@
 # Service Mesh Testing Example
 # This demonstrates complex multi-service orchestration with templates
+#
+# NOTE: This file shows the template AFTER Tera processing
+# The original template had {% for %} loops over matrix.services
+# This example shows 3 enabled services: frontend, backend, database
 
 [vars]
 test_name = "service_mesh"
@@ -7,39 +11,44 @@ enable_frontend = true
 enable_backend = true
 enable_database = true
 
-[template.matrix]
-services = [
-    { name = "frontend", image = "nginx:alpine", port = 80, enabled = true },
-    { name = "backend", image = "python:3.11-alpine", port = 8080, enabled = true },
-    { name = "database", image = "postgres:15-alpine", port = 5432, enabled = true },
-    { name = "cache", image = "redis:7-alpine", port = 6379, enabled = false }
-]
+# Service matrix metadata (original configuration)
+# Original template looped over this matrix to generate services
+[metadata.service_matrix]
+# services array showing original data:
+# - frontend: nginx:alpine, port 80, enabled=true
+# - backend: python:3.11-alpine, port 8080, enabled=true
+# - database: postgres:15-alpine, port 5432, enabled=true
+# - cache: redis:7-alpine, port 6379, enabled=false (NOT generated)
 
 [test.metadata]
-name = "{{ vars.test_name }}"
+name = "service_mesh"
 description = "Service mesh integration test with multiple microservices"
 
 [otel]
 exporter = "stdout"
-resources = {
-    "service.name" = "{{ vars.test_name }}",
-    "test.type" = "integration"
-}
 
-# Generate service configurations
-{% for service in matrix.services %}
-{% if service.enabled %}
-[services.{{ service.name }}]
+[otel.resources]
+"service.name" = "service_mesh"
+"test.type" = "integration"
+
+# Generated service configurations (from loop over enabled services)
+[services.frontend]
 type = "generic_container"
-image = "{{ service.image }}"
-ports = [{{ service.port }}]
-{% if service.name == "database" %}
+image = "nginx:alpine"
+ports = [80]
+
+[services.backend]
+type = "generic_container"
+image = "python:3.11-alpine"
+ports = [8080]
+
+[services.database]
+type = "generic_container"
+image = "postgres:15-alpine"
+ports = [5432]
 env = { POSTGRES_PASSWORD = "secret", POSTGRES_DB = "testdb" }
-{% elif service.name == "cache" %}
-env = { REDIS_PASSWORD = "secret" }
-{% endif %}
-{% endif %}
-{% endfor %}
+
+# Note: cache service is NOT included because enabled=false
 
 # Test scenarios for service interactions
 [[scenario]]
@@ -57,17 +66,27 @@ name = "test_database_connection"
 service = "database"
 run = "psql -U postgres -d testdb -c 'SELECT 1'"
 
-# Generate span expectations for each enabled service
-{% for service in matrix.services %}
-{% if service.enabled %}
+# Generated span expectations for each enabled service
 [[expect.span]]
-name = "clnrm.step:test_{{ service.name }}*"
-attributes.any = {
-    "container.service" = "{{ service.name }}",
-    "container.port" = "{{ service.port }}"
-}
-{% endif %}
-{% endfor %}
+name = "clnrm.step:test_frontend*"
+
+[expect.span.attributes.any]
+"container.service" = "frontend"
+"container.port" = "80"
+
+[[expect.span]]
+name = "clnrm.step:test_backend*"
+
+[expect.span.attributes.any]
+"container.service" = "backend"
+"container.port" = "8080"
+
+[[expect.span]]
+name = "clnrm.step:test_database*"
+
+[expect.span.attributes.any]
+"container.service" = "database"
+"container.port" = "5432"
 
 # Ordering constraints
 [expect.order]

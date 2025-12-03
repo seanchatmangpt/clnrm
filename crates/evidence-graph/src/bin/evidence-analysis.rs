@@ -9,7 +9,6 @@
 
 use evidence_graph::{AdvancedReport, ExtendedAnalysis, MultiRepoConfig};
 use std::fs;
-use std::path::Path;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -35,8 +34,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Load coverage report
     let coverage_content = fs::read_to_string(&coverage_file)?;
-    let coverage: evidence_graph::ConceptCoverageReport =
-        serde_json::from_str(&coverage_content)?;
+    let coverage: evidence_graph::ConceptCoverageReport = serde_json::from_str(&coverage_content)?;
 
     println!("[1] Synthesizing meta-claims...");
     let meta_claims = ExtendedAnalysis::synthesize_meta_claims(&[]);
@@ -47,7 +45,8 @@ async fn main() -> anyhow::Result<()> {
     println!("    Mapped {} relationships", relationships.len());
 
     println!("[3] Generating markdown analysis report...");
-    let markdown_report = AdvancedReport::generate_markdown(&coverage, &meta_claims, &relationships);
+    let markdown_report =
+        AdvancedReport::generate_markdown(&coverage, &meta_claims, &relationships);
     let md_path = format!("{}/ANALYSIS_REPORT.md", output_dir);
     fs::write(&md_path, markdown_report)?;
     println!("    Wrote {}", md_path);
@@ -66,10 +65,17 @@ async fn main() -> anyhow::Result<()> {
 
     println!("[6] Analyzing multi-repository configuration...");
     let multi_repo_config = MultiRepoConfig::graph_universe_organs();
-    println!("    Configured {} additional repos", multi_repo_config.additional_repos.len());
+    println!(
+        "    Configured {} additional repos",
+        multi_repo_config.additional_repos.len()
+    );
     println!("    Graph-universe organ systems:");
     for repo in &multi_repo_config.additional_repos {
-        println!("      - {} (priority: {:.0}%)", repo.repo_id, repo.priority * 100.0);
+        println!(
+            "      - {} (priority: {:.0}%)",
+            repo.repo_id,
+            repo.priority * 100.0
+        );
     }
 
     println!("[7] Inferring system dependencies...");
@@ -106,23 +112,19 @@ async fn main() -> anyhow::Result<()> {
     println!("Analysis Complete!");
     println!();
     println!("Generated Reports:");
-    println!("  - {} (Comprehensive analysis with recommendations)", md_path);
     println!(
-        "  - {} (Dependency graph for visualization)",
-        dot_path
+        "  - {} (Comprehensive analysis with recommendations)",
+        md_path
     );
-    println!(
-        "  - {} (Concept maturity assessment)",
-        maturity_path
-    );
-    println!(
-        "  - {} (Multi-repository configuration)",
-        summary_path
-    );
+    println!("  - {} (Dependency graph for visualization)", dot_path);
+    println!("  - {} (Concept maturity assessment)", maturity_path);
+    println!("  - {} (Multi-repository configuration)", summary_path);
 
     println!();
     println!("Next Steps:");
-    println!("  1. Render dependency graph: dot -Tsvg concept_dependencies.dot -o dependencies.svg");
+    println!(
+        "  1. Render dependency graph: dot -Tsvg concept_dependencies.dot -o dependencies.svg"
+    );
     println!("  2. Review ANALYSIS_REPORT.md for detailed findings");
     println!("  3. Use maturity assessment to prioritize gap closing");
 

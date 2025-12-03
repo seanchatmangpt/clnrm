@@ -31,7 +31,7 @@ pub enum NetworkModification {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServiceModification {
     /// Override service definition completely
-    Replace(ServiceDef),
+    Replace(Box<ServiceDef>),
 
     /// Update specific service fields
     Update {
@@ -142,7 +142,7 @@ impl SigmaDelta {
     pub fn validate(&self, base: &super::sigma::SigmaBase) -> crate::error::Result<()> {
         // Check base hash matches
         if base.hash != self.base {
-            return Err(crate::error::CleanroomError::internal_error(&format!(
+            return Err(crate::error::CleanroomError::internal_error(format!(
                 "Delta base hash mismatch: expected {}, got {}",
                 self.base, base.hash
             )));
@@ -151,7 +151,7 @@ impl SigmaDelta {
         // Check that services to remove exist
         for service_id in &self.service_removals {
             if !base.services.contains_key(service_id) {
-                return Err(crate::error::CleanroomError::internal_error(&format!(
+                return Err(crate::error::CleanroomError::internal_error(format!(
                     "Cannot remove non-existent service '{}'",
                     service_id
                 )));
@@ -161,7 +161,7 @@ impl SigmaDelta {
         // Check that services to add don't already exist
         for service_id in self.service_additions.keys() {
             if base.services.contains_key(service_id) {
-                return Err(crate::error::CleanroomError::internal_error(&format!(
+                return Err(crate::error::CleanroomError::internal_error(format!(
                     "Cannot add service '{}' - already exists in base",
                     service_id
                 )));
@@ -187,7 +187,9 @@ impl SigmaDeltaBuilder {
 
     /// Add a service
     pub fn add_service(mut self, service: ServiceDef) -> Self {
-        self.delta.service_additions.insert(service.id.clone(), service);
+        self.delta
+            .service_additions
+            .insert(service.id.clone(), service);
         self
     }
 
@@ -296,10 +298,7 @@ mod tests {
         // Arrange: Create base and delta with wrong hash
         let base = create_test_base();
 
-        let delta = SigmaDelta::new(
-            ContentHash::from_string("wrong-hash"),
-            "Test delta",
-        );
+        let delta = SigmaDelta::new(ContentHash::from_string("wrong-hash"), "Test delta");
 
         // Act & Assert: Validation fails
         assert!(delta.validate(&base).is_err());

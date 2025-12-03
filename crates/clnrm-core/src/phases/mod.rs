@@ -17,9 +17,9 @@
 //! - Explicit, typed exhaustion outcomes
 //! - Parallel resource accounting with invariant validation
 
+pub mod phase_10;
 pub mod phase_8;
 pub mod phase_9;
-pub mod phase_10;
 
 pub use phase_8::{
     ExecutionOutcome, ReplayMode, ScheduleCertificate, ScheduleLedger, ScheduleLedgerEntry,
@@ -27,11 +27,11 @@ pub use phase_8::{
 };
 
 pub use phase_9::{
-    BackendConformanceHarness, BackendConformanceReport, BackendExecutionResult, BackendInvariantChecker,
-    EquivalenceViolation, EquivalenceStatus,
+    BackendConformanceHarness, BackendConformanceReport, BackendExecutionResult,
+    BackendInvariantChecker, EquivalenceStatus, EquivalenceViolation,
 };
 
 pub use phase_10::{
-    CpuNanos, MemoryBytes, NetworkBytes, ExhaustionOutcome, ResourceAccountingEntry,
+    CpuNanos, ExhaustionOutcome, MemoryBytes, NetworkBytes, ResourceAccountingEntry,
     ResourceAccountingLedger, ResourceContract, ResourceContractBuilder, ResourceContractError,
 };

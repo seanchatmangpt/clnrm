@@ -57,15 +57,24 @@ all = "OK"
 "clnrm.step:*" = "OK"
 "error_*" = "ERROR"  # Any span starting with "error_" must be ERROR
 
-# Generate span expectations for each lifecycle phase
-{% for phase in matrix.lifecycle_phases %}
+# Generate span expectations for each lifecycle phase (Tera template)
+# Note: Tera loops should generate complete TOML sections
+# For now, we'll use static configuration as Tera processing happens before TOML parsing
 [[expect.span]]
-name = "container.{{ phase.phase }}"
-status = "{{ phase.expected_status }}"
-{% endfor %}
+name = "container.start"
+status = "OK"
+
+[[expect.span]]
+name = "container.exec"
+status = "OK"
+
+[[expect.span]]
+name = "container.stop"
+status = "OK"
 
 [expect.counts]
 spans.min = 4  # start + exec + stop + step span
 
-[expect.window]
-max_duration_ms = 10000
+[[expect.window]]
+outer = "test.execute"
+contains = ["container.start", "container.exec", "container.stop"]

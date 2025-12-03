@@ -213,9 +213,8 @@ impl SbomGenerator {
                 .collect(),
         };
 
-        serde_json::to_string_pretty(&document).map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to serialize SBOM: {}", e))
-        })
+        serde_json::to_string_pretty(&document)
+            .map_err(|e| CleanroomError::internal_error(format!("Failed to serialize SBOM: {}", e)))
     }
 
     /// Convert Cargo.lock package to SPDX package
@@ -263,8 +262,14 @@ impl SbomGenerator {
 
         let mut output = String::new();
         output.push_str("# clnrm Dependency List\n\n");
-        output.push_str(&format!("Generated: {}\n\n", chrono::Utc::now().to_rfc3339()));
-        output.push_str(&format!("Total dependencies: {}\n\n", cargo_lock.package.len()));
+        output.push_str(&format!(
+            "Generated: {}\n\n",
+            chrono::Utc::now().to_rfc3339()
+        ));
+        output.push_str(&format!(
+            "Total dependencies: {}\n\n",
+            cargo_lock.package.len()
+        ));
 
         output.push_str("## Dependencies\n\n");
 

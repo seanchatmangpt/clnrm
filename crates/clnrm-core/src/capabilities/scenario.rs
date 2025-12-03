@@ -227,7 +227,7 @@ impl CapabilityScenario {
     pub fn validate_capabilities(&self, registry: &BackendCapabilityRegistry) -> Result<()> {
         for cap_id in &self.capabilities {
             if !registry.has_capability(&cap_id.0) {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Capability '{}' required by scenario '{}' is not registered",
                     cap_id, self.id
                 )));
@@ -242,14 +242,9 @@ impl CapabilityScenario {
         let _combined_allowed_effects = EffectSet::new();
 
         for cap_id in &self.capabilities {
-            let capability = registry
-                .get_capability(&cap_id.0)
-                .ok_or_else(|| {
-                    CleanroomError::internal_error(&format!(
-                        "Capability '{}' not found",
-                        cap_id
-                    ))
-                })?;
+            let capability = registry.get_capability(&cap_id.0).ok_or_else(|| {
+                CleanroomError::internal_error(format!("Capability '{}' not found", cap_id))
+            })?;
 
             // Extract allowed effects from capability metadata
             // In a full implementation, BackendCapability would have an effects field
@@ -257,11 +252,7 @@ impl CapabilityScenario {
             if let Some(effects_json) = capability.metadata.get("allowed_effects") {
                 // Parse effects and add to combined set
                 // This is simplified - real implementation would deserialize EffectSet
-                tracing::debug!(
-                    "Capability {} allows effects: {}",
-                    cap_id,
-                    effects_json
-                );
+                tracing::debug!("Capability {} allows effects: {}", cap_id, effects_json);
             }
         }
 

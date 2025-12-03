@@ -55,10 +55,7 @@ pub enum ResourceContractError {
         current: String,
     },
     /// Accounting mismatch
-    AccountingMismatch {
-        expected: String,
-        actual: String,
-    },
+    AccountingMismatch { expected: String, actual: String },
 }
 
 impl fmt::Display for ResourceContractError {
@@ -211,7 +208,11 @@ impl ResourceContract {
     }
 
     /// Check if network limit would be exceeded
-    pub fn would_exceed_network(&self, current_network: NetworkBytes, additional_network: NetworkBytes) -> bool {
+    pub fn would_exceed_network(
+        &self,
+        current_network: NetworkBytes,
+        additional_network: NetworkBytes,
+    ) -> bool {
         current_network.0.saturating_add(additional_network.0) > self.max_total_network.0
     }
 
@@ -375,9 +376,10 @@ impl ResourceAccountingLedger {
         let entry_id = entry.entry_id.clone();
 
         {
-            let mut entries = self.entries.lock().map_err(|_| {
-                CleanroomError::internal_error("Entries mutex poisoned")
-            })?;
+            let mut entries = self
+                .entries
+                .lock()
+                .map_err(|_| CleanroomError::internal_error("Entries mutex poisoned"))?;
             let index = entries.len();
             entries.push(entry.clone());
 
@@ -434,32 +436,26 @@ impl ResourceAccountingLedger {
     pub fn validate_accounting(&self, contract: &ResourceContract) -> Result<()> {
         let total_cpu = self.total_cpu_used(&contract.contract_id);
         if total_cpu > contract.max_total_cpu.0 {
-            return Err(CleanroomError::internal_error(
-                format!(
-                    "CPU accounting violation: {} > {}",
-                    total_cpu, contract.max_total_cpu.0
-                )
-            ));
+            return Err(CleanroomError::internal_error(format!(
+                "CPU accounting violation: {} > {}",
+                total_cpu, contract.max_total_cpu.0
+            )));
         }
 
         let total_memory = self.total_memory_used(&contract.contract_id);
         if total_memory > contract.max_memory_peak.0 {
-            return Err(CleanroomError::internal_error(
-                format!(
-                    "Memory accounting violation: {} > {}",
-                    total_memory, contract.max_memory_peak.0
-                )
-            ));
+            return Err(CleanroomError::internal_error(format!(
+                "Memory accounting violation: {} > {}",
+                total_memory, contract.max_memory_peak.0
+            )));
         }
 
         let total_network = self.total_network_used(&contract.contract_id);
         if total_network > contract.max_total_network.0 {
-            return Err(CleanroomError::internal_error(
-                format!(
-                    "Network accounting violation: {} > {}",
-                    total_network, contract.max_total_network.0
-                )
-            ));
+            return Err(CleanroomError::internal_error(format!(
+                "Network accounting violation: {} > {}",
+                total_network, contract.max_total_network.0
+            )));
         }
 
         Ok(())
@@ -467,9 +463,10 @@ impl ResourceAccountingLedger {
 
     /// Get all entries for a contract
     pub fn entries_for_contract(&self, contract_id: &str) -> Result<Vec<ResourceAccountingEntry>> {
-        let entries = self.entries.lock().map_err(|_| {
-            CleanroomError::internal_error("Entries mutex poisoned")
-        })?;
+        let entries = self
+            .entries
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Entries mutex poisoned"))?;
 
         if let Some(indices) = self.contract_index.get(contract_id) {
             let result = indices

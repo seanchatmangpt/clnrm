@@ -5,7 +5,7 @@
 //! - Backend invariant checking
 //! - Cross-backend conformance testing
 
-use crate::error::{CleanroomError, Result};
+use crate::error::Result;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -17,10 +17,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum EquivalenceViolation {
     /// Exit codes don't match
-    ExitCodeMismatch {
-        expected: i32,
-        actual: i32,
-    },
+    ExitCodeMismatch { expected: i32, actual: i32 },
     /// Timing profiles differ beyond threshold
     TimingProfileMismatch {
         metric: String,
@@ -63,7 +60,11 @@ impl fmt::Display for EquivalenceViolation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ExitCodeMismatch { expected, actual } => {
-                write!(f, "Exit code mismatch: expected {}, got {}", expected, actual)
+                write!(
+                    f,
+                    "Exit code mismatch: expected {}, got {}",
+                    expected, actual
+                )
             }
             Self::TimingProfileMismatch {
                 metric,
@@ -325,9 +326,7 @@ impl BackendInvariantChecker {
 
     /// Get failure reason if any
     pub fn failure_reason(&self, backend_type: &str) -> Option<String> {
-        self.failure_reasons
-            .get(backend_type)
-            .map(|r| r.clone())
+        self.failure_reasons.get(backend_type).map(|r| r.clone())
     }
 
     /// Check if all tracked backends are checked
@@ -406,7 +405,8 @@ impl BackendConformanceHarness {
         }
 
         report.analyze()?;
-        self.reports.insert(report.report_id.clone(), report.clone());
+        self.reports
+            .insert(report.report_id.clone(), report.clone());
 
         Ok(report)
     }
@@ -497,9 +497,6 @@ mod tests {
     fn test_invariant_checker_status() {
         let checker = BackendInvariantChecker::new();
         checker.check("container").unwrap();
-        assert_eq!(
-            checker.status("container"),
-            InvariantStatus::Checked
-        );
+        assert_eq!(checker.status("container"), InvariantStatus::Checked);
     }
 }

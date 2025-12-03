@@ -6,7 +6,7 @@ name = "container_lifecycle"
 description = "Tests container creation and cleanup using testcontainers backend"
 
 [services]
-test_container = { type = "container", plugin = "testcontainers", image = "alpine:latest" }
+test_container = { type = "container", plugin = "generic_container", image = "alpine:latest" }
 
 [[steps]]
 name = "create_container"

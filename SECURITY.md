@@ -4,7 +4,7 @@
 
 **DO NOT** create public GitHub issues for security vulnerabilities.
 
-Instead, please email security concerns to: [Your security contact email - TODO]
+Instead, please email security concerns to: security@github.com or file a private security advisory at https://github.com/seanchatmangpt/clnrm/security/advisories
 
 We will respond within 48 hours and work with you to address the issue.
 

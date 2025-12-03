@@ -4,13 +4,13 @@
 //! service configurations, and hermeticity scenarios.
 
 use crate::backend::capabilities::BackendCapabilityRegistry;
-use crate::capabilities::{CapabilityId, Effect, EffectSet};
+use crate::capabilities::{CapabilityId, EffectSet};
 use crate::environment::sigma::ServiceId;
 use crate::environment::store::OntologyStore;
-use crate::error::{CleanroomError, Result};
+use crate::error::Result;
 use crate::receipts::store::ReceiptStore;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Gap in capability coverage
@@ -67,7 +67,7 @@ pub struct HermeticityGap {
 /// Coverage analyzer (integrates with Chicago TDD)
 pub struct CoverageAnalyzer {
     /// Capability catalog (from CNV)
-    capabilities: Arc<BackendCapabilityRegistry>,
+    _capabilities: Arc<BackendCapabilityRegistry>,
 
     /// Σ* ontology store
     ontologies: Arc<OntologyStore>,
@@ -84,7 +84,7 @@ impl CoverageAnalyzer {
         receipts: Arc<ReceiptStore>,
     ) -> Self {
         Self {
-            capabilities,
+            _capabilities: capabilities,
             ontologies,
             receipts,
         }
@@ -267,10 +267,7 @@ impl CoverageAnalyzer {
     fn analyze_capability_gap(&self, combination: &[CapabilityId]) -> Result<String> {
         Ok(format!(
             "Capability combination {:?} has never been tested together",
-            combination
-                .iter()
-                .map(|c| &c.0)
-                .collect::<Vec<_>>()
+            combination.iter().map(|c| &c.0).collect::<Vec<_>>()
         ))
     }
 
@@ -291,9 +288,8 @@ mod tests {
     use super::*;
     use crate::capabilities::{ConstraintSet, ScenarioId};
     use crate::environment::sigma::{ContentHash, SemVer, SigmaBase, TelemetryDef};
-    use crate::receipts::receipt::{
-        HermeticityWitness, ImageDigest, TestReceipt, TimingFootprint,
-    };
+    use crate::receipts::receipt::{HermeticityWitness, ImageDigest, TestReceipt, TimingFootprint};
+    use std::collections::HashMap;
     use std::time::Duration;
 
     fn create_test_receipt(
@@ -429,9 +425,7 @@ mod tests {
 
         // Assert - hermetic scenario never tested
         assert!(!gaps.is_empty());
-        assert!(gaps
-            .iter()
-            .any(|g| g.reason.contains("fully hermetic")));
+        assert!(gaps.iter().any(|g| g.reason.contains("fully hermetic")));
     }
 
     #[test]

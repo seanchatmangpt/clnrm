@@ -53,15 +53,24 @@ async fn main() -> anyhow::Result<()> {
         println!();
         println!("Coverage Report Summary:");
         println!("  Total concepts: {}", coverage.statistics.total_concepts);
-        println!("  Total evidence nodes: {}", coverage.statistics.total_evidence_nodes);
-        println!("  Overall avg strength: {:.2}", coverage.statistics.overall_avg_strength);
+        println!(
+            "  Total evidence nodes: {}",
+            coverage.statistics.total_evidence_nodes
+        );
+        println!(
+            "  Overall avg strength: {:.2}",
+            coverage.statistics.overall_avg_strength
+        );
     }
 
     if let Some(gaps) = pipeline.gaps_report() {
         println!();
         println!("Gaps Report Summary:");
         println!("  Total gaps: {}", gaps.summary.total_gaps);
-        println!("  Critical gaps (no evidence): {}", gaps.summary.critical_gaps);
+        println!(
+            "  Critical gaps (no evidence): {}",
+            gaps.summary.critical_gaps
+        );
         println!("  Weak gaps (strength < 0.5): {}", gaps.summary.weak_gaps);
     }
 

@@ -5,6 +5,37 @@
 //! - Error chaining and propagation
 //! - User-friendly error messages
 //! - Debug information for troubleshooting
+//!
+//! # Quick Start
+//!
+//! ```
+//! use clnrm_core::error::{CleanroomError, ErrorKind, Result};
+//!
+//! fn example_operation() -> Result<String> {
+//!     Err(CleanroomError::validation_error("Invalid input"))
+//! }
+//!
+//! let result = example_operation();
+//! assert!(result.is_err());
+//! assert_eq!(result.unwrap_err().kind, ErrorKind::ValidationError);
+//! ```
+//!
+//! # Error Creation Patterns
+//!
+//! ```
+//! use clnrm_core::error::{CleanroomError, ErrorKind};
+//!
+//! // Basic error creation
+//! let error = CleanroomError::new(ErrorKind::ConfigurationError, "Missing field");
+//!
+//! // With context
+//! let error = CleanroomError::container_error("Container failed to start")
+//!     .with_context("Container: postgres")
+//!     .with_source("Docker daemon not running");
+//!
+//! assert!(error.to_string().contains("Container failed"));
+//! assert!(error.to_string().contains("postgres"));
+//! ```
 
 use serde::{Deserialize, Serialize};
 use std::error::Error as StdError;
@@ -14,6 +45,51 @@ use std::fmt;
 pub type Result<T> = std::result::Result<T, CleanroomError>;
 
 /// Comprehensive error type for cleanroom operations
+///
+/// `CleanroomError` provides structured error information with:
+/// - Error classification via `ErrorKind`
+/// - Human-readable messages
+/// - Optional context and source information
+/// - Automatic timestamping
+///
+/// # Examples
+///
+/// ## Basic Usage
+///
+/// ```
+/// use clnrm_core::error::{CleanroomError, ErrorKind};
+///
+/// let error = CleanroomError::new(ErrorKind::Timeout, "Operation timed out");
+/// assert_eq!(error.kind, ErrorKind::Timeout);
+/// assert!(error.message.contains("timed out"));
+/// ```
+///
+/// ## With Context Chain
+///
+/// ```
+/// use clnrm_core::error::CleanroomError;
+///
+/// let error = CleanroomError::container_error("Failed to start")
+///     .with_context("Container: redis")
+///     .with_source("Port 6379 already in use");
+///
+/// let msg = error.to_string();
+/// assert!(msg.contains("Failed to start"));
+/// assert!(msg.contains("redis"));
+/// assert!(msg.contains("6379"));
+/// ```
+///
+/// ## Error Helpers
+///
+/// ```
+/// use clnrm_core::error::CleanroomError;
+///
+/// // Various error constructors
+/// let _ = CleanroomError::timeout_error("Exceeded 30s limit");
+/// let _ = CleanroomError::validation_error("Invalid port format");
+/// let _ = CleanroomError::container_error("Container crashed");
+/// let _ = CleanroomError::configuration_error("Missing image field");
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CleanroomError {
     /// Error kind
@@ -75,6 +151,15 @@ pub enum ErrorKind {
 
 impl CleanroomError {
     /// Create a new cleanroom error
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use clnrm_core::error::{CleanroomError, ErrorKind};
+    ///
+    /// let error = CleanroomError::new(ErrorKind::IoError, "File not found");
+    /// assert_eq!(error.kind, ErrorKind::IoError);
+    /// ```
     pub fn new(kind: ErrorKind, message: impl Into<String>) -> Self {
         Self {
             kind,
@@ -86,12 +171,34 @@ impl CleanroomError {
     }
 
     /// Create a new cleanroom error with context
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use clnrm_core::error::CleanroomError;
+    ///
+    /// let error = CleanroomError::container_error("Failed")
+    ///     .with_context("While starting postgres container");
+    ///
+    /// assert!(error.context.unwrap().contains("postgres"));
+    /// ```
     pub fn with_context(mut self, context: impl Into<String>) -> Self {
         self.context = Some(context.into());
         self
     }
 
     /// Create a new cleanroom error with source
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use clnrm_core::error::CleanroomError;
+    ///
+    /// let error = CleanroomError::network_error("Connection failed")
+    ///     .with_source("DNS resolution failed");
+    ///
+    /// assert!(error.source.unwrap().contains("DNS"));
+    /// ```
     pub fn with_source(mut self, source: impl Into<String>) -> Self {
         self.source = Some(source.into());
         self

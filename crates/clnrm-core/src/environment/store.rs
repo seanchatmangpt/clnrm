@@ -32,7 +32,7 @@ impl OntologyStore {
         // Verify hash matches content
         let computed_hash = ontology.compute_hash();
         if ontology.hash != computed_hash {
-            return Err(CleanroomError::internal_error(&format!(
+            return Err(CleanroomError::internal_error(format!(
                 "Ontology hash mismatch: declared {}, computed {}",
                 ontology.hash, computed_hash
             )));
@@ -45,7 +45,7 @@ impl OntologyStore {
         let hash = ontology.hash.clone();
         self.store
             .write()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .insert(hash.clone(), ontology);
 
         Ok(hash)
@@ -55,12 +55,10 @@ impl OntologyStore {
     pub fn get(&self, hash: &ContentHash) -> Result<SigmaBase> {
         self.store
             .read()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .get(hash)
             .cloned()
-            .ok_or_else(|| {
-                CleanroomError::internal_error(&format!("Ontology not found: {}", hash))
-            })
+            .ok_or_else(|| CleanroomError::internal_error(format!("Ontology not found: {}", hash)))
     }
 
     /// Check if an ontology exists
@@ -76,7 +74,7 @@ impl OntologyStore {
         Ok(self
             .store
             .read()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .keys()
             .cloned()
             .collect())
@@ -98,7 +96,7 @@ impl OntologyStore {
     pub fn delete(&self, hash: &ContentHash) -> Result<()> {
         self.store
             .write()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .remove(hash);
         Ok(())
     }
@@ -107,7 +105,7 @@ impl OntologyStore {
     pub fn clear(&self) -> Result<()> {
         self.store
             .write()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .clear();
         Ok(())
     }
@@ -148,10 +146,7 @@ mod tests {
         let hash = sigma.compute_hash();
 
         // Create final version with correct hash
-        SigmaBase {
-            hash,
-            ..sigma
-        }
+        SigmaBase { hash, ..sigma }
     }
 
     #[test]

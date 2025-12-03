@@ -3,8 +3,8 @@
 //! Generates comprehensive analysis reports, concept maps, and visualizations
 //! to provide depth in evidence analysis.
 
-use crate::extended_analysis::{ExtendedAnalysis, MetaClaim, ConceptRelationship};
-use crate::outputs::{ConceptCoverageSummary, ConceptCoverageReport};
+use crate::extended_analysis::{ConceptRelationship, MetaClaim};
+use crate::outputs::ConceptCoverageReport;
 use std::collections::HashMap;
 
 /// Report format options
@@ -45,9 +45,9 @@ pub enum ReportSection {
 
 #[derive(Debug, Clone)]
 pub struct StrengthDistribution {
-    pub strong: usize,     // 0.85-1.0
-    pub moderate: usize,   // 0.65-0.85
-    pub weak: usize,       // 0.50-0.65
+    pub strong: usize,   // 0.85-1.0
+    pub moderate: usize, // 0.65-0.85
+    pub weak: usize,     // 0.50-0.65
     pub total: usize,
 }
 
@@ -123,7 +123,9 @@ impl AdvancedReport {
     fn coverage_heatmap_section(coverage: &ConceptCoverageReport) -> String {
         let mut heatmap = String::from("## Concept Coverage Heatmap\n\n");
 
-        heatmap.push_str("| Concept | Evidence Count | Min Strength | Max Strength | Avg Strength | Status |\n");
+        heatmap.push_str(
+            "| Concept | Evidence Count | Min Strength | Max Strength | Avg Strength | Status |\n",
+        );
         heatmap.push_str("|---------|---|---|---|---|---|\n");
 
         for concept in coverage.concepts.values() {
@@ -152,15 +154,10 @@ impl AdvancedReport {
     fn meta_claims_section(meta_claims: &[MetaClaim]) -> String {
         let mut section = String::from("## Meta-Claims\n\n");
 
-        section.push_str(
-            "Higher-level claims synthesized from multiple supporting concepts:\n\n",
-        );
+        section.push_str("Higher-level claims synthesized from multiple supporting concepts:\n\n");
 
         for claim in meta_claims {
-            section.push_str(&format!(
-                "### {}: {}\n\n",
-                claim.claim_id, claim.claim_text
-            ));
+            section.push_str(&format!("### {}: {}\n\n", claim.claim_id, claim.claim_text));
 
             section.push_str(&format!(
                 "**Supporting Concepts**: {}\n\n",
@@ -232,9 +229,7 @@ impl AdvancedReport {
             }
         }
 
-        for (system, count) in
-            system_counts.iter().filter(|(_, count)| **count > 1)
-        {
+        for (system, count) in system_counts.iter().filter(|(_, count)| **count > 1) {
             section.push_str(&format!("- **{}** implements {} concepts\n", system, count));
         }
 
@@ -269,7 +264,7 @@ impl AdvancedReport {
             ));
         }
 
-        dot.push_str("\n");
+        dot.push('\n');
 
         // Add edges
         for rel in relationships {
@@ -292,9 +287,7 @@ impl AdvancedReport {
     }
 
     /// Generate maturity assessment
-    pub fn generate_maturity_report(
-        coverage: &ConceptCoverageReport,
-    ) -> String {
+    pub fn generate_maturity_report(coverage: &ConceptCoverageReport) -> String {
         let mut report = String::from("# Concept Maturity Assessment\n\n");
 
         report.push_str("| Concept | Maturity | Evidence | Status | Next Steps |\n");
@@ -319,7 +312,11 @@ impl AdvancedReport {
 
             report.push_str(&format!(
                 "| {} | {:.0}% | {} | {} | {} |\n",
-                concept.concept_id, maturity * 100.0, concept.evidence_count, stage, next
+                concept.concept_id,
+                maturity * 100.0,
+                concept.evidence_count,
+                stage,
+                next
             ));
         }
 

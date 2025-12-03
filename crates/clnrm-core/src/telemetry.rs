@@ -41,6 +41,9 @@ pub mod validation_processor;
 // Live-check integration for Weaver validation
 pub mod live_check;
 
+// OTLP and Weaver validation infrastructure (v1.2.0+)
+pub mod validators;
+
 use {
     opentelemetry::{
         global, propagation::TextMapCompositePropagator, trace::TracerProvider, KeyValue,

@@ -864,6 +864,7 @@ impl Default for TemplateAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lint::LintRule;
 
     #[test]
     fn test_template_analysis() {

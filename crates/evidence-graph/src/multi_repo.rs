@@ -3,8 +3,7 @@
 //! Extends discovery to mine evidence from multiple repositories,
 //! enabling cross-system validation and breadth analysis.
 
-use crate::schemas::{RepoDescriptor, FileDescriptor};
-use std::path::{Path, PathBuf};
+use crate::schemas::RepoDescriptor;
 
 /// Multi-repository configuration
 #[derive(Debug, Clone)]
@@ -94,11 +93,11 @@ impl MultiRepoConfig {
             // Core dependencies
             ("knhk".to_string(), "ggen".to_string()), // KNHK enables ggen
             ("mu-kernel".to_string(), "chicago-tdd-tools".to_string()), // μ-kernel enables CTT
-            ("knhk".to_string(), "nomrg".to_string()),  // KNHK enables nomrg
+            ("knhk".to_string(), "nomrg".to_string()), // KNHK enables nomrg
             // Integration points
             ("clnrm".to_string(), "mu-kernel".to_string()), // clnrm uses μ-kernel
             ("clnrm".to_string(), "chicago-tdd-tools".to_string()), // clnrm uses CTT
-            ("ggen".to_string(), "clnrm".to_string()), // ggen generates clnrm configs
+            ("ggen".to_string(), "clnrm".to_string()),      // ggen generates clnrm configs
         ]
     }
 }
@@ -159,7 +158,7 @@ pub struct RepoEnrichment;
 impl RepoEnrichment {
     /// Enrich a repository descriptor with system-wide role
     pub fn add_system_role(mut repo: RepoDescriptor, config: &MultiRepoConfig) -> RepoDescriptor {
-        let role = match repo.repo_id.as_str() {
+        let _role = match repo.repo_id.as_str() {
             "knhk" => "Knowledge Graph (Kinetic Knowledge Hypergraph) - Primary ontology layer",
             "mu-kernel" => "Timing Kernel - ISA and formal timing bounds",
             "chicago-tdd-tools" => "Verification Pipeline - 12-phase testing framework",
@@ -206,7 +205,7 @@ mod tests {
     fn test_repo_dependencies() {
         let config = MultiRepoConfig::graph_universe_organs();
         let deps = config.infer_repo_dependencies();
-        assert!(deps.len() > 0);
+        assert!(!deps.is_empty());
         assert!(deps.iter().any(|(a, b)| a == "knhk" && b == "ggen"));
     }
 
@@ -230,6 +229,7 @@ mod tests {
                     strength: 0.85,
                 },
             ],
+            cross_repo_concepts: vec![],
         };
 
         let shared = analysis.find_shared_concepts();

@@ -80,6 +80,9 @@ jobs:
     - name: Run unit tests (core functionality - Docker-independent)
       run: cargo test --lib --all-features
 
+    - name: Run doctests (documentation examples)
+      run: cargo test --doc --all-features
+
     - name: Run integration tests (full suite with Docker)
       run: cargo test --test '*' --all-features
 

@@ -548,8 +548,8 @@ mod tests {
             .unwrap();
 
         // Test that all components are properly configured
-        assert!(engine.debug_enabled == false);
-        assert!(engine.validator.rules.len() > 0);
+        assert!(!engine.debug_enabled);
+        assert!(!engine.validator.rules.is_empty());
         assert!(engine.context.vars.contains_key("svc"));
     }
 }

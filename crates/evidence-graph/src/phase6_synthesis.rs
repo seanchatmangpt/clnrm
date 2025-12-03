@@ -38,9 +38,13 @@ impl EvidenceSynthesizer {
     fn infer_support_type(excerpt: &Excerpt) -> String {
         let text_lower = excerpt.raw_text.to_lowercase();
 
-        if text_lower.contains("impl ") || text_lower.contains("fn ") || text_lower.contains("pub ") {
+        if text_lower.contains("impl ") || text_lower.contains("fn ") || text_lower.contains("pub ")
+        {
             "direct".to_string()
-        } else if text_lower.contains("///") || text_lower.contains("//!") || text_lower.contains("#") {
+        } else if text_lower.contains("///")
+            || text_lower.contains("//!")
+            || text_lower.contains("#")
+        {
             if text_lower.contains("example") || text_lower.contains("note") {
                 "contextual".to_string()
             } else {
@@ -77,8 +81,8 @@ impl EvidenceSynthesizer {
         match support_type {
             "direct" => score += 0.2,
             "indirect" => score += 0.1,
-            "contextual" => {}, // No boost
-            _ => {},
+            "contextual" => {} // No boost
+            _ => {}
         }
 
         // Boost for key phrases
@@ -109,7 +113,7 @@ impl EvidenceSynthesizer {
         for node in nodes {
             clusters
                 .entry(node.concept_id.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(node.clone());
         }
 
@@ -128,7 +132,7 @@ impl EvidenceSynthesizer {
         for node in nodes {
             by_file
                 .entry(node.path.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(node.clone());
         }
 
@@ -152,9 +156,10 @@ impl EvidenceSynthesizer {
                     if next_start <= cur_end + 5 {
                         // Merge
                         current.lines = format!("{}-{}", cur_start, next_end.max(cur_end));
-                        current.strength =
-                            (current.strength + file_nodes[i + 1].strength) / 2.0;
-                        current.key_phrases.extend(file_nodes[i + 1].key_phrases.clone());
+                        current.strength = (current.strength + file_nodes[i + 1].strength) / 2.0;
+                        current
+                            .key_phrases
+                            .extend(file_nodes[i + 1].key_phrases.clone());
                         current.key_phrases.sort();
                         current.key_phrases.dedup();
                         i += 1;

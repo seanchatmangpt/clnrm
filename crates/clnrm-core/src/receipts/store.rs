@@ -39,7 +39,7 @@ impl ReceiptStore {
         // Verify previous receipt exists (if specified)
         if let Some(prev_id) = &receipt.previous_receipt {
             if !self.contains(prev_id) {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Previous receipt not found in chain: {}",
                     prev_id
                 )));
@@ -50,14 +50,14 @@ impl ReceiptStore {
         let id = receipt.id.clone();
         self.store
             .write()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .insert(id.clone(), receipt);
 
         // Update chain head
         *self
             .chain_head
             .write()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))? =
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))? =
             Some(id.clone());
 
         Ok(id)
@@ -67,10 +67,10 @@ impl ReceiptStore {
     pub fn get(&self, id: &ReceiptId) -> Result<TestReceipt> {
         self.store
             .read()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .get(id)
             .cloned()
-            .ok_or_else(|| CleanroomError::internal_error(&format!("Receipt not found: {}", id)))
+            .ok_or_else(|| CleanroomError::internal_error(format!("Receipt not found: {}", id)))
     }
 
     /// Check if a receipt exists
@@ -175,7 +175,7 @@ impl ReceiptStore {
         Ok(self
             .store
             .read()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .keys()
             .cloned()
             .collect())
@@ -198,7 +198,7 @@ impl ReceiptStore {
     pub fn delete(&self, id: &ReceiptId) -> Result<()> {
         self.store
             .write()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .remove(id);
         Ok(())
     }
@@ -207,14 +207,13 @@ impl ReceiptStore {
     pub fn clear(&self) -> Result<()> {
         self.store
             .write()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))?
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))?
             .clear();
 
         *self
             .chain_head
             .write()
-            .map_err(|e| CleanroomError::internal_error(&format!("Lock poisoned: {}", e)))? =
-            None;
+            .map_err(|e| CleanroomError::internal_error(format!("Lock poisoned: {}", e)))? = None;
 
         Ok(())
     }
@@ -246,19 +245,13 @@ pub struct ChainValidationResult {
 mod tests {
     use super::*;
     use crate::capabilities::{
-        CapabilityId, ConstraintSet, EffectSet, LatencyBand, ResourceLimits,
-        ScenarioId,
+        CapabilityId, ConstraintSet, EffectSet, LatencyBand, ResourceLimits, ScenarioId,
     };
     use crate::environment::sigma::ContentHash;
-    use crate::receipts::receipt::{
-        HermeticityWitness, ImageDigest, TestReceipt, TimingFootprint,
-    };
+    use crate::receipts::receipt::{HermeticityWitness, ImageDigest, TestReceipt, TimingFootprint};
     use std::time::Duration;
 
-    fn create_test_receipt(
-        scenario_name: &str,
-        previous: Option<ReceiptId>,
-    ) -> TestReceipt {
+    fn create_test_receipt(scenario_name: &str, previous: Option<ReceiptId>) -> TestReceipt {
         let mut image_digests = HashMap::new();
         image_digests.insert(
             "test".to_string(),

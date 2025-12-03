@@ -12,6 +12,7 @@ description = "Test multiple services managed from TOML"
 # SurrealDB Service
 [services.database]
 type = "surrealdb"
+image = "surrealdb/surrealdb:latest"
 username = "root"
 password = "root"
 strict = false

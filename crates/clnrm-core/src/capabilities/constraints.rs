@@ -74,9 +74,9 @@ pub struct ResourceLimits {
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_cpu_percent: Some(100.0),     // 1 core
-            max_memory_bytes: Some(1 << 30),  // 1 GB
-            max_disk_io_bytes_per_sec: Some(100 << 20), // 100 MB/s
+            max_cpu_percent: Some(100.0),                 // 1 core
+            max_memory_bytes: Some(1 << 30),              // 1 GB
+            max_disk_io_bytes_per_sec: Some(100 << 20),   // 100 MB/s
             max_network_io_bytes_per_sec: Some(10 << 20), // 10 MB/s
             max_file_descriptors: Some(1024),
             max_processes: Some(100),
@@ -100,9 +100,9 @@ impl ResourceLimits {
     /// Create restrictive limits (for untrusted scenarios)
     pub fn restrictive() -> Self {
         Self {
-            max_cpu_percent: Some(50.0),      // Half a core
-            max_memory_bytes: Some(256 << 20), // 256 MB
-            max_disk_io_bytes_per_sec: Some(10 << 20), // 10 MB/s
+            max_cpu_percent: Some(50.0),                 // Half a core
+            max_memory_bytes: Some(256 << 20),           // 256 MB
+            max_disk_io_bytes_per_sec: Some(10 << 20),   // 10 MB/s
             max_network_io_bytes_per_sec: Some(1 << 20), // 1 MB/s
             max_file_descriptors: Some(256),
             max_processes: Some(10),
@@ -188,7 +188,7 @@ impl ConstraintSet {
     pub fn validate_execution(&self, metrics: &ExecutionMetrics) -> Result<()> {
         // Check latency
         if !self.latency_band.allows(metrics.total_duration) {
-            return Err(CleanroomError::internal_error(&format!(
+            return Err(CleanroomError::internal_error(format!(
                 "Execution time {:?} exceeds latency band {:?}",
                 metrics.total_duration, self.latency_band
             )));
@@ -197,7 +197,7 @@ impl ConstraintSet {
         // Check resource limits
         if let Some(max_memory) = self.resource_limits.max_memory_bytes {
             if metrics.peak_memory_bytes > max_memory {
-                return Err(CleanroomError::internal_error(&format!(
+                return Err(CleanroomError::internal_error(format!(
                     "Peak memory {} exceeds limit {}",
                     metrics.peak_memory_bytes, max_memory
                 )));
@@ -206,7 +206,7 @@ impl ConstraintSet {
 
         // Check hermeticity
         if self.hermetic && metrics.external_connections > 0 {
-            return Err(CleanroomError::internal_error(&format!(
+            return Err(CleanroomError::internal_error(format!(
                 "Hermetic constraint violated: {} external connections detected",
                 metrics.external_connections
             )));

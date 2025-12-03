@@ -1,26 +1,30 @@
 # clnrm OTEL validation template example (v0.6.0)
-# This file demonstrates template rendering workflow
+# This file demonstrates template rendering workflow (rendered with defaults)
+
+[vars]
+name = "otel_validation_example"
+image = "alpine:latest"
+report_dir = "reports"
 
 [test.metadata]
-name = "{{ vars.name | default(value='otel_validation_example') }}"
+name = "otel_validation_example"
 description = "OTEL validation with template rendering"
 version = "0.6.0"
 
-# Environment-based OTEL configuration
+# Environment-based OTEL configuration (defaults shown)
 [otel]
-exporter = "{{ env(name='OTEL_EXPORTER') | default(value='stdout') }}"
-{% if env(name='OTEL_ENDPOINT') %}
-endpoint = "{{ env(name='OTEL_ENDPOINT') }}"
-{% else %}
+exporter = "stdout"
 endpoint = "http://localhost:4318"
-{% endif %}
 sample_ratio = 1.0
-resources = { "service.name" = "clnrm", "service.version" = "0.6.0" }
 
-# Service configuration with templating
-[services.clnrm]
+[otel.resources]
+"service.name" = "clnrm"
+"service.version" = "0.6.0"
+
+# Service configuration
+[service.clnrm]
 type = "generic_container"
-image = "{{ vars.image | default(value='alpine:latest') }}"
+image = "alpine:latest"
 
 # Test steps
 [[steps]]
@@ -49,14 +53,12 @@ attributes = { "result" = "pass" }
 spans_total = { gte = 1 }
 errors_total = { eq = 0 }
 
-# Conditional determinism for CI
-{% if env(name='CI') == 'true' %}
-[determinism]
-seed = 42
-freeze_clock = "2025-01-01T00:00:00Z"
-{% endif %}
+# Determinism configuration (enable in CI with CI=true)
+# [determinism]
+# seed = 42
+# freeze_clock = "2025-01-01T00:00:00Z"
 
 # Report configuration
 [report]
-json = "{{ vars.report_dir | default(value='reports') }}/otel-validation.json"
-digest = "{{ vars.report_dir | default(value='reports') }}/otel-validation.sha256"
+json = "reports/otel-validation.json"
+digest = "reports/otel-validation.sha256"

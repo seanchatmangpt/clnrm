@@ -9,12 +9,14 @@ timeout = "600s"
 # Performance Test Configuration
 [services.performance_ai]
 type = "ollama"
+image = "ollama/ollama:latest"
 model = "qwen3-coder:30b"
 endpoint = "http://localhost:11434"
 
 # Performance Benchmarks
 [[steps]]
-command = ["node", "-e", "
+name = "setup_performance_test"
+command = ["node", "-e", """
 console.log('Setting up AI performance benchmark...');
 console.log('Test parameters:');
 console.log('- Model: qwen3-coder:30b');
@@ -22,11 +24,12 @@ console.log('- Max tokens: 50');
 console.log('- Concurrent requests: 5');
 console.log('- Test duration: 30 seconds');
 console.log('Performance test initialized');
-"]name = "setup_performance_test"
+"""]
 expected_output_regex = "Performance test initialized"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_single_request_latency"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -51,11 +54,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_single_request_latency"
+"""]
 expected_output_regex = "Latency test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_concurrent_requests"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -93,11 +97,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_concurrent_requests"
+"""]
 expected_output_regex = "Concurrency test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_throughput_benchmark"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -143,11 +148,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_throughput_benchmark"
+"""]
 expected_output_regex = "Throughput test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_memory_usage"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -183,11 +189,12 @@ async function test() {
   }
 }
 test();
-"]name = "test_memory_usage"
+"""]
 expected_output_regex = "Memory test passed"
 
 [[steps]]
-command = ["node", "-e", "
+name = "test_error_recovery"
+command = ["node", "-e", """
 const { ollama } = require('ollama-ai-provider');
 
 async function test() {
@@ -218,7 +225,7 @@ async function test() {
   console.log('Error recovery test completed successfully');
 }
 test();
-"]name = "test_error_recovery"
+"""]
 expected_output_regex = "Error recovery test completed successfully"
 
 # Performance Assertions
