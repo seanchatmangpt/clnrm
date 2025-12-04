@@ -940,9 +940,7 @@ dependencies = [
 
 [[package]]
 name = "clap-noun-verb"
-version = "5.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90de44a77e7f8c3ac0ab0d6dd5250c1ec4e992dcc315e5e98075c8aff9789408"
+version = "5.3.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -963,9 +961,7 @@ dependencies = [
 
 [[package]]
 name = "clap-noun-verb-macros"
-version = "5.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dba8bf034e4ae1d5b0232f88f575cc80045ea62aaca7326ca550f0e350a7189"
+version = "5.3.2"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

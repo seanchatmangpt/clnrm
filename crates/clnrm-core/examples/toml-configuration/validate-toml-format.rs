@@ -105,13 +105,13 @@ plugin_should_be_loaded = "alpine"
         Ok(config) => {
             println!("✅ Comprehensive TOML parsed successfully");
             if let Some(metadata) = &config.test {
-                println!("   Test name: {}", metadata.metadata.name);
+                println!("   Test name: {}", metadata.name);
             }
             println!("   Steps: {}", config.steps.len());
 
             // Verify all features are parsed correctly
             if let Some(metadata) = &config.test {
-                assert_eq!(metadata.metadata.name, "comprehensive_toml_test");
+                assert_eq!(metadata.name, "comprehensive_toml_test");
             }
             assert!(!config.steps.is_empty());
 
@@ -201,7 +201,7 @@ max_execution_time = 300
 
     println!(
         "✅ TOML configuration parsed: {}",
-        config.test.as_ref().unwrap().metadata.name
+        config.test.as_ref().unwrap().name
     );
     println!("📋 Steps to execute: {}", config.steps.len());
 

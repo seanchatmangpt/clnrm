@@ -251,7 +251,12 @@ async fn test_concurrent_container_operations() -> Result<()> {
 
             // Execute work in the container
             let result = env
-                .execute_in_container(&container, &["echo".to_string(), format!("work-{}", i)], None, None)
+                .execute_in_container(
+                    &container,
+                    &["echo".to_string(), format!("work-{}", i)],
+                    None,
+                    None,
+                )
                 .await?;
             Ok::<_, clnrm_core::CleanroomError>(result.stdout)
         });

@@ -89,7 +89,7 @@ async fn test_state_machine_transitions() -> Result<()> {
 
     // Can now access report
     let report = completed.report();
-    assert!(report.sample_count >= 0, "Report should have sample count");
+    // sample_count is u64 so always >= 0, assertion is always true
 
     // Cannot call stop_weaver again (compile-time check)
     // completed.stop_weaver().await?; // ← This won't compile ✓
@@ -429,10 +429,7 @@ async fn test_report_structure() -> Result<()> {
     let report = completed.report();
 
     // Check report structure
-    assert!(report.violations >= 0);
-    assert!(report.improvements >= 0);
-    assert!(report.information >= 0);
-    assert!(report.sample_count >= 0);
+    // All fields are u64, so always >= 0 (assertions always true)
     assert!(report.registry_coverage >= 0.0);
     assert!(report.registry_coverage <= 1.0);
 

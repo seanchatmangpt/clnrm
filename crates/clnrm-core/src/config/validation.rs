@@ -117,7 +117,7 @@ pub fn validate_environment_security(config: &TestConfig) -> Result<()> {
     if let Some(ref services) = config.services {
         for (service_name, service) in services {
             if let Some(ref env) = service.env {
-                for (key, _) in env {
+                for key in env.keys() {
                     if DANGEROUS_VARS.contains(&key.as_str()) {
                         return Err(CleanroomError::configuration_error(format!(
                             "Security risk: Dangerous environment variable '{}' in service '{}'\n\n\
@@ -137,7 +137,7 @@ pub fn validate_environment_security(config: &TestConfig) -> Result<()> {
     if let Some(ref service_map) = config.service {
         for (service_name, service) in service_map {
             if let Some(ref env) = service.env {
-                for (key, _) in env {
+                for key in env.keys() {
                     if DANGEROUS_VARS.contains(&key.as_str()) {
                         return Err(CleanroomError::configuration_error(format!(
                             "Security risk: Dangerous environment variable '{}' in service '{}'\n\n\
@@ -167,10 +167,7 @@ pub fn validate_no_port_conflicts(config: &TestConfig) -> Result<()> {
         for (name, service) in services {
             if let Some(ref ports) = service.ports {
                 for &port in ports {
-                    port_map
-                        .entry(port)
-                        .or_insert_with(Vec::new)
-                        .push(name.clone());
+                    port_map.entry(port).or_default().push(name.clone());
                 }
             }
         }
@@ -181,10 +178,7 @@ pub fn validate_no_port_conflicts(config: &TestConfig) -> Result<()> {
         for (name, service) in service_map {
             if let Some(ref ports) = service.ports {
                 for &port in ports {
-                    port_map
-                        .entry(port)
-                        .or_insert_with(Vec::new)
-                        .push(name.clone());
+                    port_map.entry(port).or_default().push(name.clone());
                 }
             }
         }
@@ -249,6 +243,5 @@ mod tests {
     fn placeholder_test() {
         // Placeholder - legacy validation tests removed during rewrite
         // New validation is in config::spec::Config::validate()
-        assert!(true);
     }
 }

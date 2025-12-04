@@ -17,9 +17,9 @@ async fn test_pool_thrashing_100_threads() {
     let start = Instant::now();
 
     // Spawn 100 tasks that each do 100 acquire/release cycles
-    for thread_id in 0..100 {
+    for _thread_id in 0..100 {
         let ops = Arc::clone(&total_operations);
-        let errs = Arc::clone(&errors);
+        let _errs = Arc::clone(&errors);
 
         let handle = tokio::spawn(async move {
             for cycle in 0..100 {
@@ -27,7 +27,7 @@ async fn test_pool_thrashing_100_threads() {
                 tokio::time::sleep(Duration::from_micros(10)).await;
 
                 // Simulate work
-                let _work = thread_id * 1000 + cycle;
+                let _work = _thread_id * 1000 + cycle;
 
                 // Simulate release
                 tokio::time::sleep(Duration::from_micros(5)).await;
@@ -110,7 +110,7 @@ async fn test_semaphore_contention_10k_tasks() {
     let start = Instant::now();
 
     // Try to run 10K tasks with only 100 permits
-    for task_id in 0..10_000 {
+    for _task_id in 0..10_000 {
         let sem = Arc::clone(&semaphore);
         let max = Arc::clone(&max_concurrent);
         let current = Arc::clone(&current_concurrent);
@@ -166,7 +166,7 @@ async fn test_concurrent_service_lifecycle() {
     let start = Instant::now();
 
     // 100 services starting and stopping concurrently
-    for service_id in 0..100 {
+    for _service_id in 0..100 {
         let starts = Arc::clone(&successful_starts);
         let stops = Arc::clone(&successful_stops);
         let errs = Arc::clone(&errors);
@@ -219,12 +219,12 @@ async fn test_otel_span_load_10k_spans() {
     let start = Instant::now();
 
     // 1000 threads each emitting 10 spans
-    for thread_id in 0..1000 {
+    for _thread_id in 0..1000 {
         let emitted = Arc::clone(&spans_emitted);
         let errors = Arc::clone(&export_errors);
 
         let handle = tokio::spawn(async move {
-            for span_id in 0..10 {
+            for _span_id in 0..10 {
                 // Simulate span creation and attributes
                 tokio::time::sleep(Duration::from_micros(5)).await;
 
@@ -273,7 +273,7 @@ async fn test_sustained_load_30_seconds() {
     let mut handles = Vec::new();
 
     // 10 workers running for the duration
-    for worker_id in 0..10 {
+    for _worker_id in 0..10 {
         let ops = Arc::clone(&operations_completed);
         let errs = Arc::clone(&errors);
         let duration = test_duration;

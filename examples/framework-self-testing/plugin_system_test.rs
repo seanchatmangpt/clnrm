@@ -164,7 +164,7 @@ async fn main() -> Result<(), CleanroomError> {
             &self.name
         }
 
-        fn start(&self) -> Result<ServiceHandle, CleanroomError> {
+        fn start(&self) -> Result<ServiceHandle> {
             Ok(ServiceHandle {
                 id: format!("test-{}", uuid::Uuid::new_v4()),
                 service_name: self.name.clone(),
@@ -172,7 +172,7 @@ async fn main() -> Result<(), CleanroomError> {
             })
         }
 
-        fn stop(&self, _handle: ServiceHandle) -> Result<(), CleanroomError> {
+        fn stop(&self, _handle: ServiceHandle) -> Result<()> {
             Ok(())
         }
 

@@ -533,7 +533,7 @@ pub struct SchedulerStatsSnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::capabilities::{CapabilityId, CapabilityScenarioBuilder, EffectSet};
+    use crate::capabilities::CapabilityScenarioBuilder;
 
     fn create_test_request(priority: u8, tenant: &str) -> TestRequest {
         TestRequest {
