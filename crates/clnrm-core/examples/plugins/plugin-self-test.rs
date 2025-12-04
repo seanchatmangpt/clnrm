@@ -185,7 +185,7 @@ impl ServicePlugin for PluginSelfTestPlugin {
         &self.name
     }
 
-    async fn start(&self) -> Result<ServiceHandle> {
+    fn start(&self) -> Result<ServiceHandle> {
         info!("Starting plugin self-test service: {}", self.name);
 
         Ok(ServiceHandle {
@@ -195,7 +195,7 @@ impl ServicePlugin for PluginSelfTestPlugin {
         })
     }
 
-    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         info!("Stopping plugin self-test service: {}", self.name);
         Ok(())
     }

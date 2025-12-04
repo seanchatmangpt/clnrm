@@ -3,6 +3,8 @@
 //! Provides noun-verb commands for managing application services.
 //! Uses #[noun] and #[verb] proc macros from clap_noun_verb_macros v5.3.0.
 
+#![allow(unexpected_cfgs, clippy::unused_unit)]
+
 use clap_noun_verb::Result as CnvResult;
 use clap_noun_verb_macros::{noun, verb};
 use serde::{Deserialize, Serialize};

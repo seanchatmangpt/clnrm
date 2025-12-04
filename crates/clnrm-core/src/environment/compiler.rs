@@ -618,6 +618,7 @@ mod tests {
     use super::*;
     use crate::environment::sigma::{SemVer, ServiceDef, TelemetryDef};
 
+    #[allow(dead_code)]
     fn create_test_sigma() -> SigmaBase {
         let mut services = HashMap::new();
         services.insert(

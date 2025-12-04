@@ -513,7 +513,7 @@ async fn test_no_resource_exhaustion() -> clnrm_core::Result<()> {
     }
 
     // Assert - If we got here, no resource exhaustion occurred
-    assert!(true);
+    // (successful completion is the assertion)
 
     Ok(())
 }
