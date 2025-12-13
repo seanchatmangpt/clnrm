@@ -5,6 +5,7 @@
 use crate::backend::TestcontainerBackend;
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{RwLock, Semaphore};
@@ -94,6 +95,9 @@ pub struct ContainerPool {
 
     /// Total containers currently allocated
     allocated_count: Arc<RwLock<usize>>,
+
+    /// Number of pending acquire requests (waiting on semaphore)
+    pending_requests: Arc<AtomicUsize>,
 }
 
 impl ContainerPool {
@@ -104,6 +108,7 @@ impl ContainerPool {
             config,
             pools: Arc::new(RwLock::new(HashMap::new())),
             allocated_count: Arc::new(RwLock::new(0)),
+            pending_requests: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -194,17 +199,26 @@ impl ContainerPool {
         }
 
         // No available container, create new one if under limit
+        // Track pending request
+        self.pending_requests.fetch_add(1, Ordering::Relaxed);
         let permit = self.semaphore.acquire().await.map_err(|e| {
+            self.pending_requests.fetch_sub(1, Ordering::Relaxed);
             CleanroomError::internal_error(format!("Failed to acquire semaphore: {}", e))
         })?;
+        self.pending_requests.fetch_sub(1, Ordering::Relaxed);
 
         let current_count = *self.allocated_count.read().await;
         if current_count >= self.config.max_size {
+            // POKA-YOKE: Pool exhaustion handler (FM-005, RPN: 120)
+            // Uses trait-based abstraction for testability and extensibility
+            let pending = self.pending_requests.load(Ordering::Relaxed);
             drop(permit); // Release permit before returning error
-            return Err(CleanroomError::resource_limit_exceeded(format!(
-                "Container pool exhausted (max: {})",
-                self.config.max_size
-            )));
+            // handle_exhaustion always returns Err, so we can extract it
+            return Err(crate::poka_yoke::handle_pool_exhaustion(
+                self.config.max_size,
+                current_count,
+                pending,
+            ).unwrap_err());
         }
 
         // Create new container - wrap in spawn_blocking to avoid runtime conflicts
@@ -311,6 +325,7 @@ impl ContainerPool {
             in_use,
             available,
             max_size: self.config.max_size,
+            pending_requests: self.pending_requests.load(Ordering::Relaxed),
         }
     }
 }
@@ -329,6 +344,9 @@ pub struct PoolStats {
 
     /// Maximum pool size
     pub max_size: usize,
+
+    /// Number of pending acquire requests
+    pub pending_requests: usize,
 }
 
 impl PoolStats {

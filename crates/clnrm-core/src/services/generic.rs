@@ -83,13 +83,14 @@ impl GenericContainerPlugin {
     }
 }
 
-#[async_trait::async_trait]
 impl ServicePlugin for GenericContainerPlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    async fn start(&self) -> Result<ServiceHandle> {
+    fn start(&self) -> Result<ServiceHandle> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
         // Create container configuration
         let image = GenericImage::new(self.image.clone(), self.tag.clone());
 
@@ -153,19 +154,25 @@ impl ServicePlugin for GenericContainerPlugin {
         let mut container_guard = self.container_id.write().await;
         *container_guard = Some(container_id);
 
-        Ok(ServiceHandle {
-            id: Uuid::new_v4().to_string(),
-            service_name: self.name.clone(),
-            metadata,
+                Ok(ServiceHandle {
+                    id: Uuid::new_v4().to_string(),
+                    service_name: self.name.clone(),
+                    metadata,
+                })
+            })
         })
     }
 
-    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        let mut container_guard = self.container_id.write().await;
-        if container_guard.is_some() {
-            *container_guard = None; // Drop triggers container cleanup
-        }
-        Ok(())
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let mut container_guard = self.container_id.write().await;
+                if container_guard.is_some() {
+                    *container_guard = None; // Drop triggers container cleanup
+                }
+                Ok(())
+            })
+        })
     }
 
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {

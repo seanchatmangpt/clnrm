@@ -14,7 +14,7 @@ pub mod capabilities; // v1.7.0: Capability-aware scenario framework
 pub mod chaos;
 pub mod chicago_tdd; // v1.5.0: Chicago-TDD-Tools integration framework
 pub mod cleanroom;
-pub mod cli;
+pub mod cli; // CLI types and utilities (commands moved to clnrm-cli)
 pub mod config;
 pub mod coverage;
 pub mod determinism;
@@ -27,6 +27,20 @@ pub mod metrics;
 pub mod otel;
 pub mod phases; // v1.8.0: Phases 8-10 determinism, conformance, & contracts
 pub mod policy;
+pub mod poka_yoke {
+    //! Poka-Yoke (Error-Proofing) Mechanisms
+    //!
+    //! Trait-based abstractions for error-proofing mechanisms that prevent
+    //! the highest-priority failure modes identified in the FMEA audit.
+    pub mod traits;
+    pub mod impls;
+    pub mod globals;
+
+    // Re-export for convenience
+    pub use traits::*;
+    pub use impls::*;
+    pub use globals::*;
+}
 pub mod receipts; // v1.7.0: Test receipt infrastructure (Γₜ) (Phase 3)
 pub mod reporting;
 pub mod sbom; // v1.5.0: SBOM generation

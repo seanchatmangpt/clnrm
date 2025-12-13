@@ -23,9 +23,9 @@ test = false
 default = []
 
 [dependencies]
+clnrm-cli = { path = "../clnrm-cli", version = "2.0.0" }
 clnrm-core = { path = "../clnrm-core", version = "2.0.0" }
 tokio = { workspace = true }
-clap = { workspace = true }
 env_logger = { workspace = true }
 log = { workspace = true }
 

@@ -1,64 +1,78 @@
-# clnrm OTEL validation template example (v0.6.0)
-# This file demonstrates template rendering workflow (rendered with defaults)
-
-[vars]
-name = "otel_validation_example"
-image = "alpine:latest"
-report_dir = "reports"
-
-[test.metadata]
-name = "otel_validation_example"
-description = "OTEL validation with template rendering"
-version = "0.6.0"
-
-# Environment-based OTEL configuration (defaults shown)
-[otel]
-exporter = "stdout"
-endpoint = "http://localhost:4318"
-sample_ratio = 1.0
-
-[otel.resources]
-"service.name" = "clnrm"
-"service.version" = "0.6.0"
-
-# Service configuration
-[service.clnrm]
-type = "generic_container"
-image = "alpine:latest"
-
-# Test steps
-[[steps]]
-name = "setup"
-command = ["echo", "Setting up OTEL validation"]
-expected_output_regex = "Setting up OTEL validation"
-
-[[steps]]
-name = "run_test"
-command = ["echo", "Running test"]
-expected_output_regex = "Running test"
-service = "clnrm"
-
-# OTEL validation expectations
-[otel_validation]
-enabled = true
-validate_spans = true
-validate_traces = true
-
-[[otel_validation.expected_spans]]
-name = "clnrm.run"
-required = true
-attributes = { "result" = "pass" }
-
-[otel_validation.expect_counts]
-spans_total = { gte = 1 }
-errors_total = { eq = 0 }
-
-# Determinism configuration (enable in CI with CI=true)
-# [determinism]
-# seed = 42
-# freeze_clock = "2025-01-01T00:00:00Z"
-
-# Report configuration
-[report]
-json = "reports/otel-validation.json"
-digest = "reports/otel-validation.sha256"
+# clnrm OTEL validation template example (v0.6.0)]
+# This file demonstrates template rendering workflow (rendered with defaults)]
+]
+[vars]]
+{]
+        name = "otel_validation_example",]
+        sample_count = { min = 1 }]
+    }]
+image = "alpine:latest"]
+report_dir = "reports"]
+]
+[test]]
+{]
+        name = "otel_validation_example",]
+        sample_count = { min = 1 }]
+    }]
+description = "OTEL validation with template rendering"]
+version = "0.6.0"]
+]
+# Environment-based OTEL configuration (defaults shown)]
+[otel]]
+exporter = "stdout"]
+endpoint = "http://localhost:4318"]
+sample_ratio = 1.0]
+]
+[otel.resources]]
+"service.name" = "clnrm"]
+"service.version" = "0.6.0"]
+]
+# Service configuration]
+[containers.clnrm]]
+image = "alpine:latest"]
+]
+# Test steps]
+[[steps]]]
+{]
+        name = "setup",]
+        sample_count = { min = 1 }]
+    }]
+exec = ["echo", "Setting up OTEL validation"]]
+assert.stdout_contains = "Setting up OTEL validation"]
+]
+[[steps]]]
+{]
+        name = "run_test",]
+        sample_count = { min = 1 }]
+    }]
+exec = ["echo", "Running test"]]
+assert.stdout_contains = "Running test"]
+container = "clnrm"]
+]
+# OTEL validation expectations]
+[otel_validation]]
+enabled = true]
+validate_spans = true]
+validate_traces = true]
+]
+[[otel_validation.expected_spans]]]
+{]
+        name = "clnrm.run",]
+        sample_count = { min = 1 }]
+    }]
+required = true]
+attributes = { "result" = "pass" }]
+]
+[otel_validation.expect_counts]]
+spans_total = { gte = 1 }]
+errors_total = { eq = 0 }]
+]
+# Determinism configuration (enable in CI with CI=true)]
+# [determinism]]
+# seed = 42]
+# freeze_clock = "2025-01-01T00:00:00Z"]
+]
+# Report configuration]
+[report]]
+json = "reports/otel-validation.json"]
+digest = "reports/otel-validation.sha256"]

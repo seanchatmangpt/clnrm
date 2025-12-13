@@ -1,479 +1,467 @@
-# Weaver Schema Reference (v1.2.1)
+# Weaver Schema Reference (v2.0.0)
 
-This reference documents the schema structure in `registry/` and how to write new schemas for clnrm v1.2.1.
+This reference documents the schema structure for Weaver-based telemetry validation in clnrm v2.0.0.
 
-## Schema Registry Structure
+## Overview
+
+**OpenTelemetry Weaver** is the source of truth for validation in clnrm v2.0.0. This chapter explains schema-first validation and how to use Weaver live-check with proper health checks to prevent false positives.
+
+## Key Concepts
+
+### Schema-First Validation
 
 ```
-registry/
-├── registry_manifest.yaml         # Registry metadata
-├── core/
-│   ├── test_execution.yaml        # Test execution spans
-│   ├── container_lifecycle.yaml   # Container lifecycle spans
-│   └── plugin_system.yaml         # Plugin execution spans
-└── metrics/
-    └── test_metrics.yaml          # Performance metrics
+Traditional Testing:
+  Test passes ✅ → Assumes functionality works → FALSE POSITIVE ❌
+
+Weaver v2.0.0:
+  Test passes ✅ + Weaver validates schema ✅ → TRUE POSITIVE ✅
+  Schema validation proves actual runtime behavior
 ```
 
-## Registry Manifest
+### 80/20 Validation Strategy
 
-**File:** `registry/registry_manifest.yaml`
+**4 Critical Attributes** prove **80% of functionality**:
+
+1. **Service Name** - Identifies the service generating telemetry
+2. **Span Names** - Validates operation execution
+3. **Span Attributes** - Confirms correct configuration
+4. **Sample Count** - Ensures telemetry is actually generated
+
+## Schema Registry
+
+### Location
+- **Registry Path**: `registry/` directory
+- **Schema Files**: Comprehensive semantic conventions
+- **Validation Engine**: Weaver live-check integration
+
+### Schema Structure
 
 ```yaml
-registry_id: clnrm
-registry_version: 1.2.1
-schemas:
-  - core/test_execution.yaml
-  - core/container_lifecycle.yaml
-  - core/plugin_system.yaml
-  - metrics/test_metrics.yaml
+# Example span schema
+- id: http_server_request
+  type: span
+  brief: "HTTP server request span"
+  note: "Represents an HTTP server request"
+  stability: stable
+  attributes:
+    - id: http.method
+      type: string
+      brief: "HTTP request method"
+      examples: ["GET", "POST", "PUT"]
+    - id: http.url
+      type: string
+      brief: "HTTP request URL"
+      examples: ["https://example.com/api/users"]
+    - id: http.status_code
+      type: int
+      brief: "HTTP response status code"
+      examples: [200, 404, 500]
 ```
 
-## Core Schemas
+## Validation Configuration
 
-### test_execution.yaml
+### Basic Validation
 
-Defines telemetry for test execution spans.
+```toml
+# Enable Weaver validation
+[otel]
+exporter = "otlp-http"
+endpoint = "http://weaver-collector:4318"
 
-**Critical Attributes (Cannot Be Faked):**
-
-```yaml
-groups:
-  - id: span.clnrm.test_execution
-    type: span
-    brief: "Test execution span with hermetic isolation"
-    attributes:
-      - id: container.id
-        type: string
-        requirement_level: required
-        brief: "Unique container ID proving container ran"
-        examples: ["abc-123-def", "container-uuid-here"]
-
-      - id: test.isolated
-        type: boolean
-        requirement_level: required
-        brief: "Proves hermetic isolation (separate container per test)"
-        examples: [true]
-
-      - id: test.duration_ms
-        type: int
-        requirement_level: required
-        brief: "Actual execution duration in milliseconds (must be >0)"
-        examples: [5234, 1200, 345]
-
-      - id: test.result
-        type: string
-        requirement_level: required
-        brief: "Test result: pass or fail"
-        examples: ["pass", "fail"]
-
-      - id: test.name
-        type: string
-        requirement_level: required
-        brief: "Test name"
-        examples: ["test_container_execution", "integration_test"]
+# Validation expectations
+[expect.otel]
+spans = [
+    { name = "http_request", attributes = { "http.method" = "GET" } }
+]
 ```
 
-**Optional Attributes:**
+### Advanced Validation
 
-```yaml
-      - id: test.suite
-        type: string
-        requirement_level: recommended
-        brief: "Test suite name"
-        examples: ["integration", "e2e", "performance"]
+```toml
+[expect.otel]
+# Required spans
+spans = [
+    {
+        name = "http_server_request",
+        kind = "server",
+        attributes = {
+            "http.method" = "POST",
+            "http.route" = "/api/users"
+        }
+    },
+    {
+        name = "database_query",
+        kind = "client",
+        attributes = {
+            "db.system" = "postgresql",
+            "db.operation" = "SELECT"
+        }
+    }
+]
 
-      - id: test.assertion_count
-        type: int
-        requirement_level: optional
-        brief: "Number of assertions in test"
-
-      - id: test.assertions_passed
-        type: int
-        requirement_level: optional
-        brief: "Number of assertions that passed"
-
-      - id: test.assertions_failed
-        type: int
-        requirement_level: optional
-        brief: "Number of assertions that failed"
+# Required metrics
+metrics = [
+    {
+        name = "http_requests_total",
+        type = "counter",
+        attributes = {
+            "method" = "POST",
+            "status" = "200"
+        }
+    }
+]
 ```
 
-### container_lifecycle.yaml
+## Health Check Integration
 
-Defines telemetry for container lifecycle operations.
+### v2.0.0 Health Checks
 
-**Critical Attributes (Proves Cleanup):**
+**CRITICAL**: v2.0.0 requires proper health checks for Weaver validation:
 
-```yaml
-groups:
-  - id: span.clnrm.container_lifecycle
-    type: span
-    brief: "Container lifecycle span tracking creation to cleanup"
-    attributes:
-      - id: container.id
-        type: string
-        requirement_level: required
-        brief: "Unique container ID"
+```toml
+[containers.api]
+image = "myapp:latest"
+healthcheck = "curl -f http://localhost:8080/health"
+ports = [8080]
 
-      - id: container.created_at
-        type: int
-        requirement_level: required
-        brief: "Unix timestamp when container created"
-        examples: [1698765432]
-
-      - id: container.destroyed_at
-        type: int
-        requirement_level: required
-        brief: "Unix timestamp when container cleaned up (proves cleanup)"
-        examples: [1698765467]
-
-      - id: cleanup.success
-        type: boolean
-        requirement_level: required
-        brief: "Whether cleanup succeeded"
-        examples: [true, false]
+[containers.weaver]
+image = "otel/weaver:latest"
+healthcheck = "weaver --version"
 ```
 
-**Container Details:**
+### Health Check Patterns
 
-```yaml
-      - id: container.image.name
-        type: string
-        requirement_level: required
-        brief: "Container image name"
-        examples: ["alpine", "postgres", "nginx"]
+```toml
+# HTTP health check
+[containers.api]
+healthcheck = "curl -f http://localhost:8080/health"
 
-      - id: container.image.tag
-        type: string
-        requirement_level: recommended
-        brief: "Container image tag"
-        examples: ["latest", "15-alpine", "1.23"]
+# Database health check
+[containers.database]
+healthcheck = "pg_isready -U user -d db"
 
-      - id: container.backend
-        type: string
-        requirement_level: recommended
-        brief: "Container backend (docker/podman)"
-        examples: ["docker", "podman"]
-
-      - id: container.state
-        type: string
-        requirement_level: optional
-        brief: "Container state transitions"
-        examples: ["created", "running", "stopped", "removed"]
+# Custom health check
+[containers.worker]
+healthcheck = "./health-check.sh"
 ```
 
-### plugin_system.yaml
+## Zero Sample Detection
 
-Defines telemetry for plugin execution.
+### The False Positive Problem
 
-```yaml
-groups:
-  - id: span.clnrm.plugin_execution
-    type: span
-    brief: "Plugin execution span"
-    attributes:
-      - id: plugin.name
-        type: string
-        requirement_level: required
-        brief: "Plugin name"
-        examples: ["generic_container", "surrealdb", "postgres"]
+**CRITICAL**: Tests can pass without generating telemetry:
 
-      - id: plugin.type
-        type: string
-        requirement_level: required
-        brief: "Plugin type"
-        examples: ["service", "chaos", "validation"]
-
-      - id: plugin.state
-        type: string
-        requirement_level: required
-        brief: "Plugin state"
-        examples: ["starting", "running", "stopped"]
-
-      - id: plugin.startup_duration_ms
-        type: int
-        requirement_level: recommended
-        brief: "Plugin startup duration"
-
-      - id: plugin.health_check.performed
-        type: boolean
-        requirement_level: optional
-        brief: "Whether health check was performed"
-
-      - id: plugin.health_check.passed
-        type: boolean
-        requirement_level: optional
-        brief: "Whether health check passed"
+```toml
+# ❌ FALSE POSITIVE: Test passes but no telemetry generated
+[[steps]]
+name = "test_api"
+container = "api"
+exec = ["curl", "http://localhost:8080/api"]
+expect = { exit_code = 0 }  # Passes even without OTEL instrumentation
 ```
 
-## Metrics Schemas
+### v2.0.0 Solution: Zero Sample Validation
 
-### test_metrics.yaml
-
-Defines metrics for performance tracking.
-
-```yaml
-groups:
-  - id: metric.clnrm.test_duration
-    type: metric
-    metric_name: clnrm.test.duration
-    brief: "Test execution duration histogram"
-    instrument: histogram
-    unit: s
-
-  - id: metric.clnrm.test_count
-    type: metric
-    metric_name: clnrm.test.count
-    brief: "Test execution counter"
-    instrument: counter
-    unit: "{test}"
-
-  - id: metric.clnrm.container_operations
-    type: metric
-    metric_name: clnrm.container.operations
-    brief: "Container operation counter"
-    instrument: counter
-    unit: "{operation}"
-
-  - id: metric.clnrm.container_lifetime
-    type: metric
-    metric_name: clnrm.container.lifetime
-    brief: "Container lifetime histogram"
-    instrument: histogram
-    unit: s
+```toml
+# ✅ TRUE POSITIVE: Validation requires telemetry
+[expect.otel]
+spans = [
+    {
+        name = "http_client_request",
+        sample_count = { min = 1 }  # REQUIRE telemetry generation
+    }
+]
 ```
 
-## Writing New Schemas
+### Sample Count Validation
 
-### Step 1: Create Schema File
+```toml
+[expect.otel.spans.0]
+name = "http_request"
+sample_count = { min = 1, max = 10 }  # Must generate 1-10 spans
+
+[expect.otel.metrics.0]
+name = "requests_total"
+sample_count = { min = 5 }  # Must generate at least 5 metrics
+```
+
+## Validation Hierarchy
+
+```
+1. Weaver Schema Validation (HIGHEST AUTHORITY)
+   ├─ Runtime telemetry MUST match schemas
+   ├─ Exit code 1 = BUILD FAIL
+   └─ Source of truth for production readiness
+
+2. Compilation + Type Safety (SECOND AUTHORITY)
+   ├─ Code must compile
+   ├─ Type-safe telemetry builders
+   └─ Zero clippy warnings
+
+3. Traditional Tests (SUPPORTING EVIDENCE)
+   ├─ Can have false positives
+   ├─ Not sole source of truth
+   └─ Validated by Weaver
+```
+
+## Common Validation Patterns
+
+### HTTP API Testing
+
+```toml
+[expect.otel]
+spans = [
+    {
+        name = "http_server_request",
+        kind = "server",
+        attributes = {
+            "http.method" = "GET",
+            "http.route" = "/api/users",
+            "http.status_code" = 200
+        },
+        sample_count = { min = 1 }
+    },
+    {
+        name = "database_query",
+        kind = "client",
+        attributes = {
+            "db.system" = "postgresql",
+            "db.operation" = "SELECT"
+        },
+        sample_count = { min = 1 }
+    }
+]
+```
+
+### Database Operation Validation
+
+```toml
+[expect.otel]
+spans = [
+    {
+        name = "database_query",
+        attributes = {
+            "db.statement" = "SELECT * FROM users WHERE id = ?",
+            "db.operation" = "SELECT"
+        },
+        sample_count = { min = 1 }
+    }
+]
+```
+
+### Message Queue Processing
+
+```toml
+[expect.otel]
+spans = [
+    {
+        name = "messaging_publish",
+        attributes = {
+            "messaging.system" = "rabbitmq",
+            "messaging.destination" = "user_events"
+        },
+        sample_count = { min = 1 }
+    },
+    {
+        name = "messaging_receive",
+        attributes = {
+            "messaging.system" = "rabbitmq",
+            "messaging.operation" = "receive"
+        },
+        sample_count = { min = 1 }
+    }
+]
+```
+
+## Weaver Live-Check Integration
+
+### Setup Requirements
+
+1. **Weaver Installation**:
+   ```bash
+   # Install Weaver
+   cargo install weaver
+
+   # Start Weaver collector
+   weaver collector --port 4318
+   ```
+
+2. **Configuration**:
+   ```toml
+   [otel]
+   exporter = "otlp-http"
+   endpoint = "http://localhost:4318"
+
+   # Enable Weaver validation
+   [expect.otel]
+   registry_path = "./registry"  # Path to schema registry
+   ```
+
+### Validation Commands
 
 ```bash
-touch registry/custom/my_feature.yaml
+# Validate with Weaver
+clnrm run --validate --otel-exporter otlp-http test.clnrm.toml
+
+# Live validation during test execution
+clnrm run --live-check --registry-path ./registry test.clnrm.toml
 ```
 
-### Step 2: Define Schema Structure
+## Troubleshooting
 
-```yaml
-# registry/custom/my_feature.yaml
-groups:
-  - id: span.clnrm.my_feature
-    type: span
-    brief: "My feature span description"
-    attributes:
-      - id: my_feature.attribute
-        type: string
-        requirement_level: required
-        brief: "Description of what this attribute proves"
-        examples: ["example1", "example2"]
-```
+### Common Issues
 
-### Step 3: Add to Registry Manifest
-
-```yaml
-# registry/registry_manifest.yaml
-schemas:
-  - core/test_execution.yaml
-  - core/container_lifecycle.yaml
-  - core/plugin_system.yaml
-  - metrics/test_metrics.yaml
-  - custom/my_feature.yaml  # New schema
-```
-
-### Step 4: Validate Schema
-
+**Schema validation fails:**
 ```bash
-weaver registry check --registry registry/
-# Expected: ✅ 0 violations, 0 warnings
+# Check schema registry
+ls registry/
+
+# Validate schema syntax
+weaver validate registry/
 ```
 
-### Step 5: Implement Code
-
-```rust
-// Emit telemetry matching schema
-let tracer = global::tracer("clnrm");
-let mut span = tracer
-    .span_builder("clnrm.my_feature")
-    .with_attributes(vec![
-        KeyValue::new("my_feature.attribute", "value"),
-    ])
-    .start(&tracer);
-
-// ... feature logic ...
-
-span.end();
-```
-
-### Step 6: Validate with Weaver Live-Check
-
+**Zero sample count:**
 ```bash
-weaver registry live-check --registry registry/
-# Check: my_feature.attribute appears in telemetry
+# Check OTEL instrumentation
+curl http://localhost:4318/v1/traces
+
+# Verify span generation
+clnrm run --otel-exporter stdout test.clnrm.toml
 ```
 
-## Attribute Requirements
+**Health check failures:**
+```bash
+# Check container health
+docker ps
 
-### requirement_level
-
-- **`required`**: MUST be present (Weaver fails if missing)
-- **`recommended`**: SHOULD be present (warning if missing)
-- **`optional`**: MAY be present (no warning)
-
-### Choosing requirement_level
-
-```yaml
-# ✅ Use 'required' for attributes that prove features work
-- id: container.id
-  requirement_level: required  # Cannot fake, proves container ran
-
-# ✅ Use 'recommended' for important operational data
-- id: container.image.tag
-  requirement_level: recommended  # Important but not critical
-
-# ✅ Use 'optional' for nice-to-have metadata
-- id: test.assertion_count
-  requirement_level: optional  # Useful but not essential
+# Test health endpoints
+curl http://localhost:8080/health
 ```
 
-## Attribute Types
+## Migration from v1.x
 
-### Supported Types
+### v1.x OTEL Validation (Deprecated)
 
-- **`string`**: Text values
-- **`int`**: Integer values
-- **`double`**: Floating point values
-- **`boolean`**: true/false
-- **`string[]`**: Array of strings
-- **`int[]`**: Array of integers
-- **`double[]`**: Array of doubles
+```toml
+# OLD: TOML-based expectations (v1.x)
+[otel.expect]
+spans = ["http_request", "db_query"]
+```
 
-### Type Examples
+### v2.0.0 Weaver Validation (Recommended)
 
-```yaml
-attributes:
-  # String
-  - id: test.name
-    type: string
-    examples: ["my_test"]
-
-  # Integer
-  - id: test.duration_ms
-    type: int
-    examples: [5234]
-
-  # Boolean
-  - id: test.isolated
-    type: boolean
-    examples: [true]
-
-  # Array of strings
-  - id: container.ports
-    type: string[]
-    examples: [["8080", "8081"]]
+```toml
+# NEW: Schema-based validation (v2.0.0)
+[expect.otel]
+spans = [
+    { name = "http_server_request", sample_count = { min = 1 } },
+    { name = "database_query", sample_count = { min = 1 } }
+]
 ```
 
 ## Best Practices
 
-### 1. Start with Required Attributes
+### 1. Always Require Sample Count
+
+```toml
+# ✅ Good: Require telemetry generation
+[expect.otel.spans.0]
+name = "operation"
+sample_count = { min = 1 }
+
+# ❌ Bad: Allow zero telemetry
+[expect.otel.spans.0]
+name = "operation"
+```
+
+### 2. Use Specific Attributes
+
+```toml
+# ✅ Good: Specific validation
+attributes = {
+    "http.method" = "POST",
+    "http.status_code" = 201
+}
+
+# ❌ Bad: Generic validation
+attributes = {}
+```
+
+### 3. Combine with Health Checks
+
+```toml
+# ✅ Good: Health checks + validation
+[containers.api]
+healthcheck = "curl -f http://localhost/health"
+
+[expect.otel]
+spans = [{ name = "health_check", sample_count = { min = 1 } }]
+```
+
+### 4. Use Registry Path
+
+```toml
+# ✅ Good: Explicit registry
+[expect.otel]
+registry_path = "./registry"
+
+# ❌ Bad: Default registry
+[expect.otel]
+# Uses default path
+```
+
+## Performance Considerations
+
+### Validation Overhead
+
+- **Schema loading**: Minimal (cached)
+- **Validation**: Proportional to telemetry volume
+- **Network**: OTLP export adds latency
+
+### Optimization Tips
+
+```toml
+# Use batch export
+[otel]
+exporter = "otlp-grpc"  # More efficient than HTTP
+
+# Limit validation scope
+[expect.otel]
+spans = [
+    { name = "critical_operation", sample_count = { min = 1 } }
+    # Don't validate every span
+]
+```
+
+## Advanced Features
+
+### Custom Schema Extensions
 
 ```yaml
-# ✅ GOOD: Minimal required attributes
-attributes:
-  - id: container.id
-    requirement_level: required
-  - id: test.duration_ms
-    requirement_level: required
+# custom-schemas.yaml
+- id: my_custom_span
+  type: span
+  attributes:
+    - id: my.custom.attribute
+      type: string
+      brief: "Custom attribute"
 ```
 
-### 2. Add Descriptive Briefs
+### Conditional Validation
 
-```yaml
-# ✅ GOOD: Clear, actionable brief
-- id: container.destroyed_at
-  brief: "Unix timestamp when container cleaned up (proves cleanup)"
-
-# ❌ BAD: Vague brief
-- id: container.destroyed_at
-  brief: "Cleanup time"
-```
-
-### 3. Provide Examples
-
-```yaml
-# ✅ GOOD: Representative examples
-- id: test.result
-  examples: ["pass", "fail", "skip"]
-
-# ❌ BAD: No examples
-- id: test.result
-  examples: []
-```
-
-### 4. Use Semantic Naming
-
-```yaml
-# ✅ GOOD: Follows OpenTelemetry conventions
-- id: container.image.name
-- id: container.image.tag
-- id: http.method
-- id: http.status_code
-
-# ❌ BAD: Non-standard naming
-- id: containerImageName
-- id: img_tag
-```
-
-## Validating Schemas
-
-### Check Schema Syntax
-
-```bash
-weaver registry check --registry registry/
-```
-
-**Expected output:**
-```
-✔ `clnrm` semconv registry `registry/` loaded (200 files)
-✔ No `before_resolution` policy violation
-✔ `clnrm` semconv registry resolved
-✔ No `after_resolution` policy violation
-```
-
-### Common Validation Errors
-
-**Error:** `Unknown attribute type`
-```yaml
-# ❌ WRONG
-- id: my_attr
-  type: float  # Not supported
-
-# ✅ CORRECT
-- id: my_attr
-  type: double  # Use 'double' not 'float'
-```
-
-**Error:** `Missing required field`
-```yaml
-# ❌ WRONG
-- id: my_attr
-  type: string
-  # Missing: requirement_level
-
-# ✅ CORRECT
-- id: my_attr
-  type: string
-  requirement_level: required
+```toml
+# Validate based on test type
+[expect.otel]
+spans = [
+    { name = "smoke_test_span", condition = "test.tags contains 'smoke'" },
+    { name = "integration_test_span", condition = "test.tags contains 'integration'" }
+]
 ```
 
 ## Next Steps
 
-1. **Understand Weaver validation**: See [Weaver Schema Validation](weaver-validation.md)
-2. **Learn 80/20 strategy**: See [80/20 Validation Strategy](80-20-validation.md)
-3. **Prevent false positives**: See [False Positive Detection](false-positive-detection.md)
-4. **Set up CI/CD**: See [Production Deployment](../production-deployment/ci-cd-integration.md)
-
-## Further Reading
-
-- [OpenTelemetry Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/)
-- [Weaver Schema Specification](https://github.com/open-telemetry/weaver/tree/main/docs)
-- [clnrm Schema Registry](https://github.com/seanchatmangpt/clnrm/tree/master/registry)
+- [TOML Schema](toml-schema.md) - Complete configuration reference
+- [Error Handling](error-handling.md) - Troubleshooting validation issues
+- [Migration Guide](../docs/V2_0_0_MIGRATION_GUIDE.md) - Upgrade from v1.x
+- [Registry Documentation](../../registry/) - Schema registry details

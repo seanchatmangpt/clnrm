@@ -1,7 +1,7 @@
 //! Integration Test Suite for v1.3.0
 //!
 //! This module organizes comprehensive integration tests for the v1.3.0 release.
-//! Tests follow the London School TDD approach with:
+//! Tests follow the Chicago School TDD approach with:
 //! - Mock-first design
 //! - Contract verification
 //! - Clear AAA (Arrange-Act-Assert) pattern

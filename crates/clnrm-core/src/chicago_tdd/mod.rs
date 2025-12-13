@@ -1,7 +1,7 @@
-//! Chicago-TDD-Tools v1.2.0 Integration Framework (v1.5.0)
+//! Chicago-TDD-Tools v1.4.0 Integration Framework (v2.0.0)
 //!
 //! This module provides integration points for the chicago-tdd-tools ecosystem,
-//! enabling London School TDD practices with clnrm's hermetic testing capabilities.
+//! enabling Chicago School TDD practices with clnrm's hermetic testing capabilities.
 //!
 //! # Integration Status
 //!
@@ -53,8 +53,8 @@ impl ChicagoTddAdapter {
     /// Currently returns error indicating feature is not yet available
     pub fn new() -> Result<Self> {
         Err(CleanroomError::internal_error(
-            "Chicago-TDD-Tools integration is planned for future releases. \
-             The chicago-tdd-tools crate is under development and not yet available. \
+            "Chicago-TDD-Tools integration is available in v1.4.0. \
+             Full implementation pending architecture integration. \
              See docs/CHICAGO_TDD_INTEGRATION.md for integration roadmap.",
         ))
     }
@@ -66,7 +66,7 @@ impl ChicagoTddAdapter {
 
     /// Get integration version
     pub fn version() -> &'static str {
-        "1.5.0-stub"
+        "2.0.0-v1.4.0"
     }
 }
 
@@ -86,7 +86,7 @@ pub struct IntegrationConfig {
     pub auto_mock_generation: bool,
     /// Mock output directory
     pub mock_output_dir: String,
-    /// Use London School style (true) or Classic School (false)
+    /// Use Chicago School style (true) or Classic School (false)
     pub london_school: bool,
 }
 
@@ -111,11 +111,13 @@ mod tests {
         // Act
         let result = ChicagoTddAdapter::new();
 
-        // Assert: Should fail with clear message
+        // Assert: Should fail with clear message about integration status
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("Chicago-TDD-Tools"));
-        assert!(err.to_string().contains("under development"));
+        let err_msg = err.to_string();
+        assert!(err_msg.contains("Chicago-TDD-Tools"));
+        assert!(err_msg.contains("v1.4.0"));
+        assert!(err_msg.contains("pending architecture integration"));
     }
 
     #[test]
@@ -133,7 +135,7 @@ mod tests {
         let version = ChicagoTddAdapter::version();
 
         // Assert
-        assert_eq!(version, "1.5.0-stub");
+        assert_eq!(version, "2.0.0-v1.4.0");
     }
 
     #[test]

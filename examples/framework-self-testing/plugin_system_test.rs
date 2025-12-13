@@ -7,12 +7,12 @@
 
 use clnrm_core::{
     cleanroom::MockDatabasePlugin, services::surrealdb::SurrealDbPlugin, CleanroomEnvironment,
-    CleanroomError, HealthStatus, ServiceHandle, ServicePlugin,
+    CleanroomError, HealthStatus, Result, ServiceHandle, ServicePlugin,
 };
 use std::time::Instant;
 
 #[tokio::main]
-async fn main() -> Result<(), CleanroomError> {
+async fn main() -> Result<()> {
     println!("📦 Framework Self-Test: Plugin-Based Architecture");
     println!("================================================");
     println!(

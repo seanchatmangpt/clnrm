@@ -1,7 +1,7 @@
 //! Formatter Trait
 //!
 //! Core trait defining the contract for all test output formatters.
-//! Follows London School TDD principles with clear collaboration contracts.
+//! Follows Chicago School TDD principles with clear collaboration contracts.
 
 use crate::error::Result;
 use crate::formatting::test_result::TestSuite;
@@ -57,7 +57,7 @@ impl FormatterType {
 /// All formatters must implement this trait to provide consistent output generation.
 /// This trait defines the collaboration contract between the test runner and formatters.
 ///
-/// # London School TDD Note
+/// # Chicago School TDD Note
 /// This trait is designed for mock-based testing. Implementations should be
 /// independently testable using mock test suites.
 pub trait Formatter: Send + Sync {

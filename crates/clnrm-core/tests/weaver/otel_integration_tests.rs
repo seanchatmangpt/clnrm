@@ -14,7 +14,7 @@
 //!
 //! ## Test Organization
 //!
-//! Tests are organized into three categories following London School TDD:
+//! Tests are organized into three categories following Chicago School TDD:
 //!
 //! - **Initialization Tests**: Verify Weaver-first coordination pattern
 //! - **Export Tests**: Validate OTLP export pipeline functionality

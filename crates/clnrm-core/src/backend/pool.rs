@@ -791,6 +791,11 @@ impl ContainerPool {
             CleanroomError::internal_error(format!("Failed to acquire pool size permit: {}", e))
         })?;
 
+        // POKA-YOKE: Acquire lock to prevent concurrent container creation race (FM-004, RPN: 168)
+        // Uses trait-based abstraction for testability and extensibility
+        // Lock is acquired and held during container creation
+        crate::poka_yoke::acquire_container_creation_lock(&self.config.image).await?;
+
         debug!("Creating new container");
 
         // Create backend using spawn_blocking to avoid blocking tokio runtime

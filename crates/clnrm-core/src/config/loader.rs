@@ -114,6 +114,10 @@ pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
     let content = std::fs::read_to_string(path)
         .map_err(|e| CleanroomError::config_error(format!("Failed to read config file: {}", e)))?;
 
+    // POKA-YOKE: Validate TOML before parsing (FM-008, RPN: 180)
+    // Uses trait-based abstraction for testability and extensibility
+    crate::poka_yoke::validate_toml(&content, path)?;
+
     // Check if content contains template syntax
     let rendered_content = if clnrm_template::is_template(&content) {
         // CRITICAL FIX: Extract [vars] section BEFORE rendering templates

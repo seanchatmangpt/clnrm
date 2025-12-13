@@ -14,7 +14,7 @@ use tracing::debug;
 
 /// In-memory cache for testing and development
 ///
-/// London School TDD Design:
+/// Chicago School TDD Design:
 /// - Implements Cache trait for collaboration contract
 /// - Thread-safe with Arc<Mutex<>> for concurrent access
 /// - No persistence - perfect for testing

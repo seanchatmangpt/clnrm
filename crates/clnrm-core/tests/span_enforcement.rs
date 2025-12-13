@@ -1,6 +1,6 @@
 //! Span Enforcement Tests for v1.2.1
 //!
-//! This test suite follows London School TDD principles to verify OTEL span
+//! This test suite follows Chicago School TDD principles to verify OTEL span
 //! collection, validation, and enforcement mechanisms.
 //!
 //! ## Coverage

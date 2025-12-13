@@ -2,7 +2,7 @@
 # This file defines the complete inventory of system behaviors that should be tested
 # NOTE: This is a behavior manifest, not a standard test file
 
-[test.metadata]
+[test]
 name = "behavior_manifest"
 description = "Complete inventory of system behaviors for coverage tracking"
 
@@ -265,7 +265,11 @@ expected_spans = [
 
 # Minimal validation step to satisfy parser requirements
 # This is a behavior manifest file - it documents system behaviors but doesn't execute tests
+[containers.behaviors]
+image = "alpine:latest"
+
 [[steps]]
+container = "behaviors"
 name = "validate_manifest"
-command = ["echo", "Behavior manifest loaded successfully"]
+exec = ["echo", "Behavior manifest loaded successfully"]
 expected_output = "Behavior manifest loaded successfully"

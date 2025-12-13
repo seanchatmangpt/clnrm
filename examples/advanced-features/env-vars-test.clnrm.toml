@@ -16,7 +16,7 @@ timeout = "30s"
 image = "alpine:latest"
 env = { MY_VAR = "hello_world", ANOTHER_VAR = "test_value", DB_HOST = "localhost" }
 # Keep container running with a sleep loop
-command = ["sh", "-c", "while true; do sleep 1; done"]
+exec = ["sh", "-c", "while true; do sleep 1; done"]
 
 [[steps]]
 name = "verify_my_var"

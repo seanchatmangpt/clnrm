@@ -17,16 +17,15 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// Plugin-based service registry (no hardcoded postgres/redis)
-#[async_trait::async_trait]
 pub trait ServicePlugin: Send + Sync + std::fmt::Debug {
     /// Get service name
     fn name(&self) -> &str;
 
     /// Start the service
-    async fn start(&self) -> Result<ServiceHandle>;
+    fn start(&self) -> Result<ServiceHandle>;
 
     /// Stop the service
-    async fn stop(&self, handle: ServiceHandle) -> Result<()>;
+    fn stop(&self, handle: ServiceHandle) -> Result<()>;
 
     /// Check service health (sync for quick checks)
     fn health_check(&self, handle: &ServiceHandle) -> HealthStatus;
@@ -132,7 +131,7 @@ impl ServiceRegistry {
             CleanroomError::internal_error(format!("Service plugin '{}' not found", service_name))
         })?;
 
-        let handle = plugin.start().await?;
+        let handle = plugin.start()?;
         self.active_services
             .insert(handle.id.clone(), handle.clone());
 
@@ -149,7 +148,7 @@ impl ServiceRegistry {
                 ))
             })?;
 
-            plugin.stop(handle).await?;
+            plugin.stop(handle)?;
         }
 
         Ok(())
@@ -1109,13 +1108,12 @@ impl MockDatabasePlugin {
     }
 }
 
-#[async_trait::async_trait]
 impl ServicePlugin for MockDatabasePlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    async fn start(&self) -> Result<ServiceHandle> {
+    fn start(&self) -> Result<ServiceHandle> {
         // For testing, create a simple mock handle without actual container
         // In production, this would use proper async container startup
 
@@ -1133,7 +1131,7 @@ impl ServicePlugin for MockDatabasePlugin {
         })
     }
 
-    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         // For testing, just return success without actual container cleanup
         // In production, this would properly stop the container
         Ok(())

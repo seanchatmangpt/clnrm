@@ -1,6 +1,6 @@
 //! v1.2.1 Regression Test Suite
 //!
-//! This test suite follows London School TDD principles to ensure that
+//! This test suite follows Chicago School TDD principles to ensure that
 //! v1.2.1 changes don't break existing functionality.
 //!
 //! ## Coverage

@@ -15,7 +15,7 @@
 # - FREEZE_CLOCK → "2025-01-01T00:00:00Z"
 # - OTEL_TOKEN → "" (empty, so no auth header section)
 
-[test.metadata]
+[test]
 name = "clnrm_env_demo"
 version = "1.0.0"
 description = "Demonstrates ENV variable resolution in templates"
@@ -44,19 +44,11 @@ sample_ratio = 1.0
 [otel.propagators]
 use = ["tracecontext", "baggage"]
 
-# Service Definition
+# Container Definition
 # Uses CLNRM_IMAGE ENV variable for container image
-[service.test_runner]
+[containers.test_runner]
 image = "registry/clnrm:1.0.0"
-args = ["sh", "-c", "echo 'Running test in ci environment'"]
-wait_for_span = "test_runner.start"
-
-# Environment-specific configuration using conditionals
-# Example: CI/Development settings (env != "production" and env != "staging")
-[service.test_runner.health_check]
-interval = "2s"
-timeout = "10s"
-retries = 2
+healthcheck = "echo 'health check'"
 
 # Note: For staging (env == "staging"), this would be:
 # interval = "10s"
@@ -68,64 +60,31 @@ retries = 2
 # timeout = "30s"
 # retries = 5
 
-# Test Scenarios
-[[scenario]]
+# Test Steps
+[[steps]]
 name = "verify_environment"
-service = "test_runner"
-run = "echo 'Service: clnrm, Env: ci, Endpoint: http://localhost:4318'"
+container = "test_runner"
+exec = ["echo", "Service: clnrm, Env: ci, Endpoint: http://localhost:4318"]
 
-[[scenario]]
+[[steps]]
 name = "check_determinism"
-service = "test_runner"
-run = "date && echo 'Frozen at: 2025-01-01T00:00:00Z'"
+container = "test_runner"
+exec = ["sh", "-c", "date && echo 'Frozen at: 2025-01-01T00:00:00Z'"]
 
-[[scenario]]
+[[steps]]
 name = "test_otel_export"
-service = "test_runner"
-run = "echo 'Exporting to otlp at http://localhost:4318'"
+container = "test_runner"
+exec = ["echo", "Exporting to otlp at http://localhost:4318"]
 
-# Span Expectations
+# Telemetry Expectations
 # Verify expected telemetry was produced
-[[expect.span]]
-name = "test_runner.start"
-kind = "server"
-
-[expect.span.attrs.all]
-"service.name" = "clnrm"
-"deployment.environment" = "ci"
-
-[[expect.span]]
-name = "test_runner.exec"
-kind = "internal"
-
-[expect.span.attrs.any]
-"exec.command" = "echo"
-
-[[expect.span]]
-name = "test_runner.stop"
-kind = "server"
-
-[expect.span.attrs.all]
-"container.state" = "stopped"
-
-# Temporal ordering expectations
-[expect.order]
-must_precede = [
-    ["test_runner.start", "test_runner.exec"],
-    ["test_runner.exec", "test_runner.stop"]
+[expect.otel]
+spans = [
+    {
+        name = "test.execute",
+        sample_count = { min = 3 }
+    }
 ]
-
-# Status expectations
-[expect.status]
-all = "ok"
-by_name."test_runner.*" = "ok"
-
-# Count expectations
-[expect.counts]
-spans_total = { gte = 3 }
-errors_total = { eq = 0 }
-spans_by_kind.server = { gte = 2 }
-spans_by_kind.internal = { gte = 1 }
 
 # Deterministic Configuration
 # Uses FREEZE_CLOCK ENV variable

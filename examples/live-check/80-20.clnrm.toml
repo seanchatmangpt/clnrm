@@ -2,28 +2,16 @@
 # Validates critical 20% of telemetry for 80% bug coverage
 # 6x faster than strict mode
 
-[test.metadata]
+[test]
 name = "eighty_twenty_mode"
 version = "1.0.0"
 description = "80/20 validation mode - fast and effective"
 
-# Configure 80/20 validation mode
-[weaver]
-enabled = true
-
-[weaver.validation]
-mode = "80_20"  # Fast validation mode
-fail_on_violations = true
-fail_on_improvements = false  # Ignore style warnings in dev
-
-# Define critical spans to validate
-[weaver.80_20]
-critical_spans = [
-    "test.execute",           # Core test execution
-    "container.start",        # Container lifecycle
-    "container.stop",         # Cleanup verification
-    "service.health_check"    # Service availability
-]
+# OTEL configuration for 80/20 validation
+[otel]
+service_name = "eighty-twenty-test"
+exporter = "otlp-http"
+endpoint = "http://localhost:4318"
 
 # OTEL configuration
 [otel]

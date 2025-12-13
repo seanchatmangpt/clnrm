@@ -1,6 +1,6 @@
 //! CLI Integration Tests - Plugins Command
 //!
-//! Tests the `clnrm plugins` command following TDD London School approach.
+//! Tests the `clnrm plugins` command following TDD Chicago School approach.
 //! Verifies plugin listing and information display.
 
 use assert_cmd::Command;

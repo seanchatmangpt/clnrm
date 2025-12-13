@@ -19,9 +19,9 @@
 //! }
 //! ```
 //!
-//! ## London School TDD Design
+//! ## Chicago School TDD Design
 //!
-//! The cache subsystem follows London School TDD principles:
+//! The cache subsystem follows Chicago School TDD principles:
 //! - **Trait-based abstraction**: `Cache` trait defines collaboration contract
 //! - **Mockable interface**: Supports test doubles for behavior verification
 //! - **Multiple backends**: FileCache (persistent), MemoryCache (testing)

@@ -1,6 +1,6 @@
 //! Comprehensive Template Variable Tests for v1.2.1
 //!
-//! This test suite follows London School TDD principles:
+//! This test suite follows Chicago School TDD principles:
 //! - Mock-driven development (define contracts through mocks)
 //! - Behavior verification (test interactions, not state)
 //! - Outside-in testing (test from user perspective)

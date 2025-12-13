@@ -6,7 +6,6 @@
 
 use crate::config::spec::ContainerSpec;
 use crate::error::{CleanroomError, Result};
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -68,13 +67,12 @@ pub struct ExecResult {
 /// Container Manager trait
 ///
 /// Provides unified container lifecycle management with proper exec support.
-#[async_trait]
 pub trait ContainerManager: Send + Sync {
     /// Start a container from spec
-    async fn start(&self, name: &str, spec: &ContainerSpec) -> Result<ContainerHandle>;
+    fn start(&self, name: &str, spec: &ContainerSpec) -> Result<ContainerHandle>;
 
     /// Execute command in RUNNING container (docker exec, not new container!)
-    async fn exec(
+    fn exec(
         &self,
         handle: &ContainerHandle,
         cmd: &[String],
@@ -82,13 +80,13 @@ pub trait ContainerManager: Send + Sync {
     ) -> Result<ExecResult>;
 
     /// Stop and cleanup container
-    async fn stop(&self, handle: &ContainerHandle) -> Result<()>;
+    fn stop(&self, handle: &ContainerHandle) -> Result<()>;
 
     /// Health check
-    async fn health_check(&self, handle: &ContainerHandle) -> Result<bool>;
+    fn health_check(&self, handle: &ContainerHandle) -> Result<bool>;
 
     /// Get container logs
-    async fn logs(&self, handle: &ContainerHandle) -> Result<String>;
+    fn logs(&self, handle: &ContainerHandle) -> Result<String>;
 }
 
 /// Docker-based container manager
@@ -138,9 +136,10 @@ impl Default for DockerContainerManager {
     }
 }
 
-#[async_trait]
 impl ContainerManager for DockerContainerManager {
-    async fn start(&self, name: &str, spec: &ContainerSpec) -> Result<ContainerHandle> {
+    fn start(&self, name: &str, spec: &ContainerSpec) -> Result<ContainerHandle> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
         let container_name = self.generate_container_name(name);
 
         // Build docker run command
@@ -245,15 +244,19 @@ impl ContainerManager for DockerContainerManager {
         }
 
         Ok(handle)
+            })
+        })
     }
 
-    async fn exec(
+    fn exec(
         &self,
         handle: &ContainerHandle,
         cmd: &[String],
         env: &HashMap<String, String>,
     ) -> Result<ExecResult> {
-        let start = Instant::now();
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let start = Instant::now();
 
         // Build docker exec command
         let mut docker_cmd = Command::new(&self.docker_cmd);
@@ -287,16 +290,20 @@ impl ContainerManager for DockerContainerManager {
 
         let duration = start.elapsed();
 
-        Ok(ExecResult {
-            exit_code: output.status.code().unwrap_or(-1),
-            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-            duration,
+                Ok(ExecResult {
+                    exit_code: output.status.code().unwrap_or(-1),
+                    stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+                    stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+                    duration,
+                })
+            })
         })
     }
 
-    async fn stop(&self, handle: &ContainerHandle) -> Result<()> {
-        // Stop container
+    fn stop(&self, handle: &ContainerHandle) -> Result<()> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                // Stop container
         let output = Command::new(&self.docker_cmd)
             .arg("stop")
             .arg(&handle.id)
@@ -328,10 +335,14 @@ impl ContainerManager for DockerContainerManager {
             containers.remove(&handle.name);
         }
 
-        Ok(())
+                Ok(())
+            })
+        })
     }
 
-    async fn health_check(&self, handle: &ContainerHandle) -> Result<bool> {
+    fn health_check(&self, handle: &ContainerHandle) -> Result<bool> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
         // Check if container is running
         let output = Command::new(&self.docker_cmd)
             .arg("inspect")
@@ -351,9 +362,13 @@ impl ContainerManager for DockerContainerManager {
 
         let running = String::from_utf8_lossy(&output.stdout).trim() == "true";
         Ok(running)
+            })
+        })
     }
 
-    async fn logs(&self, handle: &ContainerHandle) -> Result<String> {
+    fn logs(&self, handle: &ContainerHandle) -> Result<String> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
         let output = Command::new(&self.docker_cmd)
             .arg("logs")
             .arg(&handle.id)
@@ -368,9 +383,11 @@ impl ContainerManager for DockerContainerManager {
                 ))
             })?;
 
-        let mut logs = String::from_utf8_lossy(&output.stdout).to_string();
-        logs.push_str(&String::from_utf8_lossy(&output.stderr));
-        Ok(logs)
+                let mut logs = String::from_utf8_lossy(&output.stdout).to_string();
+                logs.push_str(&String::from_utf8_lossy(&output.stderr));
+                Ok(logs)
+            })
+        })
     }
 }
 
@@ -389,7 +406,7 @@ impl DockerContainerManager {
         let cmd: Vec<String> = healthcheck.split_whitespace().map(String::from).collect();
 
         while start.elapsed() < timeout {
-            let result = self.exec(handle, &cmd, &HashMap::new()).await?;
+            let result = self.exec(handle, &cmd, &HashMap::new())?;
             if result.exit_code == 0 {
                 return Ok(());
             }

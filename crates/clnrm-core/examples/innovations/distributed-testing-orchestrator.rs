@@ -12,7 +12,7 @@
 //! - Performance optimization across distributed systems
 
 use clnrm_core::{
-    CleanroomEnvironment, CleanroomError, HealthStatus, ServiceHandle, ServicePlugin,
+    CleanroomEnvironment, CleanroomError, HealthStatus, Result, ServiceHandle, ServicePlugin,
 };
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -88,7 +88,7 @@ impl ServicePlugin for DistributedCoordinatorPlugin {
         "distributed_coordinator"
     }
 
-    fn start(&self) -> Result<ServiceHandle, CleanroomError> {
+    fn start(&self) -> Result<ServiceHandle> {
         println!("🚀 Starting Distributed Testing Coordinator");
 
         let handle = ServiceHandle {
@@ -100,7 +100,7 @@ impl ServicePlugin for DistributedCoordinatorPlugin {
         Ok(handle)
     }
 
-    fn stop(&self, handle: ServiceHandle) -> Result<(), CleanroomError> {
+    fn stop(&self, handle: ServiceHandle) -> Result<()> {
         println!(
             "🛑 Stopping Distributed Testing Coordinator: {}",
             handle.service_name
@@ -156,7 +156,7 @@ impl DistributedTestingOrchestrator {
         }
     }
 
-    async fn initialize_distributed_nodes(&mut self) -> Result<(), CleanroomError> {
+    async fn initialize_distributed_nodes(&mut self) -> Result<()> {
         println!("\n🏗️  Initializing Distributed Test Nodes");
         println!("=====================================");
 
@@ -198,7 +198,7 @@ impl DistributedTestingOrchestrator {
     async fn orchestrate_complex_test(
         &mut self,
         test_name: &str,
-    ) -> Result<String, CleanroomError> {
+    ) -> Result<String> {
         println!("\n🎼 Orchestrating Complex Distributed Test: {}", test_name);
         println!("==========================================");
 
@@ -245,7 +245,7 @@ impl DistributedTestingOrchestrator {
         Ok(final_result)
     }
 
-    async fn analyze_service_dependencies(&self) -> Result<Vec<String>, CleanroomError> {
+    async fn analyze_service_dependencies(&self) -> Result<Vec<String>> {
         let mut ordered_services = Vec::new();
 
         // Topological sort of service dependencies
@@ -272,7 +272,7 @@ impl DistributedTestingOrchestrator {
         visited: &mut std::collections::HashSet<String>,
         temp_visited: &mut std::collections::HashSet<String>,
         result: &mut Vec<String>,
-    ) -> Result<(), CleanroomError> {
+    ) -> Result<()> {
         temp_visited.insert(service_name.to_string());
 
         if let Some(dependency) = self.service_dependencies.get(service_name) {
@@ -299,7 +299,7 @@ impl DistributedTestingOrchestrator {
     async fn select_optimal_nodes(
         &mut self,
         _services: &[String],
-    ) -> Result<Vec<String>, CleanroomError> {
+    ) -> Result<Vec<String>> {
         let mut selected_nodes = Vec::new();
 
         // Select nodes based on availability and capabilities
@@ -324,7 +324,7 @@ impl DistributedTestingOrchestrator {
         &self,
         nodes: &[String],
         test_name: &str,
-    ) -> Result<Vec<String>, CleanroomError> {
+    ) -> Result<Vec<String>> {
         let mut results = Vec::new();
 
         // Execute tests in parallel across selected nodes
@@ -364,7 +364,7 @@ impl DistributedTestingOrchestrator {
     async fn monitor_test_execution(
         &self,
         _execution_results: &[String],
-    ) -> Result<Vec<String>, CleanroomError> {
+    ) -> Result<Vec<String>> {
         println!("   🔍 Monitoring test execution in real-time...");
 
         // Simulate real-time monitoring
@@ -379,7 +379,7 @@ impl DistributedTestingOrchestrator {
     async fn aggregate_test_results(
         &self,
         _monitoring_results: &[String],
-    ) -> Result<String, CleanroomError> {
+    ) -> Result<String> {
         println!("   📊 Aggregating results from all distributed nodes...");
 
         // Simulate result aggregation
@@ -398,7 +398,7 @@ impl DistributedTestingOrchestrator {
         ))
     }
 
-    async fn demonstrate_self_healing(&mut self) -> Result<(), CleanroomError> {
+    async fn demonstrate_self_healing(&mut self) -> Result<()> {
         println!("\n🩺 Demonstrating Self-Healing Capabilities");
         println!("=========================================");
 
@@ -431,7 +431,7 @@ impl DistributedTestingOrchestrator {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), CleanroomError> {
+async fn main() -> Result<()> {
     println!("🚀 Distributed Testing Orchestrator - Revolutionary Dogfooding Innovation");
     println!("=======================================================================");
     println!("Cleanroom framework orchestrating complex distributed testing scenarios");

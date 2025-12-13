@@ -1,79 +1,93 @@
-# README Example Validation
-#
-# This file validates that all features shown in the README example
-# actually work in a real clnrm TOML file.
-#
-# Run: clnrm validate examples/readme-example-validation.clnrm.toml
-
-[test.metadata]
-name = "api_with_database"
-version = "1.0.0"
-description = "API service with database - Weaver validates telemetry structure"
-
-# Enable Weaver schema validation
-[weaver]
-enabled = true
-registry_path = "registry"
-otlp_port = 0              # Auto-discover available port
-admin_port = 0             # Auto-discover available port
-
-# Configure OpenTelemetry export to Weaver
-[otel]
-exporter = "otlp"
-
-[otel.resources]
-"service.name" = "api_service"
-"deployment.environment" = "test"
-
-# Multiple services working together
-[service.api]
-image = "alpine:latest"
-
-[service.database]
-image = "postgres:15-alpine"
-
-# Scenario that emits rich telemetry
-[[scenario]]
-name = "api_handles_user_request"
-service = "api"
-run = "echo 'API handling request'"
-artifacts.collect = ["spans:default"]
-
-# Validate HTTP server span
-[[expect.span]]
-name = "http.server.request"
-kind = "server"
-
-[expect.span.attrs]
-all = { "http.method" = "GET", "http.route" = "/api/v1/users" }
-
-# Validate database query span (must be child of HTTP span)
-[[expect.span]]
-name = "db.query"
-kind = "client"
-parent = "http.server.request"
-
-[expect.span.attrs]
-all = { "db.system" = "postgresql", "db.operation" = "SELECT" }
-# Validate trace graph structure
-[expect.graph]
-must_include = [["http.server.request", "db.query"]]
-acyclic = true
-
-# Validate temporal ordering (auth before DB, DB before response)
-[expect.order]
-must_precede = [
-  [
-    "http.server.request",
-    "db.query",
-  ],
-  [
-    "db.query",
-    "http.server.response",
-  ],
+# README Example Validation]
+#]
+# This file validates that all features shown in the README example]
+# actually work in a real clnrm TOML file.]
+#]
+# Run: clnrm validate examples/readme-example-validation.clnrm.toml]
 ]
-
-# Ensure no external service leaks
-[expect.hermeticity]
-no_external_services = true
-span_attrs.forbid_keys = ["net.peer.name"]
+[test]]
+{]
+        name = "api_with_database",]
+        sample_count = { min = 1 }]
+    }]
+version = "1.0.0"]
+description = "API service with database - Weaver validates telemetry structure"]
+]
+# Enable Weaver schema validation]
+# Removed weaver config]
+enabled = true]
+registry_path = "registry"]
+otlp_port = 0              # Auto-discover available port]
+admin_port = 0             # Auto-discover available port]
+]
+# Configure OpenTelemetry export to Weaver]
+[otel]]
+exporter = "otlp"]
+]
+[otel.resources]]
+"service.name" = "api_service"]
+"deployment.environment" = "test"]
+]
+# Multiple services working together]
+[containers.api]]
+image = "alpine:latest"]
+]
+[containers.database]]
+image = "postgres:15-alpine"]
+]
+# Scenario that emits rich telemetry]
+[[steps]]]
+{]
+        name = "api_handles_user_request",]
+        sample_count = { min = 1 }]
+    }]
+container = "api"]
+run = "echo 'API handling request'"]
+artifacts.collect = ["spans:default"]]
+]
+# Validate HTTP server span]
+[expect.otel]]
+spans = []
+{]
+        name = "http.server.request",]
+        sample_count = { min = 1 }]
+    }]
+kind = "server"]
+]
+[expect.span.attrs]]
+all = { "http.method" = "GET", "http.route" = "/api/v1/users" }]
+]
+# Validate database query span (must be child of HTTP span)]
+[expect.otel]]
+spans = []
+{]
+        name = "db.query",]
+        sample_count = { min = 1 }]
+    }]
+kind = "client"]
+parent = "http.server.request"]
+]
+[expect.span.attrs]]
+all = { "db.system" = "postgresql", "db.operation" = "SELECT" }]
+# Validate trace graph structure]
+[expect.graph]]
+must_include = [["http.server.request", "db.query"]]]
+acyclic = true]
+]
+# Validate temporal ordering (auth before DB, DB before response)]
+[expect.order]]
+must_precede = []
+  []
+    "http.server.request",]
+    "db.query",]
+  ],]
+  []
+    "db.query",]
+    "http.server.response",]
+  ],]
+]]
+]
+# Ensure no external service leaks]
+[expect.hermeticity]]
+no_external_services = true]
+span_attrs.forbid_keys = ["net.peer.name"]]

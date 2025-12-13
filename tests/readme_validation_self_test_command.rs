@@ -1,12 +1,12 @@
 //! README Validation Tests - Self-Test Command
 //!
-//! London TDD tests validating README claims about `clnrm self-test`:
+//! Chicago TDD tests validating README claims about `clnrm self-test`:
 //! - Framework tests itself using own capabilities
 //! - All self-test assertions pass
 //! - OTEL integration works
 //! - Error handling is comprehensive
 //!
-//! Following London School TDD: Mock command execution, verify behavior.
+//! Following Chicago School TDD: Mock command execution, verify behavior.
 
 use std::collections::HashMap;
 

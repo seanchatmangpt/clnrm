@@ -5,54 +5,54 @@
 # FIXED: Now uses correct CLI TOML format
 # This validates concurrent execution capabilities from the README
 
-[test.metadata]
+[test]
 name = "concurrent_execution_demo"
 description = "Demonstrates concurrent execution as claimed in the README"
 
-[services]
-concurrent_container = { type = "container", plugin = "generic_container", image = "alpine:latest" }
+[containers.concurrent_test]
+image = "alpine:latest"
 
 [[steps]]
 name = "concurrent_step_1"
-command = [
+exec = [
   "sh",
   "-c",
   "echo 'Concurrent step 1 started' && sleep 2 && echo 'Concurrent step 1 completed'",
 ]
-expected_output_regex = "Concurrent step 1 completed"
+assert.stdout_contains = "Concurrent step 1 completed"
 
 [[steps]]
 name = "concurrent_step_2"
-command = [
+exec = [
   "sh",
   "-c",
   "echo 'Concurrent step 2 started' && sleep 1 && echo 'Concurrent step 2 completed'",
 ]
-expected_output_regex = "Concurrent step 2 completed"
+assert.stdout_contains = "Concurrent step 2 completed"
 
 [[steps]]
 name = "concurrent_step_3"
-command = [
+exec = [
   "sh",
   "-c",
   "echo 'Concurrent step 3 started' && sleep 3 && echo 'Concurrent step 3 completed'",
 ]
-expected_output_regex = "Concurrent step 3 completed"
+assert.stdout_contains = "Concurrent step 3 completed"
 
 [[steps]]
 name = "concurrent_step_4"
-command = [
+exec = [
   "sh",
   "-c",
   "echo 'Concurrent step 4 started' && sleep 1 && echo 'Concurrent step 4 completed'",
 ]
-expected_output_regex = "Concurrent step 4 completed"
+assert.stdout_contains = "Concurrent step 4 completed"
 
 [[steps]]
 name = "concurrent_verification"
-command = [
+exec = [
   "sh",
   "-c",
   "echo '✅ Concurrent execution verified - all steps completed successfully'",
 ]
-expected_output_regex = "✅ Concurrent execution verified"
+assert.stdout_contains = "✅ Concurrent execution verified"

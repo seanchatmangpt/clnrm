@@ -1,9 +1,9 @@
 //! Comprehensive WeaverController Tests
 //!
-//! This module provides a complete test suite for WeaverController using London TDD.
+//! This module provides a complete test suite for WeaverController using Chicago TDD.
 //! Tests are organized into three categories: Lifecycle, Coordination, and Failure Modes.
 //!
-//! ## Test Strategy (London TDD)
+//! ## Test Strategy (Chicago TDD)
 //!
 //! 1. Mock all external dependencies (Weaver process, file system)
 //! 2. Test behavior through interface contracts, not implementation

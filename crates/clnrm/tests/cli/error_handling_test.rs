@@ -1,6 +1,6 @@
 //! CLI Integration Tests - Error Handling
 //!
-//! Tests error message formatting and propagation following TDD London School.
+//! Tests error message formatting and propagation following TDD Chicago School.
 //! Verifies that errors are properly communicated to users.
 
 use assert_cmd::Command;

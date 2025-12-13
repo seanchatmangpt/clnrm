@@ -3,6 +3,7 @@ resolver = "2"
 
 members = [
   "crates/clnrm",
+  "crates/clnrm-cli",
   "crates/clnrm-core",
   "crates/clnrm-shared",
   "crates/clnrm-template",
@@ -12,6 +13,7 @@ members = [
 # Default members for core functionality (template excluded - experimental)
 default-members = [
   "crates/clnrm",
+  "crates/clnrm-cli",
   "crates/clnrm-core",
   "crates/clnrm-shared",
   "crates/evidence-graph",
@@ -106,7 +108,7 @@ insta = { version = "1.34", features = ["json", "yaml"] }
 criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
 futures = "0.3"
 
-# Mocking dependencies for London TDD
+# Mocking dependencies for Chicago TDD
 mockall = "0.13"
 
 # Test configuration - enforce 1 second timeout per test

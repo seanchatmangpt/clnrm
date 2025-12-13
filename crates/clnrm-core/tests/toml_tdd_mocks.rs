@@ -1,6 +1,6 @@
-//! London School TDD Test Suite for TOML Features
+//! Chicago School TDD Test Suite for TOML Features
 //!
-//! This test suite follows the London School (mockist) approach to TDD:
+//! This test suite follows the Chicago School (mockist) approach to TDD:
 //! 1. Mock collaborators FIRST (define contracts through mocks)
 //! 2. Verify interactions (not state)
 //! 3. Tests drive design from the outside-in

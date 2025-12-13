@@ -3,7 +3,7 @@
 //! This module provides testing infrastructure including property-based
 //! test generators, test fixtures, and helper functions.
 
-// London School TDD tests for Weaver integration (mock-driven)
+// Chicago TDD tests for Weaver integration (mock-driven)
 pub mod london_tdd_tests;
 
 // Re-export framework test types and functions for CLI commands

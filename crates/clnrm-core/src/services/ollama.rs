@@ -215,18 +215,21 @@ pub struct OllamaModelList {
     pub models: Vec<OllamaModel>,
 }
 
-#[async_trait::async_trait]
 impl ServicePlugin for OllamaPlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    async fn start(&self) -> Result<ServiceHandle> {
+    fn start(&self) -> Result<ServiceHandle> {
         // Test connection to Ollama service
-        let health = match self.test_connection().await {
-            Ok(_) => HealthStatus::Healthy,
-            Err(_) => HealthStatus::Unhealthy,
-        };
+        let health = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                match self.test_connection().await {
+                    Ok(_) => HealthStatus::Healthy,
+                    Err(_) => HealthStatus::Unhealthy,
+                }
+            })
+        });
 
         let mut metadata = HashMap::new();
         metadata.insert("endpoint".to_string(), self.config.endpoint.clone());
@@ -247,7 +250,7 @@ impl ServicePlugin for OllamaPlugin {
         })
     }
 
-    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         // HTTP-based service, no cleanup needed beyond dropping the client
         Ok(())
     }

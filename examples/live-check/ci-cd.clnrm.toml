@@ -2,114 +2,131 @@
 # Optimized for continuous integration and deployment
 # Balances speed and thoroughness with 80/20 mode
 
-[test.metadata]
-name = "cicd_pipeline_test"
-version = "1.0.0"
-description = "CI/CD optimized validation with GitHub Actions integration"
+[test]
+{
+        name = "cicd_pipeline_test",
+        sample_count = { min = 1 }
+    }]
+version = "1.0.0"]
+description = "CI/CD optimized validation with GitHub Actions integration"]
 
 # CI/CD optimized Weaver configuration
-[weaver]
-enabled = true
-output_dir = "${CI_OUTPUT_DIR:-./ci_reports}"  # CI-friendly output
-stream = true   # Real-time feedback in CI logs
-fail_fast = true  # Stop on first violation to save CI time
-
-[weaver.validation]
 mode = "80_20"  # Fast validation for CI
 fail_on_violations = true
 fail_on_improvements = false  # Don't block on style in CI
 
-[weaver.80_20]
-critical_spans = [
-    "test.execute",
-    "container.start",
-    "container.stop",
-    "http.server.request",
-    "db.query"
-]
-
-# CI-optimized performance settings
-[weaver.performance]
 startup_timeout = "30s"   # Allow time for CI environment
 flush_timeout = "10s"     # Ensure telemetry collected in CI
 max_samples = 50000          # Reasonable limit for CI
 
 # OTEL configuration for CI environment
 [otel]
-exporter = "otlp"
+exporter = "otlp"]
 sample_ratio = 1.0
 
 [otel.resources]
-"service.name" = "cicd_test"
-"service.version" = "${CI_COMMIT_SHA:-dev}"
-"deployment.environment" = "${CI_ENVIRONMENT:-ci}"
-"ci.pipeline.id" = "${CI_PIPELINE_ID:-local}"
-"ci.pipeline.url" = "${CI_PIPELINE_URL:-}"
+"service.name" = "cicd_test"]
+"service.version" = "${CI_COMMIT_SHA:-dev}"]
+"deployment.environment" = "${CI_ENVIRONMENT:-ci}"]
+"ci.pipeline.id" = "${CI_PIPELINE_ID:-local}"]
+"ci.pipeline.url" = "${CI_PIPELINE_URL:-}"]
 
 [otel.headers]
-"x-ci-run-id" = "${CI_RUN_ID:-}"
-"x-ci-run-number" = "${CI_RUN_NUMBER:-}"
+"x-ci-run-id" = "${CI_RUN_ID:-}"]
+"x-ci-run-number" = "${CI_RUN_NUMBER:-}"]
 
 # Service: Application (version from CI)
-[service.app]
-image = "app:${CI_COMMIT_SHA:-latest}"
+[containers.app]
+image = "app:${CI_COMMIT_SHA:-latest}"]
 
-[service.app.env]
-ENVIRONMENT = "${CI_ENVIRONMENT:-ci}"
-LOG_LEVEL = "info"
-CI = "true"
+[containers.app.env]
+ENVIRONMENT = "${CI_ENVIRONMENT:-ci}"]
+LOG_LEVEL = "info"]
+CI = "true"]
 
 # Service: Database (use fast in-memory for CI)
-[service.db]
-image = "postgres:15-alpine"
+[containers.db]
+image = "postgres:15-alpine"]
 
-[service.db.env]
-POSTGRES_PASSWORD = "cipass"
-POSTGRES_DB = "ci_test"
+[containers.db.env]
+POSTGRES_PASSWORD = "cipass"]
+POSTGRES_DB = "ci_test"]
 POSTGRES_INITDB_ARGS = "--no-sync"  # Faster init for CI
 PGDATA = "/dev/shm/pgdata"  # In-memory for speed
 
 # Scenario 1: Unit tests
-[[scenario]]
-name = "unit_tests"
-service = "app"
-run = "pytest tests/unit/ -v --tb=short"
+[[steps]]
+container = "app"
+{
+        name = "unit_tests",
+        sample_count = { min = 1 }
+    }]
+container = "app"]
+exec = ["pytest tests/unit/ -v --tb=short"]
 timeout = "300s"  # 5 minute timeout for CI
 
-[[expect.span]]
-name = "test.execute"
+[expect.otel]
+spans = [
+{
+        name = "test.execute",
+        sample_count = { min = 1 }
+    }]
 attrs = { all = { "test.name" = "unit_tests", "test.isolated" = "true", "ci.pipeline.id" = "*" } }
 
 # Scenario 2: Integration tests
-[[scenario]]
-name = "integration_tests"
-service = "app"
-run = "pytest tests/integration/ -v --tb=short"
+[[steps]]
+container = "app"
+{
+        name = "integration_tests",
+        sample_count = { min = 1 }
+    }]
+container = "app"]
+exec = ["pytest tests/integration/ -v --tb=short"]
 timeout = "600s"  # 10 minute timeout
 
-[[expect.span]]
-name = "test.execute"
+[expect.otel]
+spans = [
+{
+        name = "test.execute",
+        sample_count = { min = 1 }
+    }]
 attrs = { all = { "test.name" = "integration_tests", "test.isolated" = "true" } }
 
-[[expect.span]]
-name = "http.server.request"
-parent = "test.execute"
+[expect.otel]
+spans = [
+{
+        name = "http.server.request",
+        sample_count = { min = 1 }
+    }]
+parent = "test.execute"]
 attrs = { all = { "http.method" = "*", "http.status_code" = "200" } }
 
-[[expect.span]]
-name = "db.query"
-parent = "http.server.request"
+[expect.otel]
+spans = [
+{
+        name = "db.query",
+        sample_count = { min = 1 }
+    }]
+parent = "http.server.request"]
 attrs = { all = { "db.system" = "postgresql" } }
 
 # Scenario 3: API smoke tests
-[[scenario]]
-name = "api_smoke_tests"
-service = "app"
-run = "curl -f http://localhost:8080/health && curl -f http://localhost:8080/ready"
-timeout = "60s"
+[[steps]]
+container = "app"
+{
+        name = "api_smoke_tests",
+        sample_count = { min = 1 }
+    }]
+container = "app"]
+exec = ["curl -f http://localhost:8080/health && curl -f http://localhost:8080/ready"]
+timeout = "60s"]
 
-[[expect.span]]
-name = "service.health_check"
+[expect.otel]
+spans = [
+{
+        name = "service.health_check",
+        sample_count = { min = 1 }
+    }]
 attrs = { all = { "health.status" = "healthy" } }
 
 # Graph validation - ensure services interact correctly
@@ -143,4 +160,5 @@ no_external_services = true
 span_attrs.forbid_keys = [
   "net.peer.name",  # No external network calls
   "http.url"        # No external HTTP requests
+]
 ]

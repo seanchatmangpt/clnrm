@@ -1,6 +1,6 @@
 //! Cache trait abstraction for pluggable backends
 //!
-//! Provides trait-based interface following London School TDD principles:
+//! Provides trait-based interface following Chicago School TDD principles:
 //! - Clear contract definition through trait methods
 //! - Mockable interface for testing
 //! - Support for multiple backend implementations
@@ -22,7 +22,7 @@ pub struct CacheStats {
 
 /// Cache trait defining the contract for cache backends
 ///
-/// London School TDD:
+/// Chicago School TDD:
 /// - This trait defines the collaboration contract
 /// - Implementations can be mocked for testing
 /// - Focuses on behavior verification over state

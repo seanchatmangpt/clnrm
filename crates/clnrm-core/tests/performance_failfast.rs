@@ -1,6 +1,6 @@
 //! Performance Fail-Fast Tests for v1.2.1
 //!
-//! This test suite follows London School TDD principles to verify that
+//! This test suite follows Chicago School TDD principles to verify that
 //! performance testing configuration is properly rejected with clear error messages.
 //!
 //! ## Design Decision (v1.2.1)
