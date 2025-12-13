@@ -1,9 +1,9 @@
 //! File watching implementation using notify crate
 //!
 //! This module provides the file watching abstraction and concrete implementation
-//! following London School TDD principles.
+//! following Chicago School TDD principles.
 //!
-//! # London TDD Approach
+//! # Chicago TDD Approach
 //!
 //! - `FileWatcher` trait defines the contract for file watching
 //! - `MockFileWatcher` in tests verifies interactions
@@ -184,7 +184,7 @@ impl WatchConfig {
 /// File watcher trait for testability
 ///
 /// This trait allows mocking file watching behavior in tests,
-/// following London School TDD principles of defining contracts
+/// following Chicago School TDD principles of defining contracts
 /// through interfaces.
 pub trait FileWatcher: Send + Sync {
     /// Start watching for file changes

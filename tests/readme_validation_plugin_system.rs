@@ -1,12 +1,12 @@
 //! README Validation Tests - Plugin System
 //!
-//! London TDD tests validating README claims about plugin system:
+//! Chicago TDD tests validating README claims about plugin system:
 //! - Plugin registration works
 //! - Plugin lifecycle (start/stop/health) implemented
 //! - GenericContainerPlugin functional
 //! - Service discovery works
 //!
-//! Following London School TDD: Mock plugins, verify lifecycle behavior.
+//! Following Chicago School TDD: Mock plugins, verify lifecycle behavior.
 
 use std::collections::HashMap;
 

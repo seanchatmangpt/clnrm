@@ -2,6 +2,13 @@
 
 [Introduction](introduction.md)
 
+# Migration Guide
+- [v2.0.0 Migration Guide](../docs/V2_0_0_MIGRATION_GUIDE.md)
+
+# Architecture
+- [v2.0.0 Architecture](../docs/V2_0_0_ARCHITECTURE.md)
+- [Configuration Reference](../docs/V2_0_0_CONFIG_REFERENCE.md)
+
 # Plugin Development
 - [Overview](plugin-development/README.md)
 - [Creating Custom Plugins](plugin-development/creating-plugins.md)
@@ -12,10 +19,10 @@
 - [Overview](advanced-patterns/README.md)
 - [Multi-Service Orchestration](advanced-patterns/multi-service-orchestration.md)
 - [Chaos Engineering](advanced-patterns/chaos-engineering.md)
-- [Weaver Schema Validation (v1.2.1)](advanced-patterns/weaver-validation.md)
+- [Weaver Schema Validation](advanced-patterns/weaver-validation.md)
 - [80/20 Validation Strategy](advanced-patterns/80-20-validation.md)
 - [False Positive Detection](advanced-patterns/false-positive-detection.md)
-- [OTEL Validation (Legacy)](advanced-patterns/otel-validation.md)
+- [OTEL Validation](advanced-patterns/otel-validation.md)
 - [Performance Testing](advanced-patterns/performance-testing.md)
 
 # Template System Mastery
@@ -33,5 +40,5 @@
 # Reference
 - [CLI Reference](reference/cli-reference.md)
 - [TOML Schema](reference/toml-schema.md)
-- [Weaver Schemas (v1.2.1)](reference/weaver-schemas.md)
+- [Weaver Schemas](reference/weaver-schemas.md)
 - [Error Handling](reference/error-handling.md)

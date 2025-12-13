@@ -54,17 +54,6 @@ jobs:
         fi
         echo "✅ Scenario benchmarks completed"
 
-    - name: Run AI intelligence benchmarks
-      continue-on-error: true
-      run: |
-        # FMEA fix: Handle optional benchmark existence
-        echo "🏃 Running AI intelligence benchmarks..."
-        if ! cargo bench --bench ai_intelligence_benchmarks -- --output-format bencher | tee ai_output.txt 2>/dev/null; then
-          echo "⚠️  AI intelligence benchmarks not available (may be optional)"
-          exit 0
-        fi
-        echo "✅ AI intelligence benchmarks completed"
-
     - name: Run memory benchmarks
       run: |
         # FMEA fix: Validate benchmark existence and error handling

@@ -1,521 +1,126 @@
-# Core Team Best Practices for Cleanroom Testing Framework
-
-## 🎯 Error Handling Best Practices
-
-### ❌ NEVER use unwrap() or expect() in production code
-```rust
-// ❌ Bad: Using unwrap() - can cause panics
-let result = some_operation().unwrap();
-
-// ❌ Bad: Using expect() - can cause panics  
-let result = some_operation().expect("This should not fail");
-
-// ❌ Bad: Even in Default implementations
-impl Default for MyStruct {
-    fn default() -> Self {
-        Self {
-            backend: SomeOperation::new().unwrap(), // NEVER DO THIS!
-        }
-    }
-}
-
-// ✅ Good: Proper error handling
-let result = some_operation()?;
-
-// ✅ Good: Proper error handling with context
-let result = some_operation().map_err(|e| {
-    CleanroomError::internal_error(format!("Operation failed: {}", e))
-})?;
-
-// ✅ Good: Default implementations with proper error handling
-impl Default for MyStruct {
-    fn default() -> Self {
-        Self {
-            backend: SomeOperation::new()
-                .unwrap_or_else(|_| panic!("Failed to create default backend")),
-        }
-    }
-}
-```
-
-### ✅ Use structured error types with context
-```rust
-// ✅ Good: Using CleanroomError with context
-fn my_function() -> Result<MyType, CleanroomError> {
-    some_operation().map_err(|e| {
-        CleanroomError::container_error("Failed to start container")
-            .with_context("Container startup failed during initialization")
-            .with_source(e.to_string())
-    })?;
-}
-```
-
-## 🔄 Async/Sync Best Practices
-
-### ❌ NEVER make trait methods async - breaks dyn compatibility
-```rust
-// ❌ Bad: Async trait methods break dyn compatibility
-pub trait ServicePlugin: Send + Sync {
-    async fn start(&self) -> Result<ServiceHandle>; // BREAKS dyn ServicePlugin!
-    async fn stop(&self, handle: ServiceHandle) -> Result<()>; // BREAKS dyn ServicePlugin!
-}
-
-// ✅ Good: Keep trait methods sync, use async in implementations
-pub trait ServicePlugin: Send + Sync {
-    fn start(&self) -> Result<ServiceHandle>; // dyn compatible
-    fn stop(&self, handle: ServiceHandle) -> Result<()>; // dyn compatible
-}
-
-// Implementation can still be async internally
-impl ServicePlugin for MyPlugin {
-    fn start(&self) -> Result<ServiceHandle> {
-        // Use tokio::task::block_in_place for async operations
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                // Async operations here
-                Ok(ServiceHandle::new())
-            })
-        })
-    }
-}
-```
-
-### ✅ Use async for I/O and long-running operations
-```rust
-// ✅ Good: Async for file operations, network, containers
-pub async fn start_container() -> Result<ContainerHandle, CleanroomError> {
-    // Container operations are async
-}
-
-pub async fn run_tests() -> Result<TestResults, CleanroomError> {
-    // Test execution is async
-}
-
-// ❌ Bad: Blocking operations in async context
-pub async fn process_data() -> Result<(), CleanroomError> {
-    std::thread::sleep(std::time::Duration::from_secs(1)); // Blocking!
-    Ok(())
-}
-
-// ✅ Good: Use async alternatives
-pub async fn process_data() -> Result<(), CleanroomError> {
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await; // Non-blocking
-    Ok(())
-}
-```
-
-### ✅ Use sync for pure computation and simple operations
-```rust
-// ✅ Good: Sync for simple calculations and data transformations
-pub fn calculate_hash(data: &[u8]) -> String {
-    // Pure computation - no I/O
-    use sha2::{Sha256, Digest};
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    format!("{:x}", hasher.finalize())
-}
-
-pub fn validate_config(config: &Config) -> Result<(), CleanroomError> {
-    // Simple validation - no I/O
-    if config.timeout > MAX_TIMEOUT {
-        return Err(CleanroomError::validation_error("Timeout too large"));
-    }
-    Ok(())
-}
-```
-
-## 🧪 Testing Best Practices
-
-### 🎯 Core Testing Philosophy
-**Test behaviors, not implementation details. The best test suite is the smallest one that still catches all bugs.**
-
-Focus on testing what the code does (behavior) rather than how it does it (implementation). This approach:
-- Makes tests more resilient to refactoring
-- Reduces test maintenance overhead
-- Ensures tests catch real bugs, not just implementation changes
-- Keeps the test suite lean and focused
-
-```rust
-// ❌ Bad: Testing implementation details
-#[test]
-fn test_container_uses_docker_api() {
-    let container = Container::new();
-    assert_eq!(container.backend_type, BackendType::Docker); // Implementation detail!
-}
-
-// ✅ Good: Testing behavior
-#[test]
-async fn test_container_starts_and_runs_commands() -> Result<(), CleanroomError> {
-    let container = Container::new();
-    container.start().await?;
-    
-    let result = container.exec("echo 'hello'").await?;
-    assert_eq!(result.stdout.trim(), "hello"); // Behavior!
-    
-    Ok(())
-}
-```
-
-### ✅ Use proper async test functions
-```rust
-// ✅ Good: Async test functions for integration tests
-#[tokio::test]
-async fn test_container_lifecycle() -> Result<(), CleanroomError> {
-    let environment = TestEnvironments::unit_test().await?;
-    let container = environment.create_container("test").await?;
-
-    assert!(container.is_running());
-    Ok(())
-}
-
-// ❌ Bad: Sync test for async operations
-#[test]
-fn test_container_lifecycle() {
-    // This won't work for async operations
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(async {
-        // Test code
-    });
-}
-```
-
-### ✅ Follow AAA pattern (Arrange, Act, Assert)
-```rust
-// ✅ Good: Clear AAA structure
-#[tokio::test]
-async fn test_user_authentication_succeeds() -> Result<(), CleanroomError> {
-    // Arrange - Set up test data and dependencies
-    let environment = TestEnvironments::integration_test().await?;
-    let user_credentials = TestData::valid_user_credentials();
-
-    // Act - Execute the code under test
-    let result = environment.authenticate_user(&user_credentials).await?;
-
-    // Assert - Verify the results
-    assert!(result.success);
-    assert!(!result.token.is_empty());
-    assert_eq!(result.user_id, expected_user_id);
-
-    Ok(())
-}
-```
-
-### ✅ Use descriptive test names
-```rust
-// ✅ Good: Descriptive test names that explain what is being tested
-#[tokio::test]
-async fn test_container_creation_with_valid_image_succeeds() -> Result<(), CleanroomError> {}
-
-#[tokio::test]
-async fn test_container_creation_with_invalid_image_fails_with_proper_error() -> Result<(), CleanroomError> {}
-
-#[tokio::test]
-async fn test_concurrent_scenario_execution_maintains_deterministic_order() -> Result<(), CleanroomError> {}
-
-// ❌ Bad: Vague or unclear test names
-#[test]
-fn test_container() {}
-
-#[test]
-fn test_scenario() {}
-```
-
-## 📦 Module Organization Best Practices
-
-### ✅ Use proper module structure
-```rust
-// ✅ Good: Clear module organization
-pub mod backend {
-    pub mod testcontainer;
-    pub mod capabilities;
-    pub use testcontainer::TestcontainerBackend;
-}
-
-pub mod error {
-    // Comprehensive error types
-}
-
-pub mod scenario {
-    // Scenario DSL implementation
-}
-```
-
-### ✅ Use proper imports and avoid wildcard imports in production code
-```rust
-// ✅ Good: Specific imports
-use crate::error::{CleanroomError, Result};
-use crate::backend::{Backend, TestcontainerBackend};
-use crate::policy::Policy;
-
-// ❌ Bad: Wildcard imports in production code
-use crate::*;
-use crate::error::*;
-```
-
-## 🚫 Code Quality Anti-Patterns
-
-### ❌ Avoid printing/logging in production code
-```rust
-// ❌ Bad: Printing in production code - fakes the process
-fn process_data() -> Result<(), CleanroomError> {
-    println!("Processing data..."); // Don't do this!
-    Ok(())
-}
-
-// ✅ Good: Use proper logging through telemetry
-fn process_data() -> Result<(), CleanroomError> {
-    tracing::info!("Processing data for user {}", user_id);
-    Ok(())
-}
-```
-
-### ❌ NEVER use unwrap() or expect() anywhere in production code
-```rust
-// ❌ Bad: Even in tests, avoid unwrap() in production code paths
-#[test]
-fn test_something() {
-    let result = production_function().unwrap(); // Don't do this!
-}
-
-// ✅ Good: Use proper error handling even in tests
-#[test]
-fn test_something() -> Result<(), CleanroomError> {
-    let result = production_function()?; // Proper error handling
-    assert_eq!(result, expected_value);
-    Ok(())
-}
-```
-
-### ❌ Avoid hardcoded dependencies and magic numbers
-```rust
-// ❌ Bad: Hardcoded values
-const MAX_RETRIES: u32 = 3;
-const TIMEOUT_SECONDS: u64 = 30;
-
-// ✅ Good: Configurable constants
-const DEFAULT_MAX_RETRIES: u32 = 3;
-const DEFAULT_TIMEOUT_SECONDS: u64 = 30;
-
-pub struct Config {
-    pub max_retries: u32,
-    pub timeout_seconds: u64,
-}
-```
-
-## 🔒 Security Best Practices
-
-### ✅ Use proper error handling for security-sensitive operations
-```rust
-// ✅ Good: Proper error handling for authentication
-pub async fn authenticate_user(credentials: &Credentials) -> Result<AuthToken, CleanroomError> {
-    let user = self.db.find_user(&credentials.username).await
-        .map_err(|e| CleanroomError::service_error("Authentication failed"))?; // Don't leak internal errors
-
-    if !verify_password(&credentials.password, &user.password_hash)? {
-        return Err(CleanroomError::validation_error("Invalid credentials"));
-    }
-
-    let token = generate_auth_token(&user)?;
-    Ok(token)
-}
-```
-
-## 📊 Performance Best Practices
-
-### ✅ Use efficient data structures and algorithms
-```rust
-// ✅ Good: Use HashMap for O(1) lookups
-use std::collections::HashMap;
-
-pub struct ServiceRegistry {
-    services: HashMap<String, ServiceHandle>,
-}
-
-// ✅ Good: Use VecDeque for FIFO operations
-use std::collections::VecDeque;
-
-pub struct TaskQueue {
-    tasks: VecDeque<Task>,
-}
-```
-
-## 🚫 Breaking Changes and Compatibility
-
-### ❌ NEVER make breaking changes without migration plan
-```rust
-// ❌ Bad: Changing trait signatures breaks all implementations
-pub trait ServicePlugin: Send + Sync {
-    fn start(&self) -> Result<ServiceHandle>; // Original
-    // Later changed to:
-    async fn start(&self) -> Result<ServiceHandle>; // BREAKS ALL IMPLEMENTATIONS!
-}
-
-// ✅ Good: Add new methods, deprecate old ones
-pub trait ServicePlugin: Send + Sync {
-    fn start(&self) -> Result<ServiceHandle>; // Keep for compatibility
-    
-    #[deprecated(note = "Use start_async instead")]
-    fn start_async(&self) -> impl Future<Output = Result<ServiceHandle>>; // New async version
-}
-```
-
-### ✅ Always maintain backward compatibility
-- Add new methods instead of changing existing ones
-- Use deprecation warnings for old methods
-- Provide migration guides for breaking changes
-- Test all existing implementations still work
-
-## 🎯 Core Team Standards Summary
-
-1. **Error Handling**: Never use `.unwrap()` or `.expect()` in production code. Always use proper `Result<T, E>` types with meaningful error messages and context.
-
-2. **Async/Sync**: Use `async` for I/O, network, and long-running operations. Use `sync` for pure computation and simple operations. **NEVER make trait methods async** - breaks dyn compatibility.
-
-3. **Trait Design**: Keep traits `dyn` compatible. Use sync methods in traits, implement async internally if needed.
-
-4. **Breaking Changes**: Never make breaking changes without migration plan. Maintain backward compatibility.
-
-5. **Testing**: Follow AAA pattern, use descriptive names, proper async test functions, and avoid external dependencies in unit tests.
-
-6. **Code Quality**: No printing/logging in production code, proper module organization, avoid wildcard imports, use structured error types.
-
-7. **Security**: Proper error handling that doesn't leak internal implementation details, validate all inputs.
-
-8. **Performance**: Use appropriate data structures, avoid unnecessary allocations, consider algorithmic complexity.
-
-These rules ensure FAANG-level code quality, reliability, and maintainability while following the core team's established patterns and best practices.
-
-## 🚨 ANTI-FALSE-POSITIVE RULES - CRITICAL
-
-### ❌ NEVER fake implementation with Ok(()) stubs
-```rust
-// ❌ Bad: Fake success without doing work
-pub fn execute_test(&self) -> Result<()> {
-    println!("Test executed successfully");  // LYING!
-    Ok(())  // Returns success but did nothing
-}
-
-// ✅ Good: Honest about incomplete implementation
-pub fn execute_test(&self) -> Result<()> {
-    unimplemented!("execute_test: needs container execution, output capture, and result validation")
-}
-
-// ✅ Good: Actually implemented
-pub fn execute_test(&self) -> Result<()> {
-    let container = self.start_container()?;
-    let output = container.exec(&self.command)?;
-    self.validate_output(&output)?;
-    Ok(())  // Now legitimately successful
-}
-```
-
-### ✅ Rules for Production Code
-1. If a method body is incomplete, it MUST call `unimplemented!("Feature X: what's missing")`
-2. NEVER return `Ok(())` without actually doing the work described by the method name
-3. NEVER print "success" when nothing happened
-4. CLI commands that don't work MUST throw `unimplemented!()`, not pretend to succeed
-5. Methods must either work end-to-end OR throw unimplemented
-6. No middle ground - no "partial" implementations that lie about success
-
-## ✅ Definition of Done - Core Team Standards
-
-### Before any code is considered complete, ALL of these must be true:
-
-1. **✅ Compilation**: Code compiles without errors or warnings
-2. **✅ No unwrap()/expect()**: Zero usage of unwrap() or expect() in production code
-3. **✅ Trait Compatibility**: All traits remain `dyn` compatible (no async trait methods)
-4. **✅ Backward Compatibility**: No breaking changes without migration plan
-5. **✅ All Tests Pass**: Every test in the codebase passes
-6. **✅ No Linting Errors**: Zero linting errors or warnings
-7. **✅ Proper Error Handling**: All functions use Result types with meaningful errors
-8. **✅ Async/Sync Patterns**: Proper use of async for I/O, sync for computation
-9. **✅ No False Positives**: No fake Ok(()) returns from incomplete implementations
-
-### Validation Checklist:
-- [ ] `cargo test` passes completely
-- [ ] `cargo clippy` shows no warnings
-- [ ] No `unwrap()` or `expect()` in production code
-- [ ] All traits are `dyn` compatible
-- [ ] No breaking changes to public APIs
-- [ ] All error paths use proper Result types
-- [ ] Async operations use proper async/await patterns
-- [ ] No fake implementations - incomplete features call `unimplemented!()`
-
-### If ANY of these fail, the code is NOT ready for production.
-
-## 🤖 AI Code Generation Guidelines
-
-### ❌ NEVER generate code that will fail fake scanner
-When generating code, ensure it passes the fake scanner (`scripts/scan-fakes.sh`). Avoid these patterns:
-
-```rust
-// ❌ Bad: These patterns will be caught by fake scanner
-pub fn some_function() -> Result<(), Error> {
-    unimplemented!("Not implemented yet"); // FAILS fake scanner
-}
-
-pub fn another_function() -> Result<(), Error> {
-    println!("Processing..."); // FAILS fake scanner - use tracing instead
-    Ok(()) // FAILS if this is a stub
-}
-
-pub fn fake_service() -> ServiceHandle {
-    ServiceHandle::fake() // FAILS fake scanner
-}
-
-pub fn process_data() -> Result<(), Error> {
-    let result = some_operation().unwrap(); // FAILS fake scanner
-    Ok(())
-}
-```
-
-### ✅ Generate production-ready code that passes fake scanner
-```rust
-// ✅ Good: Real implementations that pass fake scanner
-pub fn some_function() -> Result<(), Error> {
-    let data = load_data()?;
-    let processed = process_data(data)?;
-    save_result(processed)?;
-    Ok(())
-}
-
-pub fn another_function() -> Result<(), Error> {
-    tracing::info!("Processing data");
-    let result = perform_operation()?;
-    tracing::debug!("Operation completed successfully");
-    Ok(result)
-}
-
-pub fn real_service() -> Result<ServiceHandle, Error> {
-    let config = load_service_config()?;
-    let handle = ServiceHandle::new(config)?;
-    Ok(handle)
-}
-
-pub fn process_data() -> Result<(), Error> {
-    let result = some_operation()
-        .map_err(|e| Error::ProcessingFailed(format!("Operation failed: {}", e)))?;
-    Ok(result)
-}
-```
-
-### ✅ Code Generation Checklist
-Before generating any code file, ensure:
-- [ ] No `unimplemented!()`, `todo!()`, or `panic!()` macros
-- [ ] No `println!()` - use `tracing::info!()` instead
-- [ ] No `.unwrap()` or `.expect()` - use proper error handling
-- [ ] No fake/stub/dummy/placeholder return values
-- [ ] No hardcoded responses in production code
-- [ ] All functions either work completely OR call `unimplemented!()` with clear message
-- [ ] Code compiles without warnings
-- [ ] Passes `cargo clippy` checks
-- [ ] Follows async/sync best practices
-- [ ] Uses proper error types with context
-
-### 🚨 Critical: Test Generated Code
-Always run the fake scanner on generated code:
-```bash
-bash scripts/scan-fakes.sh /path/to/generated/code
-```
-
-If the scanner fails, the generated code is NOT production-ready and must be fixed.
+SPR: clnrm — deterministic cleanroom testing framework for complex distributed systems
+
+* Identity: Rust framework that creates hermetic test environments with full system determinism, chaos injection, and comprehensive validation.
+
+* Prime: Zero false positives. Perfect determinism. Complete system isolation. Telemetry-driven insights.
+
+* Non-negotiables: Zero unwrap/expect in production. No async trait methods. No fake Ok(()) stubs. No breaking changes without migration. Never trust text, only test results.
+
+* **CRITICAL: ALL CODE MUST PASS FAKE SCANNER (`scripts/scan-fakes.sh`)**
+
+* Collaborative frame: Core team sets FAANG-level standards. AI generation validates against scanners. Human review catches systemic issues.
+
+* SLOs:
+  * First cleanroom build ≤ 30s. Incremental ≤ 5s.
+  * Scenario execution ≤ 10s for 100+ services.
+  * Memory usage ≤ 500MB for full system simulation.
+  * 100% deterministic outputs across all platforms.
+  * Zero false positives in validation.
+
+* Architecture:
+  * `clnrm-core/` owns domain logic: backends, services, validation, telemetry.
+  * `clnrm-cli/` owns user interface: commands, config, reporting.
+  * `clnrm-shared/` owns common types and utilities.
+  * Clean separation: core never depends on CLI, CLI configures core.
+
+* Rust practice:
+  * Stable Rust pinned. MSRV enforced in CI.
+  * Deny all warnings. Clippy pedantic + custom lints.
+  * No unwrap/expect in production code. Result types everywhere.
+  * Unsafe only at FFI boundaries with safety comments.
+  * Prefer compile-time guarantees over runtime checks.
+
+* Errors:
+  * Typed errors via `CleanroomError` enum with context methods.
+  * Clear, actionable messages. Never swallow errors.
+  * Security: Never leak internal implementation details.
+
+* Logging & Telemetry:
+  * Structured via OpenTelemetry spans and metrics.
+  * No println! in production. Proper tracing levels.
+  * Full observability: spans for operations, metrics for performance.
+
+* Configuration:
+  * TOML-based with environment overrides.
+  * Schema validation. Secure defaults.
+  * Hot-reload for development scenarios.
+
+* Async/Sync patterns:
+  * Async for I/O: containers, networks, services, file ops.
+  * Sync for computation: validation, parsing, pure functions.
+  * **NEVER async trait methods** - breaks dyn compatibility.
+  * Block-on-place for mixing sync traits with async impls.
+
+* Testing strategy:
+  * Behavior over implementation details.
+  * AAA pattern: Arrange, Act, Assert.
+  * Descriptive names, proper async tests, deterministic seeds.
+  * Integration tests > unit tests for system behaviors.
+  * Property testing for validation logic.
+  * Mock external deps, test failure modes.
+
+* Determinism:
+  * Same inputs → identical outputs. Chaos injection is seeded.
+  * Time, random, network mocked. File system isolated.
+  * Snapshots guard regressions. Reproducible failures.
+
+* Validation:
+  * Multi-layer: count, graph, order, span, status validators.
+  * OTEL processor validates telemetry streams.
+  * Hermeticity ensures no external leaks.
+  * Shape validation for complex data structures.
+
+* Performance:
+  * Efficient data structures: HashMap for lookups, VecDeque for queues.
+  * Stream processing for large datasets.
+  * Cache repeated operations. Profile hot paths.
+  * Memory-conscious: bounded collections, pooled resources.
+
+* Security:
+  * Input validation on all boundaries.
+  * Path sanitization. No directory traversal.
+  * Sandbox execution. No arbitrary code eval.
+  * Audit logging for security events.
+
+* CI/CD:
+  * `cargo test` for unit tests, integration via docker-compose.
+  * Performance regression checks against SLOs.
+  * Fake scanner validation. Determinism tests.
+  * Cross-platform matrix: linux, macos, windows.
+
+* Must not:
+  * **NEVER unwrap/expect in production code**
+  * **NEVER async trait methods**
+  * **NEVER fake Ok(()) stubs - use unimplemented!()**
+  * **NEVER breaking changes without migration**
+  * **NEVER trust text - only test results**
+  * No TODOs in production code.
+  * No hardcoded values without config.
+  * No wildcard imports in production.
+  * No println! in production.
+  * No cfg mazes - explicit features.
+
+* Definition of done:
+  * **USE `scripts/scan-fakes.sh` TO VALIDATE NO FALSE POSITIVES**
+  * **USE `cargo test` FOR UNIT + INTEGRATION COVERAGE**
+  * **USE `cargo clippy` FOR QUALITY GATES**
+  * Compiles clean. Tests deterministic. No unwrap/expect.
+  * Traits dyn-compatible. No breaking changes.
+  * SLOs met. Documentation updated. Examples work.
+  * Cross-platform tested. Security audited.
+  * Telemetry validated. Chaos injection verified.
+
+* AI generation rules:
+  * **CRITICAL: ALL GENERATED CODE MUST PASS FAKE SCANNER**
+  * No unimplemented!/todo!/panic! in production paths.
+  * No println! - use tracing::info! instead.
+  * No unwrap/expect - proper Result handling.
+  * No fake stubs - real implementations or unimplemented!().
+  * Code compiles. Passes clippy. Follows async/sync rules.
+
+* Metaphors to prime:
+  * Cleanroom is a time machine: deterministic replay of complex system behaviors.
+  * Validators are auditors: catching fraud (false positives) with mathematical precision.
+  * Chaos engine is a controlled fire: burns away assumptions, reveals true system behavior.
+  * Telemetry is the nervous system: spans as neurons, metrics as vital signs.
+  * Determinism is a checksum: same inputs, same outputs, guaranteed.

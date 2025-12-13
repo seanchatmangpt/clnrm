@@ -1,10 +1,10 @@
 # CLI Reference
 
-This chapter provides comprehensive documentation for all clnrm CLI commands, options, and usage patterns.
+This chapter provides comprehensive documentation for all clnrm v2.0.0 CLI commands, options, and usage patterns.
 
 ## Overview
 
-The clnrm CLI provides these main command categories:
+The clnrm v2.0.0 CLI provides these main command categories:
 - **Core Commands** - Basic test execution and validation
 - **Plugin Commands** - Plugin management and discovery
 - **Utility Commands** - Development and debugging tools
@@ -24,7 +24,7 @@ clnrm [OPTIONS] [COMMAND] [ARGS...]
 | `--version` | Show version information | `clnrm --version` |
 | `--verbose` | Enable verbose logging | `clnrm run --verbose` |
 | `--config <FILE>` | Specify configuration file | `clnrm run --config test.toml` |
-| `--env <ENV>` | Set environment name | `clnrm run --env production` |
+| `--format <FORMAT>` | Output format (auto, text, json) | `clnrm run --format json` |
 
 ## Core Commands
 
@@ -33,7 +33,7 @@ clnrm [OPTIONS] [COMMAND] [ARGS...]
 Execute tests from TOML configuration files.
 
 ```bash
-clnrm run [OPTIONS] <PATHS...>
+clnrm run [OPTIONS] [PATHS...]
 ```
 
 **Options:**
@@ -41,11 +41,14 @@ clnrm run [OPTIONS] <PATHS...>
 | Option | Description | Example |
 |--------|-------------|---------|
 | `--parallel` | Run tests in parallel | `clnrm run --parallel tests/` |
-| `--workers <N>` | Number of parallel workers | `clnrm run --workers 4 tests/` |
-| `--timeout <MINUTES>` | Test timeout in minutes | `clnrm run --timeout 30 tests/` |
-| `--dry-run` | Validate without executing | `clnrm run --dry-run tests/` |
-| `--baseline <NAME>` | Use performance baseline | `clnrm run --baseline production tests/` |
-| `--check-regressions` | Check for performance regressions | `clnrm run --check-regressions tests/` |
+| `--jobs <N>` | Number of parallel workers | `clnrm run --jobs 4 tests/` |
+| `--fail-fast` | Stop on first failure | `clnrm run --fail-fast tests/` |
+| `--watch` | Watch mode (rerun on changes) | `clnrm run --watch tests/` |
+| `--force` | Force run all tests | `clnrm run --force tests/` |
+| `--digest` | Generate reproducibility digest | `clnrm run --digest tests/` |
+| `--validate` | Enable Weaver live-check validation | `clnrm run --validate tests/` |
+| `--otel-exporter` | OTEL exporter type | `clnrm run --otel-exporter otlp-http tests/` |
+| `--otel-endpoint` | OTEL endpoint | `clnrm run --otel-endpoint http://localhost:4318 tests/` |
 
 **Examples:**
 
@@ -57,13 +60,13 @@ clnrm run tests/
 clnrm run test.clnrm.toml
 
 # Run with parallel execution
-clnrm run --parallel --workers 4 tests/
+clnrm run --parallel --jobs 4 tests/
 
-# Run with performance baseline
-clnrm run --baseline production tests/performance/
+# Run with Weaver validation
+clnrm run --validate --otel-exporter otlp-http tests/
 
-# Run with regression checking
-clnrm run --check-regressions tests/performance/
+# Run in watch mode
+clnrm run --watch tests/
 ```
 
 ### `validate` - Validate Configuration
@@ -71,7 +74,7 @@ clnrm run --check-regressions tests/performance/
 Validate TOML configuration files without execution.
 
 ```bash
-clnrm validate [OPTIONS] <PATHS...>
+clnrm validate [OPTIONS] [PATHS...]
 ```
 
 **Options:**
@@ -79,8 +82,6 @@ clnrm validate [OPTIONS] <PATHS...>
 | Option | Description | Example |
 |--------|-------------|---------|
 | `--strict` | Enable strict validation | `clnrm validate --strict test.toml` |
-| `--schema` | Validate against schema | `clnrm validate --schema test.toml` |
-| `--format <FORMAT>` | Output format (text, json) | `clnrm validate --format json test.toml` |
 
 **Examples:**
 
@@ -93,9 +94,6 @@ clnrm validate tests/
 
 # Validate with strict mode
 clnrm validate --strict test.clnrm.toml
-
-# Validate with JSON output
-clnrm validate --format json tests/
 ```
 
 ### `init` - Initialize Project
@@ -119,8 +117,6 @@ clnrm init [OPTIONS] [PATH]
 - `api` - API service testing
 - `database` - Database testing
 - `multi-service` - Multi-service orchestration
-- `performance` - Performance testing
-- `chaos` - Chaos engineering
 
 **Examples:**
 
@@ -133,9 +129,6 @@ clnrm init --template api
 
 # Initialize in specific directory
 clnrm init ./my-project
-
-# Force overwrite existing files
-clnrm init --force --template multi-service
 ```
 
 ## Plugin Commands
@@ -168,37 +161,6 @@ clnrm plugins --details
 clnrm plugins --format json
 ```
 
-### `services` - Service Management
-
-Manage running services.
-
-```bash
-clnrm services <COMMAND> [OPTIONS]
-```
-
-**Subcommands:**
-
-- `status` - Show service status
-- `logs` - Show service logs
-- `restart` - Restart services
-- `stop` - Stop services
-
-**Examples:**
-
-```bash
-# Show service status
-clnrm services status
-
-# Show service logs
-clnrm services logs --tail 100
-
-# Restart all services
-clnrm services restart
-
-# Stop specific service
-clnrm services stop database
-```
-
 ## Utility Commands
 
 ### `pull` - Pre-pull Images
@@ -206,7 +168,7 @@ clnrm services stop database
 Pre-pull Docker images for faster execution.
 
 ```bash
-clnrm pull [OPTIONS] <PATHS...>
+clnrm pull [OPTIONS] [PATHS...]
 ```
 
 **Options:**
@@ -215,7 +177,6 @@ clnrm pull [OPTIONS] <PATHS...>
 |--------|-------------|---------|
 | `--parallel` | Pull images in parallel | `clnrm pull --parallel tests/` |
 | `--jobs <N>` | Number of parallel jobs | `clnrm pull --jobs 4 tests/` |
-| `--dry-run` | Show what would be pulled | `clnrm pull --dry-run tests/` |
 
 **Examples:**
 
@@ -225,9 +186,6 @@ clnrm pull tests/
 
 # Pull with parallel downloads
 clnrm pull --parallel --jobs 4 tests/
-
-# Show what would be pulled
-clnrm pull --dry-run tests/
 ```
 
 ### `fmt` - Format TOML Files
@@ -235,7 +193,7 @@ clnrm pull --dry-run tests/
 Format TOML files for consistency.
 
 ```bash
-clnrm fmt [OPTIONS] <PATHS...>
+clnrm fmt [OPTIONS] [PATHS...]
 ```
 
 **Options:**
@@ -243,7 +201,6 @@ clnrm fmt [OPTIONS] <PATHS...>
 | Option | Description | Example |
 |--------|-------------|---------|
 | `--check` | Check if files are formatted | `clnrm fmt --check tests/` |
-| `--diff` | Show diff of changes | `clnrm fmt --diff test.toml` |
 
 **Examples:**
 
@@ -253,9 +210,6 @@ clnrm fmt tests/
 
 # Check if files are formatted
 clnrm fmt --check tests/
-
-# Show formatting diff
-clnrm fmt --diff test.toml
 ```
 
 ### `lint` - Lint Configuration
@@ -263,16 +217,14 @@ clnrm fmt --diff test.toml
 Lint TOML files for issues.
 
 ```bash
-clnrm lint [OPTIONS] <PATHS...>
+clnrm lint [OPTIONS] [PATHS...]
 ```
 
 **Options:**
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--rules <RULES>` | Enable specific rules | `clnrm lint --rules security,performance` |
 | `--fix` | Auto-fix issues | `clnrm lint --fix tests/` |
-| `--format <FORMAT>` | Output format (text, json) | `clnrm lint --format json tests/` |
 
 **Examples:**
 
@@ -280,14 +232,8 @@ clnrm lint [OPTIONS] <PATHS...>
 # Lint all test files
 clnrm lint tests/
 
-# Lint with specific rules
-clnrm lint --rules security,performance tests/
-
 # Auto-fix issues
 clnrm lint --fix tests/
-
-# Lint with JSON output
-clnrm lint --format json tests/
 ```
 
 ## Advanced Commands
@@ -304,7 +250,6 @@ clnrm template <COMMAND> [OPTIONS]
 
 - `render <TEMPLATE>` - Render template to TOML
 - `validate <TEMPLATE>` - Validate template syntax
-- `list` - List available templates
 
 **Examples:**
 
@@ -314,9 +259,6 @@ clnrm template render test.clnrm.toml.tera > test.clnrm.toml
 
 # Validate template
 clnrm template validate test.clnrm.toml.tera
-
-# List available templates
-clnrm template list
 ```
 
 ### `baseline` - Baseline Management
@@ -332,7 +274,6 @@ clnrm baseline <COMMAND> [OPTIONS]
 - `create <NAME>` - Create new baseline
 - `update <NAME>` - Update existing baseline
 - `list` - List baselines
-- `compare <NAME>` - Compare against baseline
 
 **Examples:**
 
@@ -345,9 +286,6 @@ clnrm baseline update production
 
 # List all baselines
 clnrm baseline list
-
-# Compare against baseline
-clnrm baseline compare production
 ```
 
 ### `report` - Report Generation
@@ -355,7 +293,7 @@ clnrm baseline compare production
 Generate test reports.
 
 ```bash
-clnrm report [OPTIONS] <COMMAND>
+clnrm report [OPTIONS] [COMMAND]
 ```
 
 **Options:**
@@ -365,12 +303,6 @@ clnrm report [OPTIONS] <COMMAND>
 | `--format <FORMAT>` | Report format (html, json, junit) | `clnrm report --format html` |
 | `--output <FILE>` | Output file | `clnrm report --output report.html` |
 
-**Subcommands:**
-
-- `generate` - Generate comprehensive report
-- `summary` - Generate summary report
-- `trends` - Generate performance trends
-
 **Examples:**
 
 ```bash
@@ -379,12 +311,6 @@ clnrm report --format html --output test-report.html
 
 # Generate JSON report
 clnrm report --format json --output test-results.json
-
-# Generate JUnit XML
-clnrm report --format junit --output junit.xml
-
-# Generate performance trends
-clnrm report trends --baseline production
 ```
 
 ## Development Commands
@@ -401,8 +327,6 @@ clnrm dev <COMMAND> [OPTIONS]
 
 - `watch` - Watch for changes and re-run
 - `debug` - Run with debug output
-- `profile` - Profile execution
-- `trace` - Generate execution traces
 
 **Examples:**
 
@@ -412,12 +336,6 @@ clnrm dev watch tests/
 
 # Run with debug output
 clnrm dev debug tests/
-
-# Profile execution
-clnrm dev profile tests/
-
-# Generate traces
-clnrm dev trace tests/
 ```
 
 ### `self-test` - Framework Self-Testing
@@ -433,15 +351,6 @@ clnrm self-test [OPTIONS]
 | Option | Description | Example |
 |--------|-------------|---------|
 | `--suite <SUITE>` | Test suite to run | `clnrm self-test --suite otel` |
-| `--verbose` | Verbose output | `clnrm self-test --verbose` |
-
-**Available Suites:**
-
-- `framework` - Core framework functionality
-- `container` - Container execution
-- `plugin` - Plugin system
-- `cli` - CLI functionality
-- `otel` - OTEL integration
 
 **Examples:**
 
@@ -451,10 +360,20 @@ clnrm self-test
 
 # Run specific suite
 clnrm self-test --suite container
-
-# Run with verbose output
-clnrm self-test --verbose --suite otel
 ```
+
+## v2.0.0 Breaking Changes
+
+### Configuration Changes
+- `[services.X]` → `[containers.X]`
+- `service = "X"` → `container = "X"`
+- `[test.metadata]` → `[test]`
+- Removed `type = "generic_container"` field
+
+### Execution Model Changes
+- Commands now execute via `docker exec` into running containers
+- Environment variables persist across steps
+- Container lifecycle is more predictable
 
 ## Error Handling
 
@@ -469,7 +388,6 @@ clnrm uses standard exit codes:
 | 2 | Configuration error |
 | 3 | Execution error |
 | 4 | Validation error |
-| 5 | Plugin error |
 
 ### Error Output
 
@@ -481,40 +399,28 @@ $ clnrm run invalid-test.toml
 
 Details:
   - Invalid TOML syntax in test.toml:23
-  - Missing required field: 'test.metadata.name'
-  - Invalid service configuration: 'services.api'
+  - Missing required field: 'test.name'
 
 Suggestions:
   - Check TOML syntax
-  - Add required metadata fields
-  - Verify service configuration
+  - Add required test fields
 
 Run 'clnrm validate test.toml' for detailed validation.
 ```
 
 ## Best Practices
 
-### 1. Use Descriptive Command Names
-
-```bash
-# ✅ Good: Descriptive and clear
-clnrm run tests/integration/ --parallel --workers 4
-
-# ❌ Bad: Unclear purpose
-clnrm run tests/
-```
-
-### 2. Use Appropriate Options
+### 1. Use Appropriate Options
 
 ```bash
 # ✅ Good: Use appropriate options for the task
-clnrm run tests/performance/ --baseline production --check-regressions
+clnrm run tests/ --parallel --jobs 4 --validate
 
 # ❌ Bad: Missing important options
 clnrm run tests/
 ```
 
-### 3. Validate Before Running
+### 2. Validate Before Running
 
 ```bash
 # ✅ Good: Validate before running
@@ -524,11 +430,11 @@ clnrm validate test.toml && clnrm run test.toml
 clnrm run test.toml
 ```
 
-### 4. Use Parallel Execution for Large Test Suites
+### 3. Use Parallel Execution for Large Test Suites
 
 ```bash
 # ✅ Good: Parallel execution for large suites
-clnrm run tests/ --parallel --workers $(nproc)
+clnrm run tests/ --parallel --jobs $(nproc)
 
 # ❌ Bad: Sequential execution for large suites
 clnrm run tests/
@@ -550,16 +456,11 @@ clnrm pull tests/
 clnrm run --verbose tests/
 ```
 
-**Issue: Performance regression detected**
+**Issue: Environment variables not persisting**
 ```bash
-# Check baseline
-clnrm baseline compare production
-
-# Run performance tests
-clnrm run tests/performance/ --baseline production
-
-# Update baseline if expected
-clnrm baseline update production
+# In v2.0.0, env vars persist across steps
+# Make sure you're using [containers.X] not [services.X]
+clnrm validate test.toml
 ```
 
 **Issue: Plugin not found**
@@ -569,9 +470,6 @@ clnrm plugins
 
 # Check plugin configuration
 clnrm validate test.toml
-
-# Check plugin registration
-clnrm plugins --details
 ```
 
 ### Debug Mode
@@ -580,13 +478,10 @@ Enable debug mode for detailed information:
 
 ```bash
 # Run with debug output
-clnrm run --verbose --debug tests/
+clnrm run --verbose tests/
 
 # Generate execution traces
-clnrm dev trace tests/
-
-# Profile execution
-clnrm dev profile tests/
+clnrm dev debug tests/
 ```
 
 ## Examples
@@ -595,7 +490,7 @@ clnrm dev profile tests/
 
 ```bash
 #!/bin/bash
-# Complete test workflow
+# Complete test workflow for v2.0.0
 
 echo "🔍 Validating configuration..."
 clnrm validate tests/
@@ -604,7 +499,7 @@ echo "📦 Pre-pulling images..."
 clnrm pull tests/
 
 echo "🧪 Running tests..."
-clnrm run tests/ --parallel --workers 4
+clnrm run tests/ --parallel --jobs 4 --validate
 
 echo "📊 Generating reports..."
 clnrm report --format html,json --output reports/
@@ -612,41 +507,36 @@ clnrm report --format html,json --output reports/
 echo "✅ Test workflow complete"
 ```
 
-### Performance Testing Workflow
+### Migration Workflow (v1.x to v2.0.0)
 
 ```bash
 #!/bin/bash
-# Performance testing workflow
+# Migration workflow
 
-echo "🏃 Running performance tests..."
-clnrm run tests/performance/ --baseline production
+echo "🔄 Migrating from v1.x to v2.0.0..."
 
-echo "📈 Checking for regressions..."
-if clnrm run tests/performance/ --check-regressions; then
-    echo "✅ No regressions detected"
-else
-    echo "❌ Performance regression detected"
-    clnrm report trends --baseline production
-    exit 1
-fi
+# Update configuration files
+find . -name "*.clnrm.toml" -exec sed -i 's/\[services\./[containers./g' {} \;
+find . -name "*.clnrm.toml" -exec sed -i 's/service = /container = /g' {} \;
+find . -name "*.clnrm.toml" -exec sed -i 's/\[test\.metadata\]/[test]/g' {} \;
 
-echo "📊 Updating performance baseline..."
-clnrm baseline update production
+# Remove type fields
+find . -name "*.clnrm.toml" -exec sed -i '/type = "generic_container"/d' {} \;
 
-echo "✅ Performance testing complete"
+echo "✅ Migration complete. Run 'clnrm validate' to verify."
 ```
 
 ## Next Steps
 
 Now that you understand the CLI:
 
-1. **Try the examples**: Run the CLI examples in this chapter
-2. **Learn TOML schema**: Move on to [TOML Schema](toml-schema.md)
+1. **Migrate from v1.x**: See [Migration Guide](../docs/V2_0_0_MIGRATION_GUIDE.md)
+2. **Learn v2.0.0 config**: Move on to [TOML Schema](toml-schema.md)
 3. **Understand error handling**: Learn about [Error Handling](error-handling.md)
 4. **Master advanced usage**: Review the other chapters for advanced patterns
 
 ## Further Reading
 
 - [Command Line Interface Guidelines](https://clig.dev/)
-- [CLI Best Practices](https://www.destroyallsoftware.com/talks/a-whole-new-world)
-
+- [v2.0.0 Migration Guide](../docs/V2_0_0_MIGRATION_GUIDE.md)
+- [v2.0.0 Architecture](../docs/V2_0_0_ARCHITECTURE.md)

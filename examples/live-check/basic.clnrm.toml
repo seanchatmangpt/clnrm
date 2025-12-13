@@ -1,26 +1,26 @@
 # Basic Weaver Live-Check Example
 # This is the simplest possible configuration for live-check validation
 
-[test.metadata]
+[test]
 name = "basic_live_check"
 version = "1.0.0"
 description = "Minimal live-check configuration example"
 
-# Enable Weaver validation with defaults
-[weaver]
-enabled = true
+# OTEL configuration for telemetry validation
+[otel]
+service_name = "clnrm-basic-test"
 
 # Service definition
-[service.app]
+[containers.app]
 image = "alpine:latest"
 
 # Simple test scenario
-[[scenario]]
+[[steps]]
 name = "echo_test"
-service = "app"
-run = "echo 'Hello from clnrm'"
+container = "app"
+exec = ["echo", "Hello from clnrm"]
 
-# Validate that test executed in container
-[[expect.span]]
+# Validate that test executed in container with telemetry
+[[expect.otel.spans]]
 name = "test.execute"
-attrs = { all = { "test.isolated" = "true", "container.id" = "*" } }
+sample_count = { min = 1 }

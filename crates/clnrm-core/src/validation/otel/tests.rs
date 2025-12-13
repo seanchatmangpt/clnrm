@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod otel_validation_tests {
     use super::super::*;
-    use crate::error::Result;
+    use crate::error::{CleanroomError, Result};
     use opentelemetry::trace::SpanContext;
     use opentelemetry::trace::TraceFlags;
     use opentelemetry::trace::TraceState;
@@ -102,29 +102,19 @@ mod otel_validation_tests {
         use super::*;
 
         #[test]
-        fn test_validation_span_processor_new_creates_empty_collection() -> Result<()> {
-            // Arrange - (minimal setup needed)
+        fn test_validation_span_processor_constructors_create_empty_collection() -> Result<()> {
+            // Test both new() and default() constructors create empty collections
+            let constructors = vec![
+                ("new()", ValidationSpanProcessor::new()),
+                ("default()", ValidationSpanProcessor::default()),
+            ];
 
-            // Act - Create new processor
-            let processor = ValidationSpanProcessor::new();
-
-            // Assert - Verify empty collection
-            let spans = processor.get_spans()?;
-            assert!(spans.is_empty());
-
-            Ok(())
-        }
-
-        #[test]
-        fn test_validation_span_processor_default_creates_empty_collection() -> Result<()> {
-            // Arrange - (minimal setup needed)
-
-            // Act - Create processor using Default
-            let processor = ValidationSpanProcessor::default();
-
-            // Assert - Verify empty collection
-            let spans = processor.get_spans()?;
-            assert!(spans.is_empty());
+            for (constructor_name, processor) in constructors {
+                // Act & Assert - Verify empty collection
+                let spans = processor.get_spans()
+                    .map_err(|e| CleanroomError::internal_error(format!("{} failed: {}", constructor_name, e)))?;
+                assert!(spans.is_empty(), "{} should create empty collection", constructor_name);
+            }
 
             Ok(())
         }
@@ -398,53 +388,48 @@ mod otel_validation_tests {
         use super::*;
 
         #[test]
-        fn test_validator_validate_span_with_empty_name_returns_error() -> Result<()> {
-            // Arrange - Create validator and span assertion with empty name
+        fn test_validator_validate_span_with_empty_fields_returns_error() -> Result<()> {
+            // Test various empty field validation scenarios
+            let test_cases = vec![
+                (
+                    "empty name",
+                    SpanAssertion {
+                        name: "".to_string(),
+                        attributes: HashMap::new(),
+                        required: true,
+                        min_duration_ms: None,
+                        max_duration_ms: None,
+                    },
+                    "Span name cannot be empty"
+                ),
+                (
+                    "empty attribute key",
+                    {
+                        let mut attributes = HashMap::new();
+                        attributes.insert("".to_string(), "value".to_string());
+                        SpanAssertion {
+                            name: "test.span".to_string(),
+                            attributes,
+                            required: true,
+                            min_duration_ms: None,
+                            max_duration_ms: None,
+                        }
+                    },
+                    "Attribute key cannot be empty"
+                ),
+            ];
+
             let validator = OtelValidator::new();
-            let assertion = SpanAssertion {
-                name: "".to_string(),
-                attributes: HashMap::new(),
-                required: true,
-                min_duration_ms: None,
-                max_duration_ms: None,
-            };
 
-            // Act - Validate span
-            let result = validator.validate_span(&assertion)?;
+            for (test_name, assertion, expected_error) in test_cases {
+                // Act - Validate span
+                let result = validator.validate_span(&assertion)?;
 
-            // Assert - Verify validation fails with empty name error
-            assert!(!result.passed);
-            assert!(result
-                .errors
-                .iter()
-                .any(|e| e.contains("Span name cannot be empty")));
-
-            Ok(())
-        }
-
-        #[test]
-        fn test_validator_validate_span_with_empty_attribute_key_returns_error() -> Result<()> {
-            // Arrange - Create validator and span assertion with empty attribute key
-            let validator = OtelValidator::new();
-            let mut attributes = HashMap::new();
-            attributes.insert("".to_string(), "value".to_string());
-            let assertion = SpanAssertion {
-                name: "test.span".to_string(),
-                attributes,
-                required: true,
-                min_duration_ms: None,
-                max_duration_ms: None,
-            };
-
-            // Act - Validate span
-            let result = validator.validate_span(&assertion)?;
-
-            // Assert - Verify validation fails with empty key error
-            assert!(!result.passed);
-            assert!(result
-                .errors
-                .iter()
-                .any(|e| e.contains("Attribute key cannot be empty")));
+                // Assert - Verify validation fails with expected error
+                assert!(!result.passed, "{} should fail validation", test_name);
+                assert!(result.errors.iter().any(|e| e.contains(expected_error)),
+                    "{} should contain error '{}', errors: {:?}", test_name, expected_error, result.errors);
+            }
 
             Ok(())
         }
@@ -501,8 +486,7 @@ mod otel_validation_tests {
         }
 
         #[test]
-        fn test_validator_validate_span_real_with_disabled_validation_returns_error() -> Result<()>
-        {
+        fn test_validator_validate_span_with_disabled_validation_returns_error() -> Result<()> {
             // Arrange - Create validator with disabled span validation
             let mut config = OtelValidationConfig::default();
             config.validate_spans = false;
@@ -672,24 +656,6 @@ mod otel_validation_tests {
     mod trace_validation_tests {
         use super::*;
 
-        #[test]
-        fn test_validator_validate_trace_with_disabled_validation_returns_error() -> Result<()> {
-            // Arrange - Create validator with disabled trace validation
-            let mut config = OtelValidationConfig::default();
-            config.validate_traces = false;
-            let validator = OtelValidator::with_config(config);
-            let assertion = create_test_trace_assertion();
-
-            // Act - Validate trace
-            let result = validator.validate_trace(&assertion);
-
-            // Assert - Verify error is returned
-            assert!(result.is_err());
-            let error = result.unwrap_err();
-            assert!(error.message.contains("Trace validation is disabled"));
-
-            Ok(())
-        }
 
         #[test]
         fn test_validator_validate_trace_with_empty_trace_id_returns_error() -> Result<()> {

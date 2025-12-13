@@ -1,7 +1,7 @@
-//! Weaver Integration Tests - London TDD Approach
+//! Weaver Integration Tests - Chicago TDD Approach
 //!
 //! This module contains mock-driven tests for Weaver integration following
-//! London School TDD principles. Tests are organized in four phases:
+//! Chicago School TDD principles. Tests are organized in four phases:
 //!
 //! 1. **Phase 1**: WeaverController lifecycle (process management)
 //! 2. **Phase 2**: Coordination patterns (Weaver-first initialization)

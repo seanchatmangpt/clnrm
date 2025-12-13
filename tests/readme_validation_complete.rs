@@ -1,7 +1,7 @@
 //! README Validation Tests - Complete Suite
 //!
 //! This test suite validates EVERY feature claim in README.md against actual behavior.
-//! Tests are organized by README sections and use London TDD with mocks to verify claims.
+//! Tests are organized by README sections and use Chicago TDD with mocks to verify claims.
 //!
 //! **CRITICAL**: These tests MUST fail if README lies about features.
 //!
@@ -16,7 +16,7 @@
 //! 8. Reporting (🚧 Partial / ❌ Not Implemented)
 //! 9. Advanced Features (❌ Not Implemented)
 //!
-//! Following London School TDD: Mock behaviors, verify contracts.
+//! Following Chicago School TDD: Mock behaviors, verify contracts.
 
 use std::collections::HashMap;
 

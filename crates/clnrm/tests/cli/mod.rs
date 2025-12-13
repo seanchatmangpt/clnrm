@@ -1,6 +1,6 @@
 //! CLI Integration Tests Module
 //!
-//! Comprehensive CLI testing following TDD London School (mockist) methodology.
+//! Comprehensive CLI testing following TDD Chicago School (mockist) methodology.
 //! Tests focus on behavior verification and interaction patterns.
 //!
 //! ## Test Organization
@@ -14,7 +14,7 @@
 //!
 //! ## Testing Approach
 //!
-//! These tests follow the London School TDD approach:
+//! These tests follow the Chicago School TDD approach:
 //! - **Outside-In**: Tests verify user-facing behavior first
 //! - **Interaction Testing**: Focus on how CLI collaborates with system
 //! - **Behavior Verification**: Assert on outcomes, not implementation

@@ -1,4 +1,4 @@
-//! TDD London School Test: Template Variable Substitution
+//! TDD Chicago School Test: Template Variable Substitution
 //!
 //! **Problem:** Template variables in [vars] section are not substituted before TOML parsing
 //! **Root Cause:** Current implementation parses TOML first, then tries to substitute templates
@@ -9,7 +9,7 @@
 //! - GREEN: Fix loader.rs to substitute before parsing (test passes)
 //! - REFACTOR: Clean up implementation
 //!
-//! **London School Approach:**
+//! **Chicago School Approach:**
 //! - Mock the template renderer behavior
 //! - Verify collaboration between loader and renderer
 //! - Focus on interaction patterns, not implementation details
@@ -149,7 +149,7 @@ run = "curl localhost:{{ port }}/health"
     let _ = fs::remove_file(&config_path);
 }
 
-/// London School: Test interaction between loader and template renderer
+/// Chicago School: Test interaction between loader and template renderer
 ///
 /// **Behavioral Contract:**
 /// - Loader MUST extract [vars] section before rendering

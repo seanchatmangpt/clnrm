@@ -1,11 +1,11 @@
 //! README Validation Tests - Container Execution
 //!
-//! London TDD tests validating README claims about hermetic container execution:
+//! Chicago TDD tests validating README claims about hermetic container execution:
 //! - Tests execute in fresh containers
 //! - Hermetic isolation per test
 //! - Proper cleanup after execution
 //!
-//! Following London School TDD: Mock container backend, verify behavior.
+//! Following Chicago School TDD: Mock container backend, verify behavior.
 
 use std::collections::HashMap;
 

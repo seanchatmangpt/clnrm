@@ -1,4 +1,4 @@
-//! Mock Implementations for London TDD
+//! Mock Implementations for Chicago TDD
 //!
 //! This module provides mock implementations of external dependencies,
 //! designed from schema contracts rather than implementations.

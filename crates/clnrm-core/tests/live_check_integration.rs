@@ -1,7 +1,7 @@
 //! Comprehensive Integration Tests for v1.3.0 Weaver Live-Check
 //!
 //! This test suite validates the complete Weaver live-check workflow,
-//! following the London School TDD approach with mock-driven development
+//! following the Chicago School TDD approach with mock-driven development
 //! and behavior verification.
 //!
 //! Test Categories:

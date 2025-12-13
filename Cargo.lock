@@ -829,16 +829,18 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "chicago-tdd-tools"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42fc94ff169c29c1521577d703ed6b3e53526c0d09da4e550c45a13ce4bf0e0d"
+checksum = "2a7d44880fad5dfa03bd22ae8b7d68bf203a7122e3c50d66fc35bad91de4b8a1"
 dependencies = [
  "chicago-tdd-tools-proc-macros",
  "chrono",
  "futures",
+ "hex",
  "log",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.17",
  "tokio",
  "uuid",
@@ -846,9 +848,9 @@ dependencies = [
 
 [[package]]
 name = "chicago-tdd-tools-proc-macros"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd50ff46640bd7aeff629f9a0030f2709652a3a74ae1d4df8833675308492d52"
+checksum = "b26813c07da3a789f7a007ad9f87bd551984ac31d0a57fb2a940853c106302fe"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -941,6 +943,8 @@ dependencies = [
 [[package]]
 name = "clap-noun-verb"
 version = "5.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1381ccdede9409b94ea272cfe335ab832b216278fb62e831beaa21b68b5fcde3"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -962,6 +966,8 @@ dependencies = [
 [[package]]
 name = "clap-noun-verb-macros"
 version = "5.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65e7b86b163539677b37ff5cb10bf48253fbe3d7b5223076b3db73ab3bd3df70"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -1004,7 +1010,7 @@ name = "clnrm"
 version = "2.0.0"
 dependencies = [
  "assert_cmd",
- "clap",
+ "clnrm-cli",
  "clnrm-core",
  "env_logger",
  "log",
@@ -1012,6 +1018,39 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml",
+]
+
+[[package]]
+name = "clnrm-cli"
+version = "2.0.0"
+dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "clap",
+ "clap-noun-verb",
+ "clap-noun-verb-macros",
+ "clnrm-core",
+ "clnrm-shared",
+ "colored",
+ "env_logger",
+ "glob",
+ "junit-report",
+ "linkme",
+ "log",
+ "notify",
+ "predicates",
+ "quick-xml",
+ "regex",
+ "semver",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+ "toml_edit 0.22.27",
+ "tracing",
+ "walkdir",
+ "which",
 ]
 
 [[package]]

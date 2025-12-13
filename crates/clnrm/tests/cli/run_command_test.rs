@@ -1,6 +1,6 @@
 //! CLI Integration Tests - Run Command
 //!
-//! Tests the `clnrm run` command following TDD London School approach.
+//! Tests the `clnrm run` command following TDD Chicago School approach.
 //! Focuses on command interaction patterns and output verification.
 
 use assert_cmd::Command;

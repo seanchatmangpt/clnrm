@@ -6,7 +6,7 @@
 //! - No external service dependencies
 //! - Reproducible execution
 //!
-//! Following London School TDD:
+//! Following Chicago School TDD:
 //! - Mock external dependencies
 //! - Verify container lifecycle interactions
 //! - Test collaboration between cleanroom environment and backend

@@ -1,6 +1,6 @@
 //! CLI Integration Tests - Init Command
 //!
-//! Tests the `clnrm init` command following TDD London School (mockist) approach.
+//! Tests the `clnrm init` command following TDD Chicago School (mockist) approach.
 //! Focuses on interaction testing and behavior verification.
 
 use assert_cmd::Command;

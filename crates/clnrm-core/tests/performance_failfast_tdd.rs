@@ -3,7 +3,7 @@
 //! This test suite validates that clnrm fails fast when users specify
 //! unimplemented performance testing features in TOML configuration.
 //!
-//! ## Problem (London School TDD Approach)
+//! ## Problem (Chicago School TDD Approach)
 //!
 //! Users can specify `[test.performance]` sections in TOML with features like:
 //! - `sample_size = 100` (run test 100 times)
@@ -26,7 +26,7 @@
 //! **GREEN**: Add validation in TestConfig::validate() to reject performance config
 //! **REFACTOR**: Clean error messages guiding users to remove [test.performance]
 //!
-//! ## London School TDD Pattern
+//! ## Chicago School TDD Pattern
 //!
 //! - Mock-driven: Test validates ERROR BEHAVIOR (fail-fast, not acceptance)
 //! - Behavior verification: Focus on WHAT should happen (rejection + clear message)
@@ -385,7 +385,7 @@ command = ["echo", "measuring performance"]
     );
 }
 
-// London School TDD Principle: Test Behavior, Not Implementation
+// Chicago School TDD Principle: Test Behavior, Not Implementation
 //
 // These tests verify BEHAVIOR:
 // - ✅ Config with unimplemented features should FAIL validation

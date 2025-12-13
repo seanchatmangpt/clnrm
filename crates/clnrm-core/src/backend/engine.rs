@@ -5,7 +5,6 @@
 use crate::environment::compiler::CompiledEnvironment;
 use crate::error::{CleanroomError, Result};
 use crate::receipts::receipt::TestReceipt;
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -89,7 +88,6 @@ pub trait OtelExporter: Send + Sync {
 /// - Command execution
 /// - Telemetry export
 /// - Receipt generation
-#[async_trait]
 pub trait ExecutionEngine: Send + Sync {
     /// Get backend type
     fn backend_type(&self) -> BackendType;
@@ -98,24 +96,24 @@ pub trait ExecutionEngine: Send + Sync {
     ///
     /// Takes a compiled environment and provisions the necessary resources
     /// (containers, VMs, processes, etc.) to execute tests.
-    async fn start(&self, env: &CompiledEnvironment) -> Result<EnvironmentHandle>;
+    fn start(&self, env: &CompiledEnvironment) -> Result<EnvironmentHandle>;
 
     /// Execute command in environment
     ///
     /// Runs a command within the provisioned environment and returns
     /// the output (stdout, stderr, exit code).
-    async fn exec(&self, handle: &EnvironmentHandle, cmd: &[String]) -> Result<Output>;
+    fn exec(&self, handle: &EnvironmentHandle, cmd: &[String]) -> Result<Output>;
 
     /// Stop environment
     ///
     /// Tears down the environment and releases all resources.
     /// Should be idempotent (safe to call multiple times).
-    async fn stop(&self, handle: &EnvironmentHandle) -> Result<()>;
+    fn stop(&self, handle: &EnvironmentHandle) -> Result<()>;
 
     /// Health check environment
     ///
     /// Verifies the environment is running and responsive.
-    async fn health_check(&self, handle: &EnvironmentHandle) -> Result<bool>;
+    fn health_check(&self, handle: &EnvironmentHandle) -> Result<bool>;
 
     /// Get telemetry exporter
     ///
@@ -130,7 +128,7 @@ pub trait ExecutionEngine: Send + Sync {
     /// Get resource usage
     ///
     /// Returns current resource consumption (CPU, memory, I/O).
-    async fn get_resource_usage(&self, handle: &EnvironmentHandle) -> Result<ResourceUsage>;
+    fn get_resource_usage(&self, handle: &EnvironmentHandle) -> Result<ResourceUsage>;
 }
 
 /// Resource usage statistics
@@ -196,41 +194,25 @@ impl ContainerEngine {
     }
 }
 
-#[async_trait]
 impl ExecutionEngine for ContainerEngine {
     fn backend_type(&self) -> BackendType {
         BackendType::Container
     }
 
-    async fn start(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
-        // TODO: Integrate with existing ContainerPool
-        // For now, create a minimal handle
-        Ok(EnvironmentHandle {
-            id: uuid::Uuid::new_v4().to_string(),
-            backend_type: BackendType::Container,
-            metadata: HashMap::new(),
-            created_at: chrono::Utc::now().to_rfc3339(),
-        })
+    fn start(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
+        unimplemented!("ContainerEngine::start: requires integration with ContainerPool for actual container lifecycle management")
     }
 
-    async fn exec(&self, _handle: &EnvironmentHandle, _cmd: &[String]) -> Result<Output> {
-        // TODO: Implement actual command execution
-        Ok(Output {
-            stdout: vec![],
-            stderr: vec![],
-            exit_code: 0,
-            duration_ms: 0,
-        })
+    fn exec(&self, _handle: &EnvironmentHandle, _cmd: &[String]) -> Result<Output> {
+        unimplemented!("ContainerEngine::exec: requires docker exec implementation for command execution in running containers")
     }
 
-    async fn stop(&self, _handle: &EnvironmentHandle) -> Result<()> {
-        // TODO: Implement cleanup
-        Ok(())
+    fn stop(&self, _handle: &EnvironmentHandle) -> Result<()> {
+        unimplemented!("ContainerEngine::stop: requires container cleanup and resource deallocation")
     }
 
-    async fn health_check(&self, _handle: &EnvironmentHandle) -> Result<bool> {
-        // TODO: Implement health check
-        Ok(true)
+    fn health_check(&self, _handle: &EnvironmentHandle) -> Result<bool> {
+        unimplemented!("ContainerEngine::health_check: requires container status verification")
     }
 
     fn telemetry_exporter(&self) -> Arc<dyn OtelExporter> {
@@ -277,7 +259,7 @@ impl ExecutionEngine for ContainerEngine {
         Ok(receipt)
     }
 
-    async fn get_resource_usage(&self, _handle: &EnvironmentHandle) -> Result<ResourceUsage> {
+    fn get_resource_usage(&self, _handle: &EnvironmentHandle) -> Result<ResourceUsage> {
         // TODO: Implement actual resource tracking
         Ok(ResourceUsage {
             cpu_percent: 0.0,
@@ -326,36 +308,25 @@ impl WasiEngine {
     }
 }
 
-#[async_trait]
 impl ExecutionEngine for WasiEngine {
     fn backend_type(&self) -> BackendType {
         BackendType::Wasi
     }
 
-    async fn start(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
-        Ok(EnvironmentHandle {
-            id: uuid::Uuid::new_v4().to_string(),
-            backend_type: BackendType::Wasi,
-            metadata: HashMap::new(),
-            created_at: chrono::Utc::now().to_rfc3339(),
-        })
+    fn start(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
+        unimplemented!("WasiEngine::start: WASM/WASI execution engine not yet implemented")
     }
 
-    async fn exec(&self, _handle: &EnvironmentHandle, _cmd: &[String]) -> Result<Output> {
-        Ok(Output {
-            stdout: vec![],
-            stderr: vec![],
-            exit_code: 0,
-            duration_ms: 0,
-        })
+    fn exec(&self, _handle: &EnvironmentHandle, _cmd: &[String]) -> Result<Output> {
+        unimplemented!("WasiEngine::exec: WASM/WASI command execution not yet implemented")
     }
 
-    async fn stop(&self, _handle: &EnvironmentHandle) -> Result<()> {
-        Ok(())
+    fn stop(&self, _handle: &EnvironmentHandle) -> Result<()> {
+        unimplemented!("WasiEngine::stop: WASM/WASI environment cleanup not yet implemented")
     }
 
-    async fn health_check(&self, _handle: &EnvironmentHandle) -> Result<bool> {
-        Ok(true)
+    fn health_check(&self, _handle: &EnvironmentHandle) -> Result<bool> {
+        unimplemented!("WasiEngine::health_check: WASM/WASI health checking not yet implemented")
     }
 
     fn telemetry_exporter(&self) -> Arc<dyn OtelExporter> {
@@ -402,7 +373,7 @@ impl ExecutionEngine for WasiEngine {
         Ok(receipt)
     }
 
-    async fn get_resource_usage(&self, _handle: &EnvironmentHandle) -> Result<ResourceUsage> {
+    fn get_resource_usage(&self, _handle: &EnvironmentHandle) -> Result<ResourceUsage> {
         Ok(ResourceUsage {
             cpu_percent: 0.0,
             memory_bytes: 0,

@@ -1,6 +1,6 @@
 //! CLI Integration Tests - Health Command
 //!
-//! Tests the `clnrm health` command following TDD London School approach.
+//! Tests the `clnrm health` command following TDD Chicago School approach.
 //! Verifies system health checks and diagnostics reporting.
 
 use assert_cmd::Command;

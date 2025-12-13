@@ -335,49 +335,56 @@ impl ChaosEnginePlugin {
     }
 }
 
-#[async_trait::async_trait]
 impl ServicePlugin for ChaosEnginePlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
-    async fn start(&self) -> Result<ServiceHandle> {
-        tracing::info!("Chaos engine starting");
+    fn start(&self) -> Result<ServiceHandle> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                tracing::info!("Chaos engine starting");
 
-        // Run initial chaos scenarios
-        for scenario in &self.config.scenarios {
-            if let Err(e) = self.run_scenario(scenario).await {
-                tracing::warn!(error = %e, "Chaos scenario failed");
-            }
-        }
+                // Run initial chaos scenarios
+                for scenario in &self.config.scenarios {
+                    if let Err(e) = self.run_scenario(scenario).await {
+                        tracing::warn!(error = %e, "Chaos scenario failed");
+                    }
+                }
 
-        let mut metadata = HashMap::new();
-        metadata.insert("chaos_engine_version".to_string(), "1.0.0".to_string());
-        metadata.insert(
-            "failure_rate".to_string(),
-            self.config.failure_rate.to_string(),
-        );
-        metadata.insert("latency_ms".to_string(), self.config.latency_ms.to_string());
-        metadata.insert(
-            "scenarios_count".to_string(),
-            self.config.scenarios.len().to_string(),
-        );
-        metadata.insert("service_type".to_string(), "chaos_engine".to_string());
-        metadata.insert("status".to_string(), "running".to_string());
+                let mut metadata = HashMap::new();
+                metadata.insert("chaos_engine_version".to_string(), "1.0.0".to_string());
+                metadata.insert(
+                    "failure_rate".to_string(),
+                    self.config.failure_rate.to_string(),
+                );
+                metadata.insert("latency_ms".to_string(), self.config.latency_ms.to_string());
+                metadata.insert(
+                    "scenarios_count".to_string(),
+                    self.config.scenarios.len().to_string(),
+                );
+                metadata.insert("service_type".to_string(), "chaos_engine".to_string());
+                metadata.insert("status".to_string(), "running".to_string());
 
-        Ok(ServiceHandle {
-            id: Uuid::new_v4().to_string(),
-            service_name: self.name.clone(),
-            metadata,
+                Ok(ServiceHandle {
+                    id: Uuid::new_v4().to_string(),
+                    service_name: self.name.clone(),
+                    metadata,
+                })
+            })
         })
     }
 
-    async fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
         tracing::info!("Chaos engine stopping");
 
         // Stop all active scenarios
-        let mut active = self.active_scenarios.write().await;
-        active.clear();
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let mut active = self.active_scenarios.write().await;
+                active.clear();
+            })
+        });
 
         Ok(())
     }

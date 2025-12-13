@@ -61,7 +61,7 @@ impl Default for CacheFile {
 
 /// File-based cache manager for test result caching
 ///
-/// London School TDD Design:
+/// Chicago School TDD Design:
 /// - Implements Cache trait for collaboration contract
 /// - Thread-safe with Arc<Mutex<>> for concurrent access
 /// - Proper error handling with Result<T, CleanroomError>

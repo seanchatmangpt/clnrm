@@ -1,12 +1,12 @@
 //! README Validation Tests - TOML Parsing
 //!
-//! London TDD tests validating README claims about TOML configuration:
+//! Chicago TDD tests validating README claims about TOML configuration:
 //! - Parses .clnrm.toml test definition files
 //! - Regex validation works
 //! - Multi-step execution supported
 //! - Error messages are meaningful
 //!
-//! Following London School TDD: Mock TOML parsing, verify behavior.
+//! Following Chicago School TDD: Mock TOML parsing, verify behavior.
 
 use std::collections::HashMap;
 

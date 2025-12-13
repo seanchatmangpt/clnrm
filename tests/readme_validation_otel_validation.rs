@@ -1,12 +1,12 @@
 //! README Validation Tests - OpenTelemetry Validation
 //!
-//! London TDD tests validating README claims about OTEL support:
+//! Chicago TDD tests validating README claims about OTEL support:
 //! - OTEL initialization works
 //! - Span generation functional
 //! - Trace validation architecture exists
 //! - Fake-green detection documented
 //!
-//! Following London School TDD: Mock OTEL collector, verify spans.
+//! Following Chicago School TDD: Mock OTEL collector, verify spans.
 
 use std::collections::HashMap;
 

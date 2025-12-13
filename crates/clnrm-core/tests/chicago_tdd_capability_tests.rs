@@ -1,7 +1,7 @@
 //! Chicago TDD Tests for Capability Framework
 //!
 //! This module provides comprehensive AAA-pattern tests for the Phase 1
-//! capability-effect type system using chicago-tdd-tools v1.3.0.
+//! capability-effect type system using chicago-tdd-tools v1.4.0.
 //!
 //! **Test Philosophy:** 80/20 focused on critical state verification
 //! - Capability-effect validation (20% effort, 80% value)

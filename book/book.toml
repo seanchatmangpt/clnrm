@@ -1,6 +1,6 @@
 [book]
-title = "Cleanroom Testing Framework v1.2.1 - Advanced Users Guide"
-description = "Production-ready guide for advanced clnrm users covering plugin development, Weaver validation, advanced testing patterns, template mastery, and production deployment"
+title = "Cleanroom Testing Framework v2.0.0 - Advanced Users Guide"
+description = "Production-ready guide for advanced clnrm users covering plugin development, Weaver validation, advanced testing patterns, template mastery, and production deployment with v2.0.0 breaking changes"
 authors = ["Cleanroom Core Team"]
 language = "en"
 multilingual = false

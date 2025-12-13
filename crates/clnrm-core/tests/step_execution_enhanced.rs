@@ -1,6 +1,6 @@
 //! Enhanced Step Execution Tests for v1.2.1
 //!
-//! This test suite follows London School TDD principles to verify enhanced
+//! This test suite follows Chicago School TDD principles to verify enhanced
 //! step execution features introduced in v1.2.1.
 //!
 //! ## Coverage

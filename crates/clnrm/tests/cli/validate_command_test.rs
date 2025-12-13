@@ -1,6 +1,6 @@
 //! CLI Integration Tests - Validate Command
 //!
-//! Tests the `clnrm validate` command following TDD London School approach.
+//! Tests the `clnrm validate` command following TDD Chicago School approach.
 //! Verifies interaction with configuration files and error reporting.
 
 use assert_cmd::Command;

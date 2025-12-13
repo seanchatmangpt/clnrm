@@ -4,7 +4,8 @@
 //! It uses clap for professional command-line argument parsing and provides
 //! comprehensive functionality for running tests, managing services, and generating reports.
 
-use clnrm_core::{cli::run_cli, error::Result};
+use clnrm_cli::cli_match;
+use clnrm_core::error::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -12,5 +13,5 @@ async fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     // Run CLI
-    run_cli().await
+    cli_match().await
 }
