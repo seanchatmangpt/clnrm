@@ -1,103 +1,140 @@
-# Code Review Checklist - Eliminating Mura
+# Code Review Checklist - Eliminate Mura (Unevenness)
 
-This checklist ensures consistency across the clnrm codebase and prevents unevenness (Mura) in code quality, patterns, and style.
+This checklist ensures consistent code quality, patterns, and style across the clnrm codebase. All code reviews must pass these checks before merging.
 
-## 🎯 Consistency Standards
+## 🎯 Core Consistency Standards
+
+### Import Consistency
+- [ ] **No duplicate imports** - Each module imported exactly once
+- [ ] **Consistent import style** - Either fully qualified (`clnrm_core::error::Result`) or imported (`use clnrm_core::error::Result`)
+- [ ] **Alphabetical ordering** - Imports sorted alphabetically within groups
+- [ ] **Logical grouping** - std, external crates, internal modules properly separated
+
+### Function Signature Consistency
+- [ ] **Parameter types** - `&PathBuf` vs `&std::path::Path` vs `&[PathBuf]` used consistently
+- [ ] **Return types** - `Result<T>` vs `Result<()>` vs concrete types consistent
+- [ ] **Async patterns** - All similar operations either sync or async
+- [ ] **Error handling** - Same error patterns for similar operations
 
 ### Documentation Consistency
-- [ ] **Module docs**: Each module has `//!` module-level documentation explaining purpose
-- [ ] **Function docs**: All public functions have `///` documentation with:
-  - `# Arguments` section listing parameters
-  - `# Returns` section describing return values
-  - `# Core Team Standards` section for complex functions
-- [ ] **Example consistency**: Code examples follow same patterns
-- [ ] **Comment style**: Comments use consistent formatting
+- [ ] **Module docs** - `//!` comments present and informative
+- [ ] **Function docs** - `///` comments with `# Arguments` and `# Returns` sections
+- [ ] **Code comments** - `//` comments explain complex logic
+- [ ] **Documentation completeness** - Public APIs fully documented
 
 ### Error Handling Consistency
-- [ ] **No unwrap/expect**: Production code never uses `.unwrap()` or `.expect()`
-- [ ] **Result types**: All fallible operations return `Result<T, E>`
-- [ ] **Error propagation**: Errors are properly propagated with `?`
-- [ ] **Error context**: Errors include helpful context messages
+- [ ] **Error constructors** - `CleanroomError::method()` vs fully qualified names consistent
+- [ ] **Error context** - `.with_context()` and `.with_source()` used appropriately
+- [ ] **Error types** - Correct error variants (`config_error`, `validation_error`, etc.)
+- [ ] **Error messages** - Clear, actionable error messages
 
-### Code Style Consistency
-- [ ] **Naming**: Functions use `snake_case`, types use `PascalCase`
-- [ ] **Imports**: `std::*` imports before `crate::*` imports
-- [ ] **Line length**: Lines fit within reasonable width (<100 chars)
-- [ ] **Formatting**: Code passes `cargo fmt`
+## 🔧 Code Quality Standards
 
-### Pattern Consistency
-- [ ] **CLI commands**: Follow same structure (validate inputs, show output, TODO comments)
-- [ ] **Error types**: Use `clnrm_core::error::CleanroomError` consistently
-- [ ] **Tracing**: Use `tracing::info!`, `tracing::error!`, etc. consistently
-- [ ] **Async handling**: Async functions use consistent patterns
+### Compilation & Linting
+- [ ] **Compiles cleanly** - `cargo check` passes without errors
+- [ ] **Clippy clean** - `cargo clippy -- -D warnings` passes
+- [ ] **Format consistent** - `cargo fmt -- --check` passes
+- [ ] **No unused code** - No unused imports, variables, or functions
 
-### TODO Comment Consistency
-- [ ] **Format**: `TODO: <action> <details>` (e.g., `TODO: Implement trace analysis using clnrm_core::validation`)
-- [ ] **Actionable**: Each TODO describes a concrete next step
-- [ ] **Context**: TODOs include enough context to understand the work needed
-- [ ] **No vague TODOs**: Avoid "TODO: implement this" - be specific
+### Testing Standards
+- [ ] **Tests compile** - All test code compiles
+- [ ] **Test coverage** - New code includes appropriate tests
+- [ ] **Test patterns** - AAA pattern (Arrange, Act, Assert) followed
+- [ ] **Deterministic tests** - Tests don't rely on external state
 
-## 🔍 Quality Gates
+### Fake Scanner Compliance
+- [ ] **No unwrap/expect** - Zero usage in production code
+- [ ] **No fake stubs** - All functions either work or use `unimplemented!()`
+- [ ] **No println!** - Proper logging through tracing
+- [ ] **No hardcoded responses** - Real implementations only
 
-### Functionality
-- [ ] **Compiles**: Code compiles without errors
-- [ ] **Tests pass**: All existing tests continue to pass
-- [ ] **New tests**: New functionality includes appropriate tests
-- [ ] **Integration**: Changes work with existing integrations
+## 🚀 Architecture Consistency
 
-### Performance
-- [ ] **No regressions**: Performance is maintained or improved
-- [ ] **Efficient**: No unnecessary allocations or operations
-- [ ] **Scalable**: Changes don't break scalability assumptions
+### Module Organization
+- [ ] **Logical structure** - Code organized into appropriate modules
+- [ ] **Dependency flow** - Core doesn't depend on CLI, CLI configures core
+- [ ] **Public API** - Clear, minimal public interfaces
+- [ ] **Encapsulation** - Implementation details properly hidden
 
-### Security
-- [ ] **Input validation**: All inputs are validated
-- [ ] **Error handling**: Errors don't leak sensitive information
-- [ ] **Resource cleanup**: Resources are properly cleaned up
+### Async/Sync Patterns
+- [ ] **I/O operations async** - File, network, container operations use async
+- [ ] **Computation sync** - Pure functions and simple operations sync
+- [ ] **No async traits** - Per .cursorrules: "NEVER make trait methods async"
+- [ ] **Block-on-place** - Async operations in sync contexts use proper patterns
 
-## 📋 Review Process
+### Error Propagation
+- [ ] **Result types** - All fallible operations return `Result<T, E>`
+- [ ] **Error context** - Errors include helpful context and sources
+- [ ] **Typed errors** - Project-specific error types, not generic errors
+- [ ] **No silent failures** - All errors handled or propagated
 
-### Pre-Review Checklist (Author)
-- [ ] Run `./scripts/check-consistency.sh`
-- [ ] Run `cargo fmt` and `cargo clippy`
-- [ ] Run `cargo test` (all tests pass)
-- [ ] Update documentation if behavior changed
-- [ ] Add tests for new functionality
+## 📊 Performance & Reliability
 
-### During Review
-- [ ] Check all consistency standards above
-- [ ] Verify functionality works as described
-- [ ] Ensure no regressions in existing behavior
-- [ ] Confirm appropriate test coverage
+### Resource Management
+- [ ] **No memory leaks** - Resources properly cleaned up
+- [ ] **Efficient algorithms** - Appropriate data structures and algorithms
+- [ ] **Bounded resources** - Collections and operations have reasonable limits
+- [ ] **Cancellation safety** - Async operations handle cancellation properly
 
-### Post-Review
-- [ ] Address all review feedback
-- [ ] Re-run consistency checks
-- [ ] Update this checklist if new standards emerge
+### Determinism
+- [ ] **Seed-based random** - Any randomness uses deterministic seeds
+- [ ] **Isolated file ops** - File operations use isolated temporary directories
+- [ ] **Mocked externals** - External dependencies (time, network) mocked in tests
+- [ ] **Reproducible builds** - Same inputs produce identical outputs
 
-## 🚨 Critical Consistency Rules
+## 🔒 Security Standards
 
-### NEVER ALLOW
-- ❌ `unwrap()` or `expect()` in production code
-- ❌ Inconsistent error handling patterns
-- ❌ Undocumented public APIs
-- ❌ Inconsistent naming conventions
-- ❌ Vague or non-actionable TODO comments
+### Input Validation
+- [ ] **All inputs validated** - User inputs checked for safety
+- [ ] **Path sanitization** - File paths validated and sanitized
+- [ ] **No injection** - SQL, command, template injection prevented
+- [ ] **Secure defaults** - Conservative defaults for security settings
 
-### ALWAYS REQUIRE
-- ✅ Comprehensive documentation for public APIs
-- ✅ Consistent error handling with Result types
-- ✅ Clear, actionable TODO comments
-- ✅ Consistent code formatting and style
-- ✅ Appropriate test coverage
+### Error Information
+- [ ] **No sensitive leaks** - Errors don't expose internal implementation
+- [ ] **Actionable messages** - Error messages help users fix issues
+- [ ] **Appropriate detail** - Debug info in debug builds, user-friendly in release
+- [ ] **Logging security** - Sensitive operations logged without exposing secrets
 
-## 🎯 Mura Prevention
+## ✅ Pre-Merge Validation
 
-This checklist prevents unevenness by ensuring:
-- **Consistent quality** across all code
-- **Standardized patterns** for common operations
-- **Uniform documentation** standards
-- **Predictable error handling** everywhere
-- **Actionable development** tasks
+**CRITICAL**: All boxes must be checked before merging. If any box cannot be checked, the code needs revision.
 
-**Remember**: Consistency reduces cognitive load and maintenance cost. Consistent code is easier to understand, modify, and maintain.
+### Automated Checks (CI)
+- [ ] CI passes completely (including new fake scanner check)
+- [ ] All tests pass on Linux and macOS
+- [ ] Code coverage maintained or improved
+- [ ] Performance benchmarks not regressed
+
+### Manual Review
+- [ ] Code follows established patterns
+- [ ] No new technical debt introduced
+- [ ] Documentation updated for any API changes
+- [ ] Breaking changes properly communicated
+
+## 🚨 Blocking Issues
+
+**These issues will block merging and require immediate fixes:**
+
+- ❌ Compilation errors
+- ❌ Clippy warnings (unless explicitly allowed)
+- ❌ Fake scanner failures
+- ❌ Test failures
+- ❌ Breaking changes without migration plan
+- ❌ unwrap/expect in production code
+- ❌ Async trait methods
+- ❌ Missing documentation for public APIs
+
+## 📝 Review Process
+
+1. **Automated checks pass** - CI must be green
+2. **Code review** - At least one maintainer reviews
+3. **Checklist verification** - All boxes checked
+4. **Merge approval** - Only after all checks pass
+
+## 🔄 Continuous Improvement
+
+This checklist evolves with the codebase. When new inconsistency patterns emerge, add checks to prevent them. Regular reviews of this checklist ensure it remains comprehensive and effective.
+
+**Last updated**: December 2025
+**Version**: 1.0

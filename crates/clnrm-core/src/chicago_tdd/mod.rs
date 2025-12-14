@@ -357,10 +357,17 @@ mod tests {
 
         // Assert - Validate schema compliance
         let validation_result = mock_span.validate_schema_compliance();
-        assert!(validation_result.is_ok(), "Schema validation should pass with all required fields: {:?}", validation_result.err());
+        assert!(
+            validation_result.is_ok(),
+            "Schema validation should pass with all required fields: {:?}",
+            validation_result.err()
+        );
 
         // Verify specific values
-        assert_eq!(mock_span.container_id.as_deref(), Some("test-container-123"));
+        assert_eq!(
+            mock_span.container_id.as_deref(),
+            Some("test-container-123")
+        );
         assert_eq!(mock_span.container_image.as_deref(), Some("alpine:latest"));
         assert_eq!(mock_span.test_name.as_deref(), Some("my_test"));
         assert_eq!(mock_span.isolated, Some(true));
@@ -372,7 +379,10 @@ mod tests {
         assert_eq!(sample["kind"], "internal");
         assert!(sample["timestamp"].is_number());
         assert_eq!(sample["attributes"]["container.id"], "test-container-123");
-        assert_eq!(sample["attributes"]["container.image.name"], "alpine:latest");
+        assert_eq!(
+            sample["attributes"]["container.image.name"],
+            "alpine:latest"
+        );
         assert_eq!(sample["attributes"]["test.name"], "my_test");
         assert_eq!(sample["attributes"]["test.isolated"], true);
         assert_eq!(sample["attributes"]["test.result"], "pass");
@@ -394,18 +404,33 @@ mod tests {
         let validation_result = mock_span.validate_schema_compliance();
 
         // Assert - Should fail with specific violations
-        assert!(validation_result.is_err(), "Schema validation should fail with missing required fields");
+        assert!(
+            validation_result.is_err(),
+            "Schema validation should fail with missing required fields"
+        );
         let violations = validation_result.err().unwrap();
 
         // Verify specific missing fields are reported
-        assert!(violations.iter().any(|v| v.contains("container.id is required")));
-        assert!(violations.iter().any(|v| v.contains("container.image.name is required")));
-        assert!(violations.iter().any(|v| v.contains("test.isolated is required")));
-        assert!(violations.iter().any(|v| v.contains("test.result is required")));
+        assert!(violations
+            .iter()
+            .any(|v| v.contains("container.id is required")));
+        assert!(violations
+            .iter()
+            .any(|v| v.contains("container.image.name is required")));
+        assert!(violations
+            .iter()
+            .any(|v| v.contains("test.isolated is required")));
+        assert!(violations
+            .iter()
+            .any(|v| v.contains("test.result is required")));
 
         // Should not report fields that were set
-        assert!(!violations.iter().any(|v| v.contains("test.name is required")));
-        assert!(!violations.iter().any(|v| v.contains("span name is required")));
+        assert!(!violations
+            .iter()
+            .any(|v| v.contains("test.name is required")));
+        assert!(!violations
+            .iter()
+            .any(|v| v.contains("span name is required")));
 
         Ok(())
     }
@@ -462,11 +487,18 @@ mod tests {
 
         // Assert - Validate state transitions
         let transition_validation = mock_lifecycle.validate_state_transitions();
-        assert!(transition_validation.is_ok(), "State transitions should be valid: {:?}", transition_validation.err());
+        assert!(
+            transition_validation.is_ok(),
+            "State transitions should be valid: {:?}",
+            transition_validation.err()
+        );
 
         // Verify state history
         assert_eq!(mock_lifecycle.state_transitions.len(), 3);
-        assert_eq!(mock_lifecycle.state_transitions[0], ContainerState::Creating);
+        assert_eq!(
+            mock_lifecycle.state_transitions[0],
+            ContainerState::Creating
+        );
         assert_eq!(mock_lifecycle.state_transitions[1], ContainerState::Running);
         assert_eq!(mock_lifecycle.state_transitions[2], ContainerState::Stopped);
 

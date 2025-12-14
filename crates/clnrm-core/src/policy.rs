@@ -626,3 +626,124 @@ impl Policy {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_policy_creation() {
+        // Test default policy creation
+        let policy = Policy::default();
+        assert_eq!(policy.security.level, SecurityLevel::Medium);
+        assert!(!policy.security.enable_network_isolation);
+        assert!(!policy.security.enable_filesystem_isolation);
+    }
+
+    #[test]
+    fn test_policy_with_security_level() {
+        // Test policy creation with specific security level
+        let policy = Policy::with_security_level(SecurityLevel::High);
+        assert_eq!(policy.security.level, SecurityLevel::High);
+
+        let policy_low = Policy::with_security_level(SecurityLevel::Low);
+        assert_eq!(policy_low.security.level, SecurityLevel::Low);
+    }
+
+    #[test]
+    fn test_policy_with_resource_limits() {
+        // Test policy creation with resource limits
+        let policy = Policy::with_resource_limits(50.0, 512 * 1024 * 1024, 5 * 1024 * 1024 * 1024);
+
+        assert_eq!(policy.resources.max_cpu_percent, 50.0);
+        assert_eq!(policy.resources.max_memory_bytes, 512 * 1024 * 1024);
+        assert_eq!(policy.resources.max_disk_usage_bytes, 5 * 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_security_level_properties() {
+        // Test that different security levels have appropriate properties
+        let high_policy = Policy::with_security_level(SecurityLevel::High);
+        assert_eq!(high_policy.security.level, SecurityLevel::High);
+
+        let max_policy = Policy::with_security_level(SecurityLevel::Maximum);
+        assert_eq!(max_policy.security.level, SecurityLevel::Maximum);
+    }
+
+    #[test]
+    fn test_policy_validation() {
+        // Test basic policy validation
+        let policy = Policy::default();
+        assert!(policy.validate().is_ok());
+    }
+
+    #[test]
+    fn test_resource_limits_validation() {
+        // Test resource limits are reasonable
+        let policy = Policy::with_resource_limits(150.0, u64::MAX, u64::MAX);
+        // Policy with unreasonable CPU should still validate (validation is permissive)
+        assert!(policy.validate().is_ok());
+    }
+
+    #[test]
+    fn test_security_policy_configuration() {
+        // Test security policy configuration
+        let mut policy = Policy::default();
+
+        policy.security.enable_network_isolation = true;
+        policy.security.enable_filesystem_isolation = true;
+        policy.security.allowed_ports = vec![8080, 8443];
+        policy.security.blocked_addresses = vec!["10.0.0.0/8".to_string()];
+
+        assert!(policy.security.enable_network_isolation);
+        assert!(policy.security.enable_filesystem_isolation);
+        assert_eq!(policy.security.allowed_ports.len(), 2);
+        assert_eq!(policy.security.blocked_addresses.len(), 1);
+    }
+
+    #[test]
+    fn test_execution_policy_configuration() {
+        // Test execution policy configuration
+        let mut policy = Policy::default();
+
+        policy.execution.enable_deterministic_execution = true;
+        policy.execution.enable_parallel_execution = false;
+        policy.execution.max_parallel_tasks = 1;
+        policy.execution.enable_test_isolation = true;
+
+        assert!(policy.execution.enable_deterministic_execution);
+        assert!(!policy.execution.enable_parallel_execution);
+        assert_eq!(policy.execution.max_parallel_tasks, 1);
+        assert!(policy.execution.enable_test_isolation);
+    }
+
+    #[test]
+    fn test_policy_equality() {
+        // Test policy equality
+        let policy1 = Policy::with_security_level(SecurityLevel::Medium);
+        let policy2 = Policy::with_security_level(SecurityLevel::Medium);
+        let policy3 = Policy::with_security_level(SecurityLevel::High);
+
+        assert_eq!(policy1, policy2);
+        assert_ne!(policy1, policy3);
+    }
+
+    #[test]
+    fn test_policy_display() {
+        // Test policy display
+        let policy = Policy::with_security_level(SecurityLevel::High);
+        let display = format!("{}", policy);
+        assert!(display.contains("High"));
+        assert!(display.contains("Security"));
+    }
+
+    #[test]
+    fn test_security_level_display() {
+        // Test security level display
+        assert_eq!(format!("{}", SecurityLevel::Low), "Low");
+        assert_eq!(format!("{}", SecurityLevel::Medium), "Medium");
+        assert_eq!(format!("{}", SecurityLevel::High), "High");
+        assert_eq!(format!("{}", SecurityLevel::Maximum), "Maximum");
+        assert_eq!(format!("{}", SecurityLevel::Locked), "Locked");
+    }
+}

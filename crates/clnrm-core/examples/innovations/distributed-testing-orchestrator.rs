@@ -195,10 +195,7 @@ impl DistributedTestingOrchestrator {
         Ok(())
     }
 
-    async fn orchestrate_complex_test(
-        &mut self,
-        test_name: &str,
-    ) -> Result<String> {
+    async fn orchestrate_complex_test(&mut self, test_name: &str) -> Result<String> {
         println!("\n🎼 Orchestrating Complex Distributed Test: {}", test_name);
         println!("==========================================");
 
@@ -296,10 +293,7 @@ impl DistributedTestingOrchestrator {
         Ok(())
     }
 
-    async fn select_optimal_nodes(
-        &mut self,
-        _services: &[String],
-    ) -> Result<Vec<String>> {
+    async fn select_optimal_nodes(&mut self, _services: &[String]) -> Result<Vec<String>> {
         let mut selected_nodes = Vec::new();
 
         // Select nodes based on availability and capabilities
@@ -361,10 +355,7 @@ impl DistributedTestingOrchestrator {
         Ok(results)
     }
 
-    async fn monitor_test_execution(
-        &self,
-        _execution_results: &[String],
-    ) -> Result<Vec<String>> {
+    async fn monitor_test_execution(&self, _execution_results: &[String]) -> Result<Vec<String>> {
         println!("   🔍 Monitoring test execution in real-time...");
 
         // Simulate real-time monitoring
@@ -376,10 +367,7 @@ impl DistributedTestingOrchestrator {
         Ok(vec!["Monitoring completed successfully".to_string()])
     }
 
-    async fn aggregate_test_results(
-        &self,
-        _monitoring_results: &[String],
-    ) -> Result<String> {
+    async fn aggregate_test_results(&self, _monitoring_results: &[String]) -> Result<String> {
         println!("   📊 Aggregating results from all distributed nodes...");
 
         // Simulate result aggregation

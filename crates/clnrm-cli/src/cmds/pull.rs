@@ -4,7 +4,7 @@
 //! Follows 80/20 principle: Focus on scanning test configs and pulling images in parallel.
 
 use clap::Args;
-use clnrm_core::cli::commands::pull_images;
+use clnrm_core::cli::commands::pull::pull_images;
 use clnrm_core::error::Result;
 use std::path::PathBuf;
 

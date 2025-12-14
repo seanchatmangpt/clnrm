@@ -28,18 +28,70 @@ pub async fn run(files: &[PathBuf], _format: &str, _deny_warnings: bool) -> Resu
     // Arrange: Validate inputs
     if files.is_empty() {
         return Err(clnrm_core::error::CleanroomError::config_error(
-            "No files provided for linting"
+            "No files provided for linting",
         ));
     }
 
     println!("Files to lint: {}", files.len());
     println!("");
-    // TODO: Implement actual TOML linting using clnrm-core
-    // For now, show what would be done
-    println!("⚠️  TOML linting not yet implemented");
-    println!("   Would lint {} files with format: {}", files.len(), _format);
-    println!("   Core functionality available in clnrm-core::lint");
+
+    // Validate inputs
+    for path in files {
+        if !path.exists() {
+            return Err(clnrm_core::error::CleanroomError::validation_error(
+                format!("File does not exist: {}", path.display())
+            ));
+        }
+
+        if !path.is_file() {
+            return Err(clnrm_core::error::CleanroomError::validation_error(
+                format!("Path is not a file: {}", path.display())
+            ));
+        }
+
+        // For now, only support TOML files
+        if path.extension().unwrap_or_default() != "toml" {
+            return Err(clnrm_core::error::CleanroomError::validation_error(
+                format!("Only TOML files are supported for linting: {}", path.display())
+            ));
+        }
+    }
+
+    // Act: Run linting - basic TOML syntax validation
+    let mut has_errors = false;
+    for path in files {
+        println!("Linting: {}", path.display());
+
+        match std::fs::read_to_string(path) {
+            Ok(content) => {
+                // Try to parse TOML to check syntax
+                match toml::from_str::<toml::Value>(&content) {
+                    Ok(_) => {
+                        println!("  ✅ {}", path.display());
+                    }
+                    Err(e) => {
+                        println!("  ❌ {}: {}", path.display(), e);
+                        has_errors = true;
+                    }
+                }
+            }
+            Err(e) => {
+                println!("  ❌ {}: Failed to read file: {}", path.display(), e);
+                has_errors = true;
+            }
+        }
+    }
+
+    if has_errors {
+        println!("");
+        println!("❌ Linting failed - fix the errors above");
+        return Err(clnrm_core::error::CleanroomError::validation_error(
+            "TOML linting failed"
+        ));
+    }
+
     println!("");
+    println!("✅ All {} files passed linting", files.len());
 
     Ok(())
 }

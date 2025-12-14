@@ -6,7 +6,7 @@
 //! Follows 80/20 principle: Focus on core watch functionality with proper error handling.
 
 use clap::Args;
-use clnrm_core::cli::commands::run_dev_mode_with_filters;
+use clnrm_core::cli::commands::dev::run_dev_mode_with_filters;
 use clnrm_core::cli::types::CliConfig;
 use clnrm_core::error::Result;
 use std::path::PathBuf;
@@ -65,25 +65,29 @@ pub async fn run(args: &DevArgs) -> Result<()> {
         jobs: 1,
         format: clnrm_core::cli::types::OutputFormat::Human,
         fail_fast: false, // Don't fail fast in dev mode
-        watch: true, // Enable watch mode
-        verbose: 1, // Show progress
+        watch: true,      // Enable watch mode
+        verbose: 1,       // Show progress
         force: false,
-        digest: false, // Skip for speed in dev mode
-        validate: false, // Skip OTEL validation in dev mode
+        digest: false,        // Skip for speed in dev mode
+        validate: false,      // Skip OTEL validation in dev mode
         enable_pooling: true, // Enable pooling for faster subsequent runs
-        pool_max_size: 5, // Smaller pool for dev mode
+        pool_max_size: 5,     // Smaller pool for dev mode
     };
 
     // Convert timebox from seconds to milliseconds
     let timebox_ms = args.timebox.map(|s| s * 1000);
 
     // Act: Start development mode with file watching
+    // Convert filters to pattern if provided
+    let pattern = args.only.clone();
+
     run_dev_mode_with_filters(
         paths,
         args.debounce_ms,
         args.clear,
-        args.only.clone(),
+        pattern,
         timebox_ms,
         cli_config,
-    ).await
+    )
+    .await
 }

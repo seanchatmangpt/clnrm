@@ -150,12 +150,7 @@ pub trait PoolExhaustionHandler: Send + Sync {
     /// Check if pool is approaching exhaustion and warn
     ///
     /// Returns true if exhaustion risk is detected
-    fn check_exhaustion_risk(
-        &self,
-        current: usize,
-        max: usize,
-        threshold: f64,
-    ) -> bool;
+    fn check_exhaustion_risk(&self, current: usize, max: usize, threshold: f64) -> bool;
 }
 
 /// Lock manager trait for container creation
@@ -187,4 +182,3 @@ pub trait ContainerCreationLock: Send + Sync {
 
 // Note: Mock implementations can be added in tests.rs using mockall if needed
 // The traits are designed to be mockable for testing purposes
-

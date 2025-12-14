@@ -3,8 +3,10 @@
 //! Provides OpenTelemetry validation and Weaver live-check operations.
 //! Follows 80/20 principle: Focus on registry validation and Weaver integration.
 
+use crate::commands::live_check::{
+    show_modes, show_status, show_version, test_weaver, validate_registry,
+};
 use clap::Subcommand;
-use clnrm_core::cli::commands::live_check::{show_modes, show_status, show_version, test_weaver, validate_registry};
 use clnrm_core::error::Result;
 
 #[derive(Subcommand, Debug)]

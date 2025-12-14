@@ -2,6 +2,15 @@
 //!
 //! Handles project generation from templates with various configurations.
 
+use clnrm_core::cli::commands::template::{
+    generate_deterministic_template,
+    generate_from_template,
+    generate_full_validation_template,
+    generate_lifecycle_matcher,
+    generate_macro_library,
+    generate_matrix_template,
+    generate_otel_template,
+};
 use clnrm_core::error::{CleanroomError, Result};
 use std::path::Path;
 
@@ -9,22 +18,30 @@ use std::path::Path;
 pub async fn run(template: &str, name: Option<&str>, output: Option<&Path>) -> Result<()> {
     // Handle template types that generate TOML files (v0.6.0 Tera templates)
     let template_result = match template {
-        "otel" => Some((crate::commands::generate_otel_template()?, "OTEL validation template")),
-        "matrix" => Some((crate::commands::generate_matrix_template()?, "Matrix testing template")),
-        "macros" | "macro-library" => {
-            Some((crate::commands::generate_macro_library()?, "Tera macro library"))
-        }
+        "otel" => Some((
+            generate_otel_template()?,
+            "OTEL validation template",
+        )),
+        "matrix" => Some((
+            generate_matrix_template()?,
+            "Matrix testing template",
+        )),
+        "macros" | "macro-library" => Some((
+            generate_macro_library()?,
+            "Tera macro library",
+        )),
         "full-validation" | "validation" => Some((
-            crate::commands::generate_full_validation_template()?,
+            generate_full_validation_template()?,
             "Full validation template",
         )),
         "deterministic" => Some((
-            crate::commands::generate_deterministic_template()?,
+            generate_deterministic_template()?,
             "Deterministic testing template",
         )),
-        "lifecycle-matcher" => {
-            Some((crate::commands::generate_lifecycle_matcher()?, "Lifecycle matcher template"))
-        }
+        "lifecycle-matcher" => Some((
+            generate_lifecycle_matcher()?,
+            "Lifecycle matcher template",
+        )),
         _ => None,
     };
 
@@ -46,7 +63,7 @@ pub async fn run(template: &str, name: Option<&str>, output: Option<&Path>) -> R
     } else {
         // Regular project template (default, advanced, minimal, database, api)
         let name_str = name.unwrap_or("cleanroom-project");
-        crate::commands::generate_from_template(template, Some(name_str))?;
+        generate_from_template(template, Some(name_str))?;
         Ok(())
     }
 }

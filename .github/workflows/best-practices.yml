@@ -65,6 +65,57 @@ jobs:
             echo "⚠️  Best practices check found issues"
           fi
 
+      - name: Check for unwrap/expect in production code
+        timeout-minutes: 5
+        run: |
+          # FMEA fix: Check script exists before execution
+          echo "🚫 Checking for unwrap/expect in production code..."
+          if [ ! -f ".github/workflows/check-unwraps.sh" ]; then
+            echo "⚠️  Script not found at .github/workflows/check-unwraps.sh"
+            exit 1
+          fi
+
+          if chmod +x .github/workflows/check-unwraps.sh && \
+             ./.github/workflows/check-unwraps.sh; then
+            echo "✅ No unwrap/expect found in production code"
+          else
+            echo "❌ CRITICAL: unwrap/expect found in production code"
+            exit 1
+          fi
+
+      - name: Check code formatting consistency
+        timeout-minutes: 5
+        run: |
+          echo "🎨 Checking code formatting consistency..."
+          if ! cargo fmt --all -- --check; then
+            echo "❌ Code formatting issues found. Run: cargo fmt --all"
+            exit 1
+          else
+            echo "✅ Code formatting is consistent"
+          fi
+
+      - name: Check test coverage baseline
+        timeout-minutes: 10
+        run: |
+          echo "📊 Checking test coverage baseline..."
+
+          # Count total modules vs modules with tests
+          total_rs=$(find crates/ -name "*.rs" | wc -l)
+          tested_rs=$(find crates/ -name "*.rs" -exec grep -l "#\[cfg(test)\]" {} \; | wc -l)
+
+          coverage=$(( tested_rs * 100 / total_rs ))
+
+          echo "📈 Test coverage: ${coverage}% (${tested_rs}/${total_rs} modules)"
+
+          # Require minimum 25% coverage (current baseline)
+          if [ $coverage -lt 25 ]; then
+            echo "❌ Test coverage below minimum threshold: ${coverage}% < 25%"
+            echo "   Add test modules to new code or existing untested modules"
+            exit 1
+          else
+            echo "✅ Test coverage meets minimum threshold: ${coverage}% >= 25%"
+          fi
+
       - name: Check documentation completeness
         timeout-minutes: 15
         continue-on-error: true

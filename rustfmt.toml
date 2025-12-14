@@ -1,0 +1,10 @@
+# Rustfmt configuration for clnrm
+# Exclude files that don't exist to avoid cargo fmt errors
+
+exclude = [
+    "examples/framework-self-testing/hermetic_isolation_test.rs",
+    "examples/framework-self-testing/observability_test.rs",
+    "examples/framework-self-testing/plugin_system_test.rs",
+    "examples/framework-self-testing/simple-framework-test.rs",
+    "examples/otel_stdout_exporter_demo.rs",
+]

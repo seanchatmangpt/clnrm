@@ -111,9 +111,14 @@ mod otel_validation_tests {
 
             for (constructor_name, processor) in constructors {
                 // Act & Assert - Verify empty collection
-                let spans = processor.get_spans()
-                    .map_err(|e| CleanroomError::internal_error(format!("{} failed: {}", constructor_name, e)))?;
-                assert!(spans.is_empty(), "{} should create empty collection", constructor_name);
+                let spans = processor.get_spans().map_err(|e| {
+                    CleanroomError::internal_error(format!("{} failed: {}", constructor_name, e))
+                })?;
+                assert!(
+                    spans.is_empty(),
+                    "{} should create empty collection",
+                    constructor_name
+                );
             }
 
             Ok(())
@@ -400,7 +405,7 @@ mod otel_validation_tests {
                         min_duration_ms: None,
                         max_duration_ms: None,
                     },
-                    "Span name cannot be empty"
+                    "Span name cannot be empty",
                 ),
                 (
                     "empty attribute key",
@@ -415,7 +420,7 @@ mod otel_validation_tests {
                             max_duration_ms: None,
                         }
                     },
-                    "Attribute key cannot be empty"
+                    "Attribute key cannot be empty",
                 ),
             ];
 
@@ -427,8 +432,13 @@ mod otel_validation_tests {
 
                 // Assert - Verify validation fails with expected error
                 assert!(!result.passed, "{} should fail validation", test_name);
-                assert!(result.errors.iter().any(|e| e.contains(expected_error)),
-                    "{} should contain error '{}', errors: {:?}", test_name, expected_error, result.errors);
+                assert!(
+                    result.errors.iter().any(|e| e.contains(expected_error)),
+                    "{} should contain error '{}', errors: {:?}",
+                    test_name,
+                    expected_error,
+                    result.errors
+                );
             }
 
             Ok(())
@@ -655,7 +665,6 @@ mod otel_validation_tests {
 
     mod trace_validation_tests {
         use super::*;
-
 
         #[test]
         fn test_validator_validate_trace_with_empty_trace_id_returns_error() -> Result<()> {

@@ -236,7 +236,7 @@ pub async fn run_tests_with_shard_and_report(
     report_junit: Option<&std::path::Path>,
     otel_exporter: &str,
     otel_endpoint: Option<&str>,
-    _validation_config: ValidationConfig,
+    validation_config: ValidationConfig,
 ) -> Result<()> {
     // If sharding is enabled, log it
     if let Some((i, m)) = shard {
@@ -430,7 +430,7 @@ async fn run_tests_impl_with_report(
     report_junit: Option<&std::path::Path>,
     otel_exporter: &str,
     otel_endpoint: Option<&str>,
-    validation_config: ValidationConfig,
+    _validation_config: ValidationConfig,
 ) -> Result<()> {
     use crate::telemetry::weaver_controller::{WeaverConfig, WeaverController};
     use crate::telemetry::{flush_telemetry_and_wait, init_otel, Export, OtelConfig};

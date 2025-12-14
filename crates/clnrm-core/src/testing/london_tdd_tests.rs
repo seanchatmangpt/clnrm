@@ -39,7 +39,7 @@ impl MockWeaver {
     fn receive_sample(&mut self, sample: serde_json::Value) -> Result<()> {
         if !self.started {
             return Err(CleanroomError::validation_error(
-                "Cannot receive samples: Weaver not started"
+                "Cannot receive samples: Weaver not started",
             ));
         }
         self.telemetry_samples.push(sample);
@@ -49,11 +49,13 @@ impl MockWeaver {
     fn validate_samples(&self) -> Result<ValidationResult> {
         if !self.started {
             return Err(CleanroomError::validation_error(
-                "Cannot validate: Weaver not started"
+                "Cannot validate: Weaver not started",
             ));
         }
 
-        let violations = self.telemetry_samples.iter()
+        let violations = self
+            .telemetry_samples
+            .iter()
             .filter(|sample| !self.is_valid_sample(sample))
             .count();
 
@@ -66,9 +68,9 @@ impl MockWeaver {
 
     fn is_valid_sample(&self, sample: &serde_json::Value) -> bool {
         // Mock validation: check for required fields in telemetry sample
-        sample.get("name").is_some() &&
-        sample.get("kind").is_some() &&
-        sample.get("timestamp").is_some()
+        sample.get("name").is_some()
+            && sample.get("kind").is_some()
+            && sample.get("timestamp").is_some()
     }
 }
 

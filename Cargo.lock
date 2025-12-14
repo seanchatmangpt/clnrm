@@ -1319,6 +1319,7 @@ dependencies = [
  "mockall",
  "nix",
  "notify",
+ "num_cpus",
  "once_cell",
  "opentelemetry 0.31.0",
  "opentelemetry-jaeger",

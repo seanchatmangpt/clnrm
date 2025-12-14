@@ -7,7 +7,6 @@
 //! Follows 80/20 principle: Focus on core TDD validation with clear feedback.
 
 use clap::Args;
-use clnrm_core::cli::commands::run_red_green_validation;
 use clnrm_core::error::Result;
 use std::path::PathBuf;
 
@@ -43,7 +42,7 @@ impl TddState {
             "red" => Ok(TddState::Red),
             "green" => Ok(TddState::Green),
             _ => Err(clnrm_core::error::CleanroomError::validation_error(
-                format!("Invalid TDD state: {}. Must be 'red' or 'green'", s)
+                format!("Invalid TDD state: {}. Must be 'red' or 'green'", s),
             )),
         }
     }
@@ -78,7 +77,7 @@ pub async fn run(args: &RedGreenArgs) -> Result<()> {
 
     if paths.is_empty() {
         return Err(clnrm_core::error::CleanroomError::config_error(
-            "No test paths provided for red-green validation"
+            "No test paths provided for red-green validation",
         ));
     }
 
@@ -88,9 +87,10 @@ pub async fn run(args: &RedGreenArgs) -> Result<()> {
             "red" => (true, false),
             "green" => (false, true),
             _ => {
-                return Err(clnrm_core::error::CleanroomError::config_error(
-                    format!("Invalid expect value: {}. Use 'red' or 'green'", expect)
-                ));
+                return Err(clnrm_core::error::CleanroomError::config_error(format!(
+                    "Invalid expect value: {}. Use 'red' or 'green'",
+                    expect
+                )));
             }
         }
     } else {
@@ -110,5 +110,5 @@ pub async fn run(args: &RedGreenArgs) -> Result<()> {
     }
 
     // Act: Run TDD validation
-    run_red_green_validation(&paths, verify_red, verify_green).await
+    crate::commands::run_red_green_validation(&paths, verify_red, verify_green).await
 }

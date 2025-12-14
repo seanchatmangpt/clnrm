@@ -10,7 +10,7 @@ use crate::telemetry::span_storage;
 use crate::validation::span_validator::SpanValidator;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 use super::{container_executor, scenario, services};
 
