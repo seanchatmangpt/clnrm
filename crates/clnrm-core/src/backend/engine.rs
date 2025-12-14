@@ -242,7 +242,6 @@ impl ContainerEngine {
         };
 
         Self {
-            pool: None, // Pool initialization will be implemented in future
             config,
             adaptive_state,
         }

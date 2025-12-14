@@ -4,8 +4,8 @@
 //! Follows 80/20 principle: Focus on core validation with clear error reporting.
 
 use clap::Args;
-use clnrm_core::error::Result;
 use clnrm_core::cli::commands::analyze::analyze_traces;
+use clnrm_core::error::Result;
 
 /// Analyze command arguments
 #[derive(Args, Debug)]

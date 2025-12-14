@@ -39,20 +39,23 @@ pub async fn run(files: &[PathBuf], _format: &str, _deny_warnings: bool) -> Resu
     for path in files {
         if !path.exists() {
             return Err(clnrm_core::error::CleanroomError::validation_error(
-                format!("File does not exist: {}", path.display())
+                format!("File does not exist: {}", path.display()),
             ));
         }
 
         if !path.is_file() {
             return Err(clnrm_core::error::CleanroomError::validation_error(
-                format!("Path is not a file: {}", path.display())
+                format!("Path is not a file: {}", path.display()),
             ));
         }
 
         // For now, only support TOML files
         if path.extension().unwrap_or_default() != "toml" {
             return Err(clnrm_core::error::CleanroomError::validation_error(
-                format!("Only TOML files are supported for linting: {}", path.display())
+                format!(
+                    "Only TOML files are supported for linting: {}",
+                    path.display()
+                ),
             ));
         }
     }
@@ -86,7 +89,7 @@ pub async fn run(files: &[PathBuf], _format: &str, _deny_warnings: bool) -> Resu
         println!("");
         println!("❌ Linting failed - fix the errors above");
         return Err(clnrm_core::error::CleanroomError::validation_error(
-            "TOML linting failed"
+            "TOML linting failed",
         ));
     }
 

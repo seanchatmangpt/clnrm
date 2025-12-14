@@ -209,7 +209,7 @@ impl TestReceipt {
     /// Compute receipt ID (SHA-256 hash of receipt content)
     ///
     /// Excludes the `id` and `signature` fields to avoid circular dependency
-    pub fn compute_id(&self) -> ReceiptId {
+    pub fn compute_id(&self) -> crate::error::Result<ReceiptId> {
         use serde::Serialize;
         use sha2::{Digest, Sha256};
 
@@ -245,20 +245,22 @@ impl TestReceipt {
             metadata: &self.metadata,
         };
 
-        let serialized =
-            serde_json::to_string(&hashable).expect("Failed to serialize TestReceipt for hashing");
+        let serialized = serde_json::to_string(&hashable)
+            .map_err(|e| crate::error::CleanroomError::internal_error(
+                format!("Failed to serialize TestReceipt for hashing: {}", e)
+            ))?;
 
         let mut hasher = Sha256::new();
         hasher.update(serialized.as_bytes());
         let result = hasher.finalize();
 
-        ContentHash::from_bytes(&result)
+        Ok(ContentHash::from_bytes(&result))
     }
 
     /// Validate receipt integrity
     pub fn validate(&self) -> crate::error::Result<()> {
         // Verify receipt ID matches computed hash
-        let computed_id = self.compute_id();
+        let computed_id = self.compute_id()?;
         if self.id != computed_id {
             return Err(crate::error::CleanroomError::internal_error(format!(
                 "Receipt ID mismatch: declared {}, computed {}",

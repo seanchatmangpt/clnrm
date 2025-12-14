@@ -1243,7 +1243,7 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "clnrm"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "assert_cmd",
  "clnrm-cli",
@@ -1258,7 +1258,7 @@ dependencies = [
 
 [[package]]
 name = "clnrm-cli"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1293,7 +1293,7 @@ dependencies = [
 
 [[package]]
 name = "clnrm-core"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1358,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "clnrm-shared"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1393,7 +1393,7 @@ dependencies = [
 
 [[package]]
 name = "clnrm-template"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "Inflector",
  "actix-web",
@@ -2093,7 +2093,7 @@ dependencies = [
 
 [[package]]
 name = "evidence-graph"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "anyhow",
  "chrono",

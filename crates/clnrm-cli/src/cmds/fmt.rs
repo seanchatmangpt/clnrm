@@ -40,7 +40,7 @@ pub async fn run(files: &[PathBuf], check: bool, _verify: bool) -> Result<()> {
     for path in files {
         if !path.exists() {
             return Err(clnrm_core::error::CleanroomError::validation_error(
-                format!("File does not exist: {}", path.display())
+                format!("File does not exist: {}", path.display()),
             ));
         }
 
@@ -50,13 +50,16 @@ pub async fn run(files: &[PathBuf], check: bool, _verify: bool) -> Result<()> {
                 toml_files.push(path.clone());
             } else {
                 return Err(clnrm_core::error::CleanroomError::validation_error(
-                    format!("Only TOML files are supported for formatting: {}", path.display())
+                    format!(
+                        "Only TOML files are supported for formatting: {}",
+                        path.display()
+                    ),
                 ));
             }
         } else {
             // For directories, find all TOML files
             return Err(clnrm_core::error::CleanroomError::validation_error(
-                "Directory formatting not yet implemented"
+                "Directory formatting not yet implemented",
             ));
         }
     }
@@ -65,27 +68,36 @@ pub async fn run(files: &[PathBuf], check: bool, _verify: bool) -> Result<()> {
     for path in &toml_files {
         println!("Processing: {}", path.display());
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| clnrm_core::error::CleanroomError::io_error(
-                format!("Failed to read file {}: {}", path.display(), e)
-            ))?;
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            clnrm_core::error::CleanroomError::io_error(format!(
+                "Failed to read file {}: {}",
+                path.display(),
+                e
+            ))
+        })?;
 
-        let formatted = clnrm_core::formatting::format_toml_content(&content)
-            .map_err(|e| clnrm_core::error::CleanroomError::internal_error(
-                format!("Failed to format file {}: {}", path.display(), e)
-            ))?;
+        let formatted = clnrm_core::formatting::format_toml_content(&content).map_err(|e| {
+            clnrm_core::error::CleanroomError::internal_error(format!(
+                "Failed to format file {}: {}",
+                path.display(),
+                e
+            ))
+        })?;
 
         if check {
             if content != formatted {
                 return Err(clnrm_core::error::CleanroomError::validation_error(
-                    format!("File {} is not properly formatted", path.display())
+                    format!("File {} is not properly formatted", path.display()),
                 ));
             }
         } else {
-            std::fs::write(path, formatted)
-                .map_err(|e| clnrm_core::error::CleanroomError::io_error(
-                    format!("Failed to write formatted file {}: {}", path.display(), e)
-                ))?;
+            std::fs::write(path, formatted).map_err(|e| {
+                clnrm_core::error::CleanroomError::io_error(format!(
+                    "Failed to write formatted file {}: {}",
+                    path.display(),
+                    e
+                ))
+            })?;
         }
     }
 

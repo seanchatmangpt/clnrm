@@ -24,8 +24,8 @@ pub use capabilities::{
     StandardCapabilities,
 };
 pub use engine::{
-    BackendSelector, BackendType, ContainerConfig, ContainerEngine, EnvironmentHandle,
-    ExecutionEngine, Output, ResourceUsage, WasiConfig, WasiEngine,
+    BackendType, ContainerConfig, ContainerEngine, EnvironmentHandle,
+    ExecutionEngine, Output, ResourceUsage,
 };
 pub use extensions::{BackendExt, EnhancedBackend, ExecutionMode, ResourceLimits};
 pub use mock::MockBackend;

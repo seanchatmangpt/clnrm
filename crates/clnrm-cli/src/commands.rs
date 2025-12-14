@@ -126,25 +126,30 @@
 //! - `internal_error`: Unexpected internal errors
 
 use clnrm_core::cli::commands::diff::DiffResult;
-use clnrm_core::cli::types::OutputFormat;
 use clnrm_core::cli::commands::dry_run::ValidationResult;
+use clnrm_core::cli::types::OutputFormat;
 use clnrm_core::error::{CleanroomError, Result};
 use std::path::PathBuf;
 
 /// Analyze traces command
-pub fn analyze_traces(test_file: &std::path::Path, traces: Option<&std::path::Path>) -> Result<serde_json::Value> {
+pub fn analyze_traces(
+    test_file: &std::path::Path,
+    traces: Option<&std::path::Path>,
+) -> Result<serde_json::Value> {
     // Validate inputs
     if !test_file.exists() {
-        return Err(CleanroomError::validation_error(
-            format!("Test file does not exist: {}", test_file.display())
-        ));
+        return Err(CleanroomError::validation_error(format!(
+            "Test file does not exist: {}",
+            test_file.display()
+        )));
     }
 
     if let Some(trace_file) = traces {
         if !trace_file.exists() {
-            return Err(CleanroomError::validation_error(
-                format!("Trace file does not exist: {}", trace_file.display())
-            ));
+            return Err(CleanroomError::validation_error(format!(
+                "Trace file does not exist: {}",
+                trace_file.display()
+            )));
         }
     }
 
@@ -165,29 +170,36 @@ pub fn diff_traces(
     left: &std::path::Path,
     right: &std::path::Path,
     format: &str,
-    only_changes: bool
+    only_changes: bool,
 ) -> Result<DiffResult> {
     // Validate inputs
     if !left.exists() {
-        return Err(CleanroomError::validation_error(
-            format!("Left trace file does not exist: {}", left.display())
-        ));
+        return Err(CleanroomError::validation_error(format!(
+            "Left trace file does not exist: {}",
+            left.display()
+        )));
     }
 
     if !right.exists() {
-        return Err(CleanroomError::validation_error(
-            format!("Right trace file does not exist: {}", right.display())
-        ));
+        return Err(CleanroomError::validation_error(format!(
+            "Right trace file does not exist: {}",
+            right.display()
+        )));
     }
 
     if left == right {
         return Err(CleanroomError::validation_error(
-            "Cannot diff a file against itself"
+            "Cannot diff a file against itself",
         ));
     }
 
-    tracing::info!("Diffing traces between {:?} and {:?} (format: {}, only_changes: {})",
-        left, right, format, only_changes);
+    tracing::info!(
+        "Diffing traces between {:?} and {:?} (format: {}, only_changes: {})",
+        left,
+        right,
+        format,
+        only_changes
+    );
 
     // Use the actual trace diffing implementation from clnrm-core
     diff_traces(left, right, format, only_changes)
@@ -202,10 +214,16 @@ pub async fn run_dev_mode_with_filters(
     timebox_ms: Option<u64>,
     cli_config: clnrm_core::cli::types::CliConfig,
 ) -> Result<()> {
-    let path_count = paths.as_ref().map(|p| p.len()).unwrap_or(0);
+    use std::collections::HashMap;
+    use std::time::{Duration, Instant};
+    use tokio::time::sleep;
+
+    let paths = paths.unwrap_or_else(|| vec![".".into()]);
+    let debounce_duration = Duration::from_millis(debounce_ms);
+
     tracing::info!(
-        "Running dev mode with {} paths, debounce: {}ms, clear: {}",
-        path_count,
+        "Starting dev mode with {} paths, debounce: {}ms, clear: {}",
+        paths.len(),
         debounce_ms,
         clear
     );
@@ -218,8 +236,236 @@ pub async fn run_dev_mode_with_filters(
         tracing::info!("Timebox: {}ms", timebox);
     }
 
-    // TODO: Implement actual dev mode file watching
+    // Track file modification times
+    let mut file_times = HashMap::new();
+    let mut last_run = Instant::now();
+
+    // Initialize file times
+    for path in &paths {
+        if let Err(e) = update_file_times(&mut file_times, path, &only_pattern) {
+            tracing::warn!("Failed to scan path {}: {}", path.display(), e);
+        }
+    }
+
+    tracing::info!("Dev mode initialized. Watching for file changes...");
+    tracing::info!("Press Ctrl+C to stop");
+
+    // Main watch loop
+    loop {
+        // Check for timebox expiration
+        if let Some(timebox) = timebox_ms {
+            if last_run.elapsed() > Duration::from_millis(timebox) {
+                tracing::info!("Timebox expired, exiting dev mode");
+                break;
+            }
+        }
+
+        // Check for file changes
+        let mut has_changes = false;
+        for path in &paths {
+            if let Err(e) =
+                check_for_changes(&mut file_times, path, &only_pattern, &mut has_changes)
+            {
+                tracing::warn!("Failed to check path {}: {}", path.display(), e);
+            }
+        }
+
+        // Run tests if changes detected and debounce period passed
+        if has_changes && last_run.elapsed() >= debounce_duration {
+            if clear {
+                // Clear screen using ANSI escape sequence
+                print!("\x1B[2J\x1B[1;1H");
+            }
+
+            tracing::info!("File changes detected, running tests...");
+
+            // Execute tests using the core test runner
+            let test_paths = paths
+                .iter()
+                .filter(|p| p.is_file() || (p.is_dir() && p.join("tests").exists()))
+                .map(|p| p.as_path())
+                .collect::<Vec<_>>();
+
+            if !test_paths.is_empty() {
+                if let Err(e) = run_tests_with_filters(&test_paths, &cli_config).await {
+                    tracing::error!("Test execution failed: {}", e);
+                }
+            } else {
+                tracing::warn!("No test files found in watched paths");
+            }
+
+            last_run = Instant::now();
+        }
+
+        // Sleep before next check
+        sleep(Duration::from_millis(500)).await;
+    }
+
+    tracing::info!("Dev mode completed");
     Ok(())
+}
+
+/// Update file modification times for a path
+fn update_file_times(
+    file_times: &mut HashMap<std::path::PathBuf, std::time::SystemTime>,
+    path: &std::path::Path,
+    pattern: &Option<String>,
+) -> Result<()> {
+    if path.is_file() {
+        if should_include_file(path, pattern) {
+            let metadata = std::fs::metadata(path)?;
+            file_times.insert(path.to_path_buf(), metadata.modified()?);
+        }
+    } else if path.is_dir() {
+        // Simple recursive directory traversal without external dependencies
+        update_file_times_recursive(file_times, path, pattern)?;
+    }
+
+    Ok(())
+}
+
+/// Recursively update file times in a directory
+fn update_file_times_recursive(
+    file_times: &mut HashMap<std::path::PathBuf, std::time::SystemTime>,
+    dir_path: &std::path::Path,
+    pattern: &Option<String>,
+) -> Result<()> {
+    let entries = std::fs::read_dir(dir_path)?;
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            if should_include_file(&path, pattern) {
+                let metadata = entry.metadata()?;
+                file_times.insert(path, metadata.modified()?);
+            }
+        } else if path.is_dir() && !is_ignored_dir(&path) {
+            // Recurse into subdirectories (with depth limit to avoid infinite loops)
+            update_file_times_recursive(file_times, &path, pattern)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Check for file changes in a path
+fn check_for_changes(
+    file_times: &mut HashMap<std::path::PathBuf, std::time::SystemTime>,
+    path: &std::path::Path,
+    pattern: &Option<String>,
+    has_changes: &mut bool,
+) -> Result<()> {
+    if path.is_file() {
+        if should_include_file(path, pattern) {
+            let metadata = std::fs::metadata(path)?;
+            let current_time = metadata.modified()?;
+
+            if let Some(&prev_time) = file_times.get(path) {
+                if current_time > prev_time {
+                    *has_changes = true;
+                    file_times.insert(path.to_path_buf(), current_time);
+                    tracing::info!("File changed: {}", path.display());
+                }
+            } else {
+                // New file
+                *has_changes = true;
+                file_times.insert(path.to_path_buf(), current_time);
+                tracing::info!("New file detected: {}", path.display());
+            }
+        }
+    } else if path.is_dir() {
+        check_changes_recursive(file_times, path, pattern, has_changes)?;
+    }
+
+    Ok(())
+}
+
+/// Recursively check for changes in a directory
+fn check_changes_recursive(
+    file_times: &mut HashMap<std::path::PathBuf, std::time::SystemTime>,
+    dir_path: &std::path::Path,
+    pattern: &Option<String>,
+    has_changes: &mut bool,
+) -> Result<()> {
+    let entries = std::fs::read_dir(dir_path)?;
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            if should_include_file(&path, pattern) {
+                let metadata = entry.metadata()?;
+                let current_time = metadata.modified()?;
+
+                if let Some(&prev_time) = file_times.get(&path) {
+                    if current_time > prev_time {
+                        *has_changes = true;
+                        file_times.insert(path.clone(), current_time);
+                        tracing::info!("File changed: {}", path.display());
+                    }
+                } else {
+                    // New file
+                    *has_changes = true;
+                    file_times.insert(path.clone(), current_time);
+                    tracing::info!("New file detected: {}", path.display());
+                }
+            }
+        } else if path.is_dir() && !is_ignored_dir(&path) {
+            // Recurse into subdirectories
+            check_changes_recursive(file_times, &path, pattern, has_changes)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Check if a directory should be ignored during file watching
+fn is_ignored_dir(path: &std::path::Path) -> bool {
+    if let Some(dir_name) = path.file_name() {
+        let name = dir_name.to_string_lossy();
+        matches!(name.as_ref(), "target" | ".git" | "node_modules" | ".cargo")
+    } else {
+        false
+    }
+}
+
+/// Check if a file should be included based on pattern
+fn should_include_file(file_path: &std::path::Path, pattern: &Option<String>) -> bool {
+    let file_name = file_path.to_string_lossy();
+
+    // Always exclude common ignore patterns
+    if file_name.contains("target/")
+        || file_name.contains(".git/")
+        || file_name.contains("node_modules/")
+        || file_name.ends_with(".tmp")
+        || file_name.ends_with(".swp")
+    {
+        return false;
+    }
+
+    // Check pattern if provided
+    if let Some(pattern) = pattern {
+        // Simple glob matching - could be enhanced with regex
+        file_name.contains(pattern)
+    } else {
+        // Default: include Rust and TOML files
+        file_name.ends_with(".rs")
+            || file_name.ends_with(".toml")
+            || file_name.ends_with("Cargo.toml")
+            || file_name.ends_with("Makefile.toml")
+    }
+}
+
+/// Run tests with the given configuration
+async fn run_tests_with_filters(
+    paths: &[&std::path::Path],
+    cli_config: &clnrm_core::cli::types::CliConfig,
+) -> Result<()> {
+    use clnrm_core::cli::commands::run::executor::TestExecutor;
+
+    let executor = TestExecutor::new(cli_config.clone());
+    executor.execute_tests(paths).await
 }
 
 /// Pull images command
@@ -257,7 +503,10 @@ pub fn filter_spans(
 }
 
 /// Dry run validation
-pub fn dry_run_validate(files: &[&std::path::Path], verbose: bool) -> Result<Vec<ValidationResult>> {
+pub fn dry_run_validate(
+    files: &[&std::path::Path],
+    verbose: bool,
+) -> Result<Vec<ValidationResult>> {
     tracing::info!("Validating {} files (verbose: {})", files.len(), verbose);
 
     let mut results = Vec::new();
@@ -295,58 +544,74 @@ pub fn format_files(paths: &[PathBuf], check_only: bool) -> Result<()> {
     // Validate inputs
     if paths.is_empty() {
         return Err(CleanroomError::validation_error(
-            "No files provided for formatting"
+            "No files provided for formatting",
         ));
     }
 
     for path in paths {
         if !path.exists() {
-            return Err(CleanroomError::validation_error(
-                format!("File does not exist: {}", path.display())
-            ));
+            return Err(CleanroomError::validation_error(format!(
+                "File does not exist: {}",
+                path.display()
+            )));
         }
 
         if !path.is_file() {
-            return Err(CleanroomError::validation_error(
-                format!("Path is not a file: {}", path.display())
-            ));
+            return Err(CleanroomError::validation_error(format!(
+                "Path is not a file: {}",
+                path.display()
+            )));
         }
 
         // Only validate TOML files for now
         if path.extension().unwrap_or_default() != "toml" {
-            return Err(CleanroomError::validation_error(
-                format!("Only TOML files are supported for formatting: {}", path.display())
-            ));
+            return Err(CleanroomError::validation_error(format!(
+                "Only TOML files are supported for formatting: {}",
+                path.display()
+            )));
         }
     }
 
-    tracing::info!("Formatting {} files (check_only: {})", paths.len(), check_only);
+    tracing::info!(
+        "Formatting {} files (check_only: {})",
+        paths.len(),
+        check_only
+    );
 
     use clnrm_core::formatting::format_toml_content;
 
     for path in paths {
         if path.extension().unwrap_or_default() == "toml" {
-            let content = std::fs::read_to_string(path)
-                .map_err(|e| clnrm_core::error::CleanroomError::io_error(
-                    format!("Failed to read file {}: {}", path.display(), e)
-                ))?;
+            let content = std::fs::read_to_string(path).map_err(|e| {
+                clnrm_core::error::CleanroomError::io_error(format!(
+                    "Failed to read file {}: {}",
+                    path.display(),
+                    e
+                ))
+            })?;
 
-            let formatted = format_toml_content(&content)
-                .map_err(|e| clnrm_core::error::CleanroomError::internal_error(
-                    format!("Failed to format file {}: {}", path.display(), e)
-                ))?;
+            let formatted = format_toml_content(&content).map_err(|e| {
+                clnrm_core::error::CleanroomError::internal_error(format!(
+                    "Failed to format file {}: {}",
+                    path.display(),
+                    e
+                ))
+            })?;
 
             if check_only {
                 if content != formatted {
                     return Err(clnrm_core::error::CleanroomError::validation_error(
-                        format!("File {} is not properly formatted", path.display())
+                        format!("File {} is not properly formatted", path.display()),
                     ));
                 }
             } else {
-                std::fs::write(path, formatted)
-                    .map_err(|e| clnrm_core::error::CleanroomError::io_error(
-                        format!("Failed to write formatted file {}: {}", path.display(), e)
-                    ))?;
+                std::fs::write(path, formatted).map_err(|e| {
+                    clnrm_core::error::CleanroomError::io_error(format!(
+                        "Failed to write formatted file {}: {}",
+                        path.display(),
+                        e
+                    ))
+                })?;
             }
         }
     }
@@ -387,7 +652,8 @@ pub async fn run_tests_with_shard_and_report(
         otel_exporter,
         otel_endpoint,
         validation_config,
-    ).await
+    )
+    .await
 }
 
 /// System health check
@@ -513,13 +779,23 @@ pub fn generate_deterministic_template() -> Result<String> {
 
 pub fn generate_lifecycle_matcher() -> Result<String> {
     tracing::info!("Generating lifecycle matcher");
-    Ok("# Lifecycle matcher\n[lifecycle]\nphases = [\"setup\", \"test\", \"teardown\"]\n".to_string())
+    Ok(
+        "# Lifecycle matcher\n[lifecycle]\nphases = [\"setup\", \"test\", \"teardown\"]\n"
+            .to_string(),
+    )
 }
 
 pub fn generate_from_template(template: &str, name: Option<&str>) -> Result<String> {
     let name_str = name.unwrap_or("default");
-    tracing::info!("Generating from template '{}' with name '{}'", template, name_str);
-    Ok(format!("# Generated from template: {}\nname = \"{}\"\n", template, name_str))
+    tracing::info!(
+        "Generating from template '{}' with name '{}'",
+        template,
+        name_str
+    );
+    Ok(format!(
+        "# Generated from template: {}\nname = \"{}\"\n",
+        template, name_str
+    ))
 }
 
 #[cfg(test)]

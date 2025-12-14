@@ -504,7 +504,7 @@ impl EnvironmentCompiler {
             .weaver
             .as_ref()
             .map(|w| w.live_validation)
-            .unwrap_or(false);
+            .unwrap_or(false); // Safe: boolean default for readonly flag
 
         let instrumentation = sigma
             .telemetry
