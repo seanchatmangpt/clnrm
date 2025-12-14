@@ -300,16 +300,49 @@ impl TestConfigBuilder {
 ### Automated Checks (CI)
 - `cargo fmt --check` - Formatting consistency
 - `cargo clippy -- -D warnings` - Code quality
-- Coverage threshold checks - Test consistency
-- Custom lint: forbid unwrap/expect - Error handling consistency
+- `.github/workflows/check-unwraps.sh` - Forbid unwrap/expect in production
+- Coverage threshold checks (80% minimum) - Test consistency
+- Documentation completeness checks - API documentation coverage
+- TOML validation - Configuration file correctness
 
 ### Code Review Checklist
-- [ ] Code follows style standards
-- [ ] Error handling uses Result<T,E> consistently
-- [ ] Public APIs are fully documented
-- [ ] Tests exist and follow AAA pattern
-- [ ] Complexity limits are respected
-- [ ] Async/sync usage is appropriate
+
+#### Style Standards
+- [ ] Code follows `cargo fmt` formatting
+- [ ] Naming conventions followed (snake_case functions, PascalCase types)
+- [ ] Imports organized (std, external, local - alphabetical within groups)
+- [ ] No wildcard imports in production code
+- [ ] Line length under 100 characters
+
+#### Error Handling Standards
+- [ ] NO unwrap() or expect() calls in production code
+- [ ] All fallible operations return Result<T, CleanroomError>
+- [ ] Error messages are actionable and don't leak internals
+- [ ] Error context is properly chained
+- [ ] Custom error types used instead of generic errors
+
+#### Pattern Standards
+- [ ] Error handling uses Result<T, E> consistently
+- [ ] Validation uses type-level constraints when possible
+- [ ] Async/sync usage follows guidelines (async for I/O, sync for computation)
+- [ ] Builder pattern used for complex object construction
+- [ ] RAII pattern used for resource management
+
+#### Quality Standards
+- [ ] Public APIs fully documented with examples
+- [ ] Tests exist with minimum 80% coverage target
+- [ ] Tests follow AAA pattern (Arrange, Act, Assert)
+- [ ] Complexity limits respected (<500 lines per file, <10 public functions)
+- [ ] No TODO comments in production code
+- [ ] Security: Input validation on all boundaries
+- [ ] Performance: Efficient data structures used appropriately
+
+#### Documentation Standards
+- [ ] All public functions documented
+- [ ] Complex logic has inline comments
+- [ ] Examples provided for complex APIs
+- [ ] Module-level documentation exists
+- [ ] Breaking changes documented in upgrade guides
 
 ---
 

@@ -213,6 +213,65 @@ pub struct ContainerSpec {
     pub workdir: Option<String>,
 }
 
+impl ContainerSpec {
+    /// TRIZ Principle 15: Dynamics - Dynamic construction adapter
+    /// Allows the struct to adapt to different construction patterns during evolution
+    pub fn from_legacy_fields(
+        name: String, // This is actually the image name in legacy format
+        image: String,
+        tag: String,
+        ports: Vec<String>, // Legacy string format
+        env_vars: HashMap<String, String>, // Legacy field name
+        volumes: Vec<String>, // Legacy string format
+        depends_on: Vec<String>,
+        command: Option<Vec<String>>,
+        args: Option<Vec<String>>, // Legacy field (merge into command)
+        user: Option<String>, // Legacy field (not used in current struct)
+        working_dir: Option<String>, // Legacy field name
+        healthcheck: Option<String>, // Legacy field name
+        labels: HashMap<String, String>, // Legacy field (not used)
+    ) -> Self {
+        // Dynamically adapt legacy construction to current struct
+        let full_image = if tag.is_empty() { image } else { format!("{}:{}", image, tag) };
+
+        let mut final_command = command;
+        if final_command.is_none() && args.is_some() {
+            final_command = args; // Merge args into command
+        }
+
+        let healthcheck = healthcheck; // Keep field name
+        let workdir = working_dir; // Rename field
+
+        // Convert legacy volume strings to VolumeSpec
+        let volumes: Vec<VolumeSpec> = volumes
+            .into_iter()
+            .filter_map(|vol| {
+                let parts: Vec<&str> = vol.split(':').collect();
+                if parts.len() >= 2 {
+                    Some(VolumeSpec {
+                        host: parts[0].to_string(),
+                        container: parts[1].to_string(),
+                        readonly: parts.get(2).map(|s| s.contains("ro")).unwrap_or(false),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Self {
+            image: full_image,
+            env: env_vars, // Rename field
+            ports,
+            volumes,
+            depends_on,
+            command: final_command,
+            workdir,
+            healthcheck,
+        }
+    }
+}
+
 /// Volume mount specification
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct VolumeSpec {

@@ -315,13 +315,13 @@ impl ServicePlugin for OtelCollectorPlugin {
                 }
 
                 if self.config.enable_health_check {
-                    let health_port = node
-                        .get_host_port_ipv4(HEALTH_CHECK_PORT)
-                        .await
-                        .map_err(|e| {
-                            CleanroomError::container_error("Failed to get health check port")
-                                .with_source(e.to_string())
-                        })?;
+                    let health_port =
+                        node.get_host_port_ipv4(HEALTH_CHECK_PORT)
+                            .await
+                            .map_err(|e| {
+                                CleanroomError::container_error("Failed to get health check port")
+                                    .with_source(e.to_string())
+                            })?;
                     metadata.insert("health_check_port".to_string(), health_port.to_string());
                     metadata.insert(
                         "health_check_endpoint".to_string(),
@@ -333,13 +333,13 @@ impl ServicePlugin for OtelCollectorPlugin {
                 }
 
                 if self.config.enable_prometheus {
-                    let prom_port = node
-                        .get_host_port_ipv4(PROMETHEUS_PORT)
-                        .await
-                        .map_err(|e| {
-                            CleanroomError::container_error("Failed to get Prometheus port")
-                                .with_source(e.to_string())
-                        })?;
+                    let prom_port =
+                        node.get_host_port_ipv4(PROMETHEUS_PORT)
+                            .await
+                            .map_err(|e| {
+                                CleanroomError::container_error("Failed to get Prometheus port")
+                                    .with_source(e.to_string())
+                            })?;
                     metadata.insert("prometheus_port".to_string(), prom_port.to_string());
                     metadata.insert(
                         "prometheus_endpoint".to_string(),

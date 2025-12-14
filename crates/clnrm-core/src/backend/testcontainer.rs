@@ -455,7 +455,7 @@ impl TestcontainerBackend {
     pub fn check_image_cache_status(&self) -> Result<bool> {
         // Use docker images command to check if image exists locally
         let output = std::process::Command::new("docker")
-            .args(&["images", "--format", "{{.Repository}}:{{.Tag}}"])
+            .args(["images", "--format", "{{.Repository}}:{{.Tag}}"])
             .output()
             .map_err(|e| {
                 CleanroomError::container_error(format!("Failed to check Docker images: {}", e))
@@ -508,7 +508,7 @@ impl TestcontainerBackend {
         {
             // On macOS, use sysctl
             let output = std::process::Command::new("sysctl")
-                .args(&["-n", "vm.loadavg"])
+                .args(["-n", "vm.loadavg"])
                 .output()
                 .map_err(|e| {
                     CleanroomError::container_error(format!("Failed to get system load: {}", e))

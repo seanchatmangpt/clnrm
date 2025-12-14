@@ -25,3 +25,17 @@ clnrm plugins
 ## Framework Self-Testing
 
 This project demonstrates the cleanroom framework testing itself through the "eat your own dog food" principle.
+
+## Development
+
+### Code Standards
+
+This project follows strict code standards to eliminate Mura (inconsistency). All contributions must adhere to:
+
+- **No unwrap/expect in production code**
+- **Consistent error handling with Result<T, CleanroomError>**
+- **Minimum 80% test coverage**
+- **Full documentation for public APIs**
+- **Consistent formatting with `cargo fmt`**
+
+See [CODE_STANDARDS.md](docs/CODE_STANDARDS.md) for comprehensive standards and the code review checklist.

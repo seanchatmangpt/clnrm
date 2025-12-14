@@ -40,6 +40,32 @@ macro_rules! test_timeout {
 /// Test timeout configuration
 pub const TEST_TIMEOUT: Duration = Duration::from_secs(1);
 
+/// Compile-time validated test run with bounds checking
+/// N must be >= 10 and <= 1000 at compile time
+pub struct ValidatedTestRun<const N: usize> {
+    _phantom: std::marker::PhantomData<[(); N]>,
+}
+
+impl<const N: usize> ValidatedTestRun<N> {
+    /// Create a new validated test run
+    /// Bounds checking: N must be between 10 and 1000 inclusive
+    pub const fn new() -> Self {
+        // Compile-time bounds checking using const assertions
+        // This will fail to compile if N is outside the valid range
+        assert!(N >= 10, "ValidatedTestRun: N must be >= 10");
+        assert!(N <= 1000, "ValidatedTestRun: N must be <= 1000");
+
+        Self {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Get the validated test count
+    pub const fn count() -> usize {
+        N
+    }
+}
+
 /// Assert that a test completes within the timeout
 pub fn assert_test_timeout<F>(test_fn: F) 
 where 

@@ -609,7 +609,7 @@ fn compute_trace_digest(spans: &[SpanData]) -> Result<String> {
 }
 
 /// Analysis report containing all validation results
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AnalysisReport {
     /// Test name from TOML
     pub test_name: String,
@@ -689,7 +689,7 @@ impl AnalysisReport {
 }
 
 /// Individual validator result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ValidatorResult {
     /// Validator name
     pub name: String,

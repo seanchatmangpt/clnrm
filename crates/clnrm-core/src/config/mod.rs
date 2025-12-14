@@ -19,7 +19,6 @@ pub mod project;
 pub mod services;
 pub mod spec;
 pub mod types;
-pub mod validation;
 pub mod weaver;
 
 // Re-export commonly used types for backward compatibility

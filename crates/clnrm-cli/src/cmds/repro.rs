@@ -122,10 +122,15 @@ pub async fn run(args: &ReproArgs) -> Result<()> {
         println!("   Environment and files match baseline perfectly");
         println!("");
         println!("🚀 Ready to run tests with:");
-        println!("   clnrm run {}", baseline.test_files.iter()
-            .map(|f| f.path.as_str())
-            .collect::<Vec<_>>()
-            .join(" "));
+        println!(
+            "   clnrm run {}",
+            baseline
+                .test_files
+                .iter()
+                .map(|f| f.path.as_str())
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
     } else {
         println!("⚠️  PARTIAL REPRODUCTION READY");
         println!("   {} compatibility issues found", issues);
@@ -151,20 +156,22 @@ pub async fn run(args: &ReproArgs) -> Result<()> {
 /// Load baseline data from file
 fn load_baseline(path: &Path) -> Result<BaselineData> {
     if !path.exists() {
-        return Err(clnrm_core::error::CleanroomError::config_error(
-            format!("Baseline file not found: {}", path.display())
-        ));
+        return Err(clnrm_core::error::CleanroomError::config_error(format!(
+            "Baseline file not found: {}",
+            path.display()
+        )));
     }
 
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| clnrm_core::error::CleanroomError::io_error(
-            format!("Failed to read baseline file: {}", e)
-        ))?;
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        clnrm_core::error::CleanroomError::io_error(format!("Failed to read baseline file: {}", e))
+    })?;
 
-    serde_json::from_str(&content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(
-            format!("Failed to parse baseline JSON: {}", e)
+    serde_json::from_str(&content).map_err(|e| {
+        clnrm_core::error::CleanroomError::config_error(format!(
+            "Failed to parse baseline JSON: {}",
+            e
         ))
+    })
 }
 
 /// Validate environment compatibility
@@ -174,13 +181,19 @@ fn validate_environment(baseline_env: &EnvironmentInfo) -> Result<ReproResult> {
     // Check OS
     let current_os = std::env::consts::OS;
     if current_os != baseline_env.os {
-        warnings.push(format!("OS mismatch: baseline={}, current={}", baseline_env.os, current_os));
+        warnings.push(format!(
+            "OS mismatch: baseline={}, current={}",
+            baseline_env.os, current_os
+        ));
     }
 
     // Check architecture
     let current_arch = std::env::consts::ARCH;
     if current_arch != baseline_env.arch {
-        warnings.push(format!("Architecture mismatch: baseline={}, current={}", baseline_env.arch, current_arch));
+        warnings.push(format!(
+            "Architecture mismatch: baseline={}, current={}",
+            baseline_env.arch, current_arch
+        ));
     }
 
     // Framework version compatibility would be checked here
@@ -213,8 +226,12 @@ fn validate_test_files(test_files: &[TestFileInfo], verify_digest: bool) -> Resu
             match calculate_file_hash(path) {
                 Ok(current_hash) => {
                     if current_hash != test_file.hash {
-                        errors.push(format!("File hash mismatch: {} (baseline: {}, current: {})",
-                            test_file.path, &test_file.hash[..8], &current_hash[..8]));
+                        errors.push(format!(
+                            "File hash mismatch: {} (baseline: {}, current: {})",
+                            test_file.path,
+                            &test_file.hash[..8],
+                            &current_hash[..8]
+                        ));
                     }
                 }
                 Err(e) => {
@@ -248,7 +265,7 @@ fn validate_test_files(test_files: &[TestFileInfo], verify_digest: bool) -> Resu
 
 /// Calculate SHA-256 hash of file
 fn calculate_file_hash(path: &Path) -> Result<String> {
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
     use std::io::Read;
 
     let mut file = std::fs::File::open(path)?;
@@ -286,8 +303,10 @@ fn create_results_report(
         "generated_at": chrono::Utc::now().to_rfc3339()
     });
 
-    serde_json::to_string_pretty(&report)
-        .map_err(|e| clnrm_core::error::CleanroomError::serialization_error(
-            format!("Failed to create results report: {}", e)
+    serde_json::to_string_pretty(&report).map_err(|e| {
+        clnrm_core::error::CleanroomError::serialization_error(format!(
+            "Failed to create results report: {}",
+            e
         ))
+    })
 }

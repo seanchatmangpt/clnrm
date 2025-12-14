@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 # Explicit permissions (following principle of least privilege)
 permissions:
@@ -25,163 +25,166 @@ jobs:
         rust: [stable]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Rust with cache
-      uses: ./.github/actions/setup-rust-cache
-      with:
-        components: 'rustfmt, clippy'
-        cache-key-prefix: 'ci-${{ matrix.os }}'
+      - name: Setup Rust with cache
+        uses: ./.github/actions/setup-rust-cache
+        with:
+          components: "rustfmt, clippy"
+          cache-key-prefix: "ci-${{ matrix.os }}"
 
-    - name: Install Weaver
-      uses: ./.github/actions/install-cargo-tool
-      with:
-        tool-name: weaver
-        version: '0.16.1'
+      - name: Install Weaver
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          tool-name: weaver
+          version: "0.16.1"
 
-    - name: Run cargo check
-      run: cargo check --all-features
+      - name: Run cargo check
+        run: cargo check --all-features
 
-    - name: Run cargo fmt check
-      run: cargo fmt --all -- --check
+      - name: Run cargo fmt check
+        run: cargo fmt --all -- --check
 
-    - name: Run cargo clippy
-      run: cargo clippy --all-features -- -D warnings -A clippy::unnecessary_unwrap
+      - name: Run cargo clippy
+        run: cargo clippy --all-features -- -D warnings -A clippy::unnecessary_unwrap
 
-    - name: Run unit tests (core functionality - Docker-independent)
-      run: cargo test --lib --all-features
+      - name: Run consistency checks (eliminate mura)
+        run: bash scripts/scan-fakes.sh
 
-    - name: Run doctests (documentation examples)
-      run: cargo test --doc --all-features
+      - name: Run unit tests (core functionality - Docker-independent)
+        run: cargo test --lib --all-features
 
-    - name: Run integration tests (full suite with Docker)
-      run: cargo test --test '*' --all-features
+      - name: Run doctests (documentation examples)
+        run: cargo test --doc --all-features
 
-    - name: Build release binary
-      run: cargo build --release --features otel
+      - name: Run integration tests (full suite with Docker)
+        run: cargo test --test '*' --all-features
 
-    - name: Validate Weaver registry
-      run: weaver registry check -r registry/
+      - name: Build release binary
+        run: cargo build --release --features otel
 
-    - name: Run E2E validation
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        # FMEA fix: Verify script exists before execution
-        echo "🧪 Running E2E validation..."
+      - name: Validate Weaver registry
+        run: weaver registry check -r registry/
 
-        if [ ! -f "./tests/e2e/v1_2_1_validation.sh" ]; then
-          echo "⚠️  E2E validation script not found at ./tests/e2e/v1_2_1_validation.sh"
-          echo "Skipping E2E validation (script may not exist in this branch)"
-          exit 0
-        fi
+      - name: Run E2E validation
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # FMEA fix: Verify script exists before execution
+          echo "🧪 Running E2E validation..."
 
-        # Set registry path for CI environment
-        export CLNRM_REGISTRY_PATH="${PWD}/registry"
+          if [ ! -f "./tests/e2e/v1_2_1_validation.sh" ]; then
+            echo "⚠️  E2E validation script not found at ./tests/e2e/v1_2_1_validation.sh"
+            echo "Skipping E2E validation (script may not exist in this branch)"
+            exit 0
+          fi
 
-        if chmod +x ./tests/e2e/v1_2_1_validation.sh && ./tests/e2e/v1_2_1_validation.sh; then
-          echo "✅ E2E validation passed"
-        else
-          echo "❌ E2E validation failed"
-          exit 1
-        fi
+          # Set registry path for CI environment
+          export CLNRM_REGISTRY_PATH="${PWD}/registry"
+
+          if chmod +x ./tests/e2e/v1_2_1_validation.sh && ./tests/e2e/v1_2_1_validation.sh; then
+            echo "✅ E2E validation passed"
+          else
+            echo "❌ E2E validation failed"
+            exit 1
+          fi
 
   security:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Rust with cache
-      uses: ./.github/actions/setup-rust-cache
-      with:
-        cache-key-prefix: 'security'
+      - name: Setup Rust with cache
+        uses: ./.github/actions/setup-rust-cache
+        with:
+          cache-key-prefix: "security"
 
-    - name: Run cargo audit
-      continue-on-error: true
-      run: |
-        # FMEA fix: Explicit error handling for tool installation and audit results
-        echo "🔐 Running cargo audit..."
+      - name: Run cargo audit
+        continue-on-error: true
+        run: |
+          # FMEA fix: Explicit error handling for tool installation and audit results
+          echo "🔐 Running cargo audit..."
 
-        if ! command -v cargo-audit &> /dev/null; then
-          echo "📦 Installing cargo-audit..."
-          if ! cargo install cargo-audit; then
-            echo "⚠️  Failed to install cargo-audit, skipping audit"
-            exit 0
+          if ! command -v cargo-audit &> /dev/null; then
+            echo "📦 Installing cargo-audit..."
+            if ! cargo install cargo-audit; then
+              echo "⚠️  Failed to install cargo-audit, skipping audit"
+              exit 0
+            fi
+          else
+            echo "✅ cargo-audit already cached"
           fi
-        else
-          echo "✅ cargo-audit already cached"
-        fi
 
-        # Run audit but don't fail on warnings (continue-on-error is set)
-        if cargo audit --deny warnings; then
-          echo "✅ Security audit passed (no vulnerabilities)"
-        else
-          echo "⚠️  Security audit found issues (see above for details)"
-        fi
+          # Run audit but don't fail on warnings (continue-on-error is set)
+          if cargo audit --deny warnings; then
+            echo "✅ Security audit passed (no vulnerabilities)"
+          else
+            echo "⚠️  Security audit found issues (see above for details)"
+          fi
 
-    - name: Check for secrets
-      continue-on-error: true
-      run: |
-        # FMEA fix: Explicit secret detection with proper reporting
-        echo "🔍 Scanning for hardcoded secrets..."
+      - name: Check for secrets
+        continue-on-error: true
+        run: |
+          # FMEA fix: Explicit secret detection with proper reporting
+          echo "🔍 Scanning for hardcoded secrets..."
 
-        SECRETS_FOUND=0
+          SECRETS_FOUND=0
 
-        # Check for API keys
-        if git grep -i "api.key\|api_key" -- '*.rs' '*.toml' 2>/dev/null | grep -v "test\|example"; then
-          echo "⚠️  Potential API key patterns found"
-          SECRETS_FOUND=$((SECRETS_FOUND + 1))
-        fi
+          # Check for API keys
+          if git grep -i "api.key\|api_key" -- '*.rs' '*.toml' 2>/dev/null | grep -v "test\|example"; then
+            echo "⚠️  Potential API key patterns found"
+            SECRETS_FOUND=$((SECRETS_FOUND + 1))
+          fi
 
-        # Check for passwords
-        if git grep -i "password\|passwd" -- '*.rs' '*.toml' 2>/dev/null | grep -v "test\|example"; then
-          echo "⚠️  Potential password patterns found"
-          SECRETS_FOUND=$((SECRETS_FOUND + 1))
-        fi
+          # Check for passwords
+          if git grep -i "password\|passwd" -- '*.rs' '*.toml' 2>/dev/null | grep -v "test\|example"; then
+            echo "⚠️  Potential password patterns found"
+            SECRETS_FOUND=$((SECRETS_FOUND + 1))
+          fi
 
-        # Check for token patterns
-        if git grep -i "secret\|token" -- '*.rs' '*.toml' 2>/dev/null | grep -v "test\|example"; then
-          echo "⚠️  Potential secret/token patterns found"
-          SECRETS_FOUND=$((SECRETS_FOUND + 1))
-        fi
+          # Check for token patterns
+          if git grep -i "secret\|token" -- '*.rs' '*.toml' 2>/dev/null | grep -v "test\|example"; then
+            echo "⚠️  Potential secret/token patterns found"
+            SECRETS_FOUND=$((SECRETS_FOUND + 1))
+          fi
 
-        if [ "$SECRETS_FOUND" -gt 0 ]; then
-          echo "::warning::Potential secrets found (may be false positives in test/example code)"
-        else
-          echo "✅ No obvious secret patterns detected"
-        fi
+          if [ "$SECRETS_FOUND" -gt 0 ]; then
+            echo "::warning::Potential secrets found (may be false positives in test/example code)"
+          else
+            echo "✅ No obvious secret patterns detected"
+          fi
 
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Rust with cache
-      uses: ./.github/actions/setup-rust-cache
-      with:
-        cache-key-prefix: 'coverage'
+      - name: Setup Rust with cache
+        uses: ./.github/actions/setup-rust-cache
+        with:
+          cache-key-prefix: "coverage"
 
-    - name: Install tarpaulin
-      uses: ./.github/actions/install-cargo-tool
-      with:
-        tool-name: cargo-tarpaulin
-        version: '0.31.2'
+      - name: Install tarpaulin
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          tool-name: cargo-tarpaulin
+          version: "0.31.2"
 
-    - name: Generate coverage
-      run: |
-        # FMEA fix: Validate coverage generation completes
-        echo "📊 Generating code coverage report..."
-        if cargo tarpaulin --out Xml --all-features; then
-          echo "✅ Coverage report generated"
-        else
-          echo "❌ Coverage generation failed"
-          exit 1
-        fi
+      - name: Generate coverage
+        run: |
+          # FMEA fix: Validate coverage generation completes
+          echo "📊 Generating code coverage report..."
+          if cargo tarpaulin --out Xml --all-features; then
+            echo "✅ Coverage report generated"
+          else
+            echo "❌ Coverage generation failed"
+            exit 1
+          fi
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        files: ./cobertura.xml
-        fail_ci_if_error: false
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./cobertura.xml
+          fail_ci_if_error: false

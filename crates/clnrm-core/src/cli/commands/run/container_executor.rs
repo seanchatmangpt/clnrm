@@ -3,7 +3,7 @@
 //! Executes test configurations with containers and steps as defined in TOML files.
 //! Provides hermetic testing capabilities with automatic container lifecycle management.
 
-use crate::config::types::{ContainerConfig, StepAssertions, StepConfig, TestConfig};
+use crate::config::types::{ContainerConfig, StepConfig, TestConfig};
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::process::Stdio;
@@ -49,7 +49,7 @@ pub async fn execute_container_test(test_config: &TestConfig) -> Result<Vec<Step
         test_config
             .test
             .as_ref()
-            .and_then(|t| t.name.as_ref())
+            .map(|t| t.metadata().name.as_str())
             .unwrap_or("unnamed")
     );
 
@@ -969,4 +969,3 @@ mod tests {
             .unwrap_or(false)
     }
 }
-

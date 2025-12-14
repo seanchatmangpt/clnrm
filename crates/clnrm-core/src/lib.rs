@@ -198,8 +198,7 @@ pub mod types {
             Self(s.to_string())
         }
     }
-}
-pub use determinism::DeterminismEngine;
+}pub use determinism::DeterminismEngine;
 pub use formatting::{
     format_test_results, format_toml_content, format_toml_file, needs_formatting, Formatter,
     FormatterType, HumanFormatter, JsonFormatter, JunitFormatter, TapFormatter, TestResult,

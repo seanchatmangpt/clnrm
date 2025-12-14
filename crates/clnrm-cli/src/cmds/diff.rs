@@ -3,8 +3,8 @@
 //! Provides trace comparison for regression detection.
 //! Follows 80/20 principle: Focus on detecting span changes between test runs.
 
+use crate::commands::diff_traces;
 use clap::Args;
-use clnrm_core::cli::commands::diff_traces;
 use clnrm_core::error::Result;
 
 #[derive(Args, Debug)]
@@ -48,19 +48,21 @@ pub async fn run(args: &DiffArgs) -> Result<()> {
     let current_path = std::path::Path::new(&args.current);
 
     if !baseline_path.exists() {
-        return Err(clnrm_core::error::CleanroomError::config_error(
-            format!("Baseline file not found: {}", args.baseline)
-        ));
+        return Err(clnrm_core::error::CleanroomError::config_error(format!(
+            "Baseline file not found: {}",
+            args.baseline
+        )));
     }
 
     if !current_path.exists() {
-        return Err(clnrm_core::error::CleanroomError::config_error(
-            format!("Current file not found: {}", args.current)
-        ));
+        return Err(clnrm_core::error::CleanroomError::config_error(format!(
+            "Current file not found: {}",
+            args.current
+        )));
     }
 
     // Act: Compare traces and display results
-    let result = diff_traces(baseline_path, current_path, &args.format, args.only_changes)?;
+    let result = diff_traces(baseline_path, current_path)?;
 
     // Assert: Display results with clear pass/fail indication
     println!("Trace Comparison Results:");
@@ -94,8 +96,10 @@ pub async fn run(args: &DiffArgs) -> Result<()> {
     } else {
         println!("\n❌ Differences found between traces");
         return Err(clnrm_core::error::CleanroomError::validation_error(
-            format!("Trace comparison failed: {} added, {} removed, {} modified spans",
-                result.added_count, result.removed_count, result.modified_count)
+            format!(
+                "Trace comparison failed: {} added, {} removed, {} modified spans",
+                result.added_count, result.removed_count, result.modified_count
+            ),
         ));
     }
 

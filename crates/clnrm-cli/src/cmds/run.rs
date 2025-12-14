@@ -3,8 +3,8 @@
 //! Handles test execution, both sequential and parallel, with comprehensive
 //! error handling and result reporting.
 
+use crate::commands::run_tests_with_shard_and_report;
 use clap::Args;
-use clnrm_core::cli::commands::run_tests_with_shard_and_report;
 use clnrm_core::cli::types::CliConfig;
 use clnrm_core::error::Result;
 use clnrm_core::telemetry::live_check::config::{ValidationConfig, ValidationMode};
@@ -100,7 +100,10 @@ fn create_validation_config(args: &RunArgs) -> Result<ValidationConfig> {
             "strict" => ValidationMode::Strict,
             _ => {
                 return Err(clnrm_core::error::CleanroomError::validation_error(
-                    format!("Invalid validation mode: {}. Valid modes: minimal, 80_20, lenient, strict", mode_str)
+                    format!(
+                        "Invalid validation mode: {}. Valid modes: minimal, 80_20, lenient, strict",
+                        mode_str
+                    ),
                 ));
             }
         }
@@ -126,20 +129,20 @@ fn parse_shard(s: &str) -> Result<(usize, usize)> {
     let parts: Vec<&str> = s.split('/').collect();
     if parts.len() != 2 {
         return Err(clnrm_core::error::CleanroomError::validation_error(
-            "Shard must be in format i/m (e.g., 1/4)"
+            "Shard must be in format i/m (e.g., 1/4)",
         ));
     }
 
-    let i = parts[0].parse().map_err(|_| {
-        clnrm_core::error::CleanroomError::validation_error("Invalid shard index")
-    })?;
-    let m = parts[1].parse().map_err(|_| {
-        clnrm_core::error::CleanroomError::validation_error("Invalid shard count")
-    })?;
+    let i = parts[0]
+        .parse()
+        .map_err(|_| clnrm_core::error::CleanroomError::validation_error("Invalid shard index"))?;
+    let m = parts[1]
+        .parse()
+        .map_err(|_| clnrm_core::error::CleanroomError::validation_error("Invalid shard count"))?;
 
     if i == 0 || i > m {
         return Err(clnrm_core::error::CleanroomError::validation_error(
-            "Shard index must be between 1 and total shards"
+            "Shard index must be between 1 and total shards",
         ));
     }
 

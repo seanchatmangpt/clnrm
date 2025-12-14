@@ -34,7 +34,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Run tests
     Run {
@@ -528,7 +528,7 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum CollectorCommands {
     /// Start local OTEL collector
     Up {
@@ -571,7 +571,7 @@ pub enum CollectorCommands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum ServiceCommands {
     /// Show status of all services
     Status,
@@ -618,7 +618,7 @@ pub enum ServiceCommands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum LiveCheckCommands {
     /// Show current live-check configuration
     Status,
@@ -886,4 +886,14 @@ pub fn parse_shard(s: &str) -> Result<(usize, usize), String> {
     }
 
     Ok((i, m))
+}
+
+impl Commands {
+    pub async fn run(self, _verbose: bool) -> crate::error::Result<()> {
+        // TODO: Implement proper dispatch to command modules
+        // For now, return an error to indicate this needs to be implemented
+        Err(crate::error::CleanroomError::internal_error(
+            "Command dispatch not yet implemented for new modular structure"
+        ))
+    }
 }

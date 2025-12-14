@@ -4,7 +4,6 @@
 //! Follows 80/20 principle: Focus on span search and display with regex filtering.
 
 use clap::Args;
-use clnrm_core::cli::commands::filter_spans;
 use clnrm_core::cli::types::OutputFormat;
 use clnrm_core::error::Result;
 
@@ -53,9 +52,10 @@ pub async fn run(args: &SpansArgs) -> Result<()> {
     let trace_path = std::path::Path::new(&args.trace);
 
     if !trace_path.exists() {
-        return Err(clnrm_core::error::CleanroomError::config_error(
-            format!("Trace file not found: {}", args.trace)
-        ));
+        return Err(clnrm_core::error::CleanroomError::config_error(format!(
+            "Trace file not found: {}",
+            args.trace
+        )));
     }
 
     // Convert string format to enum
@@ -64,14 +64,15 @@ pub async fn run(args: &SpansArgs) -> Result<()> {
         "json" => OutputFormat::Json,
         "human" => OutputFormat::Human,
         _ => {
-            return Err(clnrm_core::error::CleanroomError::config_error(
-                format!("Invalid format: {}. Supported formats: table, json, human", args.format)
-            ));
+            return Err(clnrm_core::error::CleanroomError::config_error(format!(
+                "Invalid format: {}. Supported formats: table, json, human",
+                args.format
+            )));
         }
     };
 
     // Act: Filter and display spans
-    filter_spans(
+    crate::commands::filter_spans(
         trace_path,
         args.grep.as_deref(),
         &output_format,
