@@ -9,21 +9,21 @@ use std::path::Path;
 pub async fn run(template: &str, name: Option<&str>, output: Option<&Path>) -> Result<()> {
     // Handle template types that generate TOML files (v0.6.0 Tera templates)
     let template_result = match template {
-        "otel" => Some((clnrm_core::cli::commands::generate_otel_template()?, "OTEL validation template")),
-        "matrix" => Some((clnrm_core::cli::commands::generate_matrix_template()?, "Matrix testing template")),
+        "otel" => Some((crate::commands::generate_otel_template()?, "OTEL validation template")),
+        "matrix" => Some((crate::commands::generate_matrix_template()?, "Matrix testing template")),
         "macros" | "macro-library" => {
-            Some((clnrm_core::cli::commands::generate_macro_library()?, "Tera macro library"))
+            Some((crate::commands::generate_macro_library()?, "Tera macro library"))
         }
         "full-validation" | "validation" => Some((
-            clnrm_core::cli::commands::generate_full_validation_template()?,
+            crate::commands::generate_full_validation_template()?,
             "Full validation template",
         )),
         "deterministic" => Some((
-            clnrm_core::cli::commands::generate_deterministic_template()?,
+            crate::commands::generate_deterministic_template()?,
             "Deterministic testing template",
         )),
         "lifecycle-matcher" => {
-            Some((clnrm_core::cli::commands::generate_lifecycle_matcher()?, "Lifecycle matcher template"))
+            Some((crate::commands::generate_lifecycle_matcher()?, "Lifecycle matcher template"))
         }
         _ => None,
     };
@@ -45,7 +45,8 @@ pub async fn run(template: &str, name: Option<&str>, output: Option<&Path>) -> R
         Ok(())
     } else {
         // Regular project template (default, advanced, minimal, database, api)
-        clnrm_core::cli::commands::generate_from_template(template, name)?;
+        let name_str = name.unwrap_or("cleanroom-project");
+        crate::commands::generate_from_template(template, Some(name_str))?;
         Ok(())
     }
 }

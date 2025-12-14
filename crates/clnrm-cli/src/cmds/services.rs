@@ -186,8 +186,36 @@ pub enum ServiceCommands {
 }
 
 /// Run the services command (legacy compatibility)
+///
+/// # Arguments
+/// * `Status` - Show status of running services
+/// * `Logs` - Show logs for a specific service
+/// * `Restart` - Restart a service by name
+///
+/// # Returns
+/// * `Result<()>` - Always succeeds with guidance message
+///
+/// # Core Team Standards
+/// - Clear migration path to noun-verb interface
+/// - Backward compatibility maintained
+/// - Helpful error messages for deprecated usage
 pub async fn run(_args: &ServiceCommands) -> Result<()> {
-    // This is kept for backward compatibility
-    // The real noun-verb commands are auto-discovered via linkme
-    unimplemented!("Use noun-verb commands: clnrm services <verb>")
+    // Core team principle: Behavior over implementation details
+    // Provide clear migration guidance for noun-verb interface
+    println!("ℹ️  Services Command - Migration Required");
+    println!("");
+    println!("The legacy subcommand syntax is deprecated.");
+    println!("Please use the new noun-verb syntax:");
+    println!("");
+    println!("  clnrm services status    # Show all service status");
+    println!("  clnrm services logs <name> [lines]  # Show service logs");
+    println!("  clnrm services start <name> [force] # Start service");
+    println!("  clnrm services stop <name> [timeout] # Stop service");
+    println!("");
+    println!("Available verbs: status, logs, start, stop");
+    println!("");
+    println!("Example:");
+    println!("  clnrm services status");
+
+    Ok(())
 }

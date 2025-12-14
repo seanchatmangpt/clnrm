@@ -170,7 +170,7 @@ impl<M: ContainerManager> TestRunner<M> {
                 CleanroomError::internal_error(format!("Container '{}' not found", name))
             })?;
 
-            let handle = self.manager.start(&name, spec).await?;
+            let handle = self.manager.start(&name, spec)?;
             self.handles.insert(name, handle);
         }
 
@@ -184,7 +184,7 @@ impl<M: ContainerManager> TestRunner<M> {
         for name in names.into_iter().rev() {
             if let Some(handle) = self.handles.remove(&name) {
                 // Best effort stop - don't fail if already stopped
-                let _ = self.manager.stop(&handle).await;
+                let _ = self.manager.stop(&handle);
             }
         }
         Ok(())
@@ -268,7 +268,7 @@ impl<M: ContainerManager> TestRunner<M> {
         while attempt < max_attempts {
             attempt += 1;
 
-            let result = self.manager.exec(handle, &step.exec, &env).await?;
+            let result = self.manager.exec(handle, &step.exec, &env)?;
 
             // Check if step passed
             if let Some(assertions) = &step.assert {

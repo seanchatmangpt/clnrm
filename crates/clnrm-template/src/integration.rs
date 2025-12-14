@@ -6,17 +6,18 @@
 //! - Template server for development
 //! - Configuration management for applications
 
-use crate::error::{TemplateError, Result};
+use crate::builder::TemplateEngineBuilder;
 use crate::context::{TemplateContext, TemplateContextBuilder};
-use crate::renderer::{TemplateRenderer, OutputFormat};
+use crate::error::{Result, TemplateError};
+use crate::renderer::{OutputFormat, TemplateRenderer};
 use crate::simple::{render, render_to_format, TemplateBuilder};
 use crate::validation::{TemplateValidator, ValidationRule};
-use crate::builder::TemplateEngineBuilder;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
-use serde_json::Value;
 
 /// Web framework integration helpers
+#[cfg(feature = "web-integration")]
 pub mod web {
     use super::*;
 
@@ -26,7 +27,10 @@ pub mod web {
     pub fn web_context() -> TemplateContextBuilder {
         TemplateContextBuilder::with_defaults()
             .var("timestamp", chrono::Utc::now().to_rfc3339())
-            .var("environment", std::env::var("ENV").unwrap_or_else(|_| "development".to_string()))
+            .var(
+                "environment",
+                std::env::var("ENV").unwrap_or_else(|_| "development".to_string()),
+            )
     }
 
     /// Render template for HTTP response
@@ -35,7 +39,11 @@ pub mod web {
     /// * `template` - Template content
     /// * `vars` - Template variables
     /// * `format` - Output format for response
-    pub fn render_response(template: &str, vars: HashMap<&str, &str>, format: OutputFormat) -> Result<(String, String)> {
+    pub fn render_response(
+        template: &str,
+        vars: HashMap<&str, &str>,
+        format: OutputFormat,
+    ) -> Result<(String, String)> {
         let mut json_vars = HashMap::new();
         for (key, value) in vars {
             json_vars.insert(key.to_string(), Value::String(value.to_string()));
@@ -90,7 +98,12 @@ pub mod web {
         }
 
         /// Render template to specific format
-        pub fn render_to_format(&mut self, template: &str, vars: HashMap<&str, &str>, format: OutputFormat) -> Result<String> {
+        pub fn render_to_format(
+            &mut self,
+            template: &str,
+            vars: HashMap<&str, &str>,
+            format: OutputFormat,
+        ) -> Result<String> {
             let rendered = self.render(template, vars)?;
             match format {
                 OutputFormat::Toml => Ok(rendered),
@@ -111,7 +124,8 @@ pub mod web {
     /// let app = Router::new()
     ///     .route("/config", get(axum_template_handler));
     /// ```
-    pub async fn axum_template_handler() -> Result<axum::response::Response<String>, axum::response::Response<String>> {
+    pub async fn axum_template_handler(
+    ) -> Result<axum::response::Response<String>, axum::response::Response<String>> {
         let mut vars = HashMap::new();
         vars.insert("service", "web-api");
         vars.insert("port", "3000");
@@ -119,11 +133,14 @@ pub mod web {
         let (content, content_type) = render_response(
             "service = \"{{ service }}\"\nport = {{ port }}",
             vars,
-            OutputFormat::Toml
-        ).map_err(|e| axum::response::Response::builder()
-            .status(500)
-            .body(format!("Template error: {}", e))
-            .unwrap())?;
+            OutputFormat::Toml,
+        )
+        .map_err(|e| {
+            axum::response::Response::builder()
+                .status(500)
+                .body(format!("Template error: {}", e))
+                .unwrap()
+        })?;
 
         Ok(axum::response::Response::builder()
             .header("content-type", content_type)
@@ -132,6 +149,7 @@ pub mod web {
     }
 
     /// Actix-web handler for template rendering
+    #[cfg(feature = "web-integration")]
     pub async fn actix_template_handler() -> Result<actix_web::HttpResponse, actix_web::Error> {
         let mut vars = HashMap::new();
         vars.insert("service", "web-api");
@@ -140,8 +158,9 @@ pub mod web {
         let content = render_to_format(
             "Service: {{ service }} v{{ version }}",
             vars,
-            OutputFormat::Plain
-        ).map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?;
+            OutputFormat::Plain,
+        )
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?;
 
         Ok(actix_web::HttpResponse::Ok()
             .content_type("text/plain")
@@ -158,30 +177,40 @@ pub mod cli {
     pub fn template_command() -> Command {
         Command::new("template")
             .about("Render templates with variables")
-            .arg(Arg::new("template")
-                .help("Template file to render")
-                .required(true)
-                .index(1))
-            .arg(Arg::new("output")
-                .short('o')
-                .long("output")
-                .help("Output file (default: stdout)")
-                .value_name("FILE"))
-            .arg(Arg::new("format")
-                .short('f')
-                .long("format")
-                .help("Output format: toml, json, yaml, plain")
-                .default_value("toml"))
-            .arg(Arg::new("variable")
-                .short('v')
-                .long("var")
-                .help("Template variables (key=value)")
-                .action(clap::ArgAction::Append)
-                .value_name("KEY=VALUE"))
-            .arg(Arg::new("context")
-                .short('c')
-                .long("context")
-                .help("Context file with variables (JSON/TOML)"))
+            .arg(
+                Arg::new("template")
+                    .help("Template file to render")
+                    .required(true)
+                    .index(1),
+            )
+            .arg(
+                Arg::new("output")
+                    .short('o')
+                    .long("output")
+                    .help("Output file (default: stdout)")
+                    .value_name("FILE"),
+            )
+            .arg(
+                Arg::new("format")
+                    .short('f')
+                    .long("format")
+                    .help("Output format: toml, json, yaml, plain")
+                    .default_value("toml"),
+            )
+            .arg(
+                Arg::new("variable")
+                    .short('v')
+                    .long("var")
+                    .help("Template variables (key=value)")
+                    .action(clap::ArgAction::Append)
+                    .value_name("KEY=VALUE"),
+            )
+            .arg(
+                Arg::new("context")
+                    .short('c')
+                    .long("context")
+                    .help("Context file with variables (JSON/TOML)"),
+            )
     }
 
     /// Execute template command
@@ -189,10 +218,12 @@ pub mod cli {
     /// # Arguments
     /// * `matches` - Command line arguments
     pub fn execute_template_command(matches: &ArgMatches) -> Result<()> {
-        let template_path = matches.get_one::<String>("template")
+        let template_path = matches
+            .get_one::<String>("template")
             .ok_or_else(|| TemplateError::ValidationError("Template file required".to_string()))?;
 
-        let format_str = matches.get_one::<String>("format")
+        let format_str = matches
+            .get_one::<String>("format")
             .map(|s| s.as_str())
             .unwrap_or("toml");
 
@@ -215,26 +246,31 @@ pub mod cli {
 
         // Load context from file if provided
         if let Some(context_path) = matches.get_one::<String>("context") {
-            let context_content = std::fs::read_to_string(context_path)
-                .map_err(|e| TemplateError::IoError(format!("Failed to read context file: {}", e)))?;
+            let context_content = std::fs::read_to_string(context_path).map_err(|e| {
+                TemplateError::IoError(format!("Failed to read context file: {}", e))
+            })?;
 
             // Try to parse as JSON first, then TOML
-            let context_vars: HashMap<String, Value> = if let Ok(json) = serde_json::from_str(&context_content) {
-                json
-            } else if let Ok(toml) = toml::from_str(&context_content) {
-                toml
-            } else {
-                return Err(TemplateError::ValidationError(
-                    "Context file must be valid JSON or TOML".to_string()
-                ));
-            };
+            let context_vars: HashMap<String, Value> =
+                if let Ok(json) = serde_json::from_str(&context_content) {
+                    json
+                } else if let Ok(toml) = toml::from_str(&context_content) {
+                    toml
+                } else {
+                    return Err(TemplateError::ValidationError(
+                        "Context file must be valid JSON or TOML".to_string(),
+                    ));
+                };
 
             // Merge context variables
             for (key, value) in context_vars {
-                vars.insert(&key, match value {
-                    Value::String(s) => s.as_str(),
-                    _ => value.to_string().as_str(),
-                });
+                vars.insert(
+                    &key,
+                    match value {
+                        Value::String(s) => s.as_str(),
+                        _ => value.to_string().as_str(),
+                    },
+                );
             }
         }
 
@@ -344,8 +380,9 @@ pub mod config {
         let mut config = HashMap::new();
 
         for path in config_paths {
-            let template_content = std::fs::read_to_string(path)
-                .map_err(|e| TemplateError::IoError(format!("Failed to read config template: {}", e)))?;
+            let template_content = std::fs::read_to_string(path).map_err(|e| {
+                TemplateError::IoError(format!("Failed to read config template: {}", e))
+            })?;
 
             let mut vars = HashMap::new();
             vars.insert("environment", env);
@@ -354,11 +391,13 @@ pub mod config {
 
             // Parse rendered config
             let parsed: Value = if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                serde_json::from_str(&rendered)
-                    .map_err(|e| TemplateError::ValidationError(format!("Invalid JSON config: {}", e)))?
+                serde_json::from_str(&rendered).map_err(|e| {
+                    TemplateError::ValidationError(format!("Invalid JSON config: {}", e))
+                })?
             } else {
-                toml::from_str(&rendered)
-                    .map_err(|e| TemplateError::ValidationError(format!("Invalid TOML config: {}", e)))?
+                toml::from_str(&rendered).map_err(|e| {
+                    TemplateError::ValidationError(format!("Invalid TOML config: {}", e))
+                })?
             };
 
             // Merge into config
@@ -376,28 +415,39 @@ pub mod config {
     /// * `template_dir` - Directory containing configuration templates
     /// * `output_dir` - Directory to write generated configs
     /// * `environment` - Target environment
-    pub fn generate_deployment_configs(template_dir: &Path, output_dir: &Path, environment: &str) -> Result<()> {
+    pub fn generate_deployment_configs(
+        template_dir: &Path,
+        output_dir: &Path,
+        environment: &str,
+    ) -> Result<()> {
         use walkdir::WalkDir;
 
-        std::fs::create_dir_all(output_dir)
-            .map_err(|e| TemplateError::IoError(format!("Failed to create output directory: {}", e)))?;
+        std::fs::create_dir_all(output_dir).map_err(|e| {
+            TemplateError::IoError(format!("Failed to create output directory: {}", e))
+        })?;
 
-        for entry in WalkDir::new(template_dir).into_iter().filter_map(|e| e.ok()) {
+        for entry in WalkDir::new(template_dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
             if entry.file_type().is_file() {
                 let template_path = entry.path();
-                let relative_path = template_path.strip_prefix(template_dir)
-                    .map_err(|_| TemplateError::ValidationError("Invalid template path".to_string()))?;
+                let relative_path = template_path.strip_prefix(template_dir).map_err(|_| {
+                    TemplateError::ValidationError("Invalid template path".to_string())
+                })?;
 
                 let output_path = output_dir.join(relative_path);
 
                 // Create output directory structure
                 if let Some(parent) = output_path.parent() {
-                    std::fs::create_dir_all(parent)
-                        .map_err(|e| TemplateError::IoError(format!("Failed to create output directory: {}", e)))?;
+                    std::fs::create_dir_all(parent).map_err(|e| {
+                        TemplateError::IoError(format!("Failed to create output directory: {}", e))
+                    })?;
                 }
 
-                let template_content = std::fs::read_to_string(template_path)
-                    .map_err(|e| TemplateError::IoError(format!("Failed to read template: {}", e)))?;
+                let template_content = std::fs::read_to_string(template_path).map_err(|e| {
+                    TemplateError::IoError(format!("Failed to read template: {}", e))
+                })?;
 
                 let mut vars = HashMap::new();
                 vars.insert("environment", environment);
@@ -405,8 +455,9 @@ pub mod config {
 
                 let rendered = render(&template_content, vars)?;
 
-                std::fs::write(&output_path, rendered)
-                    .map_err(|e| TemplateError::IoError(format!("Failed to write config: {}", e)))?;
+                std::fs::write(&output_path, rendered).map_err(|e| {
+                    TemplateError::IoError(format!("Failed to write config: {}", e))
+                })?;
 
                 println!("Generated: {}", output_path.display());
             }
@@ -423,8 +474,14 @@ pub mod database {
     /// Template context for database operations
     pub fn database_context() -> TemplateContextBuilder {
         TemplateContextBuilder::with_defaults()
-            .var("database_url", std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://db.sqlite".to_string()))
-            .var("database_type", std::env::var("DATABASE_TYPE").unwrap_or_else(|_| "sqlite".to_string()))
+            .var(
+                "database_url",
+                std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://db.sqlite".to_string()),
+            )
+            .var(
+                "database_type",
+                std::env::var("DATABASE_TYPE").unwrap_or_else(|_| "sqlite".to_string()),
+            )
     }
 
     /// Render database migration template
@@ -435,7 +492,10 @@ pub mod database {
     pub fn render_migration(template: &str, migration_name: &str) -> Result<String> {
         let mut vars = HashMap::new();
         vars.insert("migration_name", migration_name);
-        vars.insert("timestamp", chrono::Utc::now().timestamp().to_string().as_str());
+        vars.insert(
+            "timestamp",
+            chrono::Utc::now().timestamp().to_string().as_str(),
+        );
 
         render(template, vars)
     }
@@ -449,8 +509,9 @@ pub mod database {
         let mut schema_parts = Vec::new();
 
         for template_path in schema_templates {
-            let template_content = std::fs::read_to_string(template_path)
-                .map_err(|e| TemplateError::IoError(format!("Failed to read schema template: {}", e)))?;
+            let template_content = std::fs::read_to_string(template_path).map_err(|e| {
+                TemplateError::IoError(format!("Failed to read schema template: {}", e))
+            })?;
 
             let rendered = render(&template_content, HashMap::new())?;
             schema_parts.push(rendered);
@@ -471,8 +532,14 @@ pub mod docker {
     /// Template context for Docker operations
     pub fn docker_context() -> TemplateContextBuilder {
         TemplateContextBuilder::with_defaults()
-            .var("docker_registry", std::env::var("DOCKER_REGISTRY").unwrap_or_else(|_| "localhost:5000".to_string()))
-            .var("image_tag", std::env::var("IMAGE_TAG").unwrap_or_else(|_| "latest".to_string()))
+            .var(
+                "docker_registry",
+                std::env::var("DOCKER_REGISTRY").unwrap_or_else(|_| "localhost:5000".to_string()),
+            )
+            .var(
+                "image_tag",
+                std::env::var("IMAGE_TAG").unwrap_or_else(|_| "latest".to_string()),
+            )
     }
 
     /// Render Dockerfile from template
@@ -495,7 +562,11 @@ pub mod docker {
     /// * `template` - docker-compose template
     /// * `service_name` - Service name
     /// * `image_name` - Docker image name
-    pub fn render_docker_compose(template: &str, service_name: &str, image_name: &str) -> Result<String> {
+    pub fn render_docker_compose(
+        template: &str,
+        service_name: &str,
+        image_name: &str,
+    ) -> Result<String> {
         let mut vars = HashMap::new();
         vars.insert("service_name", service_name);
         vars.insert("image_name", image_name);
@@ -511,8 +582,14 @@ pub mod kubernetes {
     /// Template context for Kubernetes operations
     pub fn k8s_context() -> TemplateContextBuilder {
         TemplateContextBuilder::with_defaults()
-            .var("namespace", std::env::var("K8S_NAMESPACE").unwrap_or_else(|_| "default".to_string()))
-            .var("replicas", std::env::var("REPLICAS").unwrap_or_else(|_| "1".to_string()))
+            .var(
+                "namespace",
+                std::env::var("K8S_NAMESPACE").unwrap_or_else(|_| "default".to_string()),
+            )
+            .var(
+                "replicas",
+                std::env::var("REPLICAS").unwrap_or_else(|_| "1".to_string()),
+            )
     }
 
     /// Render Kubernetes deployment from template
@@ -597,8 +674,14 @@ pub mod build {
     pub fn build_context() -> TemplateContextBuilder {
         TemplateContextBuilder::with_defaults()
             .var("build_time", chrono::Utc::now().to_rfc3339())
-            .var("git_commit", std::env::var("GIT_COMMIT").unwrap_or_else(|_| "unknown".to_string()))
-            .var("build_number", std::env::var("BUILD_NUMBER").unwrap_or_else(|_| "1".to_string()))
+            .var(
+                "git_commit",
+                std::env::var("GIT_COMMIT").unwrap_or_else(|_| "unknown".to_string()),
+            )
+            .var(
+                "build_number",
+                std::env::var("BUILD_NUMBER").unwrap_or_else(|_| "1".to_string()),
+            )
     }
 
     /// Render build configuration from template
@@ -620,23 +703,33 @@ pub mod build {
     /// * `template_dir` - Directory with CI/CD templates
     /// * `output_dir` - Directory to write generated configs
     /// * `project_name` - Project name
-    pub fn generate_ci_configs(template_dir: &Path, output_dir: &Path, project_name: &str) -> Result<()> {
+    pub fn generate_ci_configs(
+        template_dir: &Path,
+        output_dir: &Path,
+        project_name: &str,
+    ) -> Result<()> {
         use walkdir::WalkDir;
 
-        std::fs::create_dir_all(output_dir)
-            .map_err(|e| TemplateError::IoError(format!("Failed to create output directory: {}", e)))?;
+        std::fs::create_dir_all(output_dir).map_err(|e| {
+            TemplateError::IoError(format!("Failed to create output directory: {}", e))
+        })?;
 
-        for entry in WalkDir::new(template_dir).into_iter().filter_map(|e| e.ok()) {
+        for entry in WalkDir::new(template_dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
             if entry.file_type().is_file() {
                 let template_path = entry.path();
-                let file_name = template_path.file_name()
+                let file_name = template_path
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("unknown");
 
                 let output_path = output_dir.join(file_name);
 
-                let template_content = std::fs::read_to_string(template_path)
-                    .map_err(|e| TemplateError::IoError(format!("Failed to read template: {}", e)))?;
+                let template_content = std::fs::read_to_string(template_path).map_err(|e| {
+                    TemplateError::IoError(format!("Failed to read template: {}", e))
+                })?;
 
                 let mut vars = HashMap::new();
                 vars.insert("project_name", project_name);
@@ -644,8 +737,9 @@ pub mod build {
 
                 let rendered = render(&template_content, vars)?;
 
-                std::fs::write(&output_path, rendered)
-                    .map_err(|e| TemplateError::IoError(format!("Failed to write config: {}", e)))?;
+                std::fs::write(&output_path, rendered).map_err(|e| {
+                    TemplateError::IoError(format!("Failed to write config: {}", e))
+                })?;
 
                 println!("Generated CI config: {}", output_path.display());
             }
@@ -669,9 +763,16 @@ mod tests {
     #[test]
     fn test_cli_command_creation() {
         let command = cli::template_command();
-        let matches = command.try_get_matches_from(vec![
-            "template", "test.toml", "-v", "name=value", "-f", "json"
-        ]).unwrap();
+        let matches = command
+            .try_get_matches_from(vec![
+                "template",
+                "test.toml",
+                "-v",
+                "name=value",
+                "-f",
+                "json",
+            ])
+            .unwrap();
 
         assert_eq!(matches.get_one::<String>("template").unwrap(), "test.toml");
         assert_eq!(matches.get_one::<String>("format").unwrap(), "json");

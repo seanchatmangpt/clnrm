@@ -1,0 +1,15 @@
+# Simple Working Test Example
+# This is a real working example that demonstrates basic container testing
+
+[test]
+name = "simple_working_test"
+description = "A minimal test that actually runs"
+
+[containers.alpine_test]
+image = "alpine:latest"
+
+[[steps]]
+name = "hello_world"
+container = "alpine_test"
+exec = ["echo", "Hello from a working example!"]
+assert.stdout_contains = "Hello from a working example!"

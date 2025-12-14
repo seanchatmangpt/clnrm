@@ -14,6 +14,7 @@
 //! - `single` - Single test execution (extracted from original)
 
 pub mod cache;
+pub mod container_executor;
 pub mod executor;
 pub mod live_check_executor;
 pub mod scenario;
@@ -25,6 +26,7 @@ use crate::cache::{Cache, CacheManager};
 use crate::cli::types::{CliConfig, OutputFormat};
 use crate::cli::utils::{discover_test_files, generate_junit_xml};
 use crate::error::{CleanroomError, Result};
+use crate::telemetry::live_check::config::ValidationConfig;
 use std::path::PathBuf;
 use std::thread;
 use std::time::Duration;
@@ -44,6 +46,9 @@ pub use single::run_single_test;
 
 // Re-export scenario execution
 pub use scenario::execute_scenario;
+
+// Re-export container execution
+pub use container_executor::execute_container_test;
 
 // Re-export watch functionality
 pub use watch::watch_and_run;
@@ -231,6 +236,7 @@ pub async fn run_tests_with_shard_and_report(
     report_junit: Option<&std::path::Path>,
     otel_exporter: &str,
     otel_endpoint: Option<&str>,
+    _validation_config: ValidationConfig,
 ) -> Result<()> {
     // If sharding is enabled, log it
     if let Some((i, m)) = shard {
@@ -245,6 +251,7 @@ pub async fn run_tests_with_shard_and_report(
         report_junit,
         otel_exporter,
         otel_endpoint,
+        validation_config,
     )
     .await
 }
@@ -423,6 +430,7 @@ async fn run_tests_impl_with_report(
     report_junit: Option<&std::path::Path>,
     otel_exporter: &str,
     otel_endpoint: Option<&str>,
+    validation_config: ValidationConfig,
 ) -> Result<()> {
     use crate::telemetry::weaver_controller::{WeaverConfig, WeaverController};
     use crate::telemetry::{flush_telemetry_and_wait, init_otel, Export, OtelConfig};

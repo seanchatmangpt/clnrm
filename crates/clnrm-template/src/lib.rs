@@ -14,12 +14,12 @@ pub mod determinism;
 pub mod discovery;
 pub mod error;
 pub mod functions;
+#[cfg(feature = "web-integration")]
+pub mod integration;
 pub mod renderer;
 pub mod simple;
 pub mod toml;
 pub mod validation;
-// TODO: Re-enable integration module after adding actix_web dependency
-// pub mod integration;
 
 pub use builder::TemplateEngineBuilder;
 pub use cache::{CachedRenderer, TemplateCache};

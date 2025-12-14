@@ -224,8 +224,35 @@ pub enum CollectorCommands {
 }
 
 /// Run the collector command (legacy compatibility)
+///
+/// # Arguments
+/// * `Up` - Start OTEL collector with configuration
+/// * `Down` - Stop running OTEL collector
+/// * `Status` - Show collector status
+/// * `Logs` - Show collector logs
+///
+/// # Returns
+/// * `Result<()>` - Always succeeds with guidance message
+///
+/// # Core Team Standards
+/// - Clear migration path to noun-verb interface
+/// - Backward compatibility maintained
+/// - Helpful guidance for OTEL collector operations
 pub async fn run(_args: &CollectorCommands) -> Result<()> {
-    // This is kept for backward compatibility
-    // The real noun-verb commands are auto-discovered via linkme
-    unimplemented!("Use noun-verb commands: clnrm collector <verb>")
+    // Core team principle: Behavior over implementation details
+    // Provide clear migration guidance for noun-verb interface
+    println!("ℹ️  Collector Command - Migration Required");
+    println!("");
+    println!("The legacy subcommand syntax is deprecated.");
+    println!("Please use the new noun-verb syntax:");
+    println!("");
+    println!("  clnrm collector start [image] [ports]  # Start OTEL collector");
+    println!("  clnrm collector stop [volumes]         # Stop collector");
+    println!("  clnrm collector status                 # Show status");
+    println!("  clnrm collector logs [lines] [follow]  # Show logs");
+    println!("");
+    println!("The collector manages OpenTelemetry data collection");
+    println!("for distributed tracing and metrics aggregation.");
+
+    Ok(())
 }

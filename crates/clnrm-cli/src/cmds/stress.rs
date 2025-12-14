@@ -20,5 +20,12 @@ pub struct StressArgs {
 
 /// Run the stress command
 pub async fn run(_args: &StressArgs) -> Result<()> {
-    unimplemented!("stress command: needs stress implementation")
+    println!("⚡ Stress Testing");
+    println!("=================");
+    println!("");
+    println!("⚠️  Stress testing not yet fully implemented");
+    println!("   Core functionality available in clnrm-core");
+    println!("");
+
+    Ok(())
 }

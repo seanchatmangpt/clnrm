@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use clnrm_core::error::Result;
 
 pub mod cmds;
+pub mod commands;
 
 // Force inclusion of noun-verb command modules for linkme discovery
 // The modules contain #[distributed_slice] registrations that must be linked
@@ -11,6 +12,10 @@ pub mod cmds;
 use cmds::services;
 #[cfg_attr(not(test), allow(unused_imports))]
 use cmds::collector;
+
+// Force inclusion of noun-verb command modules for linkme discovery
+// This ensures the linkme distributed slices are registered
+// (imports above are sufficient for linkme discovery)
 
 #[derive(Parser, Debug)]
 #[command(name = "clnrm", author, about = "Cleanroom Testing Framework", version)]

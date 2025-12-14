@@ -451,6 +451,96 @@ impl TestcontainerBackend {
         true
     }
 
+    /// Check if Docker image is cached locally
+    pub fn check_image_cache_status(&self) -> Result<bool> {
+        // Use docker images command to check if image exists locally
+        let output = std::process::Command::new("docker")
+            .args(&["images", "--format", "{{.Repository}}:{{.Tag}}"])
+            .output()
+            .map_err(|e| {
+                CleanroomError::container_error(format!("Failed to check Docker images: {}", e))
+            })?;
+
+        if !output.status.success() {
+            // If docker images command fails, assume image is not cached
+            return Ok(false);
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let image_ref = format!("{}:{}", self.image_name, self.image_tag);
+
+        // Check if our image is in the list
+        Ok(stdout.lines().any(|line| line.trim() == image_ref))
+    }
+
+    /// Get current system load average (1-minute average)
+    fn get_system_load(&self) -> Result<f64> {
+        #[cfg(target_family = "unix")]
+        {
+            // On Unix systems, read from /proc/loadavg
+            if let Ok(contents) = std::fs::read_to_string("/proc/loadavg") {
+                if let Some(load_str) = contents.split_whitespace().next() {
+                    if let Ok(load) = load_str.parse::<f64>() {
+                        return Ok(load);
+                    }
+                }
+            }
+
+            // Fallback: use uptime command
+            let output = std::process::Command::new("uptime").output().map_err(|e| {
+                CleanroomError::container_error(format!("Failed to get system load: {}", e))
+            })?;
+
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                // Parse load average from uptime output (format: "load average: 1.23, 2.34, 3.45")
+                if let Some(load_part) = stdout.split("load average:").nth(1) {
+                    if let Some(load_str) = load_part.split(',').next() {
+                        if let Ok(load) = load_str.trim().parse::<f64>() {
+                            return Ok(load);
+                        }
+                    }
+                }
+            }
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            // On macOS, use sysctl
+            let output = std::process::Command::new("sysctl")
+                .args(&["-n", "vm.loadavg"])
+                .output()
+                .map_err(|e| {
+                    CleanroomError::container_error(format!("Failed to get system load: {}", e))
+                })?;
+
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                // Parse load average from sysctl output (format: "{ 1.23 2.34 3.45 }")
+                let parts: Vec<&str> = stdout
+                    .trim_matches(|c| c == '{' || c == '}' || c == ' ')
+                    .split_whitespace()
+                    .collect();
+
+                if let Some(load_str) = parts.first() {
+                    if let Ok(load) = load_str.parse::<f64>() {
+                        return Ok(load);
+                    }
+                }
+            }
+        }
+
+        #[cfg(target_family = "windows")]
+        {
+            // On Windows, we don't have a simple load average equivalent
+            // Return 0.0 as a reasonable default for Windows systems
+            return Ok(0.0);
+        }
+
+        // If all methods fail, return a conservative default
+        Ok(0.5)
+    }
+
     /// Execute command in container
     #[instrument(name = "clnrm.container.exec", skip(self, cmd), fields(container.image = %self.image_name, container.tag = %self.image_tag, component = "container_backend", pool.enabled = %self.has_pool()))]
     fn execute_in_container(&self, cmd: &Cmd) -> Result<RunResult> {
@@ -495,25 +585,26 @@ impl TestcontainerBackend {
 
         // Docker availability will be checked by the container startup itself
 
-        // POKA-YOKE: Acquire lock to prevent concurrent container creation race (FM-004, RPN: 168)
-        // Uses trait-based abstraction for testability and extensibility
+        // Acquire lock to prevent concurrent container creation race conditions
         // This ensures only one container is created per image at a time, preventing duplicates
-        // Note: Lock is best-effort in sync context - async contexts should use async version
+        // and race conditions in concurrent test execution
         let image_key = format!("{}:{}", self.image_name, self.image_tag);
         if let Ok(handle) = tokio::runtime::Handle::try_current() {
             // We're in an async context, acquire lock (will wait if another creation is in progress)
-            let _ = handle.block_on(crate::poka_yoke::acquire_container_creation_lock(&image_key));
+            let _ = handle.block_on(crate::poka_yoke::acquire_container_creation_lock(
+                &image_key,
+            ));
             // Lock is held during this block - container creation happens synchronously
         }
         // In sync context, skip lock (race condition possible but rare in practice)
 
         // POKA-YOKE: Use adaptive timeout based on image cache status (FM-002, RPN: 120)
         // Uses trait-based abstraction for testability and extensibility
-        // Check if image is cached (simplified check - in production, query Docker)
-        let image_cached = true; // TODO: Check Docker image cache status
-        let system_load = 0.0; // TODO: Get actual system load
+        // Check if image is cached by querying Docker
+        let image_cached = self.check_image_cache_status()?;
+        let system_load = self.get_system_load()?;
         let effective_timeout = crate::poka_yoke::get_adaptive_timeout(image_cached, system_load);
-        
+
         // Use adaptive timeout if it's longer than configured timeout
         let effective_startup_timeout = if effective_timeout > self.startup_timeout {
             effective_timeout

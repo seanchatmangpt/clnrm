@@ -110,6 +110,9 @@ pub struct TestConfig {
     /// Service configurations (v0.6.0 - using [service.name] syntax)
     #[serde(default)]
     pub service: Option<HashMap<String, ServiceConfig>>,
+    /// Container configurations for hermetic testing
+    #[serde(default)]
+    pub containers: Option<HashMap<String, ContainerConfig>>,
     /// Test steps to execute
     #[serde(default)]
     pub steps: Vec<StepConfig>,
@@ -379,14 +382,59 @@ pub struct ArtifactsConfig {
     pub collect: Vec<String>,
 }
 
+/// Container configuration for hermetic testing
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ContainerConfig {
+    /// Container image (e.g., "alpine:latest")
+    pub image: String,
+    /// Container tag (defaults to "latest" if not specified)
+    #[serde(default = "default_tag")]
+    pub tag: String,
+    /// Environment variables to set in the container
+    #[serde(default)]
+    pub env: HashMap<String, String>,
+    /// Volumes to mount
+    #[serde(default)]
+    pub volumes: Vec<String>,
+    /// Working directory inside container
+    pub workdir: Option<String>,
+    /// Additional docker run arguments
+    #[serde(default)]
+    pub args: Vec<String>,
+}
+
+fn default_tag() -> String {
+    "latest".to_string()
+}
+
+/// Step assertion configuration
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct StepAssertion {
+    /// Assert that stdout contains this string
+    pub stdout_contains: Option<String>,
+    /// Assert that stderr contains this string
+    pub stderr_contains: Option<String>,
+    /// Assert that stdout matches this regex
+    pub stdout_regex: Option<String>,
+    /// Assert that stderr matches this regex
+    pub stderr_regex: Option<String>,
+    /// Assert that exit code equals this value (default: 0)
+    pub exit_code: Option<i32>,
+}
+
 /// Individual test step configuration
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StepConfig {
     /// Step name
     pub name: String,
-    /// Command to execute
+    /// Container to execute command in (for hermetic testing)
+    pub container: Option<String>,
+    /// Command to execute (legacy format)
+    #[serde(default)]
     pub command: Vec<String>,
-    /// Expected output regex pattern
+    /// Command to execute (new format for hermetic testing)
+    pub exec: Option<Vec<String>>,
+    /// Expected output regex pattern (legacy)
     pub expected_output_regex: Option<String>,
     /// Working directory
     pub workdir: Option<String>,
@@ -396,8 +444,10 @@ pub struct StepConfig {
     pub expected_exit_code: Option<i32>,
     /// Whether to continue on failure
     pub continue_on_failure: Option<bool>,
-    /// Service to execute command on (optional)
+    /// Service to execute command on (optional, legacy)
     pub service: Option<String>,
+    /// Assertions to validate step output
+    pub assert: Option<StepAssertion>,
 }
 
 /// Security policy configuration

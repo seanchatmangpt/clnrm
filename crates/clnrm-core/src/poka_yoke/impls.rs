@@ -148,7 +148,9 @@ impl TomlValidator for DefaultTomlValidator {
                  Remediation:\n\
                  Use valid escape sequences: \\n, \\t, \\\", \\\\, \\uXXXX\n\n\
                  Exit code: 2",
-                seq, line_num, file_path.display()
+                seq,
+                line_num,
+                file_path.display()
             )));
         }
 
@@ -338,7 +340,8 @@ impl DefaultTelemetryValidator {
         let mut diagnostics = Vec::new();
 
         if exporter == "none" {
-            diagnostics.push("  ❌ OTEL exporter is 'none' - no telemetry will be exported".to_string());
+            diagnostics
+                .push("  ❌ OTEL exporter is 'none' - no telemetry will be exported".to_string());
         }
 
         if exporter.starts_with("otlp") && endpoint.is_none() {
@@ -355,7 +358,8 @@ impl DefaultTelemetryValidator {
         }
 
         if diagnostics.is_empty() {
-            diagnostics.push("  ⚠️  Configuration appears correct - check collector logs".to_string());
+            diagnostics
+                .push("  ⚠️  Configuration appears correct - check collector logs".to_string());
         }
 
         diagnostics.join("\n")
@@ -435,12 +439,7 @@ impl PoolExhaustionHandler for DefaultPoolExhaustionHandler {
         )))
     }
 
-    fn check_exhaustion_risk(
-        &self,
-        current: usize,
-        max: usize,
-        threshold: f64,
-    ) -> bool {
+    fn check_exhaustion_risk(&self, current: usize, max: usize, threshold: f64) -> bool {
         let utilization = current as f64 / max as f64;
         if utilization >= threshold {
             warn!(
@@ -495,4 +494,3 @@ impl ContainerCreationLock for DefaultContainerCreationLock {
         Ok(())
     }
 }
-

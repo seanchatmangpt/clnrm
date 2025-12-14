@@ -189,8 +189,8 @@ async fn run_tests(config: &WatchConfig) -> Result<()> {
 
     info!("Running {} test file(s)", test_paths.len());
 
-    // Execute tests using the run command logic
-    crate::cli::commands::run::run_tests(&test_paths, &config.cli_config).await
+    // Execute tests using the CLI test runner
+    crate::cli::run_tests(&test_paths, &config.cli_config).await
 }
 
 /// Determine which test files to run from watched paths

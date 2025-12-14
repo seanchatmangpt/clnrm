@@ -4,9 +4,10 @@
 //! error handling and result reporting.
 
 use clap::Args;
-use clnrm_core::cli::commands::run::run_tests_with_shard_and_report;
+use clnrm_core::cli::commands::run_tests_with_shard_and_report;
 use clnrm_core::cli::types::CliConfig;
 use clnrm_core::error::Result;
+use clnrm_core::telemetry::live_check::config::{ValidationConfig, ValidationMode};
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
@@ -88,6 +89,39 @@ pub struct RunArgs {
     pub stop_timeout: u64,
 }
 
+/// Create validation configuration from CLI arguments
+fn create_validation_config(args: &RunArgs) -> Result<ValidationConfig> {
+    // Parse validation mode
+    let mode = if let Some(mode_str) = &args.validation_mode {
+        match mode_str.as_str() {
+            "minimal" => ValidationMode::Minimal,
+            "80_20" | "eighty_twenty" => ValidationMode::EightyTwenty,
+            "lenient" => ValidationMode::Lenient,
+            "strict" => ValidationMode::Strict,
+            _ => {
+                return Err(clnrm_core::error::CleanroomError::validation_error(
+                    format!("Invalid validation mode: {}. Valid modes: minimal, 80_20, lenient, strict", mode_str)
+                ));
+            }
+        }
+    } else {
+        ValidationMode::EightyTwenty // Default
+    };
+
+    // Create base config for the mode
+    let mut config = ValidationConfig::for_mode(mode);
+
+    // Override with CLI-specific settings
+    if args.live_check || args.validate {
+        config.fail_on_violation = true;
+    }
+
+    // Set diagnostic format (could be extended to use args.diagnostic_format)
+    // For now, keep defaults
+
+    Ok(config)
+}
+
 fn parse_shard(s: &str) -> Result<(usize, usize)> {
     let parts: Vec<&str> = s.split('/').collect();
     if parts.len() != 2 {
@@ -144,25 +178,28 @@ pub async fn run(args: &RunArgs, verbose: u8) -> Result<()> {
         vec![PathBuf::from(".")]
     };
 
-    // TODO: Pass CLI validation parameters to executor
-    // For now, these are stored but not yet used in the executor
-    // Phase 3 will integrate validation_mode, registry_path, etc.
-    let _ = (
-        &args.validation_mode,
-        &args.registry_path,
-        args.otlp_port,
-        args.admin_port,
-        &args.diagnostic_format,
-        args.stop_timeout,
-    );
+    // Configure OTEL exporter based on CLI flags
+    let otel_exporter = if args.live_check {
+        "live_check"
+    } else {
+        &args.otel_exporter
+    };
 
+    // Create validation configuration from CLI parameters
+    let validation_config = create_validation_config(&args)?;
+
+    // Shard configuration is already parsed by clap
+    let shard = args.shard;
+
+    // Execute tests using the core test runner
     run_tests_with_shard_and_report(
         &paths_to_run,
         &config,
-        args.shard,
+        shard,
         args.report_junit.as_deref(),
-        &args.otel_exporter,
+        otel_exporter,
         args.otel_endpoint.as_deref(),
+        validation_config,
     )
     .await
 }
