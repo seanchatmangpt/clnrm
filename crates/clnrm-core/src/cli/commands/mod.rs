@@ -35,7 +35,7 @@ pub mod validate;
 // Re-export all public functions for easy access
 pub use run::{
     run_tests, run_tests_parallel, run_tests_parallel_with_results, run_tests_sequential,
-    run_tests_sequential_with_results, run_tests_with_shard,
+    run_tests_sequential_with_results, run_tests_with_shard, run_tests_with_shard_and_report,
 };
 
 pub use init::init_project;
@@ -63,7 +63,7 @@ pub use live_check::{show_modes, show_status, show_version, test_weaver, validat
 // Re-export commands
 pub use analyze::analyze_traces;
 pub use collector::{show_collector_logs, show_collector_status, start_collector, stop_collector};
-pub use dev::{run_dev_mode, run_dev_mode_with_filters};
+pub use dev::run_dev_mode_with_filters;
 pub use diff::diff_traces;
 pub use dry_run::{dry_run_validate, ValidationResult as DryRunValidationResult};
 pub use fmt::format_files;

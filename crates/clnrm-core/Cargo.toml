@@ -10,10 +10,6 @@ keywords = ["testing", "integration", "containers", "hermetic", "ai"]
 categories = ["development-tools"]
 
 [[bin]]
-name = "test_noun_verb"
-path = "src/bin/test_noun_verb.rs"
-
-[[bin]]
 name = "run_stress_test"
 path = "src/bin/run_stress_test.rs"
 
@@ -37,6 +33,7 @@ testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
 futures-util = { workspace = true }
 surrealdb = { workspace = true }
+petgraph = "0.6"
 
 # CLI dependencies
 clap = { workspace = true }

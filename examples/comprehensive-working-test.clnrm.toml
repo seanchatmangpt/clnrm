@@ -1,0 +1,38 @@
+# Comprehensive Working Test Example
+# This demonstrates multiple containers, environment variables, and assertions
+
+[test]
+name = "comprehensive_working_test"
+description = "A comprehensive test showing multiple features"
+
+[containers.api_server]
+image = "nginx:alpine"
+ports = [80, 443]
+env = { "SERVER_NAME" = "test-api", "LOG_LEVEL" = "info" }
+
+[containers.database]
+image = "postgres:15-alpine"
+ports = [5432]
+env = { "POSTGRES_DB" = "testdb", "POSTGRES_USER" = "testuser", "POSTGRES_PASSWORD" = "testpass" }
+
+[containers.test_runner]
+image = "alpine:latest"
+env = { "API_URL" = "http://api_server", "DB_URL" = "postgres://testuser:testpass@database:5432/testdb" }
+
+[[steps]]
+name = "check_database_ready"
+container = "database"
+exec = ["pg_isready", "-U", "testuser", "-h", "localhost"]
+assert.exit_code = 0
+
+[[steps]]
+name = "check_api_server"
+container = "api_server"
+exec = ["wget", "--spider", "-q", "http://localhost"]
+assert.exit_code = 0
+
+[[steps]]
+name = "run_integration_test"
+container = "test_runner"
+exec = ["sh", "-c", "echo 'Integration test passed - API and DB are working!'"]
+assert.stdout_contains = "Integration test passed"

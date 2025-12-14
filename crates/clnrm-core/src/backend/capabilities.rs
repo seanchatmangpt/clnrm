@@ -3,6 +3,7 @@
 //! This module provides comprehensive backend capabilities management,
 //! including capability discovery, validation, and feature detection.
 
+use crate::capabilities::scenario::CapabilityId;
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -190,6 +191,14 @@ impl BackendCapabilityRegistry {
     /// Get all capabilities
     pub fn get_all_capabilities(&self) -> Vec<&BackendCapability> {
         self.capabilities.values().collect()
+    }
+
+    /// List all capability IDs
+    pub fn list_capabilities(&self) -> Vec<CapabilityId> {
+        self.capabilities
+            .keys()
+            .map(|name| CapabilityId(name.clone()))
+            .collect()
     }
 
     /// Get capabilities by category

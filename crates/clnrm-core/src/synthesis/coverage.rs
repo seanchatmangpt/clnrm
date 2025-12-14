@@ -95,8 +95,7 @@ impl CoverageAnalyzer {
         let mut gaps = Vec::new();
 
         // Get all registered capabilities
-        // TODO: Implement list_capabilities() method on BackendCapabilityRegistry
-        let all_capabilities: Vec<CapabilityId> = vec![];
+        let all_capabilities = self._capabilities.list_capabilities();
 
         // Get all tested capability combinations from receipts
         let tested_combinations = self.get_tested_capability_combinations()?;

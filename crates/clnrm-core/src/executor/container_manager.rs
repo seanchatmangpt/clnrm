@@ -140,110 +140,109 @@ impl ContainerManager for DockerContainerManager {
     fn start(&self, name: &str, spec: &ContainerSpec) -> Result<ContainerHandle> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-        let container_name = self.generate_container_name(name);
+                let container_name = self.generate_container_name(name);
 
-        // Build docker run command
-        let mut cmd = Command::new(&self.docker_cmd);
-        cmd.arg("run")
-            .arg("-d") // Detached
-            .arg("--rm") // Remove on stop
-            .arg("--name")
-            .arg(&container_name);
+                // Build docker run command
+                let mut cmd = Command::new(&self.docker_cmd);
+                cmd.arg("run")
+                    .arg("-d") // Detached
+                    .arg("--rm") // Remove on stop
+                    .arg("--name")
+                    .arg(&container_name);
 
-        // Add environment variables
-        for (key, value) in &spec.env {
-            cmd.arg("-e").arg(format!("{}={}", key, value));
-        }
-
-        // Add port mappings
-        for port_spec in &spec.ports {
-            cmd.arg("-p").arg(port_spec);
-        }
-
-        // Add volume mounts
-        for vol in &spec.volumes {
-            let mount = if vol.readonly {
-                format!("{}:{}:ro", vol.host, vol.container)
-            } else {
-                format!("{}:{}", vol.host, vol.container)
-            };
-            cmd.arg("-v").arg(mount);
-        }
-
-        // Add working directory if specified
-        if let Some(workdir) = &spec.workdir {
-            cmd.arg("-w").arg(workdir);
-        }
-
-        // Image
-        cmd.arg(&spec.image);
-
-        // Add command if specified
-        if let Some(command) = &spec.command {
-            for arg in command {
-                cmd.arg(arg);
-            }
-        }
-
-        // Execute docker run
-        let output = cmd
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await
-            .map_err(|e| {
-                CleanroomError::container_error(format!(
-                    "Failed to start container '{}': {}",
-                    name, e
-                ))
-            })?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(CleanroomError::container_error(format!(
-                "Failed to start container '{}': {}",
-                name, stderr
-            )));
-        }
-
-        let container_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-        // Parse port mappings
-        let mut ports = HashMap::new();
-        for port_spec in &spec.ports {
-            let parts: Vec<_> = port_spec.split(':').collect();
-            if parts.len() == 2 {
-                if let (Ok(container_port), Ok(host_port)) =
-                    (parts[0].parse::<u16>(), parts[1].parse::<u16>())
-                {
-                    ports.insert(container_port, host_port);
+                // Add environment variables
+                for (key, value) in &spec.env {
+                    cmd.arg("-e").arg(format!("{}={}", key, value));
                 }
-            }
-        }
 
-        let handle = ContainerHandle {
-            id: container_id,
-            name: name.to_string(),
-            image: spec.image.clone(),
-            status: ContainerStatus::Running,
-            env: spec.env.clone(),
-            ports,
-            created_at: Instant::now(),
-        };
+                // Add port mappings
+                for port_spec in &spec.ports {
+                    cmd.arg("-p").arg(port_spec);
+                }
 
-        // Store handle
-        {
-            let mut containers = self.containers.write().await;
-            containers.insert(name.to_string(), handle.clone());
-        }
+                // Add volume mounts
+                for vol in &spec.volumes {
+                    let mount = if vol.readonly {
+                        format!("{}:{}:ro", vol.host, vol.container)
+                    } else {
+                        format!("{}:{}", vol.host, vol.container)
+                    };
+                    cmd.arg("-v").arg(mount);
+                }
 
-        // Wait for health check if specified
-        if let Some(healthcheck) = &spec.healthcheck {
-            self.wait_for_health(&handle, healthcheck, Duration::from_secs(30))
-                .await?;
-        }
+                // Add working directory if specified
+                if let Some(workdir) = &spec.workdir {
+                    cmd.arg("-w").arg(workdir);
+                }
 
-        Ok(handle)
+                // Image
+                cmd.arg(&spec.image);
+
+                // Add command if specified
+                if let Some(command) = &spec.command {
+                    for arg in command {
+                        cmd.arg(arg);
+                    }
+                }
+
+                // Execute docker run
+                let output = cmd
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .await
+                    .map_err(|e| {
+                        CleanroomError::container_error(format!(
+                            "Failed to start container '{}': {}",
+                            name, e
+                        ))
+                    })?;
+
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    return Err(CleanroomError::container_error(format!(
+                        "Failed to start container '{}': {}",
+                        name, stderr
+                    )));
+                }
+
+                let container_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+                // Parse port mappings
+                let mut ports = HashMap::new();
+                for port_spec in &spec.ports {
+                    let parts: Vec<_> = port_spec.split(':').collect();
+                    if parts.len() == 2 {
+                        if let (Ok(container_port), Ok(host_port)) =
+                            (parts[0].parse::<u16>(), parts[1].parse::<u16>())
+                        {
+                            ports.insert(container_port, host_port);
+                        }
+                    }
+                }
+
+                let handle = ContainerHandle {
+                    id: container_id,
+                    name: name.to_string(),
+                    image: spec.image.clone(),
+                    status: ContainerStatus::Running,
+                    env: spec.env.clone(),
+                    ports,
+                    created_at: Instant::now(),
+                };
+
+                // Store handle
+                {
+                    let mut containers = self.containers.write().await;
+                    containers.insert(name.to_string(), handle.clone());
+                }
+
+                // Wait for health check if specified
+                if let Some(healthcheck) = &spec.healthcheck {
+                    self.wait_for_health(&handle, healthcheck, Duration::from_secs(30))?;
+                }
+
+                Ok(handle)
             })
         })
     }
@@ -258,37 +257,37 @@ impl ContainerManager for DockerContainerManager {
             tokio::runtime::Handle::current().block_on(async {
                 let start = Instant::now();
 
-        // Build docker exec command
-        let mut docker_cmd = Command::new(&self.docker_cmd);
-        docker_cmd.arg("exec");
+                // Build docker exec command
+                let mut docker_cmd = Command::new(&self.docker_cmd);
+                docker_cmd.arg("exec");
 
-        // Add step-specific environment variables
-        for (key, value) in env {
-            docker_cmd.arg("-e").arg(format!("{}={}", key, value));
-        }
+                // Add step-specific environment variables
+                for (key, value) in env {
+                    docker_cmd.arg("-e").arg(format!("{}={}", key, value));
+                }
 
-        // Container ID
-        docker_cmd.arg(&handle.id);
+                // Container ID
+                docker_cmd.arg(&handle.id);
 
-        // Command to execute
-        for arg in cmd {
-            docker_cmd.arg(arg);
-        }
+                // Command to execute
+                for arg in cmd {
+                    docker_cmd.arg(arg);
+                }
 
-        // Execute
-        let output = docker_cmd
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await
-            .map_err(|e| {
-                CleanroomError::container_error(format!(
-                    "Failed to exec in container '{}': {}",
-                    handle.name, e
-                ))
-            })?;
+                // Execute
+                let output = docker_cmd
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .await
+                    .map_err(|e| {
+                        CleanroomError::container_error(format!(
+                            "Failed to exec in container '{}': {}",
+                            handle.name, e
+                        ))
+                    })?;
 
-        let duration = start.elapsed();
+                let duration = start.elapsed();
 
                 Ok(ExecResult {
                     exit_code: output.status.code().unwrap_or(-1),
@@ -304,36 +303,36 @@ impl ContainerManager for DockerContainerManager {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 // Stop container
-        let output = Command::new(&self.docker_cmd)
-            .arg("stop")
-            .arg(&handle.id)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await
-            .map_err(|e| {
-                CleanroomError::container_error(format!(
-                    "Failed to stop container '{}': {}",
-                    handle.name, e
-                ))
-            })?;
+                let output = Command::new(&self.docker_cmd)
+                    .arg("stop")
+                    .arg(&handle.id)
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .await
+                    .map_err(|e| {
+                        CleanroomError::container_error(format!(
+                            "Failed to stop container '{}': {}",
+                            handle.name, e
+                        ))
+                    })?;
 
-        if !output.status.success() {
-            // Container might already be stopped, that's OK
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if !stderr.contains("No such container") && !stderr.contains("is not running") {
-                return Err(CleanroomError::container_error(format!(
-                    "Failed to stop container '{}': {}",
-                    handle.name, stderr
-                )));
-            }
-        }
+                if !output.status.success() {
+                    // Container might already be stopped, that's OK
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    if !stderr.contains("No such container") && !stderr.contains("is not running") {
+                        return Err(CleanroomError::container_error(format!(
+                            "Failed to stop container '{}': {}",
+                            handle.name, stderr
+                        )));
+                    }
+                }
 
-        // Remove from active containers
-        {
-            let mut containers = self.containers.write().await;
-            containers.remove(&handle.name);
-        }
+                // Remove from active containers
+                {
+                    let mut containers = self.containers.write().await;
+                    containers.remove(&handle.name);
+                }
 
                 Ok(())
             })
@@ -343,25 +342,25 @@ impl ContainerManager for DockerContainerManager {
     fn health_check(&self, handle: &ContainerHandle) -> Result<bool> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-        // Check if container is running
-        let output = Command::new(&self.docker_cmd)
-            .arg("inspect")
-            .arg("--format")
-            .arg("{{.State.Running}}")
-            .arg(&handle.id)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await
-            .map_err(|e| {
-                CleanroomError::container_error(format!(
-                    "Failed to check container '{}': {}",
-                    handle.name, e
-                ))
-            })?;
+                // Check if container is running
+                let output = Command::new(&self.docker_cmd)
+                    .arg("inspect")
+                    .arg("--format")
+                    .arg("{{.State.Running}}")
+                    .arg(&handle.id)
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .await
+                    .map_err(|e| {
+                        CleanroomError::container_error(format!(
+                            "Failed to check container '{}': {}",
+                            handle.name, e
+                        ))
+                    })?;
 
-        let running = String::from_utf8_lossy(&output.stdout).trim() == "true";
-        Ok(running)
+                let running = String::from_utf8_lossy(&output.stdout).trim() == "true";
+                Ok(running)
             })
         })
     }
@@ -369,19 +368,19 @@ impl ContainerManager for DockerContainerManager {
     fn logs(&self, handle: &ContainerHandle) -> Result<String> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-        let output = Command::new(&self.docker_cmd)
-            .arg("logs")
-            .arg(&handle.id)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await
-            .map_err(|e| {
-                CleanroomError::container_error(format!(
-                    "Failed to get logs for container '{}': {}",
-                    handle.name, e
-                ))
-            })?;
+                let output = Command::new(&self.docker_cmd)
+                    .arg("logs")
+                    .arg(&handle.id)
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .await
+                    .map_err(|e| {
+                        CleanroomError::container_error(format!(
+                            "Failed to get logs for container '{}': {}",
+                            handle.name, e
+                        ))
+                    })?;
 
                 let mut logs = String::from_utf8_lossy(&output.stdout).to_string();
                 logs.push_str(&String::from_utf8_lossy(&output.stderr));
@@ -393,7 +392,7 @@ impl ContainerManager for DockerContainerManager {
 
 impl DockerContainerManager {
     /// Wait for container to pass health check
-    async fn wait_for_health(
+    fn wait_for_health(
         &self,
         handle: &ContainerHandle,
         healthcheck: &str,
@@ -410,7 +409,7 @@ impl DockerContainerManager {
             if result.exit_code == 0 {
                 return Ok(());
             }
-            tokio::time::sleep(check_interval).await;
+            std::thread::sleep(check_interval);
         }
 
         Err(CleanroomError::container_error(format!(

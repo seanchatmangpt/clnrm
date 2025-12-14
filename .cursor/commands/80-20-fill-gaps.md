@@ -566,3 +566,4 @@ const CONTAINER_POOL_SIZE: usize = 10;
 
 **Autonomous execution**: Once capabilities are identified and prioritized, finish them without asking. The agent has full context and can make informed decisions. Always prioritize quality, consistency, and maintainability.
 
+

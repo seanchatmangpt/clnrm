@@ -99,4 +99,3 @@ pub fn handle_pool_exhaustion(
 pub async fn acquire_container_creation_lock(image: &str) -> crate::error::Result<()> {
     CONTAINER_CREATION_LOCK.acquire(image).await
 }
-

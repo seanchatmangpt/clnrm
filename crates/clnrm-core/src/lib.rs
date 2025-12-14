@@ -16,6 +16,7 @@ pub mod chicago_tdd; // v1.5.0: Chicago-TDD-Tools integration framework
 pub mod cleanroom;
 pub mod cli; // CLI types and utilities (commands moved to clnrm-cli)
 pub mod config;
+pub mod template; // Template generation functions
 pub mod coverage;
 pub mod determinism;
 pub mod environment; // v1.7.0: Σ*-aware environment compiler (Phase 2)
@@ -92,8 +93,112 @@ pub use cleanroom::{
 };
 pub use config::{
     load_cleanroom_config, load_cleanroom_config_from_file, load_config_from_file,
-    parse_toml_config, CleanroomConfig, DeterminismConfig, ScenarioConfig, StepConfig, TestConfig,
+    parse_toml_config, CleanroomConfig, ContainerConfig, DeterminismConfig, ScenarioConfig, StepConfig, TestConfig,
 };
+
+// Type safety improvements - newtypes for IDs and counts
+pub mod types {
+    //! Type-safe wrappers for common types to prevent ID mixups and improve safety
+
+    use serde::{Deserialize, Serialize};
+    use std::fmt;
+
+    /// A container identifier with type safety
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    pub struct ContainerId(pub String);
+
+    impl ContainerId {
+        pub fn new(id: impl Into<String>) -> Self {
+            Self(id.into())
+        }
+
+        pub fn as_str(&self) -> &str {
+            &self.0
+        }
+    }
+
+    impl fmt::Display for ContainerId {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+
+    impl From<String> for ContainerId {
+        fn from(s: String) -> Self {
+            Self(s)
+        }
+    }
+
+    impl From<&str> for ContainerId {
+        fn from(s: &str) -> Self {
+            Self(s.to_string())
+        }
+    }
+
+    /// A test count with type safety to prevent mixing up different kinds of counts
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+    pub struct TestCount(pub u64);
+
+    impl TestCount {
+        pub fn new(count: u64) -> Self {
+            Self(count)
+        }
+
+        pub fn as_u64(&self) -> u64 {
+            self.0
+        }
+    }
+
+    impl fmt::Display for TestCount {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+
+    impl From<u64> for TestCount {
+        fn from(n: u64) -> Self {
+            Self(n)
+        }
+    }
+
+    impl From<usize> for TestCount {
+        fn from(n: usize) -> Self {
+            Self(n as u64)
+        }
+    }
+
+    /// A step identifier with type safety
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    pub struct StepId(pub String);
+
+    impl StepId {
+        pub fn new(id: impl Into<String>) -> Self {
+            Self(id.into())
+        }
+
+        pub fn as_str(&self) -> &str {
+            &self.0
+        }
+    }
+
+    impl fmt::Display for StepId {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+
+    impl From<String> for StepId {
+        fn from(s: String) -> Self {
+            Self(s)
+        }
+    }
+
+    impl From<&str> for StepId {
+        fn from(s: &str) -> Self {
+            Self(s.to_string())
+        }
+    }
+}
 pub use determinism::DeterminismEngine;
 pub use formatting::{
     format_test_results, format_toml_content, format_toml_file, needs_formatting, Formatter,

@@ -213,12 +213,13 @@ impl ContainerPool {
             // Uses trait-based abstraction for testability and extensibility
             let pending = self.pending_requests.load(Ordering::Relaxed);
             drop(permit); // Release permit before returning error
-            // handle_exhaustion always returns Err, so we can extract it
+                          // handle_exhaustion always returns Err, so we can extract it
             return Err(crate::poka_yoke::handle_pool_exhaustion(
                 self.config.max_size,
                 current_count,
                 pending,
-            ).unwrap_err());
+            )
+            .unwrap_err());
         }
 
         // Create new container - wrap in spawn_blocking to avoid runtime conflicts

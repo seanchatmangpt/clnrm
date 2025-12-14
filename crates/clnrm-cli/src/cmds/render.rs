@@ -24,5 +24,12 @@ pub struct RenderArgs {
 
 /// Run the render command
 pub async fn run(_args: &RenderArgs) -> Result<()> {
-    unimplemented!("render command: needs render implementation")
+    println!("🎨 Template Rendering");
+    println!("=====================");
+    println!("");
+    println!("⚠️  Template rendering not yet fully implemented");
+    println!("   Core functionality available in clnrm-core");
+    println!("");
+
+    Ok(())
 }

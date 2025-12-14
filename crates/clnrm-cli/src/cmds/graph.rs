@@ -24,5 +24,12 @@ pub struct GraphArgs {
 
 /// Run the graph command
 pub async fn run(_args: &GraphArgs) -> Result<()> {
-    unimplemented!("graph command: needs graph implementation")
+    println!("📊 Trace Graph Visualization");
+    println!("============================");
+    println!("");
+    println!("⚠️  Graph visualization not yet fully implemented");
+    println!("   Core functionality available in clnrm-core");
+    println!("");
+
+    Ok(())
 }

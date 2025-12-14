@@ -1,6 +1,11 @@
 //! Spans command implementation
+//!
+//! Provides OpenTelemetry span filtering and display.
+//! Follows 80/20 principle: Focus on span search and display with regex filtering.
 
 use clap::Args;
+use clnrm_core::cli::commands::filter_spans;
+use clnrm_core::cli::types::OutputFormat;
 use clnrm_core::error::Result;
 
 #[derive(Args, Debug)]
@@ -27,6 +32,50 @@ pub struct SpansArgs {
 }
 
 /// Run the spans command
-pub async fn run(_args: &SpansArgs) -> Result<()> {
-    unimplemented!("spans command: needs spans implementation")
+///
+/// # Arguments
+/// * `trace` - Path to JSON trace file
+/// * `grep` - Optional regex pattern to filter spans
+/// * `format` - Output format ("table", "json", "human")
+/// * `show_attrs` - Include span attributes in output
+/// * `show_events` - Include span events in output
+///
+/// # Returns
+/// * `Result<()>` - Success if spans are processed, error if file not found or invalid
+///
+/// # Core Team Standards
+/// - Regex-based filtering for span names
+/// - Multiple output formats for different use cases
+/// - Clear error messages for invalid regex or files
+pub async fn run(args: &SpansArgs) -> Result<()> {
+    // Core team principle: Behavior over implementation details
+    // Arrange: Validate inputs and convert format
+    let trace_path = std::path::Path::new(&args.trace);
+
+    if !trace_path.exists() {
+        return Err(clnrm_core::error::CleanroomError::config_error(
+            format!("Trace file not found: {}", args.trace)
+        ));
+    }
+
+    // Convert string format to enum
+    let output_format = match args.format.as_str() {
+        "table" => OutputFormat::Human, // Table format maps to human-readable
+        "json" => OutputFormat::Json,
+        "human" => OutputFormat::Human,
+        _ => {
+            return Err(clnrm_core::error::CleanroomError::config_error(
+                format!("Invalid format: {}. Supported formats: table, json, human", args.format)
+            ));
+        }
+    };
+
+    // Act: Filter and display spans
+    filter_spans(
+        trace_path,
+        args.grep.as_deref(),
+        &output_format,
+        args.show_attrs,
+        args.show_events,
+    )
 }

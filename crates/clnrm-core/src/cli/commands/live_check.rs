@@ -85,8 +85,15 @@ pub fn validate_registry(registry_path: &Path) -> Result<()> {
 
     // Run weaver registry check
     println!("\nRunning weaver registry check...");
+    let registry_path_str = registry_path.to_str().ok_or_else(|| {
+        CleanroomError::internal_error(format!(
+            "Registry path contains invalid UTF-8: {}",
+            registry_path.display()
+        ))
+    })?;
+
     let output = Command::new("weaver")
-        .args(["registry", "check", "-r", registry_path.to_str().unwrap()])
+        .args(["registry", "check", "-r", registry_path_str])
         .output()
         .map_err(|e| {
             CleanroomError::internal_error(format!("Failed to run weaver command: {}", e))

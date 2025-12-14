@@ -171,9 +171,118 @@ impl ResourceGovernor {
     }
 
     /// Check effect budget (no forbidden operations)
-    pub async fn check_effect_budget(&self, _request: &TestRequest) -> Result<()> {
-        // TODO: Implement effect budget validation
-        // This requires adding validate() and is_subset() methods to EffectBudget and EffectSet
+    pub async fn check_effect_budget(&self, request: &TestRequest) -> Result<()> {
+        use crate::capabilities::effects::{Effect, PrivilegeType};
+
+        // Check that scenario effects don't include forbidden operations
+        for effect in request.scenario.allowed_effects.effects() {
+            match effect {
+                Effect::Privileged {
+                    privilege,
+                    justification,
+                } => {
+                    // Privileged operations require explicit justification
+                    if justification.trim().is_empty() {
+                        return Err(CleanroomError::internal_error(format!(
+                            "Privileged operation {:?} requires justification",
+                            privilege
+                        )));
+                    }
+
+                    // Some privileges are completely forbidden
+                    match privilege {
+                        PrivilegeType::KernelModule | PrivilegeType::Root => {
+                            return Err(CleanroomError::internal_error(format!(
+                                "Privileged operation {:?} is forbidden",
+                                privilege
+                            )));
+                        }
+                        _ => {} // Other privileges are allowed with justification
+                    }
+                }
+                Effect::Network {
+                    endpoints: None,
+                    protocols: None,
+                } => {
+                    // Unrestricted network access is suspicious
+                    return Err(CleanroomError::internal_error(
+                        "Unrestricted network access requires specific endpoint/protocol restrictions"
+                    ));
+                }
+                Effect::Storage { mode, paths } => {
+                    // Check for dangerous storage access
+                    if paths.is_empty()
+                        && matches!(mode, crate::capabilities::effects::StorageMode::ReadWrite)
+                    {
+                        return Err(CleanroomError::internal_error(
+                            "Read-write storage access requires specific path restrictions",
+                        ));
+                    }
+                }
+                _ => {} // Other effects are allowed
+            }
+        }
+
+        // Validate effect budget limits are reasonable
+        self.validate_effect_budget_limits(&request.effect_budget)?;
+
+        Ok(())
+    }
+
+    /// Validate effect budget limits are within reasonable bounds
+    fn validate_effect_budget_limits(
+        &self,
+        budget: &crate::capabilities::effects::EffectBudget,
+    ) -> Result<()> {
+        // Check for unreasonably high limits that could indicate abuse
+        if let Some(network_bytes) = budget.max_network_bytes {
+            if network_bytes > 100_000_000_000 {
+                // 100GB
+                return Err(CleanroomError::internal_error(format!(
+                    "Network budget {} bytes exceeds maximum allowed",
+                    network_bytes
+                )));
+            }
+        }
+
+        if let Some(storage_bytes) = budget.max_storage_bytes {
+            if storage_bytes > 1_000_000_000_000 {
+                // 1TB
+                return Err(CleanroomError::internal_error(format!(
+                    "Storage budget {} bytes exceeds maximum allowed",
+                    storage_bytes
+                )));
+            }
+        }
+
+        if let Some(execution_seconds) = budget.max_execution_seconds {
+            if execution_seconds > 3600 {
+                // 1 hour
+                return Err(CleanroomError::internal_error(format!(
+                    "Execution time budget {} seconds exceeds maximum allowed",
+                    execution_seconds
+                )));
+            }
+        }
+
+        if let Some(process_spawns) = budget.max_process_spawns {
+            if process_spawns > 1000 {
+                return Err(CleanroomError::internal_error(format!(
+                    "Process spawn budget {} exceeds maximum allowed",
+                    process_spawns
+                )));
+            }
+        }
+
+        if let Some(memory_bytes) = budget.max_memory_bytes {
+            if memory_bytes > 100_000_000_000 {
+                // 100GB
+                return Err(CleanroomError::internal_error(format!(
+                    "Memory budget {} bytes exceeds maximum allowed",
+                    memory_bytes
+                )));
+            }
+        }
 
         Ok(())
     }

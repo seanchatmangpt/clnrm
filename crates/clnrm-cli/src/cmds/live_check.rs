@@ -1,6 +1,10 @@
 //! Live-check command implementation
+//!
+//! Provides OpenTelemetry validation and Weaver live-check operations.
+//! Follows 80/20 principle: Focus on registry validation and Weaver integration.
 
 use clap::Subcommand;
+use clnrm_core::cli::commands::live_check::{show_modes, show_status, show_version, test_weaver, validate_registry};
 use clnrm_core::error::Result;
 
 #[derive(Subcommand, Debug)]
@@ -25,6 +29,32 @@ pub enum LiveCheckCommands {
 }
 
 /// Run the live-check command
-pub async fn run(_args: &LiveCheckCommands) -> Result<()> {
-    unimplemented!("live-check command: needs live-check implementation")
+///
+/// # Arguments
+/// * `Status` - Show current live-check status and Weaver installation
+/// * `ValidateRegistry` - Validate OTEL registry schemas
+/// * `TestWeaver` - Test Weaver live-check functionality
+/// * `Modes` - Show available validation modes
+/// * `Version` - Show Weaver and registry versions
+///
+/// # Returns
+/// * `Result<()>` - Success if operation completes, error if validation fails
+///
+/// # Core Team Standards
+/// - Clear status reporting for CI/CD integration
+/// - Registry validation for semantic conventions
+/// - Weaver integration for live telemetry validation
+pub async fn run(args: &LiveCheckCommands) -> Result<()> {
+    // Core team principle: Behavior over implementation details
+    // Route to appropriate core function based on subcommand
+    match args {
+        LiveCheckCommands::Status => show_status(),
+        LiveCheckCommands::ValidateRegistry { registry } => {
+            let registry_path = std::path::Path::new(registry);
+            validate_registry(registry_path)
+        }
+        LiveCheckCommands::TestWeaver => test_weaver(),
+        LiveCheckCommands::Modes => show_modes(),
+        LiveCheckCommands::Version => show_version(),
+    }
 }

@@ -2,6 +2,7 @@
 
 use clap::Args;
 use clnrm_core::error::Result;
+use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct RecordArgs {
@@ -16,5 +17,12 @@ pub struct RecordArgs {
 
 /// Run the record command
 pub async fn run(_args: &RecordArgs) -> Result<()> {
-    unimplemented!("record command: needs record implementation")
+    println!("📹 Test Recording");
+    println!("=================");
+    println!("");
+    println!("⚠️  Test recording not yet fully implemented");
+    println!("   Core functionality available in clnrm-core");
+    println!("");
+
+    Ok(())
 }

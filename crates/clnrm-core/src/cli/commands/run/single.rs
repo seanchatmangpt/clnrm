@@ -12,7 +12,60 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
-use super::{scenario, services};
+use super::{container_executor, scenario, services};
+
+/// Run a container-based test using the new container executor
+async fn run_container_test(test_config: &crate::config::TestConfig) -> Result<Option<String>> {
+    let test_name = test_config.get_name()?;
+
+    // Execute the container-based test
+    let step_results = container_executor::execute_container_test(test_config).await?;
+
+    // Check if all steps passed
+    let all_passed = step_results.iter().all(|r| r.passed);
+    let total_duration = step_results.iter().map(|r| r.duration_ms).sum::<u64>();
+
+    if all_passed {
+        info!(
+            "✅ Container test '{}' passed ({} steps, {}ms)",
+            test_name,
+            step_results.len(),
+            total_duration
+        );
+
+        // Return the first container ID for telemetry (if any containers were used)
+        let first_container_id = step_results.first().and_then(|r| {
+            test_config
+                .containers
+                .as_ref()?
+                .get(&r.container)
+                .map(|_| format!("container:{}", r.container))
+        });
+
+        Ok(first_container_id)
+    } else {
+        // Find the first failed step
+        let failed_step = step_results.iter().find(|r| !r.passed).ok_or_else(|| {
+            CleanroomError::internal_error(
+                "Test failed but no failed steps found - this should not happen",
+            )
+        })?;
+        let error_msg = failed_step
+            .assertion_error
+            .as_deref()
+            .unwrap_or("Step failed without specific error");
+
+        error!(
+            "❌ Container test '{}' failed at step '{}': {}",
+            test_name, failed_step.name, error_msg
+        );
+
+        Err(CleanroomError::execution_error(format!(
+            "Test '{}' failed at step '{}': {}",
+            test_name, failed_step.name, error_msg
+        )))
+    }
+}
 
 /// Run a single test file
 ///
@@ -29,6 +82,12 @@ pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Opti
 
     // FAIL FAST: Validate config immediately after parsing (catches unsupported features)
     test_config.validate()?;
+
+    // Check if this is a container-based test (new format)
+    if test_config.containers.is_some() && !test_config.steps.is_empty() {
+        info!("🐳 Detected container-based test configuration");
+        return run_container_test(&test_config).await;
+    }
 
     let test_name = test_config.get_name()?;
 
