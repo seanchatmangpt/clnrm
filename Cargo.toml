@@ -10,6 +10,7 @@ members = [
   "crates/evidence-graph",
   "ggen-codegen",
   "ggen-integration-example",
+  "ggen-cli-tool",
 ]
 
 # Default members for core functionality (template excluded - experimental)
