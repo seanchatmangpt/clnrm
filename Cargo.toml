@@ -8,6 +8,18 @@ members = [
   "crates/clnrm-shared",
   "crates/clnrm-template",
   "crates/evidence-graph",
+  "ggen-codegen",
+  "ggen-integration-example",
+  "ggen-cli-tool",
+  "ggen-test-runner",
+  "ggen-orchestration",
+  "ggen-service-mesh",
+  "ggen-config",
+  "ggen-deploy",
+  "ggen-observability",
+  "ggen-reconciliation",
+  "ggen-control",
+  "ggen-status",
 ]
 
 # Default members for core functionality (template excluded - experimental)
