@@ -13,6 +13,7 @@ members = [
   "ggen-cli-tool",
   "ggen-test-runner",
   "ggen-orchestration",
+  "ggen-service-mesh",
 ]
 
 # Default members for core functionality (template excluded - experimental)
