@@ -68,6 +68,15 @@ impl ServiceRegistry {
         Self::default()
     }
 
+    /// Load plugins from ggen instances
+    pub fn with_ggen_plugins(mut self) -> Result<Self> {
+        let services = crate::ggen_integration::GenGenServiceLoader::load_services()?;
+        for service in services {
+            self.register_plugin(service);
+        }
+        Ok(self)
+    }
+
     /// Initialize default plugins
     pub fn with_default_plugins(mut self) -> Self {
         use crate::services::{

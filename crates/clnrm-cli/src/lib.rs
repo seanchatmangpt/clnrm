@@ -6,6 +6,8 @@ use clnrm_core::error::Result;
 
 pub mod cmds;
 pub mod commands;
+pub mod ggen_commands;
+pub mod ggen_run;
 
 // Force inclusion of noun-verb command modules for linkme discovery
 // The modules contain #[distributed_slice] registrations that must be linked
