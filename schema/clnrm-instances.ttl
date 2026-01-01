@@ -1,0 +1,171 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix clnrm: <https://clnrm.io/ontology/> .
+@prefix ex: <https://clnrm.io/instances/> .
+
+# ==================== Project Metadata ====================
+
+ex:ClnrmProject a clnrm:Crate ;
+    clnrm:crateName "clnrm" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Cleanroom Testing Framework - containerized testing with Docker and Testcontainers" ;
+    rdfs:label "CLNRM Core Project" ;
+    rdfs:comment "Main cleanroom testing framework project" .
+
+# ==================== Crates ====================
+
+ex:ClnrmCoreCrate a clnrm:Crate ;
+    clnrm:crateName "clnrm-core" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Core library providing CleanroomEnvironment API and container lifecycle management" ;
+    rdfs:label "CLNRM Core Library" .
+
+ex:ClnrmCliCrate a clnrm:Crate ;
+    clnrm:crateName "clnrm-cli" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Command-line interface for running and managing cleanroom tests" ;
+    rdfs:label "CLNRM CLI" .
+
+ex:ClnrmTemplateCrate a clnrm:Crate ;
+    clnrm:crateName "clnrm-template" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Template engine integration for dynamic test generation" ;
+    rdfs:label "CLNRM Template Engine" .
+
+ex:EvidenceGraphCrate a clnrm:Crate ;
+    clnrm:crateName "evidence-graph" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Graph-based evidence collection and analysis for test execution" ;
+    rdfs:label "Evidence Graph" .
+
+ex:ClnrmSharedCrate a clnrm:Crate ;
+    clnrm:crateName "clnrm-shared" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Shared types and utilities across the CLNRM ecosystem" ;
+    rdfs:label "CLNRM Shared" .
+
+# Dependencies
+ex:ClnrmCliCrate clnrm:hasDependency ex:ClnrmCoreCrate .
+ex:ClnrmTemplateCrate clnrm:hasDependency ex:ClnrmCoreCrate .
+ex:EvidenceGraphCrate clnrm:hasDependency ex:ClnrmCoreCrate .
+ex:ClnrmCoreCrate clnrm:hasDependency ex:ClnrmSharedCrate .
+
+# ==================== Example Test ====================
+
+ex:SimpleEchoTest a clnrm:Test ;
+    clnrm:testName "simple-echo" ;
+    clnrm:testDescription "Basic test demonstrating simple container execution and output verification" ;
+    clnrm:testCommand "echo 'Hello from cleanroom'" ;
+    clnrm:expectedOutput "Hello from cleanroom" .
+
+ex:SimpleEchoAssertion a clnrm:Assertion ;
+    clnrm:assertionType "equals" ;
+    clnrm:expectedValue "Hello from cleanroom" ;
+    rdfs:comment "Verify exact output match" .
+
+ex:SimpleEchoTest clnrm:hasAssertion ex:SimpleEchoAssertion .
+
+# ==================== Example Container ====================
+
+ex:RustCompilerContainer a clnrm:Container ;
+    clnrm:containerName "rust-compiler" ;
+    clnrm:containerImage "rust:1.75-slim" ;
+    clnrm:exposedPort 8080 ;
+    rdfs:label "Rust Compiler Container" ;
+    rdfs:comment "Container with Rust toolchain for compilation tests" .
+
+ex:RustCompilerHealthCheck a clnrm:HealthCheck ;
+    clnrm:healthCheckCommand "rustc --version" ;
+    clnrm:healthCheckInterval 5 ;
+    clnrm:healthCheckTimeout 10 .
+
+ex:RustCompilerContainer clnrm:hasHealthCheck ex:RustCompilerHealthCheck .
+
+# ==================== Example Environment ====================
+
+ex:SimpleTestEnv a clnrm:CleanroomEnvironment ;
+    clnrm:hasSessionId "test-session-001" ;
+    clnrm:hasContainer ex:RustCompilerContainer ;
+    clnrm:hasTest ex:SimpleEchoTest ;
+    rdfs:label "Simple Test Environment" ;
+    rdfs:comment "Minimal cleanroom environment for basic testing" .
+
+# ==================== Example Metrics ====================
+
+ex:TestMetrics a clnrm:Metrics ;
+    clnrm:executionTime 1250 ;
+    clnrm:containerCount 1 ;
+    clnrm:assertionsPassed 1 ;
+    clnrm:assertionsFailed 0 ;
+    rdfs:comment "Metrics from simple test execution" .
+
+# ==================== Framework Concepts ====================
+
+ex:ContainerLifecycle a rdfs:Class ;
+    rdfs:label "Container Lifecycle" ;
+    rdfs:comment "Describes the lifecycle stages: created -> started -> healthy -> stopped -> removed" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+ex:HermeticIsolation a rdfs:Class ;
+    rdfs:label "Hermetic Isolation" ;
+    rdfs:comment "Property ensuring tests don't interfere with host system or each other" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+ex:ChicagoSchoolTDD a rdfs:Class ;
+    rdfs:label "Chicago School TDD" ;
+    rdfs:comment "Testing methodology: state-based testing, Chicago style (classicist)" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# ==================== Example Services ====================
+
+ex:MetricsCollectorService a clnrm:Service ;
+    clnrm:serviceName "metrics-collector" ;
+    clnrm:serviceType "builtin" ;
+    rdfs:label "Metrics Collector" ;
+    rdfs:comment "Built-in service for collecting performance metrics during test execution" .
+
+ex:HealthCheckService a clnrm:Service ;
+    clnrm:serviceName "health-checker" ;
+    clnrm:serviceType "builtin" ;
+    rdfs:label "Health Checker" ;
+    rdfs:comment "Built-in service for monitoring container and service health" .
+
+ex:LogAggregatorService a clnrm:Service ;
+    clnrm:serviceName "log-aggregator" ;
+    clnrm:serviceType "builtin" ;
+    rdfs:label "Log Aggregator" ;
+    rdfs:comment "Built-in service for aggregating logs from all containers" .
+
+# ==================== Example Environment Variables ====================
+
+ex:RustEditionVar a clnrm:EnvironmentVariable ;
+    clnrm:variableName "RUST_EDITION" ;
+    clnrm:variableValue "2021" ;
+    rdfs:comment "Set Rust edition for compilation" .
+
+ex:LogLevelVar a clnrm:EnvironmentVariable ;
+    clnrm:variableName "RUST_LOG" ;
+    clnrm:variableValue "debug" ;
+    rdfs:comment "Set log level for tracing" .
+
+ex:RustCompilerContainer clnrm:hasEnvironmentVariable ex:RustEditionVar ;
+    clnrm:hasEnvironmentVariable ex:LogLevelVar .
+
+# ==================== Inference Rules ====================
+
+# Rule: All Crates are Containers (simplified inference)
+# CONSTRUCT {
+#   ?crate a clnrm:Container .
+# }
+# WHERE {
+#   ?crate a clnrm:Crate .
+# }
+
+# Rule: All Tests in an Environment inherit the Environment's properties
+# CONSTRUCT {
+#   ?test clnrm:runsIn ?env .
+# }
+# WHERE {
+#   ?env clnrm:hasTest ?test .
+# }
