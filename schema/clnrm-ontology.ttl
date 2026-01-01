@@ -1,0 +1,535 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix clnrm: <https://clnrm.io/ontology/> .
+@prefix dct: <http://purl.org/dc/terms/> .
+
+# Base ontology
+clnrm:Ontology a owl:Ontology ;
+    dct:title "Cleanroom Testing Framework Ontology" ;
+    dct:description "Formal ontology for the CLNRM containerized testing framework" ;
+    dct:version "2.0.0" ;
+    dct:created "2024-01-01"^^xsd:date ;
+    dct:creator "Sean Chatman" .
+
+# ==================== Core Concepts ====================
+
+# CleanroomEnvironment - Main testing environment
+clnrm:CleanroomEnvironment a rdfs:Class ;
+    rdfs:label "Cleanroom Environment" ;
+    rdfs:comment "A hermetically isolated testing environment with containers and services" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# Container - Docker container abstraction
+clnrm:Container a rdfs:Class ;
+    rdfs:label "Container" ;
+    rdfs:comment "A Docker container instance managed by the cleanroom framework" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# Service - Service/plugin abstraction
+clnrm:Service a rdfs:Class ;
+    rdfs:label "Service" ;
+    rdfs:comment "A service plugin that provides testing capabilities" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# Test - Test case or test execution
+clnrm:Test a rdfs:Class ;
+    rdfs:label "Test" ;
+    rdfs:comment "A test case that can be executed in a cleanroom environment" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# Assertion - Test assertion
+clnrm:Assertion a rdfs:Class ;
+    rdfs:label "Assertion" ;
+    rdfs:comment "A validation check for test output" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# HealthCheck - Service health check
+clnrm:HealthCheck a rdfs:Class ;
+    rdfs:label "Health Check" ;
+    rdfs:comment "A health check for a container or service" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# Metrics - Performance metrics
+clnrm:Metrics a rdfs:Class ;
+    rdfs:label "Metrics" ;
+    rdfs:comment "Performance and observability metrics for test execution" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# ==================== Properties ====================
+
+# Environment properties
+clnrm:hasSessionId a rdf:Property ;
+    rdfs:label "has session ID" ;
+    rdfs:comment "Unique identifier for a cleanroom session" ;
+    rdfs:domain clnrm:CleanroomEnvironment ;
+    rdfs:range xsd:string .
+
+clnrm:hasContainer a rdf:Property ;
+    rdfs:label "has container" ;
+    rdfs:comment "Contains a container instance" ;
+    rdfs:domain clnrm:CleanroomEnvironment ;
+    rdfs:range clnrm:Container ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:hasService a rdf:Property ;
+    rdfs:label "has service" ;
+    rdfs:comment "Contains a service plugin" ;
+    rdfs:domain clnrm:CleanroomEnvironment ;
+    rdfs:range clnrm:Service ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:hasTest a rdf:Property ;
+    rdfs:label "has test" ;
+    rdfs:comment "Contains a test" ;
+    rdfs:domain clnrm:CleanroomEnvironment ;
+    rdfs:range clnrm:Test ;
+    rdf:type owl:ObjectProperty .
+
+# Container properties
+clnrm:containerName a rdf:Property ;
+    rdfs:label "container name" ;
+    rdfs:comment "Name of the container" ;
+    rdfs:domain clnrm:Container ;
+    rdfs:range xsd:string .
+
+clnrm:containerImage a rdf:Property ;
+    rdfs:label "container image" ;
+    rdfs:comment "Docker image used by the container" ;
+    rdfs:domain clnrm:Container ;
+    rdfs:range xsd:string .
+
+clnrm:exposedPort a rdf:Property ;
+    rdfs:label "exposed port" ;
+    rdfs:comment "Port exposed by the container" ;
+    rdfs:domain clnrm:Container ;
+    rdfs:range xsd:integer .
+
+clnrm:hasHealthCheck a rdf:Property ;
+    rdfs:label "has health check" ;
+    rdfs:comment "Health check for this container" ;
+    rdfs:domain clnrm:Container ;
+    rdfs:range clnrm:HealthCheck ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:hasEnvironmentVariable a rdf:Property ;
+    rdfs:label "has environment variable" ;
+    rdfs:comment "Environment variable set in container" ;
+    rdfs:domain clnrm:Container ;
+    rdfs:range clnrm:EnvironmentVariable ;
+    rdf:type owl:ObjectProperty .
+
+# Service properties
+clnrm:serviceName a rdf:Property ;
+    rdfs:label "service name" ;
+    rdfs:comment "Name of the service" ;
+    rdfs:domain clnrm:Service ;
+    rdfs:range xsd:string .
+
+clnrm:serviceType a rdf:Property ;
+    rdfs:label "service type" ;
+    rdfs:comment "Type of service (plugin)" ;
+    rdfs:domain clnrm:Service ;
+    rdfs:range xsd:string .
+
+# Test properties
+clnrm:testName a rdf:Property ;
+    rdfs:label "test name" ;
+    rdfs:comment "Name of the test" ;
+    rdfs:domain clnrm:Test ;
+    rdfs:range xsd:string .
+
+clnrm:testDescription a rdf:Property ;
+    rdfs:label "test description" ;
+    rdfs:comment "Human-readable description of what the test does" ;
+    rdfs:domain clnrm:Test ;
+    rdfs:range xsd:string .
+
+clnrm:testCommand a rdf:Property ;
+    rdfs:label "test command" ;
+    rdfs:comment "Command to execute for the test" ;
+    rdfs:domain clnrm:Test ;
+    rdfs:range xsd:string .
+
+clnrm:hasAssertion a rdf:Property ;
+    rdfs:label "has assertion" ;
+    rdfs:comment "Contains an assertion to validate" ;
+    rdfs:domain clnrm:Test ;
+    rdfs:range clnrm:Assertion ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:expectedOutput a rdf:Property ;
+    rdfs:label "expected output" ;
+    rdfs:comment "Expected output from test execution" ;
+    rdfs:domain clnrm:Test ;
+    rdfs:range xsd:string .
+
+# Assertion properties
+clnrm:assertionType a rdf:Property ;
+    rdfs:label "assertion type" ;
+    rdfs:comment "Type of assertion (equals, contains, matches, etc.)" ;
+    rdfs:domain clnrm:Assertion ;
+    rdfs:range xsd:string .
+
+clnrm:expectedValue a rdf:Property ;
+    rdfs:label "expected value" ;
+    rdfs:comment "Expected value for assertion" ;
+    rdfs:domain clnrm:Assertion ;
+    rdfs:range xsd:string .
+
+clnrm:actualValue a rdf:Property ;
+    rdfs:label "actual value" ;
+    rdfs:comment "Actual value from test execution" ;
+    rdfs:domain clnrm:Assertion ;
+    rdfs:range xsd:string .
+
+# HealthCheck properties
+clnrm:healthCheckCommand a rdf:Property ;
+    rdfs:label "health check command" ;
+    rdfs:comment "Command to execute for health check" ;
+    rdfs:domain clnrm:HealthCheck ;
+    rdfs:range xsd:string .
+
+clnrm:healthCheckInterval a rdf:Property ;
+    rdfs:label "health check interval" ;
+    rdfs:comment "Interval between health checks in seconds" ;
+    rdfs:domain clnrm:HealthCheck ;
+    rdfs:range xsd:integer .
+
+clnrm:healthCheckTimeout a rdf:Property ;
+    rdfs:label "health check timeout" ;
+    rdfs:comment "Timeout for health check in seconds" ;
+    rdfs:domain clnrm:HealthCheck ;
+    rdfs:range xsd:integer .
+
+# Metrics properties
+clnrm:executionTime a rdf:Property ;
+    rdfs:label "execution time" ;
+    rdfs:comment "Total execution time in milliseconds" ;
+    rdfs:domain clnrm:Metrics ;
+    rdfs:range xsd:integer .
+
+clnrm:containerCount a rdf:Property ;
+    rdfs:label "container count" ;
+    rdfs:comment "Number of containers used" ;
+    rdfs:domain clnrm:Metrics ;
+    rdfs:range xsd:integer .
+
+clnrm:assertionsPassed a rdf:Property ;
+    rdfs:label "assertions passed" ;
+    rdfs:comment "Number of passed assertions" ;
+    rdfs:domain clnrm:Metrics ;
+    rdfs:range xsd:integer .
+
+clnrm:assertionsFailed a rdf:Property ;
+    rdfs:label "assertions failed" ;
+    rdfs:comment "Number of failed assertions" ;
+    rdfs:domain clnrm:Metrics ;
+    rdfs:range xsd:integer .
+
+# ==================== Configuration Classes ====================
+
+clnrm:TestConfiguration a rdfs:Class ;
+    rdfs:label "Test Configuration" ;
+    rdfs:comment "Complete test configuration defining scenarios, services, and assertions" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:Metadata a rdfs:Class ;
+    rdfs:label "Metadata" ;
+    rdfs:comment "Test metadata including name, description, version" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:StepDefinition a rdfs:Class ;
+    rdfs:label "Step Definition" ;
+    rdfs:comment "A single step in a test scenario with command and assertions" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:ScenarioDefinition a rdfs:Class ;
+    rdfs:label "Scenario Definition" ;
+    rdfs:comment "Multi-step test scenario with service dependencies" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:Policy a rdfs:Class ;
+    rdfs:label "Execution Policy" ;
+    rdfs:comment "Security, resource, and execution policies" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:DeterminismConfig a rdfs:Class ;
+    rdfs:label "Determinism Configuration" ;
+    rdfs:comment "Configuration for deterministic test execution" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:OtelValidation a rdfs:Class ;
+    rdfs:label "OpenTelemetry Validation" ;
+    rdfs:comment "Validation rules for OTEL traces and spans" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# ==================== Error & Reporting Classes ====================
+
+clnrm:ErrorKind a rdfs:Class ;
+    rdfs:label "Error Kind" ;
+    rdfs:comment "Category of error that can occur during execution" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:Report a rdfs:Class ;
+    rdfs:label "Report" ;
+    rdfs:comment "Test execution report in various formats" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:ReportFormat a rdfs:Class ;
+    rdfs:label "Report Format" ;
+    rdfs:comment "Format for test reports (JSON, JUnit, TAP, etc.)" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# ==================== Backend & Execution Classes ====================
+
+clnrm:Backend a rdfs:Class ;
+    rdfs:label "Execution Backend" ;
+    rdfs:comment "Container execution backend (Testcontainers, DockerPool, Mock)" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:ContainerPool a rdfs:Class ;
+    rdfs:label "Container Pool" ;
+    rdfs:comment "Pool of reusable containers for 10-50x performance improvement" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:Capability a rdfs:Class ;
+    rdfs:label "Capability" ;
+    rdfs:comment "Container or service capability (e.g., port-mapping, networking)" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# ==================== Additional Classes ====================
+
+clnrm:EnvironmentVariable a rdfs:Class ;
+    rdfs:label "Environment Variable" ;
+    rdfs:comment "An environment variable configuration" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:variableName a rdf:Property ;
+    rdfs:label "variable name" ;
+    rdfs:comment "Name of the environment variable" ;
+    rdfs:domain clnrm:EnvironmentVariable ;
+    rdfs:range xsd:string .
+
+clnrm:variableValue a rdf:Property ;
+    rdfs:label "variable value" ;
+    rdfs:comment "Value of the environment variable" ;
+    rdfs:domain clnrm:EnvironmentVariable ;
+    rdfs:range xsd:string .
+
+# ==================== Crates/Modules ====================
+
+clnrm:Crate a rdfs:Class ;
+    rdfs:label "Crate" ;
+    rdfs:comment "A Rust crate in the workspace" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+clnrm:crateName a rdf:Property ;
+    rdfs:label "crate name" ;
+    rdfs:comment "Name of the crate" ;
+    rdfs:domain clnrm:Crate ;
+    rdfs:range xsd:string .
+
+clnrm:crateVersion a rdf:Property ;
+    rdfs:label "crate version" ;
+    rdfs:comment "Version of the crate" ;
+    rdfs:domain clnrm:Crate ;
+    rdfs:range xsd:string .
+
+clnrm:crateDescription a rdf:Property ;
+    rdfs:label "crate description" ;
+    rdfs:comment "Description of what the crate does" ;
+    rdfs:domain clnrm:Crate ;
+    rdfs:range xsd:string .
+
+clnrm:hasDependency a rdf:Property ;
+    rdfs:label "has dependency" ;
+    rdfs:comment "Depends on another crate" ;
+    rdfs:domain clnrm:Crate ;
+    rdfs:range clnrm:Crate ;
+    rdf:type owl:ObjectProperty .
+
+# ==================== Configuration Properties ====================
+
+clnrm:hasMetadata a rdf:Property ;
+    rdfs:label "has metadata" ;
+    rdfs:comment "Test configuration has metadata" ;
+    rdfs:domain clnrm:TestConfiguration ;
+    rdfs:range clnrm:Metadata ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:hasStep a rdf:Property ;
+    rdfs:label "has step" ;
+    rdfs:comment "Scenario contains a step" ;
+    rdfs:domain clnrm:ScenarioDefinition ;
+    rdfs:range clnrm:StepDefinition ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:hasScenario a rdf:Property ;
+    rdfs:label "has scenario" ;
+    rdfs:comment "Test configuration contains a scenario" ;
+    rdfs:domain clnrm:TestConfiguration ;
+    rdfs:range clnrm:ScenarioDefinition ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:hasPolicy a rdf:Property ;
+    rdfs:label "has policy" ;
+    rdfs:comment "Configuration has execution policy" ;
+    rdfs:domain clnrm:TestConfiguration ;
+    rdfs:range clnrm:Policy ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:hasDeterminismConfig a rdf:Property ;
+    rdfs:label "has determinism config" ;
+    rdfs:comment "Configuration for deterministic execution" ;
+    rdfs:domain clnrm:TestConfiguration ;
+    rdfs:range clnrm:DeterminismConfig ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:hasOtelValidation a rdf:Property ;
+    rdfs:label "has OTEL validation" ;
+    rdfs:comment "OTEL validation rules" ;
+    rdfs:domain clnrm:TestConfiguration ;
+    rdfs:range clnrm:OtelValidation ;
+    rdf:type owl:ObjectProperty .
+
+# Step properties
+clnrm:stepIndex a rdf:Property ;
+    rdfs:label "step index" ;
+    rdfs:comment "Order of step in scenario" ;
+    rdfs:domain clnrm:StepDefinition ;
+    rdfs:range xsd:integer .
+
+clnrm:stepTimeout a rdf:Property ;
+    rdfs:label "step timeout" ;
+    rdfs:comment "Timeout for step execution in milliseconds" ;
+    rdfs:domain clnrm:StepDefinition ;
+    rdfs:range xsd:integer .
+
+clnrm:stepRetries a rdf:Property ;
+    rdfs:label "step retries" ;
+    rdfs:comment "Number of retries for failed step" ;
+    rdfs:domain clnrm:StepDefinition ;
+    rdfs:range xsd:integer .
+
+clnrm:outputRegex a rdf:Property ;
+    rdfs:label "output regex" ;
+    rdfs:comment "Regular expression for expected output matching" ;
+    rdfs:domain clnrm:StepDefinition ;
+    rdfs:range xsd:string .
+
+# Policy properties
+clnrm:securityLevel a rdf:Property ;
+    rdfs:label "security level" ;
+    rdfs:comment "Security level (Low, Medium, High, Maximum, Locked)" ;
+    rdfs:domain clnrm:Policy ;
+    rdfs:range xsd:string .
+
+clnrm:resourceLimit a rdf:Property ;
+    rdfs:label "resource limit" ;
+    rdfs:comment "Resource limit specification" ;
+    rdfs:domain clnrm:Policy ;
+    rdfs:range xsd:string .
+
+# Determinism properties
+clnrm:randomSeed a rdf:Property ;
+    rdfs:label "random seed" ;
+    rdfs:comment "Seed for deterministic random number generation" ;
+    rdfs:domain clnrm:DeterminismConfig ;
+    rdfs:range xsd:integer .
+
+clnrm:freezeClock a rdf:Property ;
+    rdfs:label "freeze clock" ;
+    rdfs:comment "Freeze time for deterministic execution" ;
+    rdfs:domain clnrm:DeterminismConfig ;
+    rdfs:range xsd:boolean .
+
+clnrm:fixedTimestamp a rdf:Property ;
+    rdfs:label "fixed timestamp" ;
+    rdfs:comment "Fixed timestamp for deterministic execution" ;
+    rdfs:domain clnrm:DeterminismConfig ;
+    rdfs:range xsd:string .
+
+# Error properties
+clnrm:errorKindName a rdf:Property ;
+    rdfs:label "error kind name" ;
+    rdfs:comment "Error kind enumeration value" ;
+    rdfs:domain clnrm:ErrorKind ;
+    rdfs:range xsd:string .
+
+clnrm:isRecoverable a rdf:Property ;
+    rdfs:label "is recoverable" ;
+    rdfs:comment "Whether error can be recovered from" ;
+    rdfs:domain clnrm:ErrorKind ;
+    rdfs:range xsd:boolean .
+
+# Report properties
+clnrm:reportFormat a rdf:Property ;
+    rdfs:label "report format" ;
+    rdfs:comment "Format of the report (JSON, JUnit, TAP, HTML)" ;
+    rdfs:domain clnrm:Report ;
+    rdfs:range xsd:string .
+
+clnrm:reportContent a rdf:Property ;
+    rdfs:label "report content" ;
+    rdfs:comment "Serialized report content" ;
+    rdfs:domain clnrm:Report ;
+    rdfs:range xsd:string .
+
+clnrm:reportTimestamp a rdf:Property ;
+    rdfs:label "report timestamp" ;
+    rdfs:comment "Report generation timestamp" ;
+    rdfs:domain clnrm:Report ;
+    rdfs:range xsd:dateTime .
+
+# Backend properties
+clnrm:backendType a rdf:Property ;
+    rdfs:label "backend type" ;
+    rdfs:comment "Backend implementation type (Testcontainers, Pool, Mock, Docker)" ;
+    rdfs:domain clnrm:Backend ;
+    rdfs:range xsd:string .
+
+clnrm:poolSize a rdf:Property ;
+    rdfs:label "pool size" ;
+    rdfs:comment "Number of containers in pool" ;
+    rdfs:domain clnrm:ContainerPool ;
+    rdfs:range xsd:integer .
+
+clnrm:reuseRatio a rdf:Property ;
+    rdfs:label "reuse ratio" ;
+    rdfs:comment "Expected container reuse ratio (10-50x improvement)" ;
+    rdfs:domain clnrm:ContainerPool ;
+    rdfs:range xsd:decimal .
+
+clnrm:supportsCapability a rdf:Property ;
+    rdfs:label "supports capability" ;
+    rdfs:comment "Backend supports a capability" ;
+    rdfs:domain clnrm:Backend ;
+    rdfs:range clnrm:Capability ;
+    rdf:type owl:ObjectProperty .
+
+clnrm:capabilityName a rdf:Property ;
+    rdfs:label "capability name" ;
+    rdfs:comment "Name of the capability" ;
+    rdfs:domain clnrm:Capability ;
+    rdfs:range xsd:string .
+
+# OTEL validation properties
+clnrm:spanAssertion a rdf:Property ;
+    rdfs:label "span assertion" ;
+    rdfs:comment "Assertion rule for trace spans" ;
+    rdfs:domain clnrm:OtelValidation ;
+    rdfs:range xsd:string .
+
+clnrm:traceAssertion a rdf:Property ;
+    rdfs:label "trace assertion" ;
+    rdfs:comment "Assertion rule for traces" ;
+    rdfs:domain clnrm:OtelValidation ;
+    rdfs:range xsd:string .
+
+clnrm:metricAssertion a rdf:Property ;
+    rdfs:label "metric assertion" ;
+    rdfs:comment "Assertion rule for metrics" ;
+    rdfs:domain clnrm:OtelValidation ;
+    rdfs:range xsd:string .

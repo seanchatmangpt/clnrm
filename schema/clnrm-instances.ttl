@@ -1,0 +1,449 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix clnrm: <https://clnrm.io/ontology/> .
+@prefix ex: <https://clnrm.io/instances/> .
+
+# ==================== Workspace & Crates ====================
+
+ex:ClnrmWorkspace a clnrm:Crate ;
+    clnrm:crateName "clnrm" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Workspace root for Cleanroom Testing Framework" ;
+    rdfs:label "CLNRM Workspace" .
+
+ex:CoreCrate a clnrm:Crate ;
+    clnrm:crateName "clnrm-core" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Core domain logic and test execution engine (7732 lines)" ;
+    rdfs:label "CLNRM Core" .
+
+ex:CliCrate a clnrm:Crate ;
+    clnrm:crateName "clnrm-cli" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "CLI command implementations (40+ commands, 20KB)" ;
+    rdfs:label "CLNRM CLI" .
+
+ex:SharedCrate a clnrm:Crate ;
+    clnrm:crateName "clnrm-shared" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Shared types and utilities (minimal: 42 lines)" ;
+    rdfs:label "CLNRM Shared" .
+
+ex:TemplateCrate a clnrm:Crate ;
+    clnrm:crateName "clnrm-template" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "Template engine for test generation and configuration rendering" ;
+    rdfs:label "CLNRM Template" .
+
+ex:EvidenceGraphCrate a clnrm:Crate ;
+    clnrm:crateName "evidence-graph" ;
+    clnrm:crateVersion "2.0.0" ;
+    clnrm:crateDescription "7-phase domain concept mining pipeline with 15 core concepts" ;
+    rdfs:label "Evidence Graph" .
+
+# Dependencies
+ex:CliCrate clnrm:hasDependency ex:CoreCrate .
+ex:CoreCrate clnrm:hasDependency ex:SharedCrate .
+ex:CoreCrate clnrm:hasDependency ex:TemplateCrate .
+ex:TemplateCrate clnrm:hasDependency ex:SharedCrate .
+ex:EvidenceGraphCrate clnrm:hasDependency ex:SharedCrate .
+
+# ==================== Core Module Concepts ====================
+
+# Main types that should be code-generated
+ex:CleanroomEnvironmentType a clnrm:CleanroomEnvironment ;
+    rdfs:label "CleanroomEnvironment Type" ;
+    rdfs:comment "Main testing environment with containers and services (1148 lines in cleanroom.rs)" ;
+    clnrm:containerName "cleanroom-env" .
+
+ex:ServicePluginTrait a clnrm:Service ;
+    clnrm:serviceName "ServicePlugin" ;
+    clnrm:serviceType "trait" ;
+    rdfs:label "Service Plugin Trait" ;
+    rdfs:comment "Pluggable service abstraction: start(), stop(), health_check()" .
+
+ex:ServiceRegistry a clnrm:Service ;
+    clnrm:serviceName "ServiceRegistry" ;
+    clnrm:serviceType "struct" ;
+    rdfs:label "Service Registry" ;
+    rdfs:comment "Manages service plugins and active services" .
+
+# ==================== Error Kinds (20+ variants) ====================
+
+ex:ContainerErrorKind a clnrm:ErrorKind ;
+    clnrm:errorKindName "ContainerError" ;
+    clnrm:isRecoverable false ;
+    rdfs:comment "Container lifecycle issues" .
+
+ex:NetworkErrorKind a clnrm:ErrorKind ;
+    clnrm:errorKindName "NetworkError" ;
+    clnrm:isRecoverable true ;
+    rdfs:comment "Network connectivity problems" .
+
+ex:ResourceLimitErrorKind a clnrm:ErrorKind ;
+    clnrm:errorKindName "ResourceLimitExceeded" ;
+    clnrm:isRecoverable false ;
+    rdfs:comment "Resource exhaustion (CPU, memory, disk)" .
+
+ex:TimeoutErrorKind a clnrm:ErrorKind ;
+    clnrm:errorKindName "Timeout" ;
+    clnrm:isRecoverable true ;
+    rdfs:comment "Operation timeout" .
+
+ex:ConfigErrorKind a clnrm:ErrorKind ;
+    clnrm:errorKindName "ConfigurationError" ;
+    clnrm:isRecoverable false ;
+    rdfs:comment "Configuration validation failure" .
+
+ex:PolicyViolationKind a clnrm:ErrorKind ;
+    clnrm:errorKindName "PolicyViolation" ;
+    clnrm:isRecoverable false ;
+    rdfs:comment "Security policy breach" .
+
+ex:DeterminismErrorKind a clnrm:ErrorKind ;
+    clnrm:errorKindName "DeterministicError" ;
+    clnrm:isRecoverable false ;
+    rdfs:comment "Non-deterministic execution detected" .
+
+ex:ValidationErrorKind a clnrm:ErrorKind ;
+    clnrm:errorKindName "ValidationError" ;
+    clnrm:isRecoverable false ;
+    rdfs:comment "Assertion or span validation failure" .
+
+# ==================== Backend Implementations ====================
+
+ex:TestcontainerBackend a clnrm:Backend ;
+    clnrm:backendType "Testcontainers" ;
+    rdfs:label "Testcontainers Backend" ;
+    rdfs:comment "testcontainers-rs integration (845 lines)" .
+
+ex:ContainerPoolBackend a clnrm:ContainerPool ;
+    clnrm:backendType "ContainerPool" ;
+    clnrm:poolSize 10 ;
+    clnrm:reuseRatio "10-50x"^^xsd:decimal ;
+    rdfs:label "Container Pool Backend" ;
+    rdfs:comment "Reusable container pool for performance (1270 lines in pool.rs)" .
+
+ex:MockBackend a clnrm:Backend ;
+    clnrm:backendType "Mock" ;
+    rdfs:label "Mock Backend" ;
+    rdfs:comment "Fast testing backend without containers" .
+
+ex:DockerExecBackend a clnrm:Backend ;
+    clnrm:backendType "Docker" ;
+    rdfs:label "Docker Exec Backend" ;
+    rdfs:comment "Direct docker exec in running containers (971 lines)" .
+
+# Capabilities
+ex:PortMappingCapability a clnrm:Capability ;
+    clnrm:capabilityName "port-mapping" ;
+    rdfs:comment "Container port exposure support" .
+
+ex:NetworkingCapability a clnrm:Capability ;
+    clnrm:capabilityName "networking" ;
+    rdfs:comment "Multi-container networking support" .
+
+ex:EnvironmentVariablesCapability a clnrm:Capability ;
+    clnrm:capabilityName "environment-variables" ;
+    rdfs:comment "Environment variable injection" .
+
+ex:HealthCheckCapability a clnrm:Capability ;
+    clnrm:capabilityName "health-checks" ;
+    rdfs:comment "Container health checking" .
+
+ex:TestcontainerBackend clnrm:supportsCapability ex:PortMappingCapability ;
+    clnrm:supportsCapability ex:NetworkingCapability ;
+    clnrm:supportsCapability ex:EnvironmentVariablesCapability ;
+    clnrm:supportsCapability ex:HealthCheckCapability .
+
+ex:ContainerPoolBackend clnrm:supportsCapability ex:PortMappingCapability ;
+    clnrm:supportsCapability ex:NetworkingCapability ;
+    clnrm:supportsCapability ex:HealthCheckCapability .
+
+# ==================== Example Test Configuration ====================
+
+ex:SimpleEchoConfig a clnrm:TestConfiguration ;
+    rdfs:label "Simple Echo Test Config" ;
+    rdfs:comment "Minimal test demonstrating basic container execution" ;
+    clnrm:hasMetadata ex:SimpleEchoMetadata ;
+    clnrm:hasScenario ex:SimpleEchoScenario ;
+    clnrm:hasPolicy ex:DefaultPolicy ;
+    clnrm:hasDeterminismConfig ex:DefaultDeterminism .
+
+ex:SimpleEchoMetadata a clnrm:Metadata ;
+    rdfs:label "Simple Echo Metadata" ;
+    clnrm:testName "simple-echo" ;
+    clnrm:testDescription "Echo command output verification" .
+
+ex:SimpleEchoScenario a clnrm:ScenarioDefinition ;
+    rdfs:label "Simple Echo Scenario" ;
+    clnrm:serviceName "echo" ;
+    clnrm:hasStep ex:SimpleEchoStep .
+
+ex:SimpleEchoStep a clnrm:StepDefinition ;
+    rdfs:label "Echo Step" ;
+    clnrm:stepIndex 0 ;
+    clnrm:testName "echo-hello" ;
+    clnrm:testCommand "echo 'Hello from cleanroom'" ;
+    clnrm:expectedOutput "Hello from cleanroom" ;
+    clnrm:stepTimeout 5000 ;
+    clnrm:stepRetries 0 .
+
+# ==================== Service Plugin Implementations ====================
+
+ex:GenericContainerService a clnrm:Service ;
+    clnrm:serviceName "generic-container" ;
+    clnrm:serviceType "GenericContainerPlugin" ;
+    rdfs:label "Generic Container Service" ;
+    rdfs:comment "Alpine/Ubuntu container plugin for custom services" .
+
+ex:SurrealDbService a clnrm:Service ;
+    clnrm:serviceName "surrealdb" ;
+    clnrm:serviceType "SurrealDbPlugin" ;
+    rdfs:label "SurrealDB Service" ;
+    rdfs:comment "Multi-paradigm database service plugin" ;
+    clnrm:containerImage "surrealdb:latest" ;
+    clnrm:exposedPort 8000 .
+
+ex:OllamaService a clnrm:Service ;
+    clnrm:serviceName "ollama" ;
+    clnrm:serviceType "OllamaPlugin" ;
+    rdfs:label "Ollama LLM Service" ;
+    rdfs:comment "Ollama language model service plugin" ;
+    clnrm:containerImage "ollama/ollama:latest" ;
+    clnrm:exposedPort 11434 .
+
+ex:VllmService a clnrm:Service ;
+    clnrm:serviceName "vllm" ;
+    clnrm:serviceType "VllmPlugin" ;
+    rdfs:label "vLLM Service" ;
+    rdfs:comment "vLLM text generation service plugin" ;
+    clnrm:containerImage "vllm/vllm:latest" ;
+    clnrm:exposedPort 8000 .
+
+ex:OtelCollectorService a clnrm:Service ;
+    clnrm:serviceName "otel-collector" ;
+    clnrm:serviceType "OtelCollectorPlugin" ;
+    rdfs:label "OpenTelemetry Collector" ;
+    rdfs:comment "OTEL collector for trace/metric aggregation" ;
+    clnrm:containerImage "otel/opentelemetry-collector:latest" ;
+    clnrm:exposedPort 4317 .
+
+# ==================== Execution Policies ====================
+
+ex:DefaultPolicy a clnrm:Policy ;
+    rdfs:label "Default Policy" ;
+    clnrm:securityLevel "Medium" ;
+    rdfs:comment "Default security and resource policy" .
+
+ex:HighSecurityPolicy a clnrm:Policy ;
+    rdfs:label "High Security Policy" ;
+    clnrm:securityLevel "High" ;
+    clnrm:resourceLimit "512M-memory" ;
+    rdfs:comment "Strict security with resource limits" .
+
+ex:MaximumSecurityPolicy a clnrm:Policy ;
+    rdfs:label "Maximum Security Policy" ;
+    clnrm:securityLevel "Maximum" ;
+    clnrm:resourceLimit "256M-memory-strict" ;
+    rdfs:comment "Locked-down security configuration" .
+
+# ==================== Determinism Configurations ====================
+
+ex:DefaultDeterminism a clnrm:DeterminismConfig ;
+    rdfs:label "Default Determinism" ;
+    clnrm:freezeClock false ;
+    rdfs:comment "Non-deterministic execution (normal mode)" .
+
+ex:FullyDeterministic a clnrm:DeterminismConfig ;
+    rdfs:label "Fully Deterministic" ;
+    clnrm:randomSeed 42 ;
+    clnrm:freezeClock true ;
+    clnrm:fixedTimestamp "2024-01-01T00:00:00Z" ;
+    rdfs:comment "Fully deterministic with frozen time and fixed seed" .
+
+# ==================== OTEL Validation ====================
+
+ex:BasicOtelValidation a clnrm:OtelValidation ;
+    rdfs:label "Basic OTEL Validation" ;
+    clnrm:spanAssertion "span.name == 'test-span'" ;
+    clnrm:traceAssertion "trace.status == SUCCESS" ;
+    rdfs:comment "Basic span and trace validation" .
+
+# ==================== Report Formats ====================
+
+ex:JsonReportFormat a clnrm:ReportFormat ;
+    rdfs:label "JSON Report" ;
+    clnrm:reportFormat "json" ;
+    rdfs:comment "JSON structured report output" .
+
+ex:JunitReportFormat a clnrm:ReportFormat ;
+    rdfs:label "JUnit Report" ;
+    clnrm:reportFormat "junit" ;
+    rdfs:comment "JUnit XML format for CI/CD systems" .
+
+ex:TapReportFormat a clnrm:ReportFormat ;
+    rdfs:label "TAP Report" ;
+    clnrm:reportFormat "tap" ;
+    rdfs:comment "Test Anything Protocol text format" .
+
+ex:HtmlReportFormat a clnrm:ReportFormat ;
+    rdfs:label "HTML Report" ;
+    clnrm:reportFormat "html" ;
+    rdfs:comment "HTML dashboard with interactive visualization" .
+
+# ==================== Example Containers ====================
+
+ex:RustCompiler a clnrm:Container ;
+    clnrm:containerName "rust" ;
+    clnrm:containerImage "rust:1.75-slim" ;
+    clnrm:exposedPort 0 ;
+    rdfs:label "Rust Compiler Container" ;
+    rdfs:comment "Container with full Rust toolchain (v1.75, edition 2021)" ;
+    clnrm:hasHealthCheck ex:RustCompilerHealth ;
+    clnrm:hasEnvironmentVariable ex:RustEdition ;
+    clnrm:hasEnvironmentVariable ex:RustLogLevel .
+
+ex:RustCompilerHealth a clnrm:HealthCheck ;
+    clnrm:healthCheckCommand "rustc --version" ;
+    clnrm:healthCheckInterval 5 ;
+    clnrm:healthCheckTimeout 10 .
+
+ex:RustEdition a clnrm:EnvironmentVariable ;
+    clnrm:variableName "RUST_EDITION" ;
+    clnrm:variableValue "2021" .
+
+ex:RustLogLevel a clnrm:EnvironmentVariable ;
+    clnrm:variableName "RUST_LOG" ;
+    clnrm:variableValue "debug" .
+
+ex:PostgresContainer a clnrm:Container ;
+    clnrm:containerName "postgres" ;
+    clnrm:containerImage "postgres:15-alpine" ;
+    clnrm:exposedPort 5432 ;
+    rdfs:label "PostgreSQL Container" ;
+    rdfs:comment "PostgreSQL 15 database container" ;
+    clnrm:hasEnvironmentVariable ex:PostgresPassword .
+
+ex:PostgresPassword a clnrm:EnvironmentVariable ;
+    clnrm:variableName "POSTGRES_PASSWORD" ;
+    clnrm:variableValue "testpassword" .
+
+# ==================== Framework Architecture Concepts ====================
+
+ex:ChicagoSchoolTdd a rdfs:Class ;
+    rdfs:label "Chicago School TDD" ;
+    rdfs:comment "State-based testing methodology using mockable traits" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+ex:HermeticIsolation a rdfs:Class ;
+    rdfs:label "Hermetic Isolation" ;
+    rdfs:comment "Complete isolation: containers don't affect host or each other" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+ex:DeterministicReplayability a rdfs:Class ;
+    rdfs:label "Deterministic Replayability" ;
+    rdfs:comment "Exact test replay with identical results using seeds and timestamps" ;
+    rdfs:isDefinedBy clnrm:Ontology .
+
+# ==================== Complex Test Configuration ====================
+
+ex:ComprehensiveTestConfig a clnrm:TestConfiguration ;
+    rdfs:label "Comprehensive Integration Test" ;
+    rdfs:comment "Multi-container, multi-step test with services and policies" ;
+    clnrm:hasMetadata ex:ComprehensiveMetadata ;
+    clnrm:hasService ex:SurrealDbService ;
+    clnrm:hasService ex:OtelCollectorService ;
+    clnrm:hasScenario ex:ComprehensiveScenario ;
+    clnrm:hasPolicy ex:HighSecurityPolicy ;
+    clnrm:hasDeterminismConfig ex:FullyDeterministic ;
+    clnrm:hasOtelValidation ex:BasicOtelValidation .
+
+ex:ComprehensiveMetadata a clnrm:Metadata ;
+    clnrm:testName "comprehensive-integration-test" ;
+    clnrm:testDescription "End-to-end integration test with database and observability" .
+
+ex:ComprehensiveScenario a clnrm:ScenarioDefinition ;
+    rdfs:label "Comprehensive Scenario" ;
+    clnrm:serviceName "database-api" ;
+    clnrm:hasStep ex:DbHealthCheckStep ;
+    clnrm:hasStep ex:ApiStartStep ;
+    clnrm:hasStep ex:ApiHealthCheckStep ;
+    clnrm:hasStep ex:QueryStep ;
+    clnrm:hasStep ex:CleanupStep .
+
+ex:DbHealthCheckStep a clnrm:StepDefinition ;
+    clnrm:stepIndex 0 ;
+    clnrm:testName "check-db-health" ;
+    clnrm:testCommand "curl" ;
+    clnrm:expectedOutput "ok" ;
+    clnrm:stepTimeout 10000 ;
+    clnrm:stepRetries 3 .
+
+ex:ApiStartStep a clnrm:StepDefinition ;
+    clnrm:stepIndex 1 ;
+    clnrm:testName "start-api" ;
+    clnrm:testCommand "cargo" ;
+    clnrm:expectedOutput "listening" ;
+    clnrm:stepTimeout 30000 ;
+    clnrm:stepRetries 1 .
+
+ex:ApiHealthCheckStep a clnrm:StepDefinition ;
+    clnrm:stepIndex 2 ;
+    clnrm:testName "check-api-health" ;
+    clnrm:testCommand "curl" ;
+    clnrm:expectedOutput "UP" ;
+    clnrm:stepTimeout 5000 ;
+    clnrm:stepRetries 5 .
+
+ex:QueryStep a clnrm:StepDefinition ;
+    clnrm:stepIndex 3 ;
+    clnrm:testName "test-query" ;
+    clnrm:testCommand "curl" ;
+    clnrm:outputRegex "[0-9]+ records" ;
+    clnrm:stepTimeout 15000 ;
+    clnrm:stepRetries 0 .
+
+ex:CleanupStep a clnrm:StepDefinition ;
+    clnrm:stepIndex 4 ;
+    clnrm:testName "cleanup" ;
+    clnrm:testCommand "echo" ;
+    clnrm:expectedOutput "cleaned up" ;
+    clnrm:stepTimeout 5000 ;
+    clnrm:stepRetries 0 .
+
+# ==================== Commands (CLI) ====================
+
+# These represent the 40+ commands defined in clnrm-cli
+ex:RunCommand a rdfs:Class ;
+    rdfs:label "run" ;
+    rdfs:comment "Execute test scenarios from TOML files (924 lines)" .
+
+ex:ValidateCommand a rdfs:Class ;
+    rdfs:label "validate" ;
+    rdfs:comment "Validate test configuration syntax and semantics" .
+
+ex:FmtCommand a rdfs:Class ;
+    rdfs:label "fmt" ;
+    rdfs:comment "Format test TOML files with consistent style" .
+
+ex:RenderCommand a rdfs:Class ;
+    rdfs:label "render" ;
+    rdfs:comment "Render templates with test configuration context" .
+
+ex:AnalyzeCommand a rdfs:Class ;
+    rdfs:label "analyze" ;
+    rdfs:comment "Analyze test traces and generate reports" .
+
+ex:WatchCommand a rdfs:Class ;
+    rdfs:label "watch" ;
+    rdfs:comment "Watch for file changes and run tests automatically" .
+
+ex:LintCommand a rdfs:Class ;
+    rdfs:label "lint" ;
+    rdfs:comment "Lint test configuration for best practices" .
+
+ex:StressCommand a rdfs:Class ;
+    rdfs:label "stress" ;
+    rdfs:comment "Run stress/chaos engineering tests" .
