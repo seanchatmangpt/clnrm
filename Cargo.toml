@@ -16,6 +16,7 @@ members = [
   "ggen-service-mesh",
   "ggen-config",
   "ggen-deploy",
+  "ggen-observability",
 ]
 
 # Default members for core functionality (template excluded - experimental)
