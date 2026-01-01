@@ -17,6 +17,7 @@ members = [
   "ggen-config",
   "ggen-deploy",
   "ggen-observability",
+  "ggen-reconciliation",
 ]
 
 # Default members for core functionality (template excluded - experimental)
