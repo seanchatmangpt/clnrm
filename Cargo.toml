@@ -8,6 +8,8 @@ members = [
   "crates/clnrm-shared",
   "crates/clnrm-template",
   "crates/evidence-graph",
+  "ggen-codegen",
+  "ggen-integration-example",
 ]
 
 # Default members for core functionality (template excluded - experimental)
