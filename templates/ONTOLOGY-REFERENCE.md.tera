@@ -1,0 +1,106 @@
+# {{ project_name }} Ontology Reference
+
+**Generated from**: `{{ ontology_file }}`
+**Generated at**: {{ generation_date }}
+**Version**: {{ ontology_version }}
+
+---
+
+## Overview
+
+This document describes the formal ontology used by {{ project_name }}. The ontology defines:
+- Core concepts and classes
+- Properties and relationships
+- Constraints and domain rules
+- Semantic mappings for code generation
+
+---
+
+## Core Classes
+
+{% for class in classes %}
+### {{ class.name }}
+
+**Label**: {{ class.label }}
+**Comment**: {{ class.comment }}
+
+#### Properties
+
+| Property | Domain | Range | Comment |
+|----------|--------|-------|---------|
+{% for property in class.properties %}
+| `{{ property.name }}` | {{ class.name }} | {{ property.range }} | {{ property.comment }} |
+{% endfor %}
+
+#### Relationships
+
+{% if class.relationships %}
+{% for rel in class.relationships %}
+- **{{ rel.name }}**: {{ rel.description }}
+{% endfor %}
+{% else %}
+No external relationships defined.
+{% endif %}
+
+---
+
+{% endfor %}
+
+## Property Definitions
+
+{% for property in all_properties %}
+### {{ property.name }}
+
+**Label**: {{ property.label }}
+**Domain**: {{ property.domain }}
+**Range**: {{ property.range }}
+**Comment**: {{ property.comment }}
+
+**Type**: {% if property.is_object_property %}Object Property{% else %}Data Property{% endif %}
+
+---
+
+{% endfor %}
+
+## Class Hierarchy
+
+```
+root
+{% for class in classes %}
+  ├── {{ class.name }}
+{% for parent in class.parents %}
+  │   (extends {{ parent }})
+{% endfor %}
+{% endfor %}
+```
+
+## Inference Rules
+
+The ontology supports SPARQL CONSTRUCT queries for inferring new relationships:
+
+```sparql
+{% for rule in inference_rules %}
+{{ rule.query }}
+
+{% endfor %}
+```
+
+## Usage in Code Generation
+
+This ontology is used to drive the following code generation templates:
+
+{% for template in templates %}
+- `{{ template.name }}`: {{ template.description }}
+{% endfor %}
+
+## Semantic Validation
+
+The following OWL constraints are enforced:
+
+{% for constraint in constraints %}
+- {{ constraint.description }}
+{% endfor %}
+
+---
+
+**For more information, see the [RDF Specification](https://www.w3.org/RDF/) and [OWL Documentation](https://www.w3.org/OWL/)**
