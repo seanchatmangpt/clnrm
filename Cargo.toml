@@ -15,6 +15,7 @@ members = [
   "ggen-orchestration",
   "ggen-service-mesh",
   "ggen-config",
+  "ggen-deploy",
 ]
 
 # Default members for core functionality (template excluded - experimental)
