@@ -1,0 +1,189 @@
+# Custom Application - gVisor Configuration Example
+# Demonstrates advanced features like private registries, volumes, and service references
+
+[[services]]
+name = "custom_app"
+service_type = "application"
+description = "Custom application container with full features"
+enabled = true
+
+# Image configuration with private registry authentication
+[services.image]
+url = "oci://registry.example.com/myapp:v1.2.3"
+digest = "sha256:abc123def456..."
+pull_policy = "always"
+
+# Authentication for private registry
+[services.image.auth]
+type = "basic"  # basic, token, or identity
+username = "${env:REGISTRY_USER}"
+password = "${secret:registry-password}"
+
+# Runtime configuration
+[services.runtime]
+platform = "kvm"
+entrypoint = ["/app/main"]
+args = ["--config", "/etc/app/config.yaml", "--port", "8080"]
+working_dir = "/app"
+user = "appuser:appgroup"
+
+# Environment variables with service references
+[services.environment]
+APP_ENV = "production"
+LOG_LEVEL = "info"
+PORT = "8080"
+# Reference other services
+DATABASE_URL = "${service:surrealdb:connection_string}"
+CACHE_HOST = "${service:redis:host}"
+CACHE_PORT = "${service:redis:port}"
+
+# Network configuration
+[services.network]
+mode = "bridge"
+hostname = "myapp"
+dns_servers = ["8.8.8.8"]
+
+# Multiple port mappings
+[[services.network.ports]]
+container_port = 8080
+host_port = 0  # Auto-assign
+protocol = "tcp"
+expose_to_host = true
+
+[[services.network.ports]]
+container_port = 9090  # Metrics port
+host_port = 9090
+protocol = "tcp"
+expose_to_host = true
+
+# Custom DNS entries
+[[services.network.extra_hosts]]
+hostname = "database.local"
+ip = "${service:surrealdb:ip}"
+
+[[services.network.extra_hosts]]
+hostname = "cache.local"
+ip = "${service:redis:ip}"
+
+# Volume mounts
+[[services.volumes]]
+type = "bind"
+source = "/opt/app/config"
+target = "/etc/app"
+read_only = true
+
+[[services.volumes]]
+type = "volume"
+source = "app-data"  # Named volume (defined below)
+target = "/var/lib/app"
+read_only = false
+
+[[services.volumes]]
+type = "tmpfs"
+target = "/tmp"
+tmpfs_size_mb = 100
+
+# Resource limits
+[services.resources]
+memory_limit_mb = 2048
+memory_reservation_mb = 1024
+cpu_limit_cores = 4.0
+cpu_shares = 2048
+max_pids = 500
+io_weight = 800
+
+# Storage limits
+[services.resources.storage]
+root_fs_size_mb = 2048
+tmpfs_size_mb = 200
+
+# GPU resources (if needed)
+[services.resources.gpu]
+enabled = false
+device_ids = []  # Empty for all GPUs, or [0, 1] for specific
+
+# Health check
+[services.health_check]
+enabled = true
+type = "http"
+interval_seconds = 10
+timeout_seconds = 5
+retries = 3
+start_period_seconds = 30
+
+[services.health_check.http]
+path = "/healthz"
+port = 8080
+scheme = "http"
+method = "GET"
+expected_status = 200
+
+# Lifecycle hooks
+[services.lifecycle]
+post_start = ["/app/scripts/post-start.sh"]
+pre_stop = ["/app/scripts/graceful-shutdown.sh"]
+startup_timeout_seconds = 120
+shutdown_timeout_seconds = 60
+
+# Security configuration
+[services.security]
+readonly_rootfs = false
+run_as_non_root = true
+allow_privilege_escalation = false
+drop_capabilities = ["ALL"]
+add_capabilities = ["NET_BIND_SERVICE"]  # If binding to port < 1024
+
+# Custom seccomp profile
+[services.security.seccomp]
+enabled = true
+profile = "custom"
+custom_profile_path = "/etc/seccomp/myapp-profile.json"
+
+# AppArmor profile
+[services.security.apparmor]
+enabled = false
+profile = "unconfined"
+
+# Logging configuration
+[services.logging]
+driver = "json-file"
+max_file_size_mb = 50
+max_files = 5
+
+[services.logging.labels]
+service = "myapp"
+env = "production"
+version = "v1.2.3"
+
+# Restart policy
+[services.restart_policy]
+type = "always"
+max_retries = 5
+backoff_seconds = 10
+
+# ============================================================
+# VOLUME DEFINITIONS
+# ============================================================
+
+[[volumes]]
+name = "app-data"
+driver = "local"
+
+[volumes.labels]
+purpose = "application-data"
+env = "production"
+
+[volumes.driver_opts]
+type = "none"
+device = "/mnt/app-data"
+o = "bind"
+
+# ============================================================
+# NETWORK DEFINITIONS (optional)
+# ============================================================
+
+[[networks]]
+name = "app-network"
+driver = "bridge"
+ipam_subnet = "172.20.0.0/16"
+ipam_gateway = "172.20.0.1"
