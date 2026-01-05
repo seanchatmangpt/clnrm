@@ -1032,6 +1032,7 @@ impl From<serde_json::Error> for CleanroomError {
     }
 }
 
+#[cfg(feature = "backend-testcontainers")]
 impl From<testcontainers::TestcontainersError> for CleanroomError {
     fn from(err: testcontainers::TestcontainersError) -> Self {
         CleanroomError::container_error(err.to_string())

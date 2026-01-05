@@ -211,7 +211,9 @@ pub use formatting::{
 pub use macros::{with_cache, with_database, with_message_queue, with_web_server};
 pub use metrics::{AtomicMetrics, MetricsSnapshot};
 pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporter, ReportConfig};
+#[cfg(feature = "backend-testcontainers")]
 pub use services::generic::GenericContainerPlugin;
+#[cfg(feature = "backend-testcontainers")]
 pub use services::surrealdb::SurrealDbPlugin;
 
 // v2.0 Executor exports
