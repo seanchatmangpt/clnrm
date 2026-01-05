@@ -1,0 +1,73 @@
+@startuml C4_CLNRM_Features
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title CLNRM v2.0.0 - Feature Flags & Build Configurations
+
+package "Cargo.toml Feature System" {
+    rectangle Features {
+        rectangle DefaultFeatures {
+            card backend_gvisor["backend-gvisor (DEFAULT)\n\nEnabledBy: default = [\"backend-gvisor\"]\n\nIncludes:\n• GvisorBackend implementation\n• runsc command wrapper\n• OCI image loader\n• Port allocator\n• gVisor isolation config\n\nDependencies: NONE\n(zero Docker)\n\nBuildCommand:\ncargo build\ncargo build --features backend-gvisor"]
+        }
+
+        rectangle OptionalFeatures {
+            card backend_tc["backend-testcontainers (OPTIONAL)\n\nEnabledBy: --features backend-testcontainers\n\nIncludes:\n• TestcontainersBackend\n• Docker API client\n• testcontainers-rs\n• Legacy support\n\nDependencies:\ntestcontainers v0.25\ntestcontainers-modules v0.13\n\nBuildCommand:\ncargo build --features backend-testcontainers"]
+
+            card backend_docker["backend-docker (FUTURE)\n\nEnabledBy: --features backend-docker\n\nIncludes:\n• Docker API backend\n• Native Docker support\n(without testcontainers-rs)\n\nDependencies:\ndocker-api\n\nBuildCommand:\ncargo build --features backend-docker"]
+
+            card backend_auto["backend-auto (FUTURE)\n\nEnabledBy: --features backend-auto\n\nIncludes:\n• Runtime backend detection\n• Fallback chain:\n  1. gVisor\n  2. testcontainers\n  3. Docker API\n\nBuildCommand:\ncargo build --features backend-auto"]
+
+            card otel["otel (OPTIONAL)\n\nEnabledBy: --features otel\n\nIncludes:\n• Distributed tracing\n• Metrics collection\n• Structured logging\n• Semantic conventions\n• Backward compatibility\n\nDependencies:\nopentelemetry\nopentelemetry_sdk\nopentelemetry-otlp\n\nBuildCommand:\ncargo build --features otel"]
+        }
+    }
+}
+
+package "Conditional Compilation Gating" {
+    rectangle ModuleGating {
+        card service_modules["#[cfg(feature = \"backend-testcontainers\")]\nmod services::{\n  generic,\n  surrealdb,\n  otel_collector\n}\n\nOnly compiled when:\nfeature = backend-testcontainers"]
+
+        card backend_impl["#[cfg(feature = \"backend-testcontainers\")]\nimpl From<testcontainers::Error>\n  for CleanroomError\n\nOnly compiled when:\nfeature = backend-testcontainers"]
+
+        card cli_loading["#[cfg(feature = \"backend-testcontainers\")]\n\"surrealdb\" => \n  create_surrealdb_plugin(...)\n\"generic_container\" => \n  create_generic_plugin(...)\n\nOnly compiled when:\nfeature = backend-testcontainers"]
+    }
+}
+
+package "Build Configurations" {
+    rectangle BuildModes {
+        card gvisor_only["Release Build (gVisor Only)\n\n$ cargo build --release\n\nFeatures: [backend-gvisor]\n\nResulting Binary Size: SMALL\nDependencies: ~50 crates\n(NO Docker)\n\nUse Case:\n• Production deployment\n• Minimal attack surface\n• Fast startup"]
+
+        card full_featured["Full Featured Build\n\n$ cargo build --all-features\n\nFeatures: [\n  backend-gvisor,\n  backend-testcontainers,\n  otel,\n  crypto,\n  ...\n]\n\nResulting Binary Size: LARGE\nDependencies: ~200+ crates\n\nUse Case:\n• Development\n• Testing compatibility\n• Evaluation"]
+
+        card minimal["Minimal Build\n\n$ cargo build --no-default-features\n\nFeatures: NONE\n\nResulting Binary Size: TINY\nDependencies: ~20 crates\n\nUse Case:\n• Dependency analysis\n• Build verification\n• Core-only testing"]
+
+        card ci_docker["CI/CD with Docker\n\n$ cargo build \\\n  --features backend-testcontainers,otel\n\nFeatures: [\n  backend-testcontainers,\n  otel\n]\n\nUse Case:\n• Docker-based CI/CD\n• Legacy system testing\n• Backward compatibility"]
+    }
+}
+
+package "Compilation Gates by Path" {
+    rectangle gating_examples {
+        note right: FILES GATED WITH #[cfg(...)]
+        rectangle files["crates/clnrm-core/src/\n\n├─ error.rs (line 1035)\n│  └─ testcontainers error impl\n│\n├─ services/mod.rs\n│  ├─ generic module\n│  ├─ surrealdb module\n│  └─ otel_collector module\n│\n├─ services/factory.rs\n│  ├─ create_surrealdb_plugin()\n│  └─ create_generic_plugin()\n│\n├─ cleanroom.rs (line 87)\n│  └─ with_default_plugins()\n│\n├─ cli/commands/run/services.rs\n│  ├─ \"surrealdb\" match arm\n│  └─ \"generic_container\" match arm\n│\n└─ lib.rs (lines 214-217)\n   ├─ pub use GenericContainerPlugin\n   └─ pub use SurrealDbPlugin"]
+    }
+}
+
+package "Dependency Tree" {
+    rectangle deps {
+        card workspace["Workspace Dependencies\n(workspace.dependencies)\n\nRequired:\ntestcontainers = \"0.25\"\ntestcontainers-modules = \"0.13\"\n\nMarked: optional = true\nin workspace level\n\nActivation:\nonly when feature pulled\nby consuming crate"]
+    }
+}
+
+backend_gvisor --> service_modules: "gate with\nbackend-testcontainers"
+backend_tc --> service_modules: "enable\ncompilation"
+backend_tc --> backend_impl: "enable error conversion"
+backend_tc --> cli_loading: "enable service loading"
+
+gvisor_only -.-> backend_gvisor: "uses exclusively"
+full_featured -.-> backend_gvisor: "includes"
+full_featured -.-> backend_tc: "includes"
+ci_docker -.-> backend_tc: "enables"
+
+otel --> "ALL\nBuildModes": "optional addition"
+
+@enduml
