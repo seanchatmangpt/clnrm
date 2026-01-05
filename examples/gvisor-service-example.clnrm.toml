@@ -1,0 +1,88 @@
+# gVisor Service Management Example
+#
+# This example demonstrates using gVisor-native service management
+# to run tests against SurrealDB without testcontainers dependency.
+
+[test.metadata]
+name = "gvisor_service_example"
+description = "Example of gVisor-native service management"
+timeout = "60s"
+
+# Service definitions
+[services.my_surrealdb]
+# Use built-in template
+extends = "template.surrealdb"
+
+# Override specific configuration
+[services.my_surrealdb.env]
+SURREAL_PATH = "memory"
+SURREAL_USER = "admin"
+SURREAL_PASS = "admin123"
+
+# Custom PostgreSQL service
+[services.postgres_db]
+plugin = "gvisor_container"
+image = "postgres:14"
+
+[services.postgres_db.env]
+POSTGRES_USER = "testuser"
+POSTGRES_PASSWORD = "testpass"
+POSTGRES_DB = "myapp"
+
+[[services.postgres_db.ports]]
+container = 5432
+protocol = "tcp"
+
+[services.postgres_db.health_check]
+type = "exec"
+command = ["pg_isready", "-U", "testuser"]
+interval = "5s"
+timeout = "3s"
+retries = 3
+
+[services.postgres_db.readiness]
+type = "tcp"
+port = 5432
+initial_delay = "5s"
+timeout = "30s"
+
+[services.postgres_db.resources]
+memory_limit = "512M"
+cpu_limit = "1.0"
+
+# Test steps
+[[steps]]
+name = "wait_for_services"
+command = ["echo", "Waiting for services to be ready..."]
+expected_exit_code = 0
+
+[[steps]]
+name = "test_surrealdb_connection"
+command = [
+    "surreal", "sql",
+    "--conn", "ws://127.0.0.1:${SURREALDB_PORT}",
+    "--user", "admin",
+    "--pass", "admin123",
+    "--ns", "test",
+    "--db", "test",
+    "--command", "INFO FOR DB;"
+]
+expected_output_regex = "DEFINE"
+service = "my_surrealdb"
+
+[[steps]]
+name = "test_postgres_connection"
+command = [
+    "psql",
+    "-h", "127.0.0.1",
+    "-p", "${POSTGRES_PORT}",
+    "-U", "testuser",
+    "-d", "myapp",
+    "-c", "SELECT version();"
+]
+expected_output_regex = "PostgreSQL"
+service = "postgres_db"
+
+[assertions]
+services_should_start = ["my_surrealdb", "postgres_db"]
+execution_should_be_hermetic = true

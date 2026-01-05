@@ -1,0 +1,28 @@
+@startuml C4_CLNRM_Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title CLNRM v2.0.0 - C1: System Context Diagram
+
+Person(developer, "Test Developer", "Writes and executes\ncleanroom tests")
+Person(ci_engineer, "CI/CD Engineer", "Manages pipeline\nand automation")
+Person(product_owner, "Product Owner", "Defines test\nrequirements")
+
+System(clnrm, "CLNRM\n(Cleanroom Testing Framework)", "Hermetic test execution\nwith container isolation\nand observability")
+
+System_Ext(docker_registry, "Container Registry\n(Docker Hub, ECR, etc)", "OCI-compatible image\nstorage and distribution")
+System_Ext(otel_backend, "OpenTelemetry Backend\n(Jaeger, Prometheus, etc)", "Distributed tracing,\nmetrics, and logs")
+System_Ext(ci_system, "CI/CD System\n(GitHub Actions, Jenkins)", "Test orchestration\nand reporting")
+System_Ext(surrealdb, "SurrealDB\n(Optional Service)", "Graph database for\ntest data and relationships")
+
+Rel(developer, clnrm, "Writes TOML configs\nand test scenarios")
+Rel(ci_engineer, clnrm, "Triggers test execution\nvia CLI")
+Rel(product_owner, clnrm, "Defines test criteria")
+
+Rel(clnrm, docker_registry, "Pulls OCI images\n(default: gVisor)")
+Rel(clnrm, otel_backend, "Sends traces, metrics,\nlogs for observability")
+Rel(clnrm, ci_system, "Reports test results\nand artifacts")
+Rel(clnrm, surrealdb, "Stores test graph\ndata (optional)")
+
+@enduml

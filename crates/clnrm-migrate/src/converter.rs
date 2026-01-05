@@ -1,0 +1,223 @@
+//! Configuration converter: testcontainers → gVisor
+
+use crate::types::{ConversionResult, ServiceDiscovery, ServiceType};
+use anyhow::Result;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+
+pub struct Converter;
+
+impl Converter {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Convert all discovered services
+    pub fn convert_all(&self, discoveries: &[ServiceDiscovery]) -> Result<Vec<ConversionResult>> {
+        discoveries.iter().map(|d| self.convert(d)).collect()
+    }
+
+    /// Convert single service
+    pub fn convert(&self, discovery: &ServiceDiscovery) -> Result<ConversionResult> {
+        let (target_config, warnings, manual_steps) = match discovery.service_type {
+            ServiceType::SurrealDB => self.convert_surrealdb(discovery),
+            ServiceType::GenericContainer => self.convert_generic(discovery),
+            ServiceType::CustomImage => self.convert_custom(discovery),
+            ServiceType::TestcontainersModule => self.convert_module(discovery),
+        };
+
+        Ok(ConversionResult {
+            source: discovery.clone(),
+            target_config,
+            warnings,
+            manual_steps,
+        })
+    }
+
+    fn convert_surrealdb(&self, discovery: &ServiceDiscovery) -> (String, Vec<String>, Vec<String>) {
+        // Parse existing config
+        let old_config: HashMap<String, toml::Value> =
+            toml::from_str(&discovery.raw_config).unwrap_or_default();
+
+        let username = old_config
+            .get("username")
+            .and_then(|v| v.as_str())
+            .unwrap_or("root");
+
+        let password = old_config
+            .get("password")
+            .and_then(|v| v.as_str())
+            .unwrap_or("root");
+
+        // Generate gVisor config
+        let config = format!(
+            r#"[[services]]
+name = "{name}"
+service_type = "database"
+description = "SurrealDB graph-relational database (migrated)"
+enabled = true
+
+[services.image]
+url = "docker://surrealdb/surrealdb:latest"
+pull_policy = "if-not-present"
+
+[services.runtime]
+platform = "kvm"
+entrypoint = ["/surreal", "start"]
+args = ["--bind", "0.0.0.0:8000", "--user", "${{SURREAL_USER}}", "--pass", "${{SURREAL_PASS}}"]
+working_dir = "/var/lib/surrealdb"
+user = "surrealdb:surrealdb"
+
+[services.environment]
+SURREAL_USER = "{username}"
+SURREAL_PASS = "{password}"
+SURREAL_STRICT = "false"
+SURREAL_LOG = "info"
+
+[services.network]
+mode = "bridge"
+hostname = "surrealdb"
+
+[[services.network.ports]]
+container_port = 8000
+host_port = 8000
+protocol = "tcp"
+
+[services.resources]
+memory_limit_mb = 1024
+cpu_limit_cores = 2.0
+
+[services.health_check]
+enabled = true
+type = "http"
+
+[services.health_check.http]
+path = "/health"
+port = 8000
+expected_status = 200
+"#,
+            name = discovery.service_name,
+            username = username,
+            password = password
+        );
+
+        (config, vec![], vec![])
+    }
+
+    fn convert_generic(&self, discovery: &ServiceDiscovery) -> (String, Vec<String>, Vec<String>) {
+        let old_config: HashMap<String, toml::Value> =
+            toml::from_str(&discovery.raw_config).unwrap_or_default();
+
+        let image = old_config
+            .get("image")
+            .and_then(|v| v.as_str())
+            .unwrap_or("alpine:latest");
+
+        let config = format!(
+            r#"[[services]]
+name = "{name}"
+service_type = "generic"
+description = "Generic container (migrated)"
+enabled = true
+
+[services.image]
+url = "docker://{image}"
+pull_policy = "if-not-present"
+
+[services.runtime]
+platform = "kvm"
+entrypoint = ["/bin/sh"]
+args = ["-c", "sleep 3600"]
+working_dir = "/workspace"
+
+[services.network]
+mode = "isolated"
+
+[services.resources]
+memory_limit_mb = 128
+cpu_limit_cores = 0.5
+
+[services.health_check]
+enabled = true
+type = "exec"
+
+[services.health_check.exec]
+command = ["sh", "-c", "exit 0"]
+"#,
+            name = discovery.service_name,
+            image = image
+        );
+
+        (config, vec![], vec![])
+    }
+
+    fn convert_custom(&self, discovery: &ServiceDiscovery) -> (String, Vec<String>, Vec<String>) {
+        let warnings = vec!["Custom image detected. Manual configuration may be required.".to_string()];
+        (String::new(), warnings, vec![])
+    }
+
+    fn convert_module(&self, discovery: &ServiceDiscovery) -> (String, Vec<String>, Vec<String>) {
+        let warnings = vec!["Testcontainers module detected. Manual migration required.".to_string()];
+        let manual_steps = vec!["Review Rust source code and create equivalent gVisor config".to_string()];
+        (String::new(), warnings, manual_steps)
+    }
+
+    /// Write gVisor configurations to output directory
+    pub fn write_configs(&self, conversions: &[ConversionResult], output_dir: &Path) -> Result<()> {
+        fs::create_dir_all(output_dir)?;
+
+        // Combine all service configs into single registry file
+        let mut registry = String::from(
+            r#"# gVisor Service Registry Configuration
+# Generated by clnrm-migrate
+# Version: 1.0.0
+
+[registry.metadata]
+version = "1.0.0"
+schema_version = "gvisor-v1"
+created_at = "2026-01-05T00:00:00Z"
+description = "Migrated service definitions from testcontainers"
+
+[registry.defaults]
+runtime = "runsc"
+platform = "kvm"
+network_mode = "isolated"
+root_filesystem_readonly = true
+enable_seccomp = true
+enable_apparmor = false
+
+[registry.defaults.resources]
+memory_limit_mb = 512
+cpu_limit_cores = 1.0
+max_pids = 100
+
+[registry.defaults.network]
+enable_ipv6 = false
+dns_servers = ["8.8.8.8", "8.8.4.4"]
+mtu = 1500
+
+"#,
+        );
+
+        for conversion in conversions {
+            if !conversion.target_config.is_empty() {
+                registry.push_str(&conversion.target_config);
+                registry.push('\n');
+            }
+        }
+
+        let config_path = output_dir.join("gvisor-services.toml");
+        fs::write(&config_path, registry)?;
+
+        tracing::info!("Wrote gVisor config to {}", config_path.display());
+
+        Ok(())
+    }
+}
+
+impl Default for Converter {
+    fn default() -> Self {
+        Self::new()
+    }
+}

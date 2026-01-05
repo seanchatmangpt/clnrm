@@ -1,0 +1,35 @@
+# SurrealDB Service Template
+# Usage: extends = "template.surrealdb" in your service configuration
+
+[template.surrealdb]
+plugin = "gvisor_container"
+image = "docker.io/surrealdb/surrealdb:v1.0.0"
+command = ["surreal", "start", "--bind", "0.0.0.0:8000"]
+
+[template.surrealdb.env]
+SURREAL_USER = "${SURREALDB_USER:-root}"
+SURREAL_PASS = "${SURREALDB_PASS:-root}"
+SURREAL_PATH = "${SURREALDB_PATH:-memory}"
+
+[[template.surrealdb.ports]]
+container = 8000
+protocol = "tcp"
+
+[template.surrealdb.health_check]
+type = "http"
+path = "/health"
+port = 8000
+interval = "5s"
+timeout = "3s"
+retries = 3
+
+[template.surrealdb.readiness]
+type = "tcp"
+port = 8000
+initial_delay = "2s"
+timeout = "30s"
+
+[template.surrealdb.resources]
+memory_limit = "512M"
+cpu_limit = "1.0"
+pids_limit = 100

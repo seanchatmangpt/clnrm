@@ -1,0 +1,32 @@
+# PostgreSQL Service Template
+
+[template.postgresql]
+plugin = "gvisor_container"
+image = "docker.io/library/postgres:14"
+
+[template.postgresql.env]
+POSTGRES_USER = "${POSTGRES_USER:-postgres}"
+POSTGRES_PASSWORD = "${POSTGRES_PASSWORD:-postgres}"
+POSTGRES_DB = "${POSTGRES_DB:-testdb}"
+
+[[template.postgresql.ports]]
+container = 5432
+protocol = "tcp"
+
+[template.postgresql.health_check]
+type = "exec"
+command = ["pg_isready", "-U", "postgres"]
+interval = "5s"
+timeout = "3s"
+retries = 3
+
+[template.postgresql.readiness]
+type = "tcp"
+port = 5432
+initial_delay = "3s"
+timeout = "30s"
+
+[template.postgresql.resources]
+memory_limit = "512M"
+cpu_limit = "1.0"
+pids_limit = 100
