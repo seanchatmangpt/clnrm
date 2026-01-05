@@ -1,7 +1,11 @@
 //! Stress command implementation
 
 use clap::Args;
+use clnrm_core::cli::commands::stress::{
+    generate_stress_config_example, load_stress_config, run_stress_test,
+};
 use clnrm_core::error::Result;
+use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct StressArgs {
@@ -38,27 +42,46 @@ pub async fn run(args: &StressArgs) -> Result<()> {
     println!("");
 
     if args.generate_example {
-        println!("📄 Generating example stress test configuration...");
-        // TODO: Generate example config
-        println!("⚠️  Example generation not yet implemented");
-        println!("   Would generate TOML config with containers, test_count, span_depth, etc.");
+        println!("📄 Example stress test configuration:\n");
+        let example = generate_stress_config_example();
+        println!("{}", example);
         return Ok(());
     }
 
     if let Some(config_path) = &args.load_config {
         println!("📂 Loading configuration: {}", config_path);
-        // TODO: Load and validate config
-        println!("⚠️  Config loading not yet implemented");
-        println!("   Would parse and validate stress test configuration");
+        let path = PathBuf::from(config_path);
+        let config = load_stress_config(&path)?;
+        println!("✓ Configuration validated successfully!\n");
+        println!("Configuration summary:");
+        println!("  Containers: {:?}", config.containers);
+        println!("  Test count per container: {}", config.test_count);
+        println!("  Span depth: {}", config.span_depth);
+        println!("  Max containers: {}", config.limits.max_containers);
+        println!("  Concurrency: {}", config.concurrency);
+        println!("  Total permutations: {}", config.total_permutations());
         return Ok(());
     }
 
     if let Some(config_path) = &args.config {
         println!("🏃 Running stress test with config: {}", config_path);
-        // TODO: Run stress test
-        println!("⚠️  Stress test execution not yet implemented");
-        println!("   Would run container lifecycle tests with chaos injection");
-        println!("   Core functionality available in clnrm-core::stress_test");
+        let path = PathBuf::from(config_path);
+        let config = load_stress_config(&path)?;
+
+        // Run stress test with loaded configuration
+        run_stress_test(
+            config.containers,
+            config.test_count,
+            config.span_depth,
+            config.limits.max_containers,
+            config.concurrency,
+            Some(config.limits.max_memory_mb),
+            Some(config.test_timeout.as_secs()),
+            config.fail_fast,
+            config.output_dir,
+        )
+        .await?;
+
         return Ok(());
     }
 
