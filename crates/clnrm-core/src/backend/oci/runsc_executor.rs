@@ -1,0 +1,278 @@
+//! gVisor runsc executor for container runtime
+
+use super::OciBundle;
+use crate::error::{CleanroomError, Result};
+use std::path::PathBuf;
+use std::time::Duration;
+use tokio::process::Command;
+use tracing::{info, warn};
+
+/// gVisor runsc executor
+pub struct RunscExecutor {
+    runsc_path: PathBuf,
+    root_dir: PathBuf,
+}
+
+impl RunscExecutor {
+    /// Create new runsc executor
+    pub fn new() -> Result<Self> {
+        // Find runsc binary
+        let runsc_path = which::which("runsc").map_err(|_| {
+            CleanroomError::runtime_error(
+                "runsc not found in PATH. Install gVisor: https://gvisor.dev/docs/user_guide/install/",
+            )
+        })?;
+
+        // Create root directory for runsc state
+        let root_dir = dirs::cache_dir()
+            .ok_or_else(|| CleanroomError::runtime_error("Failed to get cache directory"))?
+            .join("clnrm")
+            .join("runsc");
+
+        std::fs::create_dir_all(&root_dir)?;
+
+        info!("runsc executor initialized with path: {:?}", runsc_path);
+
+        Ok(Self {
+            runsc_path,
+            root_dir,
+        })
+    }
+
+    /// Execute container using runsc
+    pub async fn run_container(
+        &self,
+        bundle: &OciBundle,
+        timeout: Duration,
+    ) -> Result<RunscOutput> {
+        let container_id = format!("clnrm-{}", bundle.id);
+
+        info!("Starting container {} with runsc", container_id);
+
+        // Create container
+        let create_result = self.create_container(&container_id, bundle).await?;
+        if !create_result.success {
+            return Err(CleanroomError::runtime_error(format!(
+                "Failed to create container: {}",
+                create_result.stderr
+            )));
+        }
+
+        // Start container
+        let start_result = self.start_container(&container_id).await?;
+        if !start_result.success {
+            // Cleanup on failure
+            let _ = self.delete_container(&container_id).await;
+            return Err(CleanroomError::runtime_error(format!(
+                "Failed to start container: {}",
+                start_result.stderr
+            )));
+        }
+
+        // Wait for container to complete (with timeout)
+        let wait_result = tokio::time::timeout(timeout, self.wait_container(&container_id)).await;
+
+        let output = match wait_result {
+            Ok(Ok(result)) => result,
+            Ok(Err(e)) => {
+                // Cleanup on error
+                let _ = self.kill_container(&container_id).await;
+                let _ = self.delete_container(&container_id).await;
+                return Err(e);
+            }
+            Err(_) => {
+                // Timeout - kill container
+                warn!("Container {} timed out, killing", container_id);
+                let _ = self.kill_container(&container_id).await;
+                let _ = self.delete_container(&container_id).await;
+                return Err(CleanroomError::timeout_error(format!(
+                    "Container execution timed out after {}s",
+                    timeout.as_secs()
+                )));
+            }
+        };
+
+        // Get container logs
+        let logs = self.get_container_logs(&container_id).await?;
+
+        // Cleanup container
+        self.delete_container(&container_id).await?;
+
+        Ok(RunscOutput {
+            exit_code: output.exit_code,
+            stdout: logs.stdout,
+            stderr: logs.stderr,
+            duration_ms: output.duration_ms,
+        })
+    }
+
+    /// Create container (runsc create)
+    async fn create_container(
+        &self,
+        container_id: &str,
+        bundle: &OciBundle,
+    ) -> Result<CommandResult> {
+        let output = Command::new(&self.runsc_path)
+            .arg("--root")
+            .arg(&self.root_dir)
+            .arg("create")
+            .arg("--bundle")
+            .arg(&bundle.path)
+            .arg(container_id)
+            .output()
+            .await?;
+
+        Ok(CommandResult {
+            success: output.status.success(),
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        })
+    }
+
+    /// Start container (runsc start)
+    async fn start_container(&self, container_id: &str) -> Result<CommandResult> {
+        let output = Command::new(&self.runsc_path)
+            .arg("--root")
+            .arg(&self.root_dir)
+            .arg("start")
+            .arg(container_id)
+            .output()
+            .await?;
+
+        Ok(CommandResult {
+            success: output.status.success(),
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        })
+    }
+
+    /// Wait for container to complete (runsc wait)
+    async fn wait_container(&self, container_id: &str) -> Result<WaitResult> {
+        let start_time = std::time::Instant::now();
+
+        let output = Command::new(&self.runsc_path)
+            .arg("--root")
+            .arg(&self.root_dir)
+            .arg("wait")
+            .arg(container_id)
+            .output()
+            .await?;
+
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+
+        // Parse exit code from stdout (runsc wait outputs exit code)
+        let exit_code = if output.status.success() {
+            String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .parse::<i32>()
+                .unwrap_or(0)
+        } else {
+            -1
+        };
+
+        Ok(WaitResult {
+            exit_code,
+            duration_ms,
+        })
+    }
+
+    /// Get container logs
+    ///
+    /// Note: runsc doesn't provide built-in log capture like Docker.
+    /// For production use, implement log redirection when creating the container.
+    async fn get_container_logs(&self, _container_id: &str) -> Result<LogOutput> {
+        // TODO: Implement proper log capture
+        // Options:
+        // 1. Redirect stdout/stderr to files when creating container
+        // 2. Use runsc events to capture output
+        // 3. Implement console socket for log streaming
+
+        Ok(LogOutput {
+            stdout: String::new(),
+            stderr: String::new(),
+        })
+    }
+
+    /// Kill container (runsc kill)
+    async fn kill_container(&self, container_id: &str) -> Result<()> {
+        let _ = Command::new(&self.runsc_path)
+            .arg("--root")
+            .arg(&self.root_dir)
+            .arg("kill")
+            .arg(container_id)
+            .arg("SIGKILL")
+            .output()
+            .await?;
+
+        Ok(())
+    }
+
+    /// Delete container (runsc delete)
+    async fn delete_container(&self, container_id: &str) -> Result<()> {
+        let output = Command::new(&self.runsc_path)
+            .arg("--root")
+            .arg(&self.root_dir)
+            .arg("delete")
+            .arg(container_id)
+            .output()
+            .await?;
+
+        if !output.status.success() {
+            warn!(
+                "Failed to delete container {}: {}",
+                container_id,
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Check if runsc is available
+    pub fn is_available() -> bool {
+        which::which("runsc").is_ok()
+    }
+}
+
+struct CommandResult {
+    success: bool,
+    stdout: String,
+    stderr: String,
+}
+
+struct WaitResult {
+    exit_code: i32,
+    duration_ms: u64,
+}
+
+struct LogOutput {
+    stdout: String,
+    stderr: String,
+}
+
+/// Output from runsc container execution
+pub struct RunscOutput {
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+    pub duration_ms: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_runsc_availability() {
+        let is_available = RunscExecutor::is_available();
+        // Don't assert - runsc may not be installed
+        println!("runsc available: {}", is_available);
+    }
+
+    #[test]
+    #[ignore] // Requires runsc installed
+    fn test_runsc_executor_creation() {
+        let executor = RunscExecutor::new();
+        assert!(executor.is_ok());
+    }
+}

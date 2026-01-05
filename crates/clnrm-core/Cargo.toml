@@ -90,6 +90,11 @@ sha2 = "0.10"                                   # For content hashing in Σ* sys
 hex = "0.4"                                     # For hex encoding content hashes
 ed25519-dalek = { version = "2.1", optional = true }  # For receipt signature verification
 
+# OCI and gVisor support
+flate2 = "1.0"     # For gzip decompression of OCI layers
+tar = "0.4"        # For extracting tar archives
+dirs = "5.0"       # For accessing standard directories
+
 [dev-dependencies]
 # Property-based testing
 proptest = "1.4"

@@ -1,0 +1,130 @@
+# SurrealDB gVisor Service Configuration Example
+# This shows a complete SurrealDB service definition for gVisor
+
+[[services]]
+name = "surrealdb"
+service_type = "database"
+description = "SurrealDB graph-relational database"
+enabled = true
+
+# Image configuration
+[services.image]
+url = "docker://surrealdb/surrealdb:latest"
+digest = ""  # Auto-fetched on first pull
+pull_policy = "if-not-present"  # always, never, if-not-present
+
+# Runtime configuration
+[services.runtime]
+platform = "kvm"  # kvm, ptrace, or systrap
+entrypoint = ["/surreal", "start"]
+args = [
+    "--bind", "0.0.0.0:8000",
+    "--user", "${SURREAL_USER}",
+    "--pass", "${SURREAL_PASS}",
+]
+working_dir = "/var/lib/surrealdb"
+user = "surrealdb:surrealdb"  # user:group
+
+# Environment variables
+[services.environment]
+SURREAL_USER = "root"
+SURREAL_PASS = "root"
+SURREAL_STRICT = "false"
+SURREAL_LOG = "info"
+
+# Network configuration
+[services.network]
+mode = "bridge"  # bridge, host, isolated, none
+hostname = "surrealdb"
+dns_servers = ["8.8.8.8", "8.8.4.4"]
+
+# Port mappings
+[[services.network.ports]]
+container_port = 8000
+host_port = 8000  # 0 for auto-assignment
+protocol = "tcp"
+expose_to_host = true
+
+# Volume mounts
+[[services.volumes]]
+type = "bind"  # bind, volume, tmpfs
+source = "/var/lib/surrealdb"  # Host path
+target = "/data"  # Container path
+read_only = false
+
+[[services.volumes]]
+type = "tmpfs"
+target = "/tmp"
+tmpfs_size_mb = 50
+
+# Resource limits
+[services.resources]
+memory_limit_mb = 1024
+memory_reservation_mb = 512
+cpu_limit_cores = 2.0
+cpu_shares = 1024
+max_pids = 200
+io_weight = 500
+
+# Storage limits
+[services.resources.storage]
+root_fs_size_mb = 1024
+tmpfs_size_mb = 100
+
+# Health check configuration
+[services.health_check]
+enabled = true
+type = "http"  # http, tcp, exec, grpc
+interval_seconds = 10
+timeout_seconds = 5
+retries = 3
+start_period_seconds = 30
+
+# HTTP health check
+[services.health_check.http]
+path = "/health"
+port = 8000
+scheme = "http"
+method = "GET"
+expected_status = 200
+
+# Lifecycle hooks
+[services.lifecycle]
+post_start = []
+pre_stop = []
+startup_timeout_seconds = 60
+shutdown_timeout_seconds = 30
+
+# Security configuration
+[services.security]
+readonly_rootfs = false  # SurrealDB needs to write
+run_as_non_root = true
+allow_privilege_escalation = false
+drop_capabilities = ["ALL"]
+add_capabilities = []
+
+# Seccomp profile
+[services.security.seccomp]
+enabled = true
+profile = "default"  # default, unconfined, or custom path
+
+# AppArmor profile
+[services.security.apparmor]
+enabled = false
+profile = "unconfined"
+
+# Logging configuration
+[services.logging]
+driver = "json-file"
+max_file_size_mb = 10
+max_files = 3
+
+[services.logging.labels]
+service = "surrealdb"
+env = "test"
+
+# Restart policy
+[services.restart_policy]
+type = "on-failure"  # always, on-failure, unless-stopped, no
+max_retries = 3
+backoff_seconds = 5
