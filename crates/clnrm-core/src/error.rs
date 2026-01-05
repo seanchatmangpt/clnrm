@@ -345,6 +345,26 @@ impl CleanroomError {
         Self::new(ErrorKind::TemplateError, message)
     }
 
+    /// Create an OCI error
+    pub fn oci_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ContainerError, message)
+    }
+
+    /// Create a registry error
+    pub fn registry_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::NetworkError, message)
+    }
+
+    /// Create a runsc error
+    pub fn runsc_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ContainerError, message)
+    }
+
+    /// Create a runtime error
+    pub fn runtime_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::BackendError, message)
+    }
+
     /// Create a not implemented error
     pub fn not_implemented(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::NotImplementedError, message)
@@ -1012,6 +1032,7 @@ impl From<serde_json::Error> for CleanroomError {
     }
 }
 
+#[cfg(feature = "backend-testcontainers")]
 impl From<testcontainers::TestcontainersError> for CleanroomError {
     fn from(err: testcontainers::TestcontainersError) -> Self {
         CleanroomError::container_error(err.to_string())

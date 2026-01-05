@@ -1,0 +1,305 @@
+@startuml C4_CLNRM_DataModel
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title CLNRM v2.0.0 - Data Model & Domain Entities
+
+package "Core Domain" {
+    entity ScenarioConfig {
+        * scenario_id: UUID
+        * name: String
+        * version: String
+        * services: HashMap<ServiceName, ServiceConfig>
+        * tests: Vec<TestCase>
+        * timeout: Duration
+        * isolation_level: IsolationLevel
+        --
+        + validate() -> Result<()>
+    }
+
+    entity ServiceConfig {
+        * service_id: UUID
+        * r#type: String (surrealdb|generic|ollama|tgi|vllm)
+        * image: Option<String>
+        * username: Option<String>
+        * password: Option<String>
+        * env: HashMap<String, String>
+        * ports: Vec<PortMapping>
+        * volumes: Vec<VolumeMount>
+        * health_check: Option<HealthCheckConfig>
+        * strict: Option<bool>
+        --
+        + validate() -> Result<()>
+    }
+
+    entity ServiceHandle {
+        * handle_id: UUID
+        * service_name: String
+        * service_type: ServiceType
+        * container_id: ContainerId
+        * port_mappings: HashMap<u16, u16>
+        * metadata: HashMap<String, String>
+        * created_at: Timestamp
+        * status: ServiceStatus
+        --
+        + is_healthy() -> bool
+        + get_port(container_port: u16) -> Option<u16>
+    }
+
+    entity TestCase {
+        * test_id: UUID
+        * name: String
+        * description: String
+        * scenario_id: UUID (FK -> ScenarioConfig)
+        * commands: Vec<ExecutionStep>
+        * assertions: Vec<Assertion>
+        * timeout: Duration
+        * retry_policy: RetryPolicy
+        --
+        + execute(env: &CleanroomEnvironment) -> Result<TestResult>
+    }
+
+    entity TestResult {
+        * result_id: UUID
+        * test_id: UUID (FK -> TestCase)
+        * status: TestStatus (Passed|Failed|Skipped|Timeout)
+        * duration: Duration
+        * output: String
+        * error: Option<CleanroomError>
+        * assertions_passed: usize
+        * assertions_failed: usize
+        * timestamp: Timestamp
+        --
+        + passed() -> bool
+        + coverage_score() -> f32
+    }
+
+    ScenarioConfig "1" *-- "many" ServiceConfig: contains
+    ScenarioConfig "1" *-- "many" TestCase: contains
+    TestCase "1" *-- "many" TestResult: produces
+}
+
+package "Execution Model" {
+    entity ContainerId {
+        * id: String (gVisor container ID or Docker container ID)
+        * backend_type: BackendType (GVisor|Testcontainers|Docker)
+        * created_at: Timestamp
+    }
+
+    entity ExecutionContext {
+        * context_id: UUID
+        * scenario: ScenarioConfig
+        * services: HashMap<ServiceName, ServiceHandle>
+        * variables: HashMap<String, String>
+        * isolation_level: IsolationLevel
+        * network: NetworkContext
+        * state: ExecutionState
+        --
+        + get_service(name: &str) -> Result<ServiceHandle>
+        + set_variable(key: String, value: String)
+        + get_variable(key: &str) -> Option<String>
+    }
+
+    entity ExecutionStep {
+        * step_id: UUID
+        * command: String
+        * service_name: String (FK -> ServiceHandle)
+        * timeout: Duration
+        * expected_output: Option<String>
+        * env_overrides: HashMap<String, String>
+        --
+        + execute(handle: &ServiceHandle) -> Result<ExecResult>
+    }
+
+    entity ExecResult {
+        * exit_code: i32
+        * stdout: String
+        * stderr: String
+        * duration: Duration
+        * signal: Option<i32>
+        --
+        + success() -> bool
+    }
+
+    entity NetworkContext {
+        * network_id: String
+        * subnet: String
+        * gateway: String
+        * dns_servers: Vec<String>
+        * port_mappings: HashMap<u16, PortBinding>
+        --
+        + allocate_port() -> u16
+        + release_port(port: u16)
+    }
+
+    entity PortMapping {
+        * container_port: u16
+        * host_port: u16
+        * protocol: Protocol (TCP|UDP)
+        * bind_addr: String
+    }
+
+    ExecutionContext "1" *-- "many" ServiceHandle: manages
+    ExecutionContext "1" o-- "1" NetworkContext: uses
+    ExecutionContext "1" *-- "many" ExecutionStep: contains
+}
+
+package "Observability Model" {
+    entity SpanContext {
+        * span_id: String
+        * trace_id: String
+        * parent_span_id: Option<String>
+        * legacy_span_id: Option<String> (for v1.9 compat)
+        * flags: SpanFlags
+        * start_time: Timestamp
+        * end_time: Option<Timestamp>
+        --
+        + duration() -> Duration
+        + is_root_span() -> bool
+    }
+
+    entity Attributes {
+        * map: HashMap<String, Value>
+        * semantic_convention: String
+        --
+        + validate() -> Result<()>
+        + to_otel_attributes() -> Vec<OtelAttribute>
+    }
+
+    entity Metric {
+        * metric_id: UUID
+        * name: String
+        * value: f64
+        * unit: String
+        * timestamp: Timestamp
+        * attributes: Attributes
+        * instrument_type: InstrumentType
+        --
+        + is_valid() -> bool
+    }
+
+    entity LogEntry {
+        * log_id: UUID
+        * timestamp: Timestamp
+        * level: LogLevel (DEBUG|INFO|WARN|ERROR)
+        * message: String
+        * attributes: Attributes
+        * span_context: Option<SpanContext>
+        --
+        + severity_number() -> u8
+    }
+
+    SpanContext "1" *-- "many" Attributes: has
+    Metric "1" *-- "many" Attributes: has
+    LogEntry "1" o-- "1" SpanContext: linked to
+}
+
+package "Isolation & Security Model" {
+    enum IsolationLevel {
+        Process
+        Container
+        VM
+    }
+
+    entity IsolationBoundary {
+        * boundary_id: UUID
+        * level: IsolationLevel
+        * container_id: ContainerId
+        * resources: ResourceLimits
+        * filesystem_root: String
+        * capabilities: Capabilities
+        * seccomp_profile: Option<String>
+        --
+        + enforce() -> Result<()>
+    }
+
+    entity ResourceLimits {
+        * memory_limit: ByteSize
+        * cpu_limit: MilliCores
+        * disk_limit: ByteSize
+        * network_bandwidth: Option<BytesPerSecond>
+        * max_processes: Option<u32>
+        --
+        + is_within_limits(usage: ResourceUsage) -> bool
+    }
+
+    entity Capabilities {
+        * linux_capabilities: Vec<String>
+        * read_only_root: bool
+        * no_new_privileges: bool
+        --
+        + to_seccomp_filter() -> String
+    }
+
+    IsolationBoundary "1" *-- "1" ResourceLimits: enforces
+    IsolationBoundary "1" *-- "1" Capabilities: restricts
+}
+
+package "Error & Result Model" {
+    entity CleanroomError {
+        * error_id: UUID
+        * kind: ErrorKind
+        * message: String
+        * context: Vec<ContextFrame>
+        * source: Option<Box<dyn Error>>
+        * timestamp: Timestamp
+        --
+        + with_context(ctx: &str) -> Self
+        + root_cause() -> Option<&dyn Error>
+    }
+
+    entity ContextFrame {
+        * location: SourceLocation
+        * description: String
+        * timestamp: Timestamp
+    }
+
+    entity SourceLocation {
+        * file: String
+        * line: u32
+        * column: u32
+        * function: String
+    }
+
+    CleanroomError "1" *-- "many" ContextFrame: has
+    ContextFrame "1" *-- "1" SourceLocation: at
+}
+
+package "Storage Model" {
+    entity TestArtifact {
+        * artifact_id: UUID
+        * test_id: UUID (FK -> TestResult)
+        * artifact_type: ArtifactType (Log|Trace|Metric|Report)
+        * content: Bytes
+        * size: ByteSize
+        * created_at: Timestamp
+        * retention_policy: RetentionPolicy
+        --
+        + compress() -> Result<Bytes>
+        + upload_to_storage(backend: &StorageBackend) -> Result<()>
+    }
+
+    entity StorageBackend {
+        * backend_id: UUID
+        * backend_type: BackendType (FileSystem|S3|GCS|etc)
+        * config: StorageConfig
+        --
+        + store(artifact: &TestArtifact) -> Result<()>
+        + retrieve(artifact_id: UUID) -> Result<Bytes>
+    }
+
+    TestResult "1" *-- "many" TestArtifact: produces
+    TestArtifact "many" --> "1" StorageBackend: stored in
+}
+
+ServiceHandle --> ContainerId: references
+ExecutionContext --> ScenarioConfig: executes
+ExecutionContext --> ContainerId: creates
+TestResult --> ExecutionContext: from
+IsolationBoundary --> ContainerId: protects
+SpanContext --> ExecutionContext: traces
+Metric --> ExecutionContext: measures
+LogEntry --> ExecutionContext: generated from
+
+@enduml
