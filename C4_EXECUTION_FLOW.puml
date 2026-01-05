@@ -1,0 +1,140 @@
+@startuml C4_CLNRM_ExecutionFlow
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title CLNRM v2.0.0 - Execution Flow & Data Pipeline
+
+package "Configuration Phase" {
+    card conf1["Test Developer\nWrites TOML config"]
+    card conf2["ConfigParser\nParses scenario"]
+    card conf3["ConfigValidator\nValidates against Weaver\nschemas"]
+    card conf4["SpecLoader\nLoads service defs\n(gVisor default)"]
+
+    conf1 --> conf2
+    conf2 --> conf3
+    conf3 --> conf4
+}
+
+package "Initialization Phase" {
+    card init1["BackendFactory\nSelectsBackend"]
+    card init1a["Feature Check:\nbackend-gvisor?"]
+    card init1b["GvisorBackend\n✓ (default)"]
+    card init1c["TestcontainersBackend\n✗ (optional)"]
+
+    card init2["ServiceFactory\nCreatesPlugins"]
+    card init2a["SurrealDbPlugin\n(if gated feature)"]
+    card init2b["GenericPlugin\n(if gated feature)"]
+
+    card init3["ServiceRegistry\nRegisters all\nplugins"]
+
+    card init4["CleanroomEnvironment\nInitializes context"]
+
+    init1 --> init1a
+    init1a -->|feature=backend-gvisor| init1b
+    init1a -->|feature=backend-testcontainers| init1c
+    init1 --> init2
+    init2 --> init2a
+    init2 --> init2b
+    init2 --> init3
+    init3 --> init4
+}
+
+package "Startup Phase" {
+    card start1["LifecycleManager\nInitializes services"]
+
+    card start2a["GvisorBackend\nPull OCI image"]
+    card start2b["Create gVisor\ncontainer with\nrunsc"]
+    card start2c["Map ports\n(automatic via\nport allocator)"]
+
+    card start3["HealthChecker\nVerify service\nreadiness"]
+
+    card start4["OpenTelemetry\nEmit SPAN_STARTED"]
+
+    start1 --> start2a
+    start2a --> start2b
+    start2b --> start2c
+    start2c --> start3
+    start3 --> start4
+}
+
+package "Test Execution Phase" {
+    card exec1["Execute test\ncommands"]
+
+    card exec2["GvisorBackend\nExecute in\ncontainer"]
+
+    card exec3["Capture output\n& metrics"]
+
+    card exec4["OpenTelemetry\nRecordMetrics\nEmitLogs"]
+
+    card exec5["BackwardCompat\nDual-ID system\nfor v1.9→v2.0"]
+
+    exec1 --> exec2
+    exec2 --> exec3
+    exec3 --> exec4
+    exec4 --> exec5
+}
+
+package "Cleanup Phase" {
+    card clean1["LifecycleManager\nStops services"]
+
+    card clean2["GvisorBackend\nKill container"]
+
+    card clean3["Port Allocator\nRelease ports"]
+
+    card clean4["OpenTelemetry\nEmit SPAN_ENDED\nFinalize metrics"]
+
+    card clean5["Artifact Manager\nStore reports\nand artifacts"]
+
+    clean1 --> clean2
+    clean2 --> clean3
+    clean3 --> clean4
+    clean4 --> clean5
+}
+
+package "Results & Reporting" {
+    card result1["Test Results"]
+    card result2["Metrics\n(response time,\nmemory, etc)"]
+    card result3["Logs\n(structured JSON)"]
+    card result4["Traces\n(distributed)\nwith parent-child\nspan relationships"]
+
+    result1 -.-> result2
+    result1 -.-> result3
+    result1 -.-> result4
+}
+
+package "Observability Export" {
+    card obs1["OTEL Collector\nGathers telemetry"]
+    card obs2["Export to\nPrometheus\n(metrics)"]
+    card obs3["Export to\nJaeger\n(traces)"]
+    card obs4["Export to\nDatadog/Honeycomb\n(logs)"]
+
+    obs1 --> obs2
+    obs1 --> obs3
+    obs1 --> obs4
+}
+
+package "Data Flows" {
+    note right: CRITICAL PATHS
+    rectangle flows{
+        card flow1["Configuration → Backend Selection\n(depends on feature flags)\n\nGVisor default, testcontainers optional"]
+
+        card flow2["Service Registration → Execution\n(all services use unified Backend trait)\n\nAbstraction enables portability"]
+
+        card flow3["OpenTelemetry → Backward Compat\n(dual-ID migration)\n\nv1.9 dashboards continue working"]
+
+        card flow4["Container Lifecycle → Port Allocation\n(automatic, no manual config)\n\nZero-configuration networking"]
+    }
+}
+
+conf4 --> init1: "config"
+start1 --> exec1: "ready"
+exec1 --> clean1: "tests complete"
+clean5 --> result1: "store"
+
+result1 --> obs1: "telemetry"
+result2 --> obs1: "metrics"
+result3 --> obs1: "logs"
+result4 --> obs1: "traces"
+
+@enduml

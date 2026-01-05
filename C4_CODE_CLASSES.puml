@@ -1,0 +1,202 @@
+@startuml C4_CLNRM_Code
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title CLNRM v2.0.0 - C4: Code/Class Diagram (Key Types)
+
+package "Backend Abstraction" {
+    interface Backend {
+        + create_container(config: ContainerConfig) -> Result<ContainerId>
+        + execute(id: ContainerId, cmd: &str) -> Result<ExecResult>
+        + stop(id: ContainerId) -> Result<()>
+        + cleanup() -> Result<()>
+    }
+
+    class GvisorBackend {
+        - runsc_path: String
+        - isolation_level: IsolationLevel
+        - port_allocator: PortAllocator
+        + new() -> Self
+    }
+
+    class TestcontainersBackend {
+        - docker_client: Client
+        - network: Network
+        + new() -> Result<Self>
+    }
+
+    class BackendFactory {
+        + create(feature: &str) -> Result<Box<dyn Backend>>
+    }
+
+    Backend <|-- GvisorBackend: implements
+    Backend <|-- TestcontainersBackend: implements
+    BackendFactory --> Backend: creates
+}
+
+package "Service Management" {
+    interface ServicePlugin {
+        + name(&self) -> &str
+        + start(&self) -> Result<ServiceHandle>
+        + stop(&self, handle: ServiceHandle) -> Result<()>
+        + health_check(&self, handle: &ServiceHandle) -> HealthStatus
+    }
+
+    class SurrealDbPlugin {
+        - username: String
+        - password: String
+        - port: u16
+    }
+
+    class GenericContainerPlugin {
+        - image: String
+        - env_vars: HashMap<String, String>
+        - ports: Vec<u16>
+        - volumes: Vec<VolumeMount>
+    }
+
+    class ServiceRegistry {
+        - services: HashMap<String, Box<dyn ServicePlugin>>
+        + register(name: &str, plugin: Box<dyn ServicePlugin>)
+        + get(name: &str) -> Option<&ServicePlugin>
+    }
+
+    class ServiceFactory {
+        + create_plugin(config: &ServiceConfig, backend: &Backend) -> Result<Box<dyn ServicePlugin>>
+    }
+
+    ServicePlugin <|-- SurrealDbPlugin: implements
+    ServicePlugin <|-- GenericContainerPlugin: implements
+    ServiceRegistry --> ServicePlugin: manages
+    ServiceFactory --> ServicePlugin: creates
+}
+
+package "Configuration" {
+    struct ServiceConfig {
+        r#type: String
+        image: Option<String>
+        env: Option<HashMap<String, String>>
+        ports: Option<Vec<u16>>
+        volumes: Option<Vec<VolumeMount>>
+    }
+
+    struct ContainerConfig {
+        image: String
+        env: HashMap<String, String>
+        ports: Vec<PortMapping>
+        mounts: Vec<Mount>
+        isolation: IsolationLevel
+    }
+
+    struct ScenarioConfig {
+        name: String
+        services: HashMap<String, ServiceConfig>
+        tests: Vec<TestCase>
+    }
+
+    class ConfigValidator {
+        + validate(config: &ScenarioConfig) -> Result<()>
+    }
+
+    ServiceConfig --> ConfigValidator: validated by
+}
+
+package "Execution" {
+    class CleanroomEnvironment {
+        - backend: Box<dyn Backend>
+        - services: ServiceRegistry
+        - state: ExecutionState
+        + new(backend: Box<dyn Backend>) -> Self
+        + register_service(plugin: Box<dyn ServicePlugin>)
+        + execute_scenario(config: &ScenarioConfig) -> Result<()>
+    }
+
+    class LifecycleManager {
+        + init_services(registry: &ServiceRegistry) -> Result<()>
+        + run_tests(tests: &[TestCase]) -> Result<Vec<TestResult>>
+        + cleanup() -> Result<()>
+    }
+
+    class HealthChecker {
+        + check_service(plugin: &ServicePlugin) -> HealthStatus
+        + wait_for_readiness(timeout: Duration) -> Result<()>
+    }
+
+    enum HealthStatus {
+        Healthy
+        Unhealthy
+        Unknown
+    }
+
+    enum ExecutionState {
+        Initialized
+        ServicesStarted
+        TestsRunning
+        Complete
+        Failed
+    }
+
+    CleanroomEnvironment --> LifecycleManager: uses
+    CleanroomEnvironment --> HealthChecker: uses
+    CleanroomEnvironment --> ExecutionState: tracks
+    HealthChecker --> HealthStatus: returns
+}
+
+package "Observability" {
+    interface Telemetry {
+        + span(name: &str) -> Span
+        + emit_metric(name: &str, value: f64)
+        + log(level: Level, msg: &str)
+    }
+
+    class OtelIntegration {
+        - tracer: Tracer
+        - metrics: MeterProvider
+        - logger: LoggerProvider
+    }
+
+    class BackwardCompatibilityLayer {
+        + emit_with_legacy_id(id: String, resource_id: String)
+        + migrate_span_id(old_id: String) -> String
+    }
+
+    class SemanticValidator {
+        + validate_attributes(attrs: &Attributes) -> Result<()>
+        + validate_naming_convention(name: &str) -> Result<()>
+    }
+
+    Telemetry <|-- OtelIntegration: implements
+    OtelIntegration --> BackwardCompatibilityLayer: uses
+    OtelIntegration --> SemanticValidator: validates with
+}
+
+package "Error Handling" {
+    class CleanroomError {
+        - kind: ErrorKind
+        - message: String
+        - context: Vec<String>
+        - source: Option<Box<dyn Error>>
+        + with_context(ctx: &str) -> Self
+        + with_source(src: Box<dyn Error>) -> Self
+    }
+
+    enum ErrorKind {
+        ConfigurationError
+        RuntimeError
+        BackendError
+        TimeoutError
+        ValidationError
+        ServiceError
+    }
+
+    CleanroomError --> ErrorKind: contains
+}
+
+CleanroomEnvironment --> Backend: uses
+CleanroomEnvironment --> ServiceRegistry: manages
+CleanroomEnvironment --> Telemetry: instruments
+ServiceFactory --> ServiceConfig: reads
+ServiceFactory --> Backend: uses for creation
+
+@enduml
