@@ -1,0 +1,27 @@
+# Redis Service Template
+
+[template.redis]
+plugin = "gvisor_container"
+image = "docker.io/library/redis:7"
+
+[[template.redis.ports]]
+container = 6379
+protocol = "tcp"
+
+[template.redis.health_check]
+type = "exec"
+command = ["redis-cli", "ping"]
+interval = "5s"
+timeout = "3s"
+retries = 3
+
+[template.redis.readiness]
+type = "tcp"
+port = 6379
+initial_delay = "1s"
+timeout = "10s"
+
+[template.redis.resources]
+memory_limit = "256M"
+cpu_limit = "0.5"
+pids_limit = 50

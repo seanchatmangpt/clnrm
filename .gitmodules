@@ -1,0 +1,3 @@
+[submodule "gvisor"]
+	path = gvisor
+	url = https://github.com/seanchatmangpt/gvisor

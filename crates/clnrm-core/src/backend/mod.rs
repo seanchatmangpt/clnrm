@@ -11,8 +11,10 @@ use std::path::PathBuf;
 pub mod capabilities;
 pub mod engine; // v1.7.0: Backend-agnostic execution engine (Phase 7)
 pub mod extensions;
+pub mod gvisor; // v2.0.0: gVisor backend with OCI image loading
 pub mod mock;
 pub mod multi_pool; // v1.6.0: Multi-image container pooling
+pub mod oci; // v2.0.0: OCI image loading and management
 pub mod pool;
 pub mod testcontainer;
 pub mod volume;
@@ -28,8 +30,12 @@ pub use engine::{
     ExecutionEngine, Output, ResourceUsage,
 };
 pub use extensions::{BackendExt, EnhancedBackend, ExecutionMode, ResourceLimits};
+pub use gvisor::GvisorBackend;
 pub use mock::MockBackend;
 pub use multi_pool::{MultiImagePoolManager, MultiPoolStats};
+pub use oci::{
+    ImageCache, ImageSource, OciBundle, OciBundleBuilder, OciImage, OciImageLoader, RunscExecutor,
+};
 pub use pool::{ContainerHandle, ContainerPool, PoolConfig, PoolStats, PooledContainer};
 pub use testcontainer::TestcontainerBackend;
 pub use volume::{VolumeMount, VolumeValidator};

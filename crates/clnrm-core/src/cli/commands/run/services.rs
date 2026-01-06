@@ -24,6 +24,7 @@ pub async fn load_services_from_config(
         // Create plugin based on service type
         let plugin: Box<dyn crate::cleanroom::ServicePlugin> = match service_config.plugin.as_str()
         {
+            #[cfg(feature = "backend-testcontainers")]
             "surrealdb" => {
                 use crate::services::surrealdb::SurrealDbPlugin;
 
@@ -37,6 +38,7 @@ pub async fn load_services_from_config(
 
                 Box::new(plugin)
             }
+            #[cfg(feature = "backend-testcontainers")]
             "generic_container" => {
                 use crate::services::generic::GenericContainerPlugin;
 

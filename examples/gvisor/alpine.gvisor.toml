@@ -1,0 +1,77 @@
+# Alpine Linux Generic Container - gVisor Configuration Example
+# Minimal configuration for a generic Alpine container
+
+[[services]]
+name = "alpine"
+service_type = "generic"
+description = "Alpine Linux base container for testing"
+enabled = true
+
+# Image configuration
+[services.image]
+url = "docker://alpine:latest"
+pull_policy = "if-not-present"
+
+# Runtime configuration
+[services.runtime]
+platform = "kvm"
+entrypoint = ["/bin/sh"]
+args = ["-c", "sleep 3600"]  # Keep container running
+working_dir = "/workspace"
+user = "root:root"
+
+# Environment variables
+[services.environment]
+ENV = "test"
+DEBUG = "false"
+
+# Network configuration
+[services.network]
+mode = "isolated"  # No network access
+hostname = "alpine-test"
+dns_servers = []
+
+# Resource limits (minimal for Alpine)
+[services.resources]
+memory_limit_mb = 128
+cpu_limit_cores = 0.5
+max_pids = 50
+
+# Health check
+[services.health_check]
+enabled = true
+type = "exec"
+interval_seconds = 5
+timeout_seconds = 1
+retries = 3
+
+[services.health_check.exec]
+command = ["sh", "-c", "exit 0"]
+
+# Lifecycle
+[services.lifecycle]
+startup_timeout_seconds = 30
+shutdown_timeout_seconds = 10
+
+# Security
+[services.security]
+readonly_rootfs = false
+run_as_non_root = false
+allow_privilege_escalation = false
+drop_capabilities = ["ALL"]
+
+[services.security.seccomp]
+enabled = true
+profile = "default"
+
+# Logging
+[services.logging]
+driver = "json-file"
+max_file_size_mb = 5
+max_files = 2
+
+# Restart policy
+[services.restart_policy]
+type = "on-failure"
+max_retries = 3
+backoff_seconds = 5

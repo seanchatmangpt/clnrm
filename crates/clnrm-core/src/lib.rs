@@ -23,6 +23,8 @@ pub mod environment; // v1.7.0: Σ*-aware environment compiler (Phase 2)
 pub mod error;
 pub mod executor; // v2.0: New executor with docker exec support
 pub mod formatting;
+pub mod ggen_integration;
+pub mod ggen_config;
 pub mod macros;
 pub mod metrics;
 pub mod otel;
@@ -91,6 +93,8 @@ pub use cleanroom::{
     CleanroomEnvironment, ExecutionResult, HealthStatus, ServiceHandle, ServicePlugin,
     ServiceRegistry,
 };
+pub use ggen_integration::GenGenServiceLoader;
+pub use ggen_config::GenGenConfigBuilder;
 pub use config::{
     load_cleanroom_config, load_cleanroom_config_from_file, load_config_from_file,
     parse_toml_config, CleanroomConfig, ContainerConfig, DeterminismConfig, ScenarioConfig, StepConfig, TestConfig,
@@ -207,7 +211,9 @@ pub use formatting::{
 pub use macros::{with_cache, with_database, with_message_queue, with_web_server};
 pub use metrics::{AtomicMetrics, MetricsSnapshot};
 pub use reporting::{generate_reports, DigestReporter, JsonReporter, JunitReporter, ReportConfig};
+#[cfg(feature = "backend-testcontainers")]
 pub use services::generic::GenericContainerPlugin;
+#[cfg(feature = "backend-testcontainers")]
 pub use services::surrealdb::SurrealDbPlugin;
 
 // v2.0 Executor exports

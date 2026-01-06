@@ -1,0 +1,97 @@
+@startuml C3_CLNRM_Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title CLNRM v2.0.0 - C3: Component Diagram (Core Library)
+
+Person(developer, "Test Developer")
+
+Component(cli_handler, "CLI Handler", "Command Router", "Parses and routes\ncommand execution")
+
+System_Boundary(config_subsystem, "Configuration & Validation") {
+    Component(config_parser, "Config Parser", "TOML/YAML", "Parses test scenarios\nand service configs")
+    Component(config_validator, "Config Validator", "Weaver Integration", "Validates against\nsemantic schemas")
+    Component(spec_loader, "Spec Loader", "ServiceConfig", "Loads service\ndefinitions")
+}
+
+System_Boundary(backend_subsystem, "Backend Abstraction Layer") {
+    Component(backend_trait, "Backend Trait", "Async Interface", "Unified container\nruntime interface")
+    Component(backend_factory, "Backend Factory", "Feature-Gated", "Selects backend based on\nfeature flags")
+    Component(gvisor_impl, "gVisor Implementation", "runsc CLI", "Native gVisor runtime\n(default, no Docker)")
+    Component(testcontainers_impl, "Testcontainers Implementation", "Docker API", "Legacy Docker backend\n(optional feature)")
+}
+
+System_Boundary(service_subsystem, "Service Management") {
+    Component(service_registry, "Service Registry", "Plugin System", "Manages all service\nplugins")
+    Component(service_factory, "Service Factory", "Plugin Creator", "Creates service instances\nfrom config")
+    Component(surrealdb_plugin, "SurrealDB Plugin", "DatabaseService", "Graph database\ncontainer management")
+    Component(generic_plugin, "Generic Plugin", "ContainerService", "Arbitrary container\nmanagement")
+    Component(llm_plugins, "LLM Plugins", "AI Services", "Ollama, TGI, VLLM\nmanagement")
+}
+
+System_Boundary(execution_subsystem, "Test Execution") {
+    Component(cleanroom_env, "Cleanroom Environment", "Orchestrator", "Manages isolated test\nexecution contexts")
+    Component(lifecycle_mgr, "Lifecycle Manager", "State Machine", "Manages container\nlifecycle (init→run→cleanup)")
+    Component(health_checker, "Health Checker", "Readiness Probe", "Validates service health\nand connectivity")
+}
+
+System_Boundary(observability_subsystem, "Observability") {
+    Component(tracer, "Tracer", "OpenTelemetry", "Distributed tracing\nwith span collection")
+    Component(metrics_collector, "Metrics Collector", "OpenTelemetry", "Application metrics\nand instrumentation")
+    Component(logger, "Logger", "Tracing/OpenTelemetry", "Structured logging\nwith context")
+    Component(semantic_conv, "Semantic Conventions", "OTEL Standards", "Validates attribute\nnaming and schemas")
+    Component(backward_compat, "Backward Compatibility", "ID Migration", "Dual-ID system for\nv1.9→v2.0 migration")
+}
+
+System_Boundary(error_subsystem, "Error Handling") {
+    Component(error_type, "CleanroomError", "Error Wrapper", "Unified error type\nwith context")
+    Component(error_converter, "Error Converter", "From<T>", "Feature-gated conversion\nfrom backend errors")
+}
+
+System_Boundary(storage_subsystem, "Storage & Persistence") {
+    Component(artifact_mgr, "Artifact Manager", "File I/O", "Manages test artifacts,\nreports, and caches")
+    Component(port_allocator, "Port Allocator", "Port Management", "Assigns unique ports\nfor services")
+}
+
+Rel(developer, cli_handler, "Executes")
+
+Rel(cli_handler, config_parser, "Uses")
+Rel(config_parser, config_validator, "Validates with")
+Rel(config_validator, spec_loader, "Loads specs")
+
+Rel(spec_loader, service_factory, "Creates services from")
+Rel(service_factory, service_registry, "Registers with")
+
+Rel(service_registry, surrealdb_plugin, "Manages")
+Rel(service_registry, generic_plugin, "Manages")
+Rel(service_registry, llm_plugins, "Manages")
+
+Rel(service_factory, backend_factory, "Selects backend")
+Rel(backend_factory, gvisor_impl, "Uses\n(default)")
+Rel(backend_factory, testcontainers_impl, "Uses\n(optional)")
+Rel(gvisor_impl, backend_trait, "Implements")
+Rel(testcontainers_impl, backend_trait, "Implements")
+
+Rel(surrealdb_plugin, backend_trait, "Uses")
+Rel(generic_plugin, backend_trait, "Uses")
+Rel(llm_plugins, backend_trait, "Uses")
+
+Rel(service_registry, cleanroom_env, "Registered with")
+Rel(cleanroom_env, lifecycle_mgr, "Uses")
+Rel(lifecycle_mgr, health_checker, "Calls")
+
+Rel(cleanroom_env, tracer, "Instruments")
+Rel(cleanroom_env, metrics_collector, "Emits to")
+Rel(cleanroom_env, logger, "Logs to")
+Rel(tracer, semantic_conv, "Validates")
+Rel(metrics_collector, semantic_conv, "Validates")
+Rel(logger, backward_compat, "Uses for ID migration")
+
+Rel(backend_trait, error_converter, "Converts errors")
+Rel(error_converter, error_type, "Creates")
+
+Rel(lifecycle_mgr, port_allocator, "Allocates ports")
+Rel(cleanroom_env, artifact_mgr, "Uses for storage")
+
+@enduml

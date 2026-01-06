@@ -68,18 +68,31 @@ impl ServiceRegistry {
         Self::default()
     }
 
+    /// Load plugins from ggen instances
+    pub fn with_ggen_plugins(mut self) -> Result<Self> {
+        let services = crate::ggen_integration::GenGenServiceLoader::load_services()?;
+        for service in services {
+            self.register_plugin(service);
+        }
+        Ok(self)
+    }
+
     /// Initialize default plugins
     pub fn with_default_plugins(mut self) -> Self {
         use crate::services::{
-            generic::GenericContainerPlugin, ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin,
+            ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin,
         };
 
         // Register core plugins
-        let generic_plugin = Box::new(GenericContainerPlugin::new(
-            "generic_container",
-            "alpine:latest",
-        ));
-        self.register_plugin(generic_plugin);
+        #[cfg(feature = "backend-testcontainers")]
+        {
+            use crate::services::generic::GenericContainerPlugin;
+            let generic_plugin = Box::new(GenericContainerPlugin::new(
+                "generic_container",
+                "alpine:latest",
+            ));
+            self.register_plugin(generic_plugin);
+        }
 
         // Register AI/LLM proxy plugins for automated rollout testing
         let ollama_config = crate::services::ollama::OllamaConfig {

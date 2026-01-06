@@ -1,0 +1,60 @@
+@startuml C2_CLNRM_Containers
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title CLNRM v2.0.0 - C2: Container Diagram
+
+Person(developer, "Test Developer", "Writes test configs\nand scenarios")
+
+System_Boundary(clnrm_system, "CLNRM System") {
+    Container(cli, "CLI Application", "Rust Binary", "Command-line interface\nfor test execution\nand configuration")
+
+    Container(core_lib, "Core Library", "Rust Library", "Testing framework logic,\nservice management,\nobservability")
+
+    Container(backend_gvisor, "gVisor Backend", "Rust Module\n(default feature)", "Container runtime interface\nusing gVisor\nZero Docker dependency")
+
+    Container(backend_tc, "Testcontainers Backend", "Rust Module\n(optional feature)", "Legacy Docker-based\ncontainer interface\nfor backward compatibility")
+
+    Container(service_layer, "Service Layer", "Rust Modules", "Plugin system for:\n- SurrealDB\n- GenericContainer\n- Ollama, TGI, VLLM\n- OTEL Collector")
+
+    Container(config_loader, "Configuration Loader", "Rust Module", "TOML/YAML parsing\nschema validation\nWeaver integration")
+
+    Container(otel_integration, "OpenTelemetry Integration", "Rust Module", "Tracing, metrics, logs\nwith semantic conventions\nand backward compatibility")
+
+    Container(storage, "Local Storage", "File System", "Test artifacts,\nscenarios, configs,\nreports")
+}
+
+System_Boundary(external, "External Systems") {
+    Container(image_registry, "Container Registry", "HTTP API", "OCI image source\n(Docker Hub, ECR, etc)")
+
+    Container(surrealdb_ext, "SurrealDB Instance", "Database", "Optional graph database\nfor test data")
+
+    Container(otel_collector, "OTEL Collector", "Collector", "Trace/metric aggregation\nand export")
+
+    Container(otel_backend, "OTEL Backend", "Prometheus/Jaeger", "Observability storage\nand visualization")
+}
+
+Rel(developer, cli, "Executes commands")
+Rel(cli, core_lib, "Uses framework")
+Rel(cli, config_loader, "Loads test configs")
+Rel(config_loader, storage, "Reads configs")
+
+Rel(core_lib, backend_gvisor, "Routes to\n(default: feature=backend-gvisor)")
+Rel(core_lib, backend_tc, "Routes to\n(optional: feature=backend-testcontainers)")
+Rel(core_lib, service_layer, "Manages services")
+Rel(service_layer, backend_gvisor, "Creates containers")
+Rel(service_layer, backend_tc, "Creates containers")
+
+Rel(backend_gvisor, image_registry, "Pulls OCI images")
+Rel(backend_tc, image_registry, "Pulls container images")
+
+Rel(core_lib, otel_integration, "Instruments code")
+Rel(otel_integration, otel_collector, "Exports telemetry")
+Rel(otel_collector, otel_backend, "Aggregates data")
+
+Rel(service_layer, surrealdb_ext, "Stores graph data\n(optional)")
+
+Rel(core_lib, storage, "Stores artifacts")
+
+@enduml
