@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 /// Docker Registry API v2 client
+#[derive(Debug)]
 pub struct RegistryClient {
     http_client: reqwest::Client,
     auth_cache: DashMap<String, AuthToken>,

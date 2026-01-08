@@ -2,7 +2,7 @@
 //!
 //! Manages a pool of pre-allocated containers for efficient stress testing.
 
-use crate::backend::TestcontainerBackend;
+use crate::backend::Backend;
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -51,8 +51,8 @@ pub struct PooledContainer {
     /// Unique container ID
     pub id: String,
 
-    /// Backend for this container
-    pub backend: Arc<TestcontainerBackend>,
+    /// Backend for this container (generic Backend trait)
+    pub backend: Arc<dyn Backend>,
 
     /// Whether container is currently in use
     pub in_use: bool,
@@ -60,12 +60,12 @@ pub struct PooledContainer {
 
 impl PooledContainer {
     /// Create a new pooled container
-    fn new(image: String, backend: TestcontainerBackend) -> Self {
+    fn new(image: String, backend: Arc<dyn Backend>) -> Self {
         let id = uuid::Uuid::new_v4().to_string();
         Self {
             image,
             id,
-            backend: Arc::new(backend),
+            backend,
             in_use: false,
         }
     }
@@ -133,31 +133,13 @@ impl ContainerPool {
                 break;
             }
 
-            // Create backend - wrap in spawn_blocking to avoid runtime conflicts
-            let image_str = image.to_string();
-            let startup_timeout = self.config.startup_timeout;
-            let mem_limit = self.config.memory_limit;
-            let cpu_limit = self.config.cpu_limit;
+            // gVisor-based container creation (no Docker dependency)
+            // For now, use MockBackend as placeholder until gVisor integration is complete
+            let backend: Arc<dyn Backend> = Arc::new(crate::backend::mock_backend());
 
-            let backend = tokio::task::spawn_blocking(move || {
-                let mut backend =
-                    TestcontainerBackend::new(image_str)?.with_startup_timeout(startup_timeout);
-
-                if let Some(mem_limit) = mem_limit {
-                    backend = backend.with_memory_limit(mem_limit);
-                }
-
-                if let Some(cpu_limit) = cpu_limit {
-                    backend = backend.with_cpu_limit(cpu_limit);
-                }
-
-                Ok::<TestcontainerBackend, CleanroomError>(backend)
-            })
-            .await
-            .map_err(|e| CleanroomError::internal_error(format!("Task join error: {}", e)))?
-            .map_err(|e| {
-                CleanroomError::internal_error(format!("Failed to create backend: {}", e))
-            })?;
+            // Note: In production, this would create a gVisor container with the specified image
+            // and configuration (startup_timeout, memory_limit, cpu_limit)
+            // For now, we use a mock backend for testing purposes
 
             let container = PooledContainer::new(image.to_string(), backend);
             containers.push(container);
@@ -222,29 +204,13 @@ impl ContainerPool {
             .unwrap_err());
         }
 
-        // Create new container - wrap in spawn_blocking to avoid runtime conflicts
-        let image_str = image.to_string();
-        let startup_timeout = self.config.startup_timeout;
-        let mem_limit = self.config.memory_limit;
-        let cpu_limit = self.config.cpu_limit;
+        // gVisor-based container creation (no Docker dependency)
+        // For now, use MockBackend as placeholder until gVisor integration is complete
+        let backend: Arc<dyn Backend> = Arc::new(crate::backend::mock_backend());
 
-        let backend = tokio::task::spawn_blocking(move || {
-            let mut backend =
-                TestcontainerBackend::new(image_str)?.with_startup_timeout(startup_timeout);
-
-            if let Some(mem_limit) = mem_limit {
-                backend = backend.with_memory_limit(mem_limit);
-            }
-
-            if let Some(cpu_limit) = cpu_limit {
-                backend = backend.with_cpu_limit(cpu_limit);
-            }
-
-            Ok::<TestcontainerBackend, CleanroomError>(backend)
-        })
-        .await
-        .map_err(|e| CleanroomError::internal_error(format!("Task join error: {}", e)))?
-        .map_err(|e| CleanroomError::internal_error(format!("Failed to create backend: {}", e)))?;
+        // Note: In production, this would create a gVisor container with the specified image
+        // and configuration (startup_timeout, memory_limit, cpu_limit)
+        // For now, we use a mock backend for testing purposes
 
         let mut container = PooledContainer::new(image.to_string(), backend);
         container.acquire();

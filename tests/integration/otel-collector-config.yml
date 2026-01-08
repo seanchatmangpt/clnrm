@@ -1,13 +1,18 @@
 # OpenTelemetry Collector configuration for clnrm integration testing
+# gVisor Migration: Use localhost endpoints for isolated namespace model
+#
 # This configuration accepts OTLP data and exposes it for validation
+# GENCHI GENBUTSU: All endpoints bind to 127.0.0.1 for gVisor compatibility
 
 receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: 0.0.0.0:4317
+        # gVisor: Bind to localhost only (127.0.0.1:4317)
+        endpoint: 127.0.0.1:4317
       http:
-        endpoint: 0.0.0.0:4318
+        # gVisor: Bind to localhost only (127.0.0.1:4318)
+        endpoint: 127.0.0.1:4318
 
 processors:
   batch:
@@ -26,24 +31,29 @@ exporters:
     sampling_thereafter: 200
 
   # Export to Jaeger for visualization (optional)
+  # gVisor: Use localhost instead of Docker service DNS
   otlp/jaeger:
-    endpoint: jaeger:4317
+    endpoint: 127.0.0.1:4317
     tls:
       insecure: true
 
   # Export metrics to Prometheus (optional)
+  # gVisor: Bind to localhost for gVisor safety
   prometheus:
-    endpoint: "0.0.0.0:8889"
+    endpoint: "127.0.0.1:8889"
 
 extensions:
   health_check:
-    endpoint: 0.0.0.0:13133
+    # gVisor: Bind to localhost only (127.0.0.1:13133)
+    endpoint: 127.0.0.1:13133
 
   pprof:
-    endpoint: 0.0.0.0:1777
+    # gVisor: Bind to localhost only (127.0.0.1:1777)
+    endpoint: 127.0.0.1:1777
 
   zpages:
-    endpoint: 0.0.0.0:55679
+    # gVisor: Bind to localhost only (127.0.0.1:55679)
+    endpoint: 127.0.0.1:55679
 
 service:
   extensions: [health_check, pprof, zpages]

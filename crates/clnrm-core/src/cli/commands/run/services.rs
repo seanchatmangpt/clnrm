@@ -21,10 +21,9 @@ pub async fn load_services_from_config(
             service_name, service_config.plugin, service_config.plugin
         );
 
-        // Create plugin based on service type
+        // Create plugin based on service type (gVisor-based, no Docker required)
         let plugin: Box<dyn crate::cleanroom::ServicePlugin> = match service_config.plugin.as_str()
         {
-            #[cfg(feature = "backend-testcontainers")]
             "surrealdb" => {
                 use crate::services::surrealdb::SurrealDbPlugin;
 
@@ -38,7 +37,6 @@ pub async fn load_services_from_config(
 
                 Box::new(plugin)
             }
-            #[cfg(feature = "backend-testcontainers")]
             "generic_container" => {
                 use crate::services::generic::GenericContainerPlugin;
 

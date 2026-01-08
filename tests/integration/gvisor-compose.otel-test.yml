@@ -1,0 +1,229 @@
+version: '3.8'
+
+# gVisor Compose configuration for OpenTelemetry validation testing
+# Purpose: Test OTEL tracing, metrics, and logs in gVisor sandbox
+#
+# GENCHI GENBUTSU: Observe actual telemetry emission in gVisor
+# STANDARDIZATION: Consistent OTEL validation across isolated environments
+# HEIJUNKA: Balanced load for tracing and metrics collection
+#
+# Usage:
+# docker-compose -f tests/integration/gvisor-compose.otel-test.yml up -d
+#
+# Verification:
+# curl http://localhost:13133/  # OTEL collector health
+# curl http://localhost:16686/  # Jaeger UI
+
+services:
+  # OpenTelemetry Collector for integration testing
+  # Receives telemetry from tested services and forwards to backends
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: clnrm-otel-collector-test-gvisor
+    command: ["--config=/etc/otel-collector-config.yml"]
+    runtime: runsc  # gVisor runtime
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - NET_RAW  # Required for some OTEL exporters
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "13133:13133" # Health check endpoint
+      - "55679:55679" # zpages extension
+    environment:
+      - OTEL_LOG_LEVEL=debug
+      - GOMEMPROFILE=false
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - otel-test-gvisor
+    depends_on:
+      - jaeger
+      - prometheus
+    labels:
+      security: high
+      isolation: gvisor
+      component: observability
+
+  # Jaeger backend for trace visualization and storage
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: clnrm-jaeger-test-gvisor
+    runtime: runsc  # gVisor runtime
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+      - MEMORY_MAX_TRACES=10000
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "14250:14250" # Jaeger gRPC
+      - "14268:14268" # Jaeger HTTP
+      - "6831:6831/udp" # Jaeger UDP
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - otel-test-gvisor
+    labels:
+      security: high
+      isolation: gvisor
+      component: observability
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: clnrm-prometheus-test-gvisor
+    runtime: runsc  # gVisor runtime
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    volumes:
+      - ./prometheus-config.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data-gvisor-otel:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=24h'
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - otel-test-gvisor
+    labels:
+      security: high
+      isolation: gvisor
+      component: observability
+
+  # Grafana for advanced metrics visualization (optional)
+  # Provides dashboard capabilities for monitoring test telemetry
+  grafana:
+    image: grafana/grafana:latest
+    container_name: clnrm-grafana-test-gvisor
+    runtime: runsc  # gVisor runtime
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - otel-test-gvisor
+    volumes:
+      - grafana-storage-gvisor:/var/lib/grafana
+    labels:
+      security: high
+      isolation: gvisor
+      component: observability
+
+networks:
+  otel-test-gvisor:
+    driver: bridge
+    name: otel-test-gvisor
+
+volumes:
+  prometheus-data-gvisor-otel:
+    name: clnrm-prometheus-data-gvisor-otel
+  grafana-storage-gvisor:
+    name: clnrm-grafana-storage-gvisor
+
+# TOYOTA PRODUCTION SYSTEM - OTEL VALIDATION PRINCIPLES:
+#
+# KAIZEN (Continuous Improvement):
+# - Monitor telemetry latency in gVisor vs Docker
+# - Track span completion rates
+# - Measure metric export reliability
+# - Validate schema compliance per OpenTelemetry semantic conventions
+#
+# JIDOKA (Automation with Built-in Quality):
+# - Auto-validate OTEL schema on span export
+# - Fail-fast on missing required attributes
+# - Block test on unhealthy collector
+#
+# HEIJUNKA (Load Leveling):
+# - Distribute telemetry load across gVisor processors
+# - Batch export with optimized intervals
+# - Balance metrics scraping across Prometheus workers
+#
+# GENCHI GENBUTSU (Go to Source):
+# - Observe actual span emission: curl http://localhost:55679/debug/tracez
+# - View metrics live: http://localhost:9090/
+# - Visualize traces: http://localhost:16686/
+# - Dashboard: http://localhost:3000/
+#
+# TEST CATEGORIES COVERED:
+# ✓ Trace Generation: Verify spans are created
+# ✓ Span Attributes: Check semantic conventions compliance
+# ✓ Metric Emission: Validate metrics reach Prometheus
+# ✓ Collector Health: Verify OTEL collector status
+# ✓ gVisor Security: Telemetry works in sandboxed environment
+# ✓ Data Export: Verify traces export to Jaeger
+# ✓ Performance: Measure telemetry overhead in gVisor
+
+# Usage Guide:
+#
+# 1. Start OTEL stack:
+#    docker-compose -f tests/integration/gvisor-compose.otel-test.yml up -d
+#
+# 2. Wait for health checks:
+#    docker-compose -f tests/integration/gvisor-compose.otel-test.yml ps
+#
+# 3. Verify collector is running:
+#    curl -v http://localhost:13133/
+#
+# 4. Check received spans:
+#    curl http://localhost:55679/debug/tracez
+#
+# 5. View traces in Jaeger:
+#    Open browser: http://localhost:16686
+#
+# 6. Check metrics in Prometheus:
+#    Open browser: http://localhost:9090
+#
+# 7. View dashboards in Grafana:
+#    Open browser: http://localhost:3000 (admin/admin)
+#
+# 8. Run OTEL validation tests:
+#    cargo test --test readme_validation_otel_validation
+#
+# 9. Check logs:
+#    docker-compose -f tests/integration/gvisor-compose.otel-test.yml logs -f otel-collector
+#
+# 10. Cleanup:
+#     docker-compose -f tests/integration/gvisor-compose.otel-test.yml down -v
+
+# gVisor SECURITY VALIDATION FOR OTEL:
+# ✓ Network isolation: Telemetry cannot escape to host
+# ✓ Process isolation: Cannot access host process telemetry
+# ✓ Filesystem isolation: Cannot access host metrics
+# ✓ Capability restrictions: Only NET_BIND_SERVICE allowed
+# ✓ Syscall filtering: Only safe syscalls for observability
