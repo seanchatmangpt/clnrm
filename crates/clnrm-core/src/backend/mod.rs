@@ -16,7 +16,6 @@ pub mod mock;
 pub mod multi_pool; // v1.6.0: Multi-image container pooling
 pub mod oci; // v2.0.0: OCI image loading and management
 pub mod pool;
-pub mod testcontainer;
 pub mod volume;
 
 pub use capabilities::{
@@ -37,7 +36,6 @@ pub use oci::{
     ImageCache, ImageSource, OciBundle, OciBundleBuilder, OciImage, OciImageLoader, RunscExecutor,
 };
 pub use pool::{ContainerHandle, ContainerPool, PoolConfig, PoolStats, PooledContainer};
-pub use testcontainer::TestcontainerBackend;
 pub use volume::{VolumeMount, VolumeValidator};
 
 /// Get a mock backend for fast testing
@@ -174,71 +172,3 @@ pub trait Backend: Send + Sync + std::fmt::Debug {
     fn supports_deterministic(&self) -> bool;
 }
 
-/// Auto-backend wrapper for testcontainers
-#[derive(Debug)]
-pub struct AutoBackend {
-    /// The underlying testcontainers backend
-    inner: TestcontainerBackend,
-}
-
-impl AutoBackend {
-    /// Create a new AutoBackend with testcontainers
-    pub fn new(backend: TestcontainerBackend) -> Self {
-        Self { inner: backend }
-    }
-
-    /// Create testcontainers backend with default image
-    pub fn detect() -> Result<Self> {
-        let backend = TestcontainerBackend::new("alpine:latest")?;
-        Ok(Self { inner: backend })
-    }
-
-    /// Create backend from name (only supports testcontainers now)
-    pub fn from_name(name: &str) -> Result<Self> {
-        match name {
-            "testcontainers" | "auto" => Self::detect(),
-            _ => Err(crate::error::CleanroomError::new(
-                crate::error::ErrorKind::ConfigurationError,
-                format!(
-                    "Unknown backend: {}. Only 'testcontainers' and 'auto' are supported",
-                    name
-                ),
-            )),
-        }
-    }
-
-    /// Get the resolved backend name
-    pub fn resolved_backend(&self) -> String {
-        self.inner.name().to_string()
-    }
-
-    /// Check if testcontainers backend is available
-    pub fn is_backend_available(name: &str) -> bool {
-        match name {
-            "testcontainers" | "auto" => TestcontainerBackend::is_available(),
-            _ => false,
-        }
-    }
-}
-
-impl Backend for AutoBackend {
-    fn run_cmd(&self, cmd: Cmd) -> Result<RunResult> {
-        self.inner.run_cmd(cmd)
-    }
-
-    fn name(&self) -> &str {
-        self.inner.name()
-    }
-
-    fn is_available(&self) -> bool {
-        self.inner.is_available()
-    }
-
-    fn supports_hermetic(&self) -> bool {
-        self.inner.supports_hermetic()
-    }
-
-    fn supports_deterministic(&self) -> bool {
-        self.inner.supports_deterministic()
-    }
-}

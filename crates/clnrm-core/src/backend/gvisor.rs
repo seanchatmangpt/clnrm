@@ -7,8 +7,7 @@
 //! - Executing containers with gVisor's runsc
 
 use super::oci::{
-    ImageCache, ImageSource, LocalImageStore, OciBundleBuilder, OciImageLoader, RegistryClient,
-    RunscExecutor,
+    ImageSource, OciBundleBuilder, OciImageLoader, RunscExecutor,
 };
 use super::{Backend, Cmd, RunResult};
 use crate::error::{CleanroomError, Result};

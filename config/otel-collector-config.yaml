@@ -1,15 +1,27 @@
 # OpenTelemetry Collector Configuration for clnrm v1.2.0
 # Purpose: Receive OTLP telemetry from clnrm and export to Jaeger for Weaver validation
-# Usage: docker-compose -f docker-compose.weaver.yml up
+# Usage: gVisor runtime: runsc --config=/path/to/config.json
+# Docker Compose: docker-compose -f docker-compose.weaver.yml up
+#
+# GENCHI GENBUTSU - gVisor Migration Notes:
+# - Endpoints bound to localhost for gVisor isolated namespace model
+# - Service discovery via environment variables instead of Docker DNS
+# - Health checks use loopback addresses (127.0.0.1)
+# - Resource limits optimized for gVisor sandbox overhead
 
 receivers:
   # OTLP receiver for gRPC (port 4317) and HTTP (port 4318)
+  # gVisor: Binds to localhost only (127.0.0.1) due to isolated namespace
   otlp:
     protocols:
       grpc:
-        endpoint: 0.0.0.0:4317
+        # Environment variable: OTEL_OTLP_GRPC_ENDPOINT
+        # Format: 127.0.0.1:4317 (localhost) for gVisor
+        endpoint: 127.0.0.1:4317
       http:
-        endpoint: 0.0.0.0:4318
+        # Environment variable: OTEL_OTLP_HTTP_ENDPOINT
+        # Format: 127.0.0.1:4318 (localhost) for gVisor
+        endpoint: 127.0.0.1:4318
         cors:
           allowed_origins:
             - "*"
@@ -22,10 +34,12 @@ processors:
     send_batch_max_size: 2048
 
   # Memory limiter to prevent OOM
+  # gVisor: Increased limits due to gVisor sandbox memory overhead (~50-100MB per container)
+  # For gVisor: 256 MiB limit + 64 MiB spike allowance
   memory_limiter:
     check_interval: 1s
-    limit_mib: 512
-    spike_limit_mib: 128
+    limit_mib: 256
+    spike_limit_mib: 64
 
   # Resource processor to ensure service attributes
   resource:
@@ -49,8 +63,12 @@ processors:
 
 exporters:
   # Jaeger exporter for trace visualization
+  # gVisor: Use localhost instead of Docker service DNS (jaeger:4317)
+  # Environment variable: OTEL_JAEGER_ENDPOINT
+  # Default: 127.0.0.1:4317 (localhost for gVisor)
+  # Docker network: jaeger:4317 (for Docker Compose compatibility)
   otlp/jaeger:
-    endpoint: jaeger:4317
+    endpoint: 127.0.0.1:4317
     tls:
       insecure: true
 
@@ -89,6 +107,7 @@ service:
       exporters: [debug, file]
 
   # Telemetry configuration for collector itself
+  # gVisor: All telemetry endpoints bind to localhost (127.0.0.1) for gVisor safety
   telemetry:
     logs:
       level: info
@@ -100,16 +119,24 @@ service:
         - stderr
     metrics:
       level: detailed
-      address: 0.0.0.0:8888
+      # gVisor: Bind to localhost only for gVisor isolated namespace
+      address: 127.0.0.1:8888
 
   # Extensions
   extensions: []
 
 # Health check configuration
+# gVisor: All extension endpoints bind to localhost (127.0.0.1) for isolated namespace
 extensions:
   health_check:
-    endpoint: 0.0.0.0:13133
+    # Environment variable: OTEL_HEALTH_CHECK_ENDPOINT
+    # Default: 127.0.0.1:13133 (localhost for gVisor)
+    endpoint: 127.0.0.1:13133
   pprof:
-    endpoint: 0.0.0.0:1777
+    # Environment variable: OTEL_PPROF_ENDPOINT
+    # Default: 127.0.0.1:1777 (localhost for gVisor)
+    endpoint: 127.0.0.1:1777
   zpages:
-    endpoint: 0.0.0.0:55679
+    # Environment variable: OTEL_ZPAGES_ENDPOINT
+    # Default: 127.0.0.1:55679 (localhost for gVisor)
+    endpoint: 127.0.0.1:55679

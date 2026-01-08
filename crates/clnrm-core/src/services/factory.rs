@@ -7,10 +7,8 @@ use crate::cleanroom::ServicePlugin;
 use crate::config::ServiceConfig;
 use crate::error::{CleanroomError, Result};
 use crate::services::{
-    #[cfg(feature = "backend-testcontainers")]
     generic::GenericContainerPlugin,
     ollama::{OllamaConfig, OllamaPlugin},
-    #[cfg(feature = "backend-testcontainers")]
     surrealdb::SurrealDbPlugin,
     tgi::{TgiConfig, TgiPlugin},
     vllm::{VllmConfig, VllmPlugin},
@@ -66,22 +64,14 @@ impl ServiceFactory {
         let service_type = config.plugin.to_lowercase();
 
         match service_type.as_str() {
-            #[cfg(feature = "backend-testcontainers")]
             "surrealdb" => Self::create_surrealdb_plugin(name, config),
-            #[cfg(feature = "backend-testcontainers")]
             "generic_container" | "testcontainers" => Self::create_generic_plugin(name, config),
             "ollama" => Self::create_ollama_plugin(name, config),
             "tgi" => Self::create_tgi_plugin(name, config),
             "vllm" => Self::create_vllm_plugin(name, config),
             _ => {
-                #[cfg(feature = "backend-testcontainers")]
                 let msg = format!(
                     "Unknown service type: '{}'. Supported types: surrealdb, generic_container, testcontainers, ollama, tgi, vllm",
-                    config.plugin
-                );
-                #[cfg(not(feature = "backend-testcontainers"))]
-                let msg = format!(
-                    "Unknown service type: '{}'. Supported types: ollama, tgi, vllm",
                     config.plugin
                 );
                 Err(CleanroomError::configuration_error(msg))
@@ -90,7 +80,6 @@ impl ServiceFactory {
     }
 
     /// Create a SurrealDB plugin from configuration
-    #[cfg(feature = "backend-testcontainers")]
     fn create_surrealdb_plugin(
         _name: &str,
         config: &ServiceConfig,
@@ -112,7 +101,6 @@ impl ServiceFactory {
     }
 
     /// Create a generic container plugin from configuration
-    #[cfg(feature = "backend-testcontainers")]
     fn create_generic_plugin(name: &str, config: &ServiceConfig) -> Result<Box<dyn ServicePlugin>> {
         // Image is required for generic containers
         let image = config.image.as_ref().ok_or_else(|| {

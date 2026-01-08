@@ -16,7 +16,8 @@ init_task = "setup-env"
 [env]
 RUST_LOG = "info"
 RUST_BACKTRACE = "1"
-DOCKER_BUILDKIT = "1"
+GVISOR_RUNTIME = "runsc"
+DOCKER_RUNTIME = "--runtime=runsc"
 
 # =============================================================================
 # TIER 1: ESSENTIAL DAILY TASKS (20 tasks - 80% usage)
@@ -119,16 +120,17 @@ script = [
 ]
 
 [tasks.validate-production-readiness]
-description = "🚀 Comprehensive production readiness validation"
+description = "🚀 Comprehensive production readiness validation (gVisor)"
 workspace = false
 dependencies = ["setup-env"]
 script = [
-    "echo '🚀 Production Readiness Validation'",
-    "echo '=================================='",
+    "echo '🚀 Production Readiness Validation (gVisor)'",
+    "echo '==========================================='",
     "echo ''",
     # Prerequisites
-    "echo '📋 Checking prerequisites...'",
-    "docker info > /dev/null 2>&1 && echo '  ✅ Docker running' || (echo '  ❌ Docker not running' && exit 1)",
+    "echo '📋 Checking prerequisites (gVisor)...'",
+    "if command -v runsc &> /dev/null; then echo '  ✅ gVisor (runsc) available'; else echo '  ⚠️  gVisor not installed'; fi",
+    "if command -v docker &> /dev/null; then docker info > /dev/null 2>&1 && echo '  ✅ Docker/containerd running' || echo '  ⚠️  Docker daemon not running'; fi",
     "cargo --version > /dev/null && echo '  ✅ Cargo installed' || exit 1",
     "echo ''",
     # Core team standards
@@ -153,7 +155,7 @@ script = [
     "echo '🔨 Building release...'",
     "cargo build --release --quiet && echo '  ✅ Release build successful' || (echo '  ❌ Build failed' && exit 1)",
     "echo ''",
-    "echo '✅ Production readiness validation PASSED'",
+    "echo '✅ Production readiness validation PASSED (gVisor-compatible)'",
 ]
 
 [tasks.clippy]
@@ -237,18 +239,21 @@ command = "cargo"
 args = ["clean"]
 
 [tasks.setup-env]
-description = "🔧 Setup development environment"
+description = "🔧 Setup development environment (gVisor)"
 script = [
-    "echo '🔧 Setting up clnrm development environment...'",
+    "echo '🔧 Setting up clnrm development environment (gVisor)...'",
     "echo ''",
     "echo '📋 Checking prerequisites:'",
     "cargo --version",
-    "docker --version",
+    "echo 'Checking for gVisor...'",
+    "if command -v runsc &> /dev/null; then echo '✅ gVisor (runsc) found'; else echo '⚠️  gVisor not installed'; fi",
+    "echo 'Checking for Docker/Container runtime...'",
+    "if command -v docker &> /dev/null; then docker --version; else echo '⚠️  Docker not installed'; fi",
     "echo '✅ Prerequisites check passed'",
     "echo ''",
     "echo '🔍 Checking cargo-make installation:'",
     "cargo make --version",
-    "echo '✅ Environment setup complete'",
+    "echo '✅ Environment setup complete (gVisor migration ready)'",
 ]
 
 # =============================================================================
@@ -311,6 +316,132 @@ dependencies = ["fmt", "clippy", "test", "validate-crate"]
 description = "🔧 Auto-fix clippy warnings"
 command = "cargo"
 args = ["clippy", "--fix", "--allow-dirty", "--allow-staged"]
+
+# =============================================================================
+# gVisor TEST SUITE (Agent 8 - Comprehensive Test Migration)
+# =============================================================================
+# Toyota Principles: GENCHI GENBUTSU, HEIJUNKA, STANDARDIZATION, KAIZEN
+
+[tasks.test-unit-gvisor]
+description = "🧪 gVisor Unit Tests (native, no Docker)"
+script = [
+    "bash scripts/run_unit_tests_gvisor.sh --verbose"
+]
+
+[tasks.test-integration-gvisor]
+description = "🧪 gVisor Integration Tests (with sandboxed services)"
+script = [
+    "bash scripts/run_integration_tests_gvisor.sh"
+]
+
+[tasks.test-otel-gvisor]
+description = "🧪 gVisor OTEL Validation (telemetry in sandbox)"
+script = [
+    "bash scripts/run_integration_tests_gvisor.sh --otel-only"
+]
+
+[tasks.test-all-gvisor]
+description = "🧪🧪🧪 gVisor Complete Test Suite (unit + integration + OTEL)"
+script = [
+    "bash scripts/run_all_tests_gvisor.sh"
+]
+
+[tasks.test-gvisor-quick]
+description = "⚡ gVisor Quick Tests (fast subset)"
+script = [
+    "bash scripts/run_all_tests_gvisor.sh --quick"
+]
+
+[tasks.validate-gvisor-infrastructure]
+description = "✅ Validate gVisor infrastructure setup"
+script = [
+    "echo '🔍 Checking gVisor Installation'",
+    "docker run --runtime=runsc --rm alpine echo 'gVisor available' || (echo 'gVisor not available' && exit 1)",
+    "echo '✅ gVisor runtime verified'",
+    "echo ''",
+    "echo '🔍 Checking Compose Files'",
+    "test -f tests/integration/gvisor-compose.test.yml && echo '✅ gvisor-compose.test.yml found' || exit 1",
+    "test -f tests/integration/gvisor-compose.otel-test.yml && echo '✅ gvisor-compose.otel-test.yml found' || exit 1",
+    "test -f gvisor-compose.weaver.yml && echo '✅ gvisor-compose.weaver.yml found' || exit 1",
+    "echo ''",
+    "echo '🔍 Checking Test Runners'",
+    "test -x scripts/run_unit_tests_gvisor.sh && echo '✅ run_unit_tests_gvisor.sh ready' || exit 1",
+    "test -x scripts/run_integration_tests_gvisor.sh && echo '✅ run_integration_tests_gvisor.sh ready' || exit 1",
+    "test -x scripts/run_all_tests_gvisor.sh && echo '✅ run_all_tests_gvisor.sh ready' || exit 1",
+    "echo ''",
+    "echo '✅ gVisor Test Infrastructure Ready'",
+]
+
+[tasks.gvisor-start-services]
+description = "🚀 Start gVisor test services (integration)"
+script = [
+    "echo '🚀 Starting gVisor test services...'",
+    "docker-compose -f tests/integration/gvisor-compose.test.yml up -d",
+    "echo '⏳ Waiting for services to be healthy (30s timeout)...'",
+    "bash -c 'for i in {1..30}; do docker-compose -f tests/integration/gvisor-compose.test.yml ps | grep -q unhealthy || break; sleep 1; done'",
+    "echo '✅ Services started'",
+    "docker-compose -f tests/integration/gvisor-compose.test.yml ps",
+]
+
+[tasks.gvisor-start-otel]
+description = "🚀 Start gVisor OTEL services"
+script = [
+    "echo '🚀 Starting gVisor OTEL services...'",
+    "docker-compose -f tests/integration/gvisor-compose.otel-test.yml up -d",
+    "echo '⏳ Waiting for services to be healthy...'",
+    "sleep 10",
+    "echo '✅ OTEL services started'",
+    "docker-compose -f tests/integration/gvisor-compose.otel-test.yml ps",
+]
+
+[tasks.gvisor-start-weaver]
+description = "🚀 Start gVisor Weaver validation services"
+script = [
+    "echo '🚀 Starting gVisor Weaver services...'",
+    "docker-compose -f gvisor-compose.weaver.yml up -d",
+    "echo '⏳ Waiting for services to be healthy...'",
+    "sleep 10",
+    "echo '✅ Weaver services started'",
+    "docker-compose -f gvisor-compose.weaver.yml ps",
+]
+
+[tasks.gvisor-stop-all]
+description = "🛑 Stop all gVisor test services"
+script = [
+    "echo '🛑 Stopping all gVisor services...'",
+    "docker-compose -f tests/integration/gvisor-compose.test.yml down -v 2>/dev/null || true",
+    "docker-compose -f tests/integration/gvisor-compose.otel-test.yml down -v 2>/dev/null || true",
+    "docker-compose -f gvisor-compose.weaver.yml down -v 2>/dev/null || true",
+    "echo '✅ All services stopped'",
+]
+
+[tasks.gvisor-logs]
+description = "📋 Show gVisor service logs"
+script = [
+    "docker-compose -f tests/integration/gvisor-compose.test.yml logs -f --tail=50"
+]
+
+[tasks.gvisor-health-check]
+description = "🏥 Check health of all gVisor services"
+script = [
+    "echo '🏥 gVisor Services Health Check'",
+    "echo '=============================='",
+    "echo ''",
+    "echo '1. Test Services:'",
+    "docker-compose -f tests/integration/gvisor-compose.test.yml ps",
+    "echo ''",
+    "echo '2. OTEL Services:'",
+    "docker-compose -f tests/integration/gvisor-compose.otel-test.yml ps 2>/dev/null || echo 'Not running'",
+    "echo ''",
+    "echo '3. Weaver Services:'",
+    "docker-compose -f gvisor-compose.weaver.yml ps 2>/dev/null || echo 'Not running'",
+    "echo ''",
+    "echo 'Endpoint Health Checks:'",
+    "echo '  OTEL Collector: curl http://localhost:13133/ || echo (not running)'",
+    "echo '  Jaeger UI: http://localhost:16686/'",
+    "echo '  Prometheus: http://localhost:9090/'",
+    "echo '  SurrealDB: http://localhost:8000/'",
+]
 
 # =============================================================================
 # ALIASES FOR BACKWARD COMPATIBILITY

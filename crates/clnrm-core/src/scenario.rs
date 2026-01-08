@@ -257,6 +257,7 @@ impl Scenario {
     }
 
     /// Run the scenario with testcontainers backend
+    #[cfg(feature = "backend-testcontainers")]
     pub fn run(self) -> Result<RunResult> {
         let backend = crate::backend::TestcontainerBackend::new("rust:1-slim")?;
         self.run_with_backend(backend)
@@ -268,12 +269,14 @@ impl Scenario {
     /// - ✅ Async function for I/O operations
     /// - ✅ Proper error handling with CleanroomError
     /// - ✅ No unwrap() or expect() calls
+    #[cfg(feature = "backend-testcontainers")]
     pub async fn run_async(self) -> Result<RunResult> {
         let backend = crate::backend::TestcontainerBackend::new("rust:1-slim")?;
         self.run_with_backend_async(backend).await
     }
 
     /// Run the scenario with a specific backend
+    #[cfg(feature = "backend-testcontainers")]
     pub fn run_with_backend(
         self,
         backend: crate::backend::TestcontainerBackend,
@@ -336,6 +339,7 @@ impl Scenario {
     /// - ✅ Proper error handling with CleanroomError
     /// - ✅ No unwrap() or expect() calls
     /// - ✅ Uses spawn_blocking to avoid nested runtime issues
+    #[cfg(feature = "backend-testcontainers")]
     pub async fn run_with_backend_async(
         self,
         backend: crate::backend::TestcontainerBackend,

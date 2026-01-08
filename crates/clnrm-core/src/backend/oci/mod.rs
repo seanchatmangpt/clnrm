@@ -21,7 +21,7 @@ pub mod runsc_executor;
 pub use bundle_builder::{OciBundle, OciBundleBuilder};
 pub use cache::ImageCache;
 pub use config_parser::{ConfigParser, RuntimeConfig};
-pub use image_loader::{ImageSource, OciImageLoader};
+pub use image_loader::{ImageSource, LocalImageStore, OciImageLoader};
 pub use layer_manager::LayerManager;
 pub use registry_client::RegistryClient;
 pub use runsc_executor::{RunscExecutor, RunscOutput};

@@ -1,13 +1,10 @@
 pub mod chaos_engine;
 pub mod factory;
-#[cfg(feature = "backend-testcontainers")]
 pub mod generic;
 pub mod ollama;
-#[cfg(feature = "backend-testcontainers")]
 pub mod otel_collector;
 pub mod readiness;
 pub mod service_manager;
-#[cfg(feature = "backend-testcontainers")]
 pub mod surrealdb;
 pub mod tgi;
 pub mod vllm;

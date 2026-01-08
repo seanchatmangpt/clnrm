@@ -1,49 +1,157 @@
 version: '3.8'
 
+# OpenTelemetry Integration Test Environment with gVisor Runtime
+# Provides isolated observability infrastructure with syscall filtering
+# TOYOTA PRODUCTION SYSTEM: Muda Elimination + Standardization
+
 services:
-  # OpenTelemetry Collector for integration testing
+  # OpenTelemetry Collector for integration testing [gVisor: runsc]
+  # STANDARDIZATION: All endpoints bind to 127.0.0.1 (localhost) for gVisor
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.91.0
+    runtime: runsc
     container_name: clnrm-otel-collector-test
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml
     ports:
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP HTTP receiver
-      - "13133:13133" # Health check endpoint
-      - "55679:55679" # zpages extension
+      # OTLP gRPC receiver: gVisor binds to 127.0.0.1:4317
+      - "127.0.0.1:4317:4317"
+      # OTLP HTTP receiver: gVisor binds to 127.0.0.1:4318
+      - "127.0.0.1:4318:4318"
+      # Health check endpoint: gVisor binds to 127.0.0.1:13133
+      - "127.0.0.1:13133:13133"
+      # Metrics endpoint: gVisor binds to 127.0.0.1:8889
+      - "127.0.0.1:8889:8889"
+      # zpages extension: gVisor binds to 127.0.0.1:55679
+      - "127.0.0.1:55679:55679"
+    environment:
+      # gVisor-specific environment variables for OTEL configuration
+      - OTEL_OTLP_GRPC_ENDPOINT=127.0.0.1:4317
+      - OTEL_OTLP_HTTP_ENDPOINT=127.0.0.1:4318
+      - OTEL_HEALTH_CHECK_ENDPOINT=127.0.0.1:13133
+      - OTEL_JAEGER_ENDPOINT=127.0.0.1:4317
+      - OTEL_LOG_LEVEL=${OTEL_LOG_LEVEL:-info}
+      - GOMEMLIMIT=256MiB
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    resources:
+      limits:
+        cpus: '1.5'
+        memory: 768M
+      reservations:
+        cpus: '0.75'
+        memory: 384M
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      # gVisor: Health check uses localhost (127.0.0.1)
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:13133/"]
       interval: 5s
       timeout: 3s
       retries: 5
     networks:
       - otel-test
 
-  # Jaeger backend for trace visualization (optional, for debugging)
+  # Jaeger backend for trace visualization [gVisor: runsc]
+  # STANDARDIZATION: All endpoints bind to 127.0.0.1 (localhost) for gVisor
   jaeger:
     image: jaegertracing/all-in-one:1.52
+    runtime: runsc
     container_name: clnrm-jaeger-test
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+      # gVisor-specific environment variables
+      - OTEL_JAEGER_ENDPOINT=127.0.0.1:4317
+      - OTEL_LOG_LEVEL=${OTEL_LOG_LEVEL:-info}
     ports:
-      - "16686:16686" # Jaeger UI
-      - "14250:14250" # Jaeger gRPC
+      # Jaeger UI: gVisor binds to 127.0.0.1:16686
+      - "127.0.0.1:16686:16686"
+      # Jaeger gRPC (OTLP): gVisor binds to 127.0.0.1:4317
+      - "127.0.0.1:4317:4317"
+      # Jaeger Thrift gRPC: gVisor binds to 127.0.0.1:14250
+      - "127.0.0.1:14250:14250"
+      # Jaeger health check: gVisor binds to 127.0.0.1:14269
+      - "127.0.0.1:14269:14269"
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 512M
+      reservations:
+        cpus: '0.5'
+        memory: 256M
+    healthcheck:
+      # gVisor: Health check uses localhost (127.0.0.1)
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:14269/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - otel-test
 
-  # Prometheus for metrics collection (optional, for debugging)
+  # Prometheus for metrics collection [gVisor: runsc]
+  # STANDARDIZATION: All endpoints bind to 127.0.0.1 (localhost) for gVisor
   prometheus:
     image: prom/prometheus:v2.48.0
+    runtime: runsc
     container_name: clnrm-prometheus-test
     volumes:
       - ./prometheus-config.yml:/etc/prometheus/prometheus.yml
     ports:
-      - "9090:9090"
+      # Prometheus web UI and API: gVisor binds to 127.0.0.1:9090
+      - "127.0.0.1:9090:9090"
+      # Prometheus metrics: gVisor binds to 127.0.0.1:8889 (OTEL exporter)
+      - "127.0.0.1:8889:8889"
+    environment:
+      # gVisor-specific environment variables
+      - OTEL_COLLECTOR_ENDPOINT=127.0.0.1:8889
+      - OTEL_LOG_LEVEL=${OTEL_LOG_LEVEL:-info}
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 512M
+      reservations:
+        cpus: '0.5'
+        memory: 256M
+    healthcheck:
+      # gVisor: Health check uses localhost (127.0.0.1)
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:9090/-/healthy"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - otel-test
 
 networks:
   otel-test:
     driver: bridge
+    name: otel-test-network
+
+# gVisor STANDARDIZATION COMPLETE
+# HEIJUNKA (Load Leveling) Configuration:
+#   - otel-collector: 1.5 CPU / 768MB (high throughput)
+#   - jaeger: 1.0 CPU / 512MB (UI + storage)
+#   - prometheus: 1.0 CPU / 512MB (metrics aggregation)
+# Total: 3.5 CPU / 1792MB balanced across observability stack
+#
+# All services configured with:
+#   - runtime: runsc (gVisor sandbox isolation)
+#   - CAP_DROP: ALL + CAP_ADD: minimal (syscall filtering)
+#   - gVisor-compatible volumes and networking

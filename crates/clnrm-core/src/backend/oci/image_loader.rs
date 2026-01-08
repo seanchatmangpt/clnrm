@@ -22,6 +22,7 @@ pub enum ImageSource {
 }
 
 /// OCI image loader from multiple sources
+#[derive(Debug)]
 pub struct OciImageLoader {
     pub cache: Arc<ImageCache>,
     pub registry_client: RegistryClient,
@@ -85,6 +86,7 @@ impl OciImageLoader {
 }
 
 /// Local OCI image store
+#[derive(Debug)]
 pub struct LocalImageStore {
     temp_dir: PathBuf,
 }

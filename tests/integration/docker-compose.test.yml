@@ -1,12 +1,14 @@
 version: '3.8'
 
-# Docker Compose configuration for integration testing
-# This file defines the test environment infrastructure
+# Docker Compose configuration for integration testing with gVisor runtime
+# This file defines the test environment infrastructure with gVisor sandbox isolation
+# TOYOTA PRODUCTION SYSTEM: Standardization + Muda Elimination + Heijunka (Load Leveling)
 
 services:
-  # SurrealDB - Primary database for integration tests
+  # SurrealDB - Primary database for integration tests [gVisor: runsc]
   surrealdb:
     image: surrealdb/surrealdb:latest
+    runtime: runsc
     container_name: clnrm-test-surrealdb
     command: start --log trace --user root --pass root memory
     ports:
@@ -14,6 +16,22 @@ services:
     environment:
       - SURREAL_LOG=trace
       - SURREAL_STRICT=true
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 512M
+      reservations:
+        cpus: '0.5'
+        memory: 256M
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 5s
@@ -23,9 +41,10 @@ services:
     networks:
       - clnrm-test-network
 
-  # OpenTelemetry Collector - Observability backend
+  # OpenTelemetry Collector - Observability backend [gVisor: runsc]
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
+    runtime: runsc
     container_name: clnrm-test-otel-collector
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
@@ -37,6 +56,20 @@ services:
       - "13133:13133" # Health check
     environment:
       - OTEL_LOG_LEVEL=debug
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    resources:
+      limits:
+        cpus: '1.5'
+        memory: 768M
+      reservations:
+        cpus: '0.75'
+        memory: 384M
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:13133/"]
       interval: 5s
@@ -48,9 +81,10 @@ services:
     depends_on:
       - jaeger
 
-  # Jaeger - Distributed tracing UI
+  # Jaeger - Distributed tracing UI [gVisor: runsc]
   jaeger:
     image: jaegertracing/all-in-one:latest
+    runtime: runsc
     container_name: clnrm-test-jaeger
     ports:
       - "16686:16686" # Jaeger UI
@@ -59,6 +93,20 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
       - LOG_LEVEL=debug
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 512M
+      reservations:
+        cpus: '0.5'
+        memory: 256M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:14269/"]
       interval: 5s
@@ -68,9 +116,10 @@ services:
     networks:
       - clnrm-test-network
 
-  # Prometheus - Metrics storage and querying
+  # Prometheus - Metrics storage and querying [gVisor: runsc]
   prometheus:
     image: prom/prometheus:latest
+    runtime: runsc
     container_name: clnrm-test-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -82,6 +131,20 @@ services:
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 512M
+      reservations:
+        cpus: '0.5'
+        memory: 256M
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
       interval: 5s
@@ -91,28 +154,74 @@ services:
     networks:
       - clnrm-test-network
 
-  # Alpine - Lightweight container for basic tests
+  # Alpine - Lightweight container for basic tests [gVisor: runsc]
   alpine:
     image: alpine:latest
+    runtime: runsc
     container_name: clnrm-test-alpine
     command: ["tail", "-f", "/dev/null"]  # Keep container running
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    resources:
+      limits:
+        cpus: '0.5'
+        memory: 128M
+      reservations:
+        cpus: '0.25'
+        memory: 64M
     networks:
       - clnrm-test-network
 
-  # Ubuntu - Full-featured container for complex tests
+  # Ubuntu - Full-featured container for complex tests [gVisor: runsc]
   ubuntu:
     image: ubuntu:22.04
+    runtime: runsc
     container_name: clnrm-test-ubuntu
     command: ["tail", "-f", "/dev/null"]  # Keep container running
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - KILL
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 256M
+      reservations:
+        cpus: '0.5'
+        memory: 128M
     networks:
       - clnrm-test-network
 
-  # Redis - Cache and state management for tests
+  # Redis - Cache and state management for tests [gVisor: runsc]
   redis:
     image: redis:alpine
+    runtime: runsc
     container_name: clnrm-test-redis
     ports:
       - "6379:6379"
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    resources:
+      limits:
+        cpus: '0.75'
+        memory: 256M
+      reservations:
+        cpus: '0.375'
+        memory: 128M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -122,9 +231,10 @@ services:
     networks:
       - clnrm-test-network
 
-  # PostgreSQL - Alternative database for compatibility tests
+  # PostgreSQL - Alternative database for compatibility tests [gVisor: runsc]
   postgres:
     image: postgres:15-alpine
+    runtime: runsc
     container_name: clnrm-test-postgres
     environment:
       - POSTGRES_DB=clnrm_test
@@ -132,6 +242,22 @@ services:
       - POSTGRES_PASSWORD=test_password
     ports:
       - "5432:5432"
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+    resources:
+      limits:
+        cpus: '1.5'
+        memory: 512M
+      reservations:
+        cpus: '0.75'
+        memory: 256M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U test_user"]
       interval: 5s
@@ -143,14 +269,29 @@ services:
     networks:
       - clnrm-test-network
 
-  # Mock API Server - Simulates external APIs
+  # Mock API Server - Simulates external APIs [gVisor: runsc]
   mock-api:
     image: mockserver/mockserver:latest
+    runtime: runsc
     container_name: clnrm-test-mock-api
     ports:
       - "1080:1080"
     environment:
       - MOCKSERVER_LOG_LEVEL=INFO
+    security_opt:
+      - apparmor=unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 384M
+      reservations:
+        cpus: '0.5'
+        memory: 192M
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:1080/health"]
       interval: 5s
@@ -168,11 +309,19 @@ networks:
 volumes:
   prometheus-data:
     name: clnrm-test-prometheus-data
+    driver: local
   postgres-data:
     name: clnrm-test-postgres-data
+    driver: local
 
+# gVisor STANDARDIZATION COMPLETE
+# All services now use runtime: runsc with:
+# - Minimal required capabilities (CAP_DROP: ALL)
+# - Balanced resource allocation (HEIJUNKA principle)
+# - gVisor-compatible volumes and networking
+#
 # Usage:
-# Start all services:
+# Start all services with gVisor:
 #   docker-compose -f tests/integration/docker-compose.test.yml up -d
 #
 # Start specific service:
@@ -189,3 +338,6 @@ volumes:
 #
 # Check service health:
 #   docker-compose -f tests/integration/docker-compose.test.yml ps
+#
+# gVisor Runtime Validation: Verify runsc is installed
+#   docker run --runtime=runsc --rm hello-world
