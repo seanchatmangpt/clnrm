@@ -1390,9 +1390,10 @@ mod tests {
         assert_eq!(engine.backend_type(), BackendType::Wasi);
     }
 
-    // #[tokio::test]
-    // #[ignore] // Temporarily disabled due to struct field changes
-    // async fn test_container_engine_lifecycle_integration() {
+    /*
+    #[tokio::test]
+    #[ignore] // Temporarily disabled due to struct field changes
+    async fn test_container_engine_lifecycle_integration() {
         // This test requires Docker to be running
         // Skip if Docker is not available or not running
         if !is_docker_available() {
@@ -1481,6 +1482,7 @@ mod tests {
             .map(|output| output.status.success())
             .unwrap_or(false)
     }
+    */
 
     /// Helper: Create a complex environment graph for testing
     fn create_complex_environment_graph() -> petgraph::Graph<ContainerSpec, ()> {
@@ -1769,3 +1771,4 @@ mod tests {
         assert_eq!(types[2].to_string(), "microvm");
         assert_eq!(types[3].to_string(), "mu-kernel");
     }
+}

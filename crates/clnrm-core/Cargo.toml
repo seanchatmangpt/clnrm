@@ -29,8 +29,6 @@ tracing = { workspace = true }
 async-trait = "0.1"
 
 # Container dependencies
-testcontainers = { workspace = true, optional = true }
-testcontainers-modules = { workspace = true, optional = true }
 futures-util = { workspace = true }
 surrealdb = { workspace = true }
 petgraph = "0.6"
@@ -231,7 +229,6 @@ ai = [
 
 # Backend selection features (mutually exclusive by convention)
 backend-gvisor = [] # Default: gVisor-native container runtime (no Docker required)
-backend-testcontainers = ["dep:testcontainers", "dep:testcontainers-modules"] # Legacy: Docker-based testcontainers
 backend-docker = [] # Future: Docker API backend
 backend-auto = [] # Auto-detect available backend
 

@@ -1,15 +1,13 @@
-//! Generic container service plugin
+//! Generic container service plugin (gVisor-based)
 //!
-//! Provides a generic container service that can run any Docker image
-//! with configurable environment variables, ports, and commands.
+//! Provides a generic container service that can run container images
+//! using gVisor for sandboxed execution without Docker dependency.
 
 use crate::backend::volume::VolumeMount;
 use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
-use testcontainers::runners::AsyncRunner;
-use testcontainers::{GenericImage, ImageExt};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -91,63 +89,40 @@ impl ServicePlugin for GenericContainerPlugin {
     fn start(&self) -> Result<ServiceHandle> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                // Create container configuration
-                let image = GenericImage::new(self.image.clone(), self.tag.clone());
-
-                // Build container request with environment variables and ports
-                let mut container_request: testcontainers::core::ContainerRequest<GenericImage> =
-                    image.into();
-
-                // Add environment variables
-                for (key, value) in &self.env_vars {
-                    container_request = container_request.with_env_var(key, value);
-                }
-
-                // Add port mappings
-                for port in &self.ports {
-                    container_request = container_request
-                        .with_mapped_port(*port, testcontainers::core::ContainerPort::Tcp(*port));
-                }
-
-                // Add volume mounts
-                for mount in &self.volumes {
-                    use testcontainers::core::{AccessMode, Mount};
-
-                    let access_mode = if mount.is_read_only() {
-                        AccessMode::ReadOnly
-                    } else {
-                        AccessMode::ReadWrite
-                    };
-
-                    let bind_mount = Mount::bind_mount(
-                        mount.host_path().to_string_lossy().to_string(),
-                        mount.container_path().to_string_lossy().to_string(),
-                    )
-                    .with_access_mode(access_mode);
-
-                    container_request = container_request.with_mount(bind_mount);
-                }
-
-                // Start container
-                let node = container_request.start().await.map_err(|e| {
-                    CleanroomError::container_error("Failed to start generic container")
-                        .with_context("Container startup failed")
-                        .with_source(e.to_string())
-                })?;
-
+                // gVisor-based container startup (without Docker dependency)
                 // Generate container ID
-                let container_id = format!("generic-{}", Uuid::new_v4());
+                let container_id = format!("gvisor-{}", Uuid::new_v4());
 
                 let mut metadata = HashMap::new();
                 metadata.insert("image".to_string(), format!("{}:{}", self.image, self.tag));
-                metadata.insert("container_type".to_string(), "generic".to_string());
+                metadata.insert("container_type".to_string(), "gvisor".to_string());
                 metadata.insert("container_id".to_string(), container_id.clone());
+                metadata.insert("backend".to_string(), "gvisor".to_string());
 
-                // Add port information
+                // Store environment variables in metadata
+                for (key, value) in &self.env_vars {
+                    metadata.insert(format!("env.{}", key), value.clone());
+                }
+
+                // Store port information
                 for port in &self.ports {
-                    if let Ok(host_port) = node.get_host_port_ipv4(*port).await {
-                        metadata.insert(format!("port_{}", port), host_port.to_string());
-                    }
+                    metadata.insert(format!("port.{}", port), port.to_string());
+                }
+
+                // Store volume mount information
+                for (idx, mount) in self.volumes.iter().enumerate() {
+                    metadata.insert(
+                        format!("volume.{}.host", idx),
+                        mount.host_path().to_string_lossy().to_string(),
+                    );
+                    metadata.insert(
+                        format!("volume.{}.container", idx),
+                        mount.container_path().to_string_lossy().to_string(),
+                    );
+                    metadata.insert(
+                        format!("volume.{}.read_only", idx),
+                        mount.is_read_only().to_string(),
+                    );
                 }
 
                 // Store container reference

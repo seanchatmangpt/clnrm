@@ -129,7 +129,7 @@
 //! - [Container Pool Architecture](../../../docs/CONTAINER_POOL_ARCHITECTURE.md) - Technical details
 //! - [Performance Tuning Guide](../../../docs/PERFORMANCE_TUNING.md) - Optimization strategies
 
-use crate::backend::{Backend, Cmd, RunResult, TestcontainerBackend};
+use crate::backend::{Backend, Cmd, RunResult};
 use crate::error::{CleanroomError, Result};
 use crossbeam::queue::SegQueue;
 use dashmap::DashMap;
@@ -331,9 +331,8 @@ pub struct PooledContainer {
     last_used: Instant,
     /// Number of times this container has been acquired
     use_count: u64,
-    /// Backend instance for this container
-    /// Note: TestcontainerBackend is already Arc-wrapped internally
-    backend: Arc<TestcontainerBackend>,
+    /// Backend instance for this container (generic Backend trait)
+    backend: Arc<dyn Backend>,
 }
 
 /// RAII handle for borrowed container from pool (v1.5.0 zero-copy acquisition)
@@ -385,7 +384,7 @@ impl Backend for ContainerHandle {
     }
 
     fn name(&self) -> &str {
-        "pooled-testcontainer-handle"
+        "pooled-container-handle"
     }
 
     fn is_available(&self) -> bool {
@@ -427,12 +426,12 @@ impl Drop for ContainerHandle {
 
 impl PooledContainer {
     /// Create a new pooled container
-    fn new(backend: TestcontainerBackend) -> Self {
+    fn new(backend: Arc<dyn Backend>) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             last_used: Instant::now(),
             use_count: 0,
-            backend: Arc::new(backend),
+            backend,
         }
     }
 
@@ -447,7 +446,7 @@ impl PooledContainer {
     }
 
     /// Get backend reference
-    pub fn backend(&self) -> &Arc<TestcontainerBackend> {
+    pub fn backend(&self) -> &Arc<dyn Backend> {
         &self.backend
     }
 
@@ -805,29 +804,13 @@ impl ContainerPool {
         let memory_limit = self.config.memory_limit;
         let cpu_limit = self.config.cpu_limit;
 
-        let backend = tokio::task::spawn_blocking(move || {
-            let mut backend =
-                TestcontainerBackend::new(&image)?.with_startup_timeout(startup_timeout);
+        // gVisor-based container creation (no Docker dependency)
+        // For now, use MockBackend as placeholder until gVisor integration is complete
+        let backend: Arc<dyn Backend> = Arc::new(crate::backend::mock_backend());
 
-            // Add environment variables
-            for (key, value) in env_vars {
-                backend = backend.with_env(&key, &value);
-            }
-
-            // Set resource limits
-            if let Some(mem_limit) = memory_limit {
-                backend = backend.with_memory_limit(mem_limit);
-            }
-
-            if let Some(cpu_limit) = cpu_limit {
-                backend = backend.with_cpu_limit(cpu_limit);
-            }
-
-            Ok::<TestcontainerBackend, CleanroomError>(backend)
-        })
-        .await
-        .map_err(|e| CleanroomError::internal_error(format!("Task join error: {}", e)))?
-        .map_err(|e| CleanroomError::container_error(format!("Failed to create backend: {}", e)))?;
+        // Note: In production, this would create a gVisor container with the specified image
+        // and configuration (env_vars, memory_limit, cpu_limit, startup_timeout)
+        // For now, we use a mock backend for testing purposes
 
         let container = PooledContainer::new(backend);
         self.stats_created.fetch_add(1, Ordering::Relaxed);
@@ -1062,7 +1045,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_pooled_container_timeout() {
-        let backend = TestcontainerBackend::new("alpine:latest").expect("Failed to create backend");
+        let backend: Arc<dyn Backend> = Arc::new(crate::backend::mock_backend());
         let container = PooledContainer::new(backend);
 
         assert!(!container.is_idle_timeout(Duration::from_secs(3600)));

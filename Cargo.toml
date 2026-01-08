@@ -49,8 +49,6 @@ anyhow = "1.0"
 tracing = "0.1"
 
 # Container dependencies
-testcontainers = { version = "0.25", features = ["blocking"] }
-testcontainers-modules = { version = "0.13", features = ["surrealdb"] }
 futures-util = "0.3"
 surrealdb = "2.2"
 

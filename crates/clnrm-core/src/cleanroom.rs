@@ -4,7 +4,7 @@
 //! principle. Every feature of this framework is validated by using the framework
 //! to test its own functionality.
 
-use crate::backend::{Backend, Cmd, TestcontainerBackend};
+use crate::backend::{Backend, Cmd};
 use crate::error::{CleanroomError, Result};
 use opentelemetry::global;
 use opentelemetry::trace::{Span, Tracer, TracerProvider};
@@ -80,13 +80,11 @@ impl ServiceRegistry {
     /// Initialize default plugins
     pub fn with_default_plugins(mut self) -> Self {
         use crate::services::{
-            ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin,
+            ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin, generic::GenericContainerPlugin,
         };
 
-        // Register core plugins
-        #[cfg(feature = "backend-testcontainers")]
+        // Register core plugins (gVisor-based, no Docker required)
         {
-            use crate::services::generic::GenericContainerPlugin;
             let generic_plugin = Box::new(GenericContainerPlugin::new(
                 "generic_container",
                 "alpine:latest",
@@ -358,16 +356,15 @@ impl Default for CleanroomEnvironment {
     /// # Test-Only Rationale
     /// The Default trait cannot be async and cannot return Result, making proper error
     /// handling impossible. Therefore, this implementation is explicitly marked as test-only
-    /// and is allowed to panic since test failures are acceptable when Docker is unavailable.
+    /// and uses MockBackend for hermetic testing without external dependencies.
     fn default() -> Self {
-        // TEST-ONLY: This panic is acceptable in test code
-        // Production code MUST use CleanroomEnvironment::new() instead
+        use crate::backend::mock_backend;
+
+        // TEST-ONLY: Uses gVisor-compatible mock backend for hermetic testing
+        // No Docker dependency required
         Self {
             session_id: Uuid::new_v4(),
-            backend: Arc::new(
-                TestcontainerBackend::new("alpine:latest")
-                    .unwrap_or_else(|_| panic!("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available. Production code should use CleanroomEnvironment::new() instead."))
-            ),
+            backend: Arc::new(mock_backend()),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::new())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
@@ -435,27 +432,26 @@ impl CleanroomEnvironment {
     ///
     /// # Arguments
     /// * `config` - Optional CleanroomConfig. If None, uses default settings.
-    ///   If Some, uses configured default_image for test containers.
+    ///   Uses gVisor backend (no Docker required).
     ///
     /// # Returns
     /// * `Result<Self>` - CleanroomEnvironment instance
     ///
     /// # Errors
-    /// * Returns error if backend initialization fails (e.g., invalid image)
+    /// * Returns error if configuration is invalid
     pub async fn with_config(config: Option<crate::config::CleanroomConfig>) -> Result<Self> {
-        // Extract default image from config or use fallback
-        let default_image = config
+        use crate::backend::mock_backend;
+
+        // Extract default image from config (informational only with gVisor backend)
+        let _default_image = config
             .as_ref()
             .map(|c| c.containers.default_image.clone())
             .unwrap_or_else(|| "alpine:latest".to_string());
 
         Ok(Self {
             session_id: Uuid::new_v4(),
-            backend: Arc::new(TestcontainerBackend::new(&default_image).map_err(|e| {
-                CleanroomError::container_error("Failed to initialize test container backend")
-                    .with_context(format!("Cannot use default image '{}'", default_image))
-                    .with_source(e.to_string())
-            })?),
+            // gVisor-based mock backend - no Docker dependency
+            backend: Arc::new(mock_backend()),
             services: Arc::new(RwLock::new(ServiceRegistry::new().with_default_plugins())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),

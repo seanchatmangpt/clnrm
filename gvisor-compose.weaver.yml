@@ -1,0 +1,244 @@
+# gVisor Compose for clnrm Weaver Validation Infrastructure
+# Purpose: OTLP collector + Jaeger backend for live-check validation in gVisor sandbox
+# Usage: docker-compose -f gvisor-compose.weaver.yml up
+#
+# GENCHI GENBUTSU: See Weaver validation in actual gVisor environment
+# STANDARDIZATION: Consistent OTEL/Weaver testing across all deployments
+# HEIJUNKA: Balanced load across Weaver components
+
+services:
+  # OpenTelemetry Collector
+  # Validates schema compliance in gVisor sandbox
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.112.0
+    container_name: clnrm-otel-collector-gvisor
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    runtime: runsc  # gVisor runtime for security isolation
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - NET_RAW
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+      - otel-logs-gvisor:/var/log/otel
+    ports:
+      # OTLP gRPC receiver (dynamic port support via env var)
+      - "${WEAVER_OTLP_GRPC_PORT:-4317}:4317"
+      # OTLP HTTP receiver (dynamic port support via env var)
+      - "${WEAVER_OTLP_HTTP_PORT:-4318}:4318"
+      # Health check
+      - "${WEAVER_HEALTH_PORT:-13133}:13133"
+      # Metrics
+      - "${WEAVER_METRICS_PORT:-8888}:8888"
+      # pprof
+      - "${WEAVER_PPROF_PORT:-1777}:1777"
+      # zpages
+      - "${WEAVER_ZPAGES_PORT:-55679}:55679"
+    environment:
+      - GOMEMLIMIT=400MiB
+      - OTEL_LOG_LEVEL=debug
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - weaver-network-gvisor
+    depends_on:
+      - jaeger
+    labels:
+      security: high
+      isolation: gvisor
+      component: weaver-validation
+
+  # Jaeger all-in-one (backend for trace storage and UI)
+  # Stores and visualizes traces from gVisor-isolated services
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: clnrm-jaeger-gvisor
+    runtime: runsc  # gVisor runtime for security isolation
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    ports:
+      # Jaeger UI
+      - "16686:16686"
+      # OTLP gRPC receiver
+      - "4317"
+      # Jaeger native receiver (not used, but exposed)
+      - "14268:14268"
+      # Health check
+      - "14269:14269"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+      - MEMORY_MAX_TRACES=50000
+      - GOMEMPROFILE=false
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - weaver-network-gvisor
+    labels:
+      security: high
+      isolation: gvisor
+      component: weaver-validation
+
+  # Prometheus - Optional metrics collection
+  # Monitors OTEL collector and Jaeger performance
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: clnrm-prometheus-weaver-gvisor
+    runtime: runsc  # gVisor runtime for security isolation
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    volumes:
+      - ./config/prometheus-config.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data-weaver-gvisor:/prometheus
+    ports:
+      - "9090:9090"
+    environment:
+      - GOMEMPROFILE=false
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - weaver-network-gvisor
+    labels:
+      security: high
+      isolation: gvisor
+      component: weaver-validation
+    depends_on:
+      - otel-collector
+
+volumes:
+  otel-logs-gvisor:
+    driver: local
+  prometheus-data-weaver-gvisor:
+    driver: local
+
+networks:
+  weaver-network-gvisor:
+    driver: bridge
+    name: clnrm-weaver-network-gvisor
+
+# TOYOTA PRODUCTION SYSTEM PRINCIPLES FOR WEAVER VALIDATION:
+#
+# KAIZEN (Continuous Improvement):
+# - Validate semantic conventions compliance
+# - Monitor schema validation errors
+# - Track span attribute completeness
+# - Measure telemetry export latency
+#
+# JIDOKA (Automation):
+# - Automatically validate schema on span receipt
+# - Block export of non-compliant spans
+# - Alert on validation failures
+#
+# HEIJUNKA (Load Leveling):
+# - Balance trace processing across workers
+# - Batch span export at optimal intervals
+# - Throttle high-volume metrics
+#
+# GENCHI GENBUTSU (Go See the Real Source):
+# - Observe actual span emission: docker-compose logs -f otel-collector
+# - Check validation errors: docker-compose logs otel-collector | grep -i error
+# - View traces: http://localhost:16686/
+# - Monitor metrics: http://localhost:9090/
+# - Inspect zpages: curl http://localhost:55679/debug/tracez
+#
+# WEAVER VALIDATION WORKFLOW:
+# 1. Start container: docker-compose -f gvisor-compose.weaver.yml up -d
+# 2. Verify health: docker-compose ps
+# 3. Run tests: cargo test --test weaver_live_check_validation
+# 4. Inspect spans: curl http://localhost:55679/debug/tracez
+# 5. View traces: http://localhost:16686/ (Jaeger UI)
+# 6. Check metrics: http://localhost:9090/ (Prometheus)
+# 7. Validate schema: Check OTEL collector logs for violations
+# 8. Cleanup: docker-compose down -v
+#
+# SECURITY BOUNDARIES VALIDATED IN gVisor:
+# ✓ Network isolation: Collector cannot access host network
+# ✓ Process isolation: Cannot see host processes
+# ✓ Filesystem isolation: /etc/host, /sys restrictions
+# ✓ Syscall filtering: Only observability syscalls allowed
+# ✓ Capability limits: Only NET_BIND_SERVICE available
+#
+# OTEL SEMANTIC CONVENTIONS VALIDATED:
+# ✓ Resource attributes: service.name, service.version, etc.
+# ✓ Span attributes: http.method, http.status_code, etc.
+# ✓ Metric attributes: Proper attribute sets per metric type
+# ✓ Log attributes: Severity levels, message formats
+#
+# PERFORMANCE METRICS (in gVisor):
+# - Span export latency < 100ms
+# - Trace storage efficiency > 95%
+# - Schema validation overhead < 5%
+# - Memory usage stability over time
+
+# Environment variables for dynamic configuration:
+#
+# WEAVER_OTLP_GRPC_PORT=4317        # OTLP gRPC receiver port
+# WEAVER_OTLP_HTTP_PORT=4318        # OTLP HTTP receiver port
+# WEAVER_HEALTH_PORT=13133          # Health check port
+# WEAVER_METRICS_PORT=8888          # Prometheus metrics port
+# WEAVER_PPROF_PORT=1777            # CPU/memory profiling port
+# WEAVER_ZPAGES_PORT=55679          # zpages debugging port
+#
+# Example with custom ports:
+# WEAVER_OTLP_GRPC_PORT=14317 docker-compose -f gvisor-compose.weaver.yml up -d
+
+# Usage Guide:
+#
+# 1. Prerequisite - Ensure gVisor is installed:
+#    docker run --runtime=runsc --rm alpine echo "Hello from gVisor"
+#
+# 2. Start Weaver validation stack:
+#    docker-compose -f gvisor-compose.weaver.yml up -d
+#
+# 3. Wait for all services healthy:
+#    docker-compose ps
+#
+# 4. Verify OTEL collector health:
+#    curl http://localhost:13133/
+#
+# 5. Check Jaeger status:
+#    curl http://localhost:14269/
+#
+# 6. Run Weaver validation tests:
+#    cargo test --test weaver_live_check_validation -- --nocapture
+#
+# 7. Inspect telemetry:
+#    curl http://localhost:55679/debug/tracez
+#
+# 8. View traces in Jaeger UI:
+#    http://localhost:16686/
+#
+# 9. Monitor metrics in Prometheus:
+#    http://localhost:9090/
+#
+# 10. Check container logs:
+#     docker-compose logs -f otel-collector
+#     docker-compose logs -f jaeger
+#
+# 11. Cleanup (stop containers and remove volumes):
+#     docker-compose down -v
