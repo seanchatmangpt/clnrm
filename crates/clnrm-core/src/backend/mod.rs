@@ -11,6 +11,7 @@ use std::path::PathBuf;
 pub mod capabilities;
 pub mod engine; // v1.7.0: Backend-agnostic execution engine (Phase 7)
 pub mod extensions;
+pub mod docker; // v3.0: Seamless Colima/Docker backend fallback
 pub mod gvisor; // v2.0.0: gVisor backend with OCI image loading
 pub mod mock;
 pub mod multi_pool; // v1.6.0: Multi-image container pooling
@@ -29,6 +30,7 @@ pub use engine::{
     ExecutionEngine, Output, ResourceUsage, WasiConfig, WasiEngine,
 };
 pub use extensions::{BackendExt, EnhancedBackend, ExecutionMode, ResourceLimits};
+pub use docker::DockerBackend;
 pub use gvisor::GvisorBackend;
 pub use mock::MockBackend;
 pub use multi_pool::{MultiImagePoolManager, MultiPoolStats};
