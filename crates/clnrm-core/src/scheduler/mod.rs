@@ -43,7 +43,7 @@
 //!
 //! ```rust,no_run
 //! use clnrm_core::scheduler::swarm::{SwarmScheduler, TestRequest, TenantId, AgentId, RequestId};
-//! use clnrm_core::capabilities::{CapabilityScenarioBuilder, CapabilityBudget, EffectBudget, LatencyBand};
+//! use clnrm_core::capabilities::{CapabilityScenarioBuilder, EffectBudget, LatencyBand};
 //!
 //! # async fn example() -> clnrm_core::error::Result<()> {
 //! // Create scheduler with 1000 max concurrent executions

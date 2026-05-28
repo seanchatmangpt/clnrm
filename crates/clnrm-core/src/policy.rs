@@ -37,7 +37,7 @@
 //! ### Security Policy Configuration
 //!
 //! ```no_run
-//! use clnrm::{Policy, SecurityPolicy};
+//! use clnrm_core::{Policy, SecurityPolicy};
 //!
 //! let mut policy = Policy::default();
 //! policy.security.enable_network_isolation = true;

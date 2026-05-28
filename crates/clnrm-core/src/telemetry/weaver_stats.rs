@@ -16,11 +16,15 @@
 //! ## Integration
 //!
 //! ```rust
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use clnrm_core::telemetry::weaver_stats::WeaverStats;
 //!
-//! let stats = WeaverStats::collect("registry/")?;
+//! let collector = WeaverStats::new("registry/");
+//! let stats = collector.collect()?;
 //! println!("Coverage: {}%", stats.coverage_percentage());
 //! assert!(stats.is_production_ready(), "Telemetry not production-ready");
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::error::{CleanroomError, Result};

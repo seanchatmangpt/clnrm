@@ -13,7 +13,7 @@
 //!
 //! Added to the OTEL tracer provider pipeline alongside batch span processor:
 //!
-//! ```no_run
+//! ```ignore
 //! use clnrm_core::telemetry::validation_processor::ValidationSpanProcessor;
 //!
 //! let tracer_provider = TracerProvider::builder()

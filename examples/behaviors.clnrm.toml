@@ -273,3 +273,4 @@ container = "behaviors"
 name = "validate_manifest"
 exec = ["echo", "Behavior manifest loaded successfully"]
 expected_output = "Behavior manifest loaded successfully"
+

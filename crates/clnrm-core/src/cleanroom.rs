@@ -464,8 +464,9 @@ impl CleanroomEnvironment {
                 match crate::backend::DockerBackend::new(&default_image) {
                     Ok(b) => Arc::new(b),
                     Err(e2) => {
-                        tracing::warn!("Docker backend initialization failed: {}. Falling back to MockBackend for testing.", e2);
-                        Arc::new(crate::backend::mock::MockBackend::new())
+                        return Err(CleanroomError::container_error("No supported container runtime available")
+                            .with_context("gVisor and Docker fallbacks both failed")
+                            .with_source(format!("gVisor error: {}, Docker error: {}", e, e2)));
                     }
                 }
             }

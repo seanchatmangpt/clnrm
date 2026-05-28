@@ -20,16 +20,24 @@
 //! # Implementation Pattern
 //!
 //! ```no_run
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # use tokio::sync::Semaphore;
+//! # use tokio::spawn;
 //! # use std::sync::Arc;
+//! # let jobs = 4;
+//! # let tests = vec![1, 2, 3];
+//! # async fn execute_test() -> Result<(), Box<dyn std::error::Error>> { Ok(()) }
 //! let semaphore = Arc::new(Semaphore::new(jobs));
 //! for test in tests {
 //!     let permit = semaphore.clone().acquire_owned().await?;
 //!     spawn(async move {
 //!         let _permit = permit; // Held for duration of test
-//!         execute_test().await
+//!         let _ = execute_test().await;
 //!     });
 //! }
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::cli::types::{CliConfig, CliTestResult};

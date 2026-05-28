@@ -52,9 +52,11 @@
 //! The OTEL module integrates with the main validation system:
 //!
 //! ```rust
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use clnrm_core::otel::StdoutSpanParser;
 //! use clnrm_core::validation::{PrdExpectations, ValidationReport};
 //!
+//! # let container_stdout = String::from(r#"{"name":"clnrm.run","trace_id":"abc123","span_id":"s1","parent_span_id":null,"attributes":{"result":"pass"}}"#);
 //! // Parse spans from container output
 //! let spans = StdoutSpanParser::parse(&container_stdout)?;
 //!
@@ -65,6 +67,8 @@
 //! if report.is_success() {
 //!     println!("✅ All validations passed");
 //! }
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## Architecture

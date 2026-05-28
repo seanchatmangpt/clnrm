@@ -53,7 +53,7 @@
 //! ### Concurrent Scenario
 //!
 //! ```no_run
-//! use clnrm::scenario;
+//! use clnrm_core::scenario;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let scenario = scenario("concurrent_test")

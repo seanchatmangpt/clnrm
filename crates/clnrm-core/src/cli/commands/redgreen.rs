@@ -31,11 +31,16 @@ use std::path::PathBuf;
 /// # Examples
 ///
 /// ```rust,no_run
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use std::path::PathBuf;
+/// use clnrm_core::cli::commands::redgreen::run_red_green_validation;
 ///
 /// // Run red/green validation with legacy flags
 /// let paths = vec![PathBuf::from("tests/test.toml")];
 /// run_red_green_validation(&paths, true, false).await?;
+/// # Ok(())
+/// # }
 /// ```
 pub async fn run_red_green_validation(
     paths: &[PathBuf],

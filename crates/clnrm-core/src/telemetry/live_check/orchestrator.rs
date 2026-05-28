@@ -738,7 +738,7 @@ impl<State> Drop for LiveCheckOrchestrator<State> {
 /// // ... run tests (even if panic occurs, cleanup happens) ...
 ///
 /// // Explicitly take orchestrator to get report
-/// let orchestrator = guard.take_orchestrator();
+/// let orchestrator = guard.take_orchestrator()?;
 /// let completed = orchestrator.stop_weaver().await?;
 /// # Ok(())
 /// # }

@@ -155,6 +155,7 @@ async fn test_e2e_template_vars_basic() -> Result<()> {
         serde_json::Value::String("test".to_string()),
     );
 
+    let mut renderer = renderer.with_context(context);
     let rendered = renderer.render_str("Hello {{ name }}", "test")?;
     assert_eq!(rendered, "Hello test");
     Ok(())

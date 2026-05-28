@@ -17,12 +17,16 @@
 //!
 //! ## Integration
 //!
-//! ```rust
-//! use clnrm_core::telemetry::weaver_emit::WeaverEmitter;
+//! ```rust,no_run
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use clnrm_core::telemetry::weaver_emit::{WeaverEmitter, EmitConfig};
 //!
-//! let emitter = WeaverEmitter::new("registry/");
-//! emitter.emit_to_endpoint("http://localhost:4317")?;
+//! let config = EmitConfig::with_endpoint("http://localhost:4317");
+//! let emitter = WeaverEmitter::with_config(config);
+//! emitter.emit()?;
 //! // Telemetry is now flowing to collector for validation
+//! # Ok(())
+//! # }
 //! ```
 
 use crate::error::{CleanroomError, Result};

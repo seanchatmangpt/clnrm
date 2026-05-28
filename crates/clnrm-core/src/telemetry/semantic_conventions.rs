@@ -13,7 +13,7 @@
 //! # Usage
 //!
 //! ```rust
-//! use crate::telemetry::semantic_conventions::{SpanBuilder, clnrm};
+//! use clnrm_core::telemetry::semantic_conventions::{SpanBuilder, clnrm};
 //!
 //! // ✅ CORRECT - Semantic conventions
 //! let span = SpanBuilder::container_start("alpine:latest", "container_abc123");

@@ -44,7 +44,6 @@ impl ServiceFactory {
     /// use std::collections::HashMap;
     ///
     /// let mut config = ServiceConfig {
-    ///     r#type: "surrealdb".to_string(),
     ///     plugin: "surrealdb".to_string(),
     ///     image: Some("surrealdb/surrealdb:latest".to_string()),
     ///     env: None,

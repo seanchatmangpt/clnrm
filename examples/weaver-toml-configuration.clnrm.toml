@@ -11,7 +11,7 @@ description = "Example test with Weaver live-checking enabled"
 # OTEL configuration for Weaver validation
 [otel]
 service_name = "weaver-validation-example"
-exporter = "otlp-http"
+exporter = "otlp"
 endpoint = "http://localhost:4318"
 
 # Container definition

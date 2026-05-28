@@ -8,7 +8,8 @@
 //! # Examples
 //!
 //! ```no_run
-//! use clnrm_core::determinism::{DeterminismEngine, DeterminismConfig};
+//! use clnrm_core::determinism::DeterminismEngine;
+//! use clnrm_core::config::types::DeterminismConfig;
 //!
 //! let config = DeterminismConfig {
 //!     seed: Some(42),

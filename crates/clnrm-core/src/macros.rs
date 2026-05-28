@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 /// # Example
 ///
 /// ```rust
-/// use clnrm::{cleanroom_test, with_database, with_cache};
+/// use clnrm_core::{cleanroom_test, with_database, with_cache};
 ///
 /// #[cleanroom_test]
 /// async fn test_user_registration() {

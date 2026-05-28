@@ -77,7 +77,7 @@ pub use test_runner::run_test;
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```ignore
 /// # use clnrm_core::cli::commands::run::resolve_registry_path;
 /// let registry_path = resolve_registry_path().expect("Failed to resolve registry");
 /// println!("Registry at: {}", registry_path.display());

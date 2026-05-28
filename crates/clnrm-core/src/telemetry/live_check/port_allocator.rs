@@ -440,7 +440,7 @@ impl Drop for PortLock {
 /// # Example
 ///
 /// ```no_run
-/// # use clnrm_core::telemetry::live_check::wait_for_service_ready;
+/// # use clnrm_core::telemetry::live_check::port_allocator::wait_for_service_ready;
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// wait_for_service_ready(4317, 30).await?;
 /// println!("Service is ready!");

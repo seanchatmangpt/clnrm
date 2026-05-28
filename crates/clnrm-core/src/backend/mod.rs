@@ -13,7 +13,6 @@ pub mod engine; // v1.7.0: Backend-agnostic execution engine (Phase 7)
 pub mod extensions;
 pub mod docker; // v3.0: Seamless Colima/Docker backend fallback
 pub mod gvisor; // v2.0.0: gVisor backend with OCI image loading
-pub mod mock;
 pub mod multi_pool; // v1.6.0: Multi-image container pooling
 pub mod oci; // v2.0.0: OCI image loading and management
 pub mod pool;
@@ -32,7 +31,6 @@ pub use engine::{
 pub use extensions::{BackendExt, EnhancedBackend, ExecutionMode, ResourceLimits};
 pub use docker::DockerBackend;
 pub use gvisor::GvisorBackend;
-pub use mock::MockBackend;
 pub use multi_pool::{MultiImagePoolManager, MultiPoolStats};
 pub use oci::{
     ImageCache, ImageSource, OciBundle, OciBundleBuilder, OciImage, OciImageLoader, RunscExecutor,
@@ -41,16 +39,6 @@ pub use pool::{ContainerHandle, ContainerPool, PoolConfig, PoolStats, PooledCont
 
 pub use volume::{VolumeMount, VolumeValidator};
 
-/// Get a mock backend for fast testing
-pub fn mock_backend() -> MockBackend {
-    MockBackend::new()
-}
-
-/// Create a mock backend for fast testing
-/// This provides instant responses for testing without Docker overhead
-// pub fn create_mock_backend() -> MockBackend {
-//     MockBackend::new()
-// }
 /// Command to execute with all configuration
 #[derive(Debug, Clone)]
 pub struct Cmd {

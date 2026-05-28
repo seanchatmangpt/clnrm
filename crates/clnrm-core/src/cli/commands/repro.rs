@@ -30,13 +30,18 @@ use std::path::Path;
 /// # Examples
 ///
 /// ```rust,no_run
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use std::path::Path;
+/// use clnrm_core::cli::commands::repro::reproduce_baseline;
 ///
 /// // Reproduce baseline with digest verification
 /// reproduce_baseline(Path::new("baseline.json"), true, Some(Path::new("output/"))).await?;
 ///
 /// // Reproduce baseline without verification
 /// reproduce_baseline(Path::new("baseline.json"), false, None).await?;
+/// # Ok(())
+/// # }
 /// ```
 pub async fn reproduce_baseline(
     baseline: &Path,
