@@ -40,7 +40,7 @@ use tracing::{debug, error, info};
 pub async fn run_test(path: &Path) -> Result<ExecutionResult> {
     // Read config file
     let content = std::fs::read_to_string(path).map_err(|e| {
-        CleanroomError::config_error(format!(
+        CleanroomError::configuration_error(format!(
             "Failed to read config file '{}': {}",
             path.display(),
             e
@@ -49,7 +49,7 @@ pub async fn run_test(path: &Path) -> Result<ExecutionResult> {
 
     // Parse config
     let config: Config = toml::from_str(&content).map_err(|e| {
-        CleanroomError::config_error(format!("TOML parse error in '{}': {}", path.display(), e))
+        CleanroomError::configuration_error(format!("TOML parse error in '{}': {}", path.display(), e))
     })?;
 
     // Validate at parse time (fail fast) - includes reference validation
@@ -84,6 +84,22 @@ pub async fn run_test(path: &Path) -> Result<ExecutionResult> {
     }
 
     Ok(result)
+}
+
+/// Synchronous wrapper for run_test
+pub fn run_test_sync(path: &std::path::Path) -> String {
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return format!("Error: Failed to create runtime: {}", e),
+    };
+
+    match rt.block_on(run_test(path)) {
+        Ok(result) => {
+            let status = if result.passed { "Success" } else { "Failed" };
+            format!("{}: {}", status, result.summary)
+        }
+        Err(e) => format!("Error: {}", e),
+    }
 }
 
 #[cfg(test)]

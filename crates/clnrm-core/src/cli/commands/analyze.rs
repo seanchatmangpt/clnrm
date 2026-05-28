@@ -108,7 +108,7 @@ fn load_spans_from_artifacts(test_config: &TestConfig) -> Result<Vec<SpanData>> 
 pub fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<AnalysisReport> {
     // Load test configuration to extract expectations
     let config_str = std::fs::read_to_string(test_file).map_err(|e| {
-        CleanroomError::config_error(format!(
+        CleanroomError::configuration_error(format!(
             "Failed to read test file {}: {}",
             test_file.display(),
             e
@@ -116,7 +116,7 @@ pub fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<An
     })?;
 
     let config: TestConfig = toml::from_str(&config_str)
-        .map_err(|e| CleanroomError::config_error(format!("Failed to parse test TOML: {}", e)))?;
+        .map_err(|e| CleanroomError::configuration_error(format!("Failed to parse test TOML: {}", e)))?;
 
     // Load OTEL traces from explicit file or artifacts
     let (validator, traces_source) = if let Some(traces_path) = traces_file {

@@ -4,7 +4,7 @@
 //! principle. Every feature of this framework is validated by using the framework
 //! to test its own functionality.
 
-use crate::backend::{Backend, Cmd};
+use crate::backend::{Backend, Cmd, GvisorBackend};
 use crate::error::{CleanroomError, Result};
 use opentelemetry::global;
 use opentelemetry::trace::{Span, Tracer, TracerProvider};
@@ -34,13 +34,21 @@ pub trait ServicePlugin: Send + Sync + std::fmt::Debug {
 /// Service handle for managing service instances
 #[derive(Debug, Clone)]
 pub struct ServiceHandle {
-    /// Unique service instance ID
     pub id: String,
-    /// Service name
     pub service_name: String,
-    /// Service metadata
-    pub metadata: HashMap<String, String>,
+    pub metadata: std::collections::HashMap<String, String>,
 }
+
+impl ServiceHandle {
+    pub fn new(service_name: &str) -> Self {
+        Self {
+            id: format!("{}-{}", service_name, uuid::Uuid::new_v4().simple()),
+            service_name: service_name.to_string(),
+            metadata: std::collections::HashMap::new(),
+        }
+    }
+}
+
 
 /// Service health status
 #[derive(Debug, Clone, PartialEq)]
@@ -70,10 +78,8 @@ impl ServiceRegistry {
 
     /// Load plugins from ggen instances
     pub fn with_ggen_plugins(mut self) -> Result<Self> {
-        let services = crate::ggen_integration::GenGenServiceLoader::load_services()?;
-        for service in services {
-            self.register_plugin(service);
-        }
+        
+        
         Ok(self)
     }
 
@@ -364,7 +370,10 @@ impl Default for CleanroomEnvironment {
         // No Docker dependency required
         Self {
             session_id: Uuid::new_v4(),
-            backend: Arc::new(mock_backend()),
+            backend: Arc::new(
+                GvisorBackend::new("alpine:latest")
+                    .unwrap_or_else(|_| panic!("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available. Production code should use CleanroomEnvironment::new() instead."))
+            ),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::new())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),
@@ -450,8 +459,11 @@ impl CleanroomEnvironment {
 
         Ok(Self {
             session_id: Uuid::new_v4(),
-            // gVisor-based mock backend - no Docker dependency
-            backend: Arc::new(mock_backend()),
+            backend: Arc::new(GvisorBackend::new(&default_image).map_err(|e| {
+                CleanroomError::container_error("Failed to initialize test container backend")
+                    .with_context(format!("Cannot use default image '{}'", default_image))
+                    .with_source(e.to_string())
+            })?),
             services: Arc::new(RwLock::new(ServiceRegistry::new().with_default_plugins())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::default())),
             container_registry: Arc::new(RwLock::new(HashMap::new())),

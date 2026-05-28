@@ -1,11 +1,11 @@
 //! Docker Registry API v2 client for pulling images
 
-use super::{OciDescriptor, OciImage, OciImageConfig, OciLayer, OciManifest};
+use super::{OciImage, OciImageConfig, OciLayer, OciManifest};
 use crate::error::{CleanroomError, Result};
 use chrono::{DateTime, Duration, Utc};
 use dashmap::DashMap;
-use serde::{Deserialize, Serialize};
-use tracing::{info, warn};
+use serde::Deserialize;
+use tracing::info;
 
 /// Docker Registry API v2 client
 #[derive(Debug)]
@@ -45,7 +45,7 @@ impl RegistryClient {
         let http_client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| CleanroomError::registry_error(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| CleanroomError::report_error(format!("Failed to create HTTP client: {}", e)))?;
 
         Ok(Self {
             http_client,
@@ -141,12 +141,12 @@ impl RegistryClient {
             .send()
             .await
             .map_err(|e| {
-                CleanroomError::registry_error(format!("Failed to get auth token: {}", e))
+                CleanroomError::report_error(format!("Failed to get auth token: {}", e))
             })?
             .json()
             .await
             .map_err(|e| {
-                CleanroomError::registry_error(format!("Failed to parse auth response: {}", e))
+                CleanroomError::report_error(format!("Failed to parse auth response: {}", e))
             })?;
 
         let token = AuthToken {
@@ -181,18 +181,18 @@ impl RegistryClient {
             .send()
             .await
             .map_err(|e| {
-                CleanroomError::registry_error(format!("Failed to fetch manifest: {}", e))
+                CleanroomError::report_error(format!("Failed to fetch manifest: {}", e))
             })?;
 
         if !response.status().is_success() {
-            return Err(CleanroomError::registry_error(format!(
+            return Err(CleanroomError::report_error(format!(
                 "Failed to fetch manifest: HTTP {}",
                 response.status()
             )));
         }
 
         let manifest: OciManifest = response.json().await.map_err(|e| {
-            CleanroomError::registry_error(format!("Failed to parse manifest: {}", e))
+            CleanroomError::report_error(format!("Failed to parse manifest: {}", e))
         })?;
 
         Ok(manifest)
@@ -215,11 +215,11 @@ impl RegistryClient {
             .send()
             .await
             .map_err(|e| {
-                CleanroomError::registry_error(format!("Failed to fetch blob {}: {}", digest, e))
+                CleanroomError::report_error(format!("Failed to fetch blob {}: {}", digest, e))
             })?;
 
         if !response.status().is_success() {
-            return Err(CleanroomError::registry_error(format!(
+            return Err(CleanroomError::report_error(format!(
                 "Failed to fetch blob {}: HTTP {}",
                 digest,
                 response.status()
@@ -227,7 +227,7 @@ impl RegistryClient {
         }
 
         let data = response.bytes().await.map_err(|e| {
-            CleanroomError::registry_error(format!("Failed to read blob {}: {}", digest, e))
+            CleanroomError::report_error(format!("Failed to read blob {}: {}", digest, e))
         })?;
 
         Ok(data.to_vec())

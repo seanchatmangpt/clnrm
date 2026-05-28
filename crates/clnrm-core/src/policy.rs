@@ -437,7 +437,7 @@ impl Policy {
     pub fn validate(&self) -> Result<()> {
         // Validate security policy
         if self.security.allowed_ports.is_empty() {
-            return Err(CleanroomError::policy_violation_error(
+            return Err(CleanroomError::policy_violation(
                 "No allowed ports configured",
             ));
         }
@@ -446,32 +446,32 @@ impl Policy {
         if self.resources.max_cpu_usage_percent <= 0.0
             || self.resources.max_cpu_usage_percent > 100.0
         {
-            return Err(CleanroomError::policy_violation_error(
+            return Err(CleanroomError::policy_violation(
                 "Invalid CPU usage percentage",
             ));
         }
 
         if self.resources.max_memory_usage_bytes == 0 {
-            return Err(CleanroomError::policy_violation_error(
+            return Err(CleanroomError::policy_violation(
                 "Invalid memory usage limit",
             ));
         }
 
         if self.resources.max_disk_usage_bytes == 0 {
-            return Err(CleanroomError::policy_violation_error(
+            return Err(CleanroomError::policy_violation(
                 "Invalid disk usage limit",
             ));
         }
 
         // Validate execution policy
         if self.execution.max_parallel_tasks == 0 {
-            return Err(CleanroomError::policy_violation_error(
+            return Err(CleanroomError::policy_violation(
                 "Invalid parallel task count",
             ));
         }
 
         if self.execution.max_retry_attempts == 0 {
-            return Err(CleanroomError::policy_violation_error(
+            return Err(CleanroomError::policy_violation(
                 "Invalid retry attempt count",
             ));
         }

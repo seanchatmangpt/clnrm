@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
         .get("port")
         .ok_or_else(|| CleanroomError::internal_error("Missing port in SurrealDB metadata"))?
         .parse::<u16>()
-        .map_err(|e| CleanroomError::config_error(format!("Invalid port: {}", e)))?;
+        .map_err(|e| CleanroomError::configuration_error(format!("Invalid port: {}", e)))?;
     println!("✅ SurrealDB started at {}:{}", host, port);
 
     // Phase 2: Connect to SurrealDB and set up schema
@@ -118,7 +118,7 @@ async fn setup_surrealdb_connection(host: &str, port: u16) -> Result<Surreal<Cli
     let db: Surreal<Client> = Surreal::init();
 
     db.connect::<Ws>(url).await.map_err(|e| {
-        CleanroomError::connection_failed("Failed to connect to SurrealDB")
+        CleanroomError::network_error("Failed to connect to SurrealDB")
             .with_source(e.to_string())
     })?;
 

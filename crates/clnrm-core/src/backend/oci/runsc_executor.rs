@@ -8,6 +8,7 @@ use tokio::process::Command;
 use tracing::{info, warn};
 
 /// gVisor runsc executor
+#[derive(Debug)]
 pub struct RunscExecutor {
     runsc_path: PathBuf,
     root_dir: PathBuf,
@@ -107,11 +108,17 @@ impl RunscExecutor {
     }
 
     /// Create container (runsc create)
-    async fn create_container(
+    pub async fn create_container(
         &self,
         container_id: &str,
         bundle: &OciBundle,
     ) -> Result<CommandResult> {
+        let stdout_path = std::path::Path::new(&self.root_dir).join(format!("{}.stdout", container_id));
+        let stderr_path = std::path::Path::new(&self.root_dir).join(format!("{}.stderr", container_id));
+
+        let stdout_file = std::fs::File::create(stdout_path)?;
+        let stderr_file = std::fs::File::create(stderr_path)?;
+
         let output = Command::new(&self.runsc_path)
             .arg("--root")
             .arg(&self.root_dir)
@@ -119,6 +126,8 @@ impl RunscExecutor {
             .arg("--bundle")
             .arg(&bundle.path)
             .arg(container_id)
+            .stdout(stdout_file)
+            .stderr(stderr_file)
             .output()
             .await?;
 
@@ -130,7 +139,7 @@ impl RunscExecutor {
     }
 
     /// Start container (runsc start)
-    async fn start_container(&self, container_id: &str) -> Result<CommandResult> {
+    pub async fn start_container(&self, container_id: &str) -> Result<CommandResult> {
         let output = Command::new(&self.runsc_path)
             .arg("--root")
             .arg(&self.root_dir)
@@ -177,24 +186,31 @@ impl RunscExecutor {
     }
 
     /// Get container logs
-    ///
-    /// Note: runsc doesn't provide built-in log capture like Docker.
-    /// For production use, implement log redirection when creating the container.
-    async fn get_container_logs(&self, _container_id: &str) -> Result<LogOutput> {
-        // TODO: Implement proper log capture
-        // Options:
-        // 1. Redirect stdout/stderr to files when creating container
-        // 2. Use runsc events to capture output
-        // 3. Implement console socket for log streaming
+    async fn get_container_logs(&self, container_id: &str) -> Result<LogOutput> {
+        let stdout_path = std::path::Path::new(&self.root_dir).join(format!("{}.stdout", container_id));
+        let stderr_path = std::path::Path::new(&self.root_dir).join(format!("{}.stderr", container_id));
 
-        Ok(LogOutput {
-            stdout: String::new(),
-            stderr: String::new(),
-        })
+        let stdout = if stdout_path.exists() {
+            std::fs::read_to_string(&stdout_path).unwrap_or_default()
+        } else {
+            String::new()
+        };
+
+        let stderr = if stderr_path.exists() {
+            std::fs::read_to_string(&stderr_path).unwrap_or_default()
+        } else {
+            String::new()
+        };
+
+        // Cleanup log files
+        let _ = std::fs::remove_file(stdout_path);
+        let _ = std::fs::remove_file(stderr_path);
+
+        Ok(LogOutput { stdout, stderr })
     }
 
     /// Kill container (runsc kill)
-    async fn kill_container(&self, container_id: &str) -> Result<()> {
+    pub async fn kill_container(&self, container_id: &str) -> Result<()> {
         let _ = Command::new(&self.runsc_path)
             .arg("--root")
             .arg(&self.root_dir)
@@ -208,7 +224,7 @@ impl RunscExecutor {
     }
 
     /// Delete container (runsc delete)
-    async fn delete_container(&self, container_id: &str) -> Result<()> {
+    pub async fn delete_container(&self, container_id: &str) -> Result<()> {
         let output = Command::new(&self.runsc_path)
             .arg("--root")
             .arg(&self.root_dir)
@@ -234,10 +250,11 @@ impl RunscExecutor {
     }
 }
 
-struct CommandResult {
-    success: bool,
-    stdout: String,
-    stderr: String,
+/// Result of a runsc command execution
+pub struct CommandResult {
+    pub success: bool,
+    pub stdout: String,
+    pub stderr: String,
 }
 
 struct WaitResult {

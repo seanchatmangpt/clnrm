@@ -1,12 +1,12 @@
-# CLNRM v2.0.0 - Perfect Architecture Implementation Guide
+# CLNRM v3.0.0 - Perfect Architecture Implementation Guide
 
 ## Executive Summary
 
-This guide documents the **perfect architecture** for CLNRM v2.0.0 as represented in the C4 model diagrams. The architecture achieves three critical goals:
+This guide documents the **perfect architecture** for CLNRM v3.0.0. The architecture achieves three critical goals:
 
-1. **Zero Docker by Default** - Production builds require zero Docker
-2. **Pluggable Backends** - Support gVisor (default), testcontainers (optional), and future implementations
-3. **Complete Observability** - Full tracing, metrics, and logging with backward compatibility
+1. **gVisor-First & Only** - Production builds use gVisor exclusively for hermetic isolation.
+2. **Deterministic Execution** - Zero-dependency environments with predictable resource management.
+3. **Legacy Compatibility** - Testcontainers support moved to an optional, deprecated legacy feature.
 
 ---
 
@@ -16,28 +16,24 @@ This guide documents the **perfect architecture** for CLNRM v2.0.0 as represente
 
 | Goal | How Achieved | Benefit |
 |------|-------------|---------|
-| **Zero Docker** | gVisor as default backend | Reduced attack surface, simpler deployment |
-| **Flexibility** | Feature-gated backends | Support diverse environments (gVisor, Docker, Kubernetes) |
-| **Observability** | OpenTelemetry integration | Complete distributed tracing, metrics, logs |
-| **Compatibility** | Dual-ID system for v1.9→v2.0 | Existing dashboards continue working |
-| **Extensibility** | Plugin system for services | Easy addition of new managed services |
+| **gVisor-First** | gVisor as the primary and only production backend | Maximum isolation, zero Docker dependency |
+| **Deterministic** | Sequential port allocation & OCI bundle management | Reproducible test results |
+| **Zero Docker** | Direct OCI image execution via `runsc` | No daemon overhead or security risks |
+| **Observability** | Native OpenTelemetry integration | Full distributed tracing, metrics, logs |
 
 ### Core Principles
 
-1. **Abstraction Over Implementation**
-   - Backend trait hides container runtime details
-   - Services work with any backend transparently
-   - Future backends can be added without modifying existing code
+1. **gVisor as the Standard**
+   - All service plugins must support gVisor-native execution.
+   - Resource management (cgroups) and networking are handled directly via OCI specs.
 
-2. **Feature Flags for Conditional Compilation**
-   - testcontainers only included when `backend-testcontainers` feature enabled
-   - Reduces default binary size: 50 crates → 200+ with all features
-   - Enables optimization for gVisor-only deployments
+2. **Feature-Gated Legacy Support**
+   - `testcontainers` is only included when the `backend-testcontainers` legacy feature is enabled.
+   - Highly discouraged for new projects.
 
 3. **Plugin Architecture for Extensibility**
-   - ServicePlugin trait defines contract
-   - Dynamic service registration
-   - New services can be added without core modifications
+   - ServicePlugin trait defines the contract for gVisor-compatible services.
+   - Dynamic service registration.
 
 4. **Layered Error Handling**
    - CleanroomError wraps errors with context
@@ -131,30 +127,25 @@ pub trait ServicePlugin: Send + Sync {
 Configuration is validated against Weaver schemas:
 
 ```toml
-[scenario]
+[test]
 name = "my-test"
-version = "1.0"
 timeout = "30s"
-isolation_level = "Container"
 
-[[services.surrealdb]]
-type = "surrealdb"
+[containers.surrealdb]
 image = "surrealdb/surrealdb:latest"
-username = "root"
-password = "root"
-strict = true
+env = { SURREAL_USER = "root", SURREAL_PASS = "root" }
+healthcheck = "curl -f http://localhost:8000/health"
 
-[[services.app]]
-type = "generic_container"
+[containers.app]
 image = "my-app:latest"
 env = { LOG_LEVEL = "DEBUG" }
-ports = [8080]
+depends_on = ["surrealdb"]
 
-[[tests]]
+[[steps]]
 name = "api-health"
-commands = [
-    { service = "app", command = "curl http://localhost:8080/health" }
-]
+container = "app"
+exec = ["curl", "http://localhost:8080/health"]
+assert.exit_code = 0
 ```
 
 **Validation**:

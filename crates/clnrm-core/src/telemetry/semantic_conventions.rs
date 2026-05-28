@@ -68,6 +68,9 @@ pub mod clnrm {
     pub const ASSERTION_TYPE: &str = "assertion.type";
 }
 
+/// gvisor-specific semantic conventions
+pub mod gvisor;
+
 /// Type-safe span builders using semantic conventions
 ///
 /// These builders ensure all spans use proper OTel semantic conventions

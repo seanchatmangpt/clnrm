@@ -185,7 +185,7 @@ impl Default for ContainerCreationLock {
 
 /// Global container creation lock (shared across all backends)
 ///
-/// This ensures that even if multiple TestcontainerBackend instances
+/// This ensures that even if multiple GvisorBackend instances
 /// try to create containers for the same image simultaneously, only
 /// one creation happens at a time per image.
 static GLOBAL_CONTAINER_LOCK: once_cell::sync::Lazy<ContainerCreationLock> =
@@ -248,7 +248,7 @@ impl TomlPokaYoke {
     pub fn validate_before_parse(content: &str, file_path: &Path) -> Result<()> {
         // Poka-Yoke 1: Check for unclosed strings
         if let Some(line_num) = Self::find_unclosed_string(content) {
-            return Err(CleanroomError::config_error(format!(
+            return Err(CleanroomError::configuration_error(format!(
                 "TOML parse error: Unclosed string at line {}\n\n\
                  File: {}\n\
                  Remediation:\n\
@@ -262,7 +262,7 @@ impl TomlPokaYoke {
 
         // Poka-Yoke 2: Check for invalid escape sequences
         if let Some((line_num, seq)) = Self::find_invalid_escape(content) {
-            return Err(CleanroomError::config_error(format!(
+            return Err(CleanroomError::configuration_error(format!(
                 "TOML parse error: Invalid escape sequence '{}' at line {}\n\n\
                  File: {}\n\
                  Remediation:\n\
@@ -274,7 +274,7 @@ impl TomlPokaYoke {
 
         // Poka-Yoke 3: Check for circular template references
         if let Some(circular_ref) = Self::find_circular_template_ref(content) {
-            return Err(CleanroomError::config_error(format!(
+            return Err(CleanroomError::configuration_error(format!(
                 "TOML parse error: Circular template reference detected: {}\n\n\
                  File: {}\n\
                  Remediation:\n\
@@ -302,7 +302,7 @@ impl TomlPokaYoke {
         });
         
         if !has_test_section && !has_containers_section && !has_services_section {
-            return Err(CleanroomError::config_error(format!(
+            return Err(CleanroomError::configuration_error(format!(
                 "TOML parse error: Missing required section [test] or [containers]\n\n\
                  File: {}\n\
                  Remediation:\n\

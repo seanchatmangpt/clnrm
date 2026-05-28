@@ -61,7 +61,7 @@ impl LiveCheckConfig {
         // Port validation
         if let Some(port) = self.otlp_port {
             if port < 1024 {
-                return Err(CleanroomError::config_error(
+                return Err(CleanroomError::configuration_error(
                     "OTLP port must be >= 1024 or None for auto-discovery",
                 ));
             }
@@ -69,7 +69,7 @@ impl LiveCheckConfig {
 
         if let Some(port) = self.admin_port {
             if port < 1024 {
-                return Err(CleanroomError::config_error(
+                return Err(CleanroomError::configuration_error(
                     "Admin port must be >= 1024 or None for auto-discovery",
                 ));
             }
@@ -79,14 +79,14 @@ impl LiveCheckConfig {
             && self.admin_port.is_some()
             && self.otlp_port == self.admin_port
         {
-            return Err(CleanroomError::config_error(
+            return Err(CleanroomError::configuration_error(
                 "OTLP and admin ports must be different",
             ));
         }
 
         // Registry path validation
         if self.registry_path.as_os_str().is_empty() {
-            return Err(CleanroomError::config_error(
+            return Err(CleanroomError::configuration_error(
                 "Registry path cannot be empty",
             ));
         }

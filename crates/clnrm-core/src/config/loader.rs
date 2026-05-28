@@ -9,7 +9,7 @@ use super::types::TestConfig;
 /// Parse TOML configuration from string
 pub fn parse_toml_config(content: &str) -> Result<TestConfig> {
     toml::from_str::<TestConfig>(content)
-        .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))
+        .map_err(|e| CleanroomError::configuration_error(format!("TOML parse error: {}", e)))
 }
 
 /// Extract [vars] or [variables] section from TOML content before template rendering
@@ -112,7 +112,7 @@ fn extract_vars_section(content: &str) -> Result<HashMap<String, serde_json::Val
 pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
     // Read file content
     let content = std::fs::read_to_string(path)
-        .map_err(|e| CleanroomError::config_error(format!("Failed to read config file: {}", e)))?;
+        .map_err(|e| CleanroomError::configuration_error(format!("Failed to read config file: {}", e)))?;
 
     // POKA-YOKE: Validate TOML before parsing (FM-008, RPN: 180)
     // Uses trait-based abstraction for testability and extensibility
@@ -126,7 +126,7 @@ pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
 
         // Render template with extracted vars from [vars] section
         clnrm_template::render_template(&content, vars_from_toml).map_err(|e| {
-            CleanroomError::config_error(format!("Template rendering failed: {}", e))
+            CleanroomError::configuration_error(format!("Template rendering failed: {}", e))
         })?
     } else {
         // No template syntax detected, use content as-is

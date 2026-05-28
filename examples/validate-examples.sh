@@ -91,3 +91,4 @@ echo "💡 Next steps:"
 echo "   - Run 'cargo build' to ensure framework compiles"
 echo "   - Test examples manually: clnrm run examples/simple-working-test.clnrm.toml"
 echo "   - Review examples/README.md for usage instructions"
+

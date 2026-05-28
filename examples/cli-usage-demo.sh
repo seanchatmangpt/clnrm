@@ -48,3 +48,4 @@ echo ""
 
 echo "🎉 CLI demo completed!"
 echo "💡 These are the real commands users should run."
+

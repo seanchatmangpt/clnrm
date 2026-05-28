@@ -91,7 +91,7 @@ impl ShapeValidator {
     pub fn validate_file(&mut self, path: &Path) -> Result<ShapeValidationResult> {
         // Read and parse file
         let content = std::fs::read_to_string(path).map_err(|e| {
-            CleanroomError::config_error(format!("Failed to read config file: {}", e))
+            CleanroomError::configuration_error(format!("Failed to read config file: {}", e))
         })?;
 
         // Check if template rendering is needed
@@ -108,7 +108,7 @@ impl ShapeValidator {
 
         // Parse TOML
         let config = toml::from_str::<TestConfig>(&toml_content)
-            .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))?;
+            .map_err(|e| CleanroomError::configuration_error(format!("TOML parse error: {}", e)))?;
 
         // Validate shape
         self.validate_config(&config)?;

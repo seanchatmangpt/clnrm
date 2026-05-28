@@ -1,10 +1,12 @@
 //! OCI config.json parser and runtime config generator
 
 use super::{
-    LinuxConfig, MountConfig, NamespaceConfig, OciImageConfig, ProcessConfig, RootConfig,
+    CpuResources, LinuxConfig, MemoryResources, MountConfig, NamespaceConfig, OciImageConfig,
+    ProcessConfig, ResourcesConfig, RootConfig, SeccompConfig, SeccompSyscall,
 };
 use crate::backend::Cmd;
 use crate::error::Result;
+use crate::policy::{Policy, SecurityLevel};
 use serde::{Deserialize, Serialize};
 
 /// OCI runtime configuration (config.json)
@@ -21,6 +23,7 @@ pub struct RuntimeConfig {
 }
 
 /// OCI image config parser
+#[derive(Debug)]
 pub struct ConfigParser;
 
 impl ConfigParser {
@@ -35,6 +38,7 @@ impl ConfigParser {
         &self,
         image_config: &OciImageConfig,
         cmd_override: Option<&Cmd>,
+        policy: Option<&Policy>,
     ) -> Result<RuntimeConfig> {
         let config_data = &image_config.config;
 
@@ -89,13 +93,22 @@ impl ConfigParser {
             }
         }
 
+        // Apply policy-based environment variables if policy is provided
+        if let Some(p) = policy {
+            for (key, value) in p.to_env() {
+                process.env.push(format!("{}={}", key, value));
+            }
+        }
+
         // Build runtime config
-        Ok(RuntimeConfig {
+        let mut runtime_config = RuntimeConfig {
             oci_version: "1.0.2".to_string(),
             process,
             root: RootConfig {
                 path: "rootfs".to_string(),
-                readonly: false,
+                readonly: policy
+                    .map(|p| p.security.enable_filesystem_isolation)
+                    .unwrap_or(false),
             },
             hostname: "clnrm-container".to_string(),
             mounts: self.default_mounts(),
@@ -117,7 +130,17 @@ impl ConfigParser {
                         typ: "mount".to_string(),
                     },
                 ],
-                resources: None,
+                resources: policy.map(|p| ResourcesConfig {
+                    memory: Some(MemoryResources {
+                        limit: Some(p.resources.max_memory_usage_bytes as i64),
+                        reservation: None,
+                    }),
+                    cpu: Some(CpuResources {
+                        shares: Some(1024),
+                        quota: Some((p.resources.max_cpu_usage_percent * 1000.0) as i64),
+                        period: Some(100000),
+                    }),
+                }),
                 masked_paths: vec![
                     "/proc/kcore".to_string(),
                     "/proc/latency_stats".to_string(),
@@ -132,8 +155,48 @@ impl ConfigParser {
                     "/proc/sys".to_string(),
                     "/proc/sysrq-trigger".to_string(),
                 ],
+                seccomp: None,
             }),
-        })
+        };
+
+        // Apply seccomp profile if required by security level
+        if let Some(p) = policy {
+            if p.security.security_level != SecurityLevel::Low {
+                runtime_config.linux.as_mut().unwrap().seccomp =
+                    Some(self.generate_seccomp_profile(p));
+            }
+        }
+
+        Ok(runtime_config)
+    }
+
+    /// Generate seccomp profile based on policy
+    fn generate_seccomp_profile(&self, policy: &Policy) -> SeccompConfig {
+        let mut syscalls = vec![SeccompSyscall {
+            names: vec![
+                "clone".to_string(),
+                "mount".to_string(),
+                "umount2".to_string(),
+                "ptrace".to_string(),
+            ],
+            action: "SCMP_ACT_ERRNO".to_string(),
+        }];
+
+        if policy.security.security_level == SecurityLevel::Locked {
+            syscalls.push(SeccompSyscall {
+                names: vec![
+                    "socket".to_string(),
+                    "connect".to_string(),
+                    "bind".to_string(),
+                ],
+                action: "SCMP_ACT_ERRNO".to_string(),
+            });
+        }
+
+        SeccompConfig {
+            default_action: "SCMP_ACT_ALLOW".to_string(),
+            syscalls,
+        }
     }
 
     /// Default mounts for container

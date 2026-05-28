@@ -2,38 +2,18 @@
 resolver = "2"
 
 members = [
-  "crates/clnrm",
   "crates/clnrm-cli",
   "crates/clnrm-core",
-  "crates/clnrm-shared",
-  "crates/clnrm-template",
-  "crates/clnrm-migrate",
-  "crates/evidence-graph",
-  "ggen-codegen",
-  "ggen-integration-example",
-  "ggen-cli-tool",
-  "ggen-test-runner",
-  "ggen-orchestration",
-  "ggen-service-mesh",
-  "ggen-config",
-  "ggen-deploy",
-  "ggen-observability",
-  "ggen-reconciliation",
-  "ggen-control",
-  "ggen-status",
 ]
 
 # Default members for core functionality (template excluded - experimental)
 default-members = [
-  "crates/clnrm",
   "crates/clnrm-cli",
   "crates/clnrm-core",
-  "crates/clnrm-shared",
-  "crates/evidence-graph",
 ]
 
 [workspace.package]
-version = "2.0.0"
+version = "26.5.28"
 edition = "2021"
 license = "MIT"
 authors = ["Sean Chatman <seanchatmangpt@gmail.com>"]
@@ -49,6 +29,10 @@ anyhow = "1.0"
 tracing = "0.1"
 
 # Container dependencies
+# NOTE: testcontainers is legacy and only available via backend-testcontainers feature
+# Default backend is gVisor (no Docker required) - see crates/clnrm-core/Cargo.toml features
+testcontainers = { version = "0.25", features = ["blocking"] }
+testcontainers-modules = { version = "0.13", features = ["surrealdb"] }
 futures-util = "0.3"
 surrealdb = "2.2"
 
@@ -56,7 +40,7 @@ surrealdb = "2.2"
 clap = { version = "4.5.49", features = ["derive"] }
 env_logger = "0.11.8"
 log = "0.4.28"
-toml = "0.9"
+toml = "1.1.0"
 regex = "1.0"
 walkdir = "2.5"
 tempfile = "3.0"

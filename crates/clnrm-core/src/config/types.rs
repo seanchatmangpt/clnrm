@@ -96,7 +96,7 @@ pub fn parse_shell_command(cmd: &str) -> Result<Vec<String>> {
 }
 
 /// Main test configuration structure
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct TestConfig {
     /// Test metadata section (v0.4.x format)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -383,7 +383,7 @@ pub struct ArtifactsConfig {
 }
 
 /// Container configuration for hermetic testing
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ContainerConfig {
     /// Container image (e.g., "alpine:latest")
     pub image: String,
@@ -408,7 +408,7 @@ fn default_tag() -> String {
 }
 
 /// Step assertion configuration
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct StepAssertion {
     /// Assert that stdout contains this string
     pub stdout_contains: Option<String>,
@@ -423,7 +423,7 @@ pub struct StepAssertion {
 }
 
 /// Individual test step configuration
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct StepConfig {
     /// Step name
     pub name: String,
@@ -728,9 +728,9 @@ impl StepConfig {
             ));
         }
 
-        if self.command.is_empty() {
+        if self.command.is_empty() && self.exec.as_ref().map_or(true, |v| v.is_empty()) {
             return Err(CleanroomError::validation_error(
-                "Step command cannot be empty",
+                "Step must have a non-empty 'command' or 'exec' array",
             ));
         }
 

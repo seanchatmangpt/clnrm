@@ -147,6 +147,21 @@ pub mod gvisor {
     ///
     /// Values: "network", "filesystem", "pid", "ipc"
     pub const ISOLATION_TYPE: &str = "gvisor.isolation.type";
+
+    /// gvisor operation for metrics
+    ///
+    /// Values: "create", "start", "exec", "stop", "delete"
+    pub const OPERATION: &str = "gvisor.operation";
+
+    /// Legacy container ID for backward compatibility
+    ///
+    /// Format: UUID
+    pub const LEGACY_CONTAINER_ID: &str = "container.legacy_id";
+
+    /// Container ID format indicator
+    ///
+    /// Values: "uuid", "gvisor"
+    pub const ID_FORMAT: &str = "container.id_format";
 }
 
 /// Span builder extensions for gvisor
@@ -165,7 +180,7 @@ impl GvisorSpanBuilder {
     /// # Example
     ///
     /// ```rust,no_run
-    /// use clnrm_core::telemetry::semantic_conventions::GvisorSpanBuilder;
+    /// use clnrm_core::telemetry::semantic_conventions::gvisor::GvisorSpanBuilder;
     ///
     /// let span = GvisorSpanBuilder::container_create(
     ///     "alpine:latest",
@@ -184,6 +199,9 @@ impl GvisorSpanBuilder {
             { semconv::resource::CONTAINER_IMAGE_NAME } = image,
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
             { semconv::resource::CONTAINER_RUNTIME } = "gvisor",
+            // Dual ID strategy for backward compatibility
+            { gvisor::LEGACY_CONTAINER_ID } = uuid::Uuid::new_v4().to_string(),
+            { gvisor::ID_FORMAT } = "gvisor",
             // gvisor-specific attributes
             { gvisor::SANDBOX_ID } = sandbox_id,
             { gvisor::PLATFORM } = platform,
@@ -204,6 +222,9 @@ impl GvisorSpanBuilder {
             "gvisor.container.start",
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
             { semconv::resource::CONTAINER_RUNTIME } = "gvisor",
+            // Dual ID strategy for backward compatibility
+            { gvisor::LEGACY_CONTAINER_ID } = uuid::Uuid::new_v4().to_string(),
+            { gvisor::ID_FORMAT } = "gvisor",
             { gvisor::SANDBOX_ID } = sandbox_id,
             { gvisor::SANDBOX_PID } = pid,
             { gvisor::CONTAINER_STATE } = "running",
@@ -222,6 +243,9 @@ impl GvisorSpanBuilder {
         tracing::info_span!(
             "gvisor.container.exec",
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
+            // Dual ID strategy for backward compatibility
+            { gvisor::LEGACY_CONTAINER_ID } = uuid::Uuid::new_v4().to_string(),
+            { gvisor::ID_FORMAT } = "gvisor",
             { crate::telemetry::semantic_conventions::clnrm::COMMAND } = command,
             { gvisor::SANDBOX_ID } = sandbox_id,
             otel.span.kind = "internal",
@@ -239,6 +263,9 @@ impl GvisorSpanBuilder {
         tracing::info_span!(
             "gvisor.container.stop",
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
+            // Dual ID strategy for backward compatibility
+            { gvisor::LEGACY_CONTAINER_ID } = uuid::Uuid::new_v4().to_string(),
+            { gvisor::ID_FORMAT } = "gvisor",
             { crate::telemetry::semantic_conventions::clnrm::EXIT_CODE } = exit_code,
             { gvisor::SANDBOX_ID } = sandbox_id,
             { gvisor::CONTAINER_STATE } = "stopped",
@@ -256,6 +283,9 @@ impl GvisorSpanBuilder {
         tracing::info_span!(
             "gvisor.container.delete",
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
+            // Dual ID strategy for backward compatibility
+            { gvisor::LEGACY_CONTAINER_ID } = uuid::Uuid::new_v4().to_string(),
+            { gvisor::ID_FORMAT } = "gvisor",
             { gvisor::SANDBOX_ID } = sandbox_id,
             otel.span.kind = "internal",
         )

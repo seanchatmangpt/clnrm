@@ -61,7 +61,7 @@ pub async fn execute_with_live_check(
     _parallel: bool,
     _jobs: Option<usize>,
 ) -> Result<()> {
-    Err(CleanroomError::config_error(
+    Err(CleanroomError::configuration_error(
         "Live-check CLI integration is not yet complete (deferred to v1.3.1).\n\
          \n\
          The underlying LiveCheckOrchestrator infrastructure is production-ready.\n\

@@ -575,6 +575,9 @@ fn test_negative_exit_code() {
         expected_exit_code: Some(-1),
         continue_on_failure: None,
         service: None,
+        container: None,
+        exec: None,
+        assert: None,
     };
 
     // Act - serialize and deserialize

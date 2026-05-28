@@ -3,6 +3,7 @@
 use super::{OciImage, OciLayer};
 use crate::error::{CleanroomError, Result};
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -10,6 +11,7 @@ use tokio::sync::RwLock;
 use tracing::info;
 
 /// Image cache with LRU eviction
+#[derive(Debug)]
 pub struct ImageCache {
     cache_dir: PathBuf,
     max_size_gb: u64,

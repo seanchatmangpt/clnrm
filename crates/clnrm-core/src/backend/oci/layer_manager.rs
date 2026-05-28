@@ -8,6 +8,7 @@ use tar::Archive;
 use tracing::{info, warn};
 
 /// Manages OCI layer extraction and merging
+#[derive(Debug)]
 pub struct LayerManager {
     cache_dir: PathBuf,
     temp_dir: PathBuf,

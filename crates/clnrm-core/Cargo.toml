@@ -136,10 +136,6 @@ name = "status-validator-demo"
 path = "examples/validation/status_validator_demo.rs"
 
 [[example]]
-name = "validate-toml-format"
-path = "examples/toml-configuration/validate-toml-format.rs"
-
-[[example]]
 name = "complete-dogfooding-suite"
 path = "examples/framework-self-testing/complete-dogfooding-suite.rs"
 
@@ -230,6 +226,7 @@ ai = [
 # Backend selection features (mutually exclusive by convention)
 backend-gvisor = [] # Default: gVisor-native container runtime (no Docker required)
 backend-docker = [] # Future: Docker API backend
+backend-testcontainers = [] # Testcontainers backend support
 backend-auto = [] # Auto-detect available backend
 
 otel = ["otel-traces", "otel-metrics", "otel-logs"] # Umbrella feature for all OTEL functionality

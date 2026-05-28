@@ -29,3 +29,4 @@
 - **Examples**: Include usage examples where helpful
 - **Error conditions**: Document when functions can fail
 - **Thread safety**: Document thread safety guarantees
+

@@ -128,7 +128,7 @@ impl TomlValidator for DefaultTomlValidator {
     fn validate_before_parse(&self, content: &str, file_path: &Path) -> Result<()> {
         // Poka-Yoke 1: Check for unclosed strings
         if let Some(line_num) = Self::find_unclosed_string(content) {
-            return Err(CleanroomError::config_error(format!(
+            return Err(CleanroomError::configuration_error(format!(
                 "TOML parse error: Unclosed string at line {}\n\n\
                  File: {}\n\
                  Remediation:\n\
@@ -142,7 +142,7 @@ impl TomlValidator for DefaultTomlValidator {
 
         // Poka-Yoke 2: Check for invalid escape sequences
         if let Some((line_num, seq)) = Self::find_invalid_escape(content) {
-            return Err(CleanroomError::config_error(format!(
+            return Err(CleanroomError::configuration_error(format!(
                 "TOML parse error: Invalid escape sequence '{}' at line {}\n\n\
                  File: {}\n\
                  Remediation:\n\
@@ -156,7 +156,7 @@ impl TomlValidator for DefaultTomlValidator {
 
         // Poka-Yoke 3: Check for circular template references
         if let Some(circular_ref) = Self::find_circular_template_ref(content) {
-            return Err(CleanroomError::config_error(format!(
+            return Err(CleanroomError::configuration_error(format!(
                 "TOML parse error: Circular template reference detected: {}\n\n\
                  File: {}\n\
                  Remediation:\n\
@@ -182,7 +182,7 @@ impl TomlValidator for DefaultTomlValidator {
         });
 
         if !has_test_section && !has_containers_section && !has_services_section {
-            return Err(CleanroomError::config_error(format!(
+            return Err(CleanroomError::configuration_error(format!(
                 "TOML parse error: Missing required section [test] or [containers]\n\n\
                  File: {}\n\
                  Remediation:\n\

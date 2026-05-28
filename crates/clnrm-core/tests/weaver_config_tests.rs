@@ -13,7 +13,7 @@ use clnrm_core::error::{CleanroomError, Result};
 // Helper function to parse TOML with proper error conversion
 fn parse_test_config(toml: &str) -> Result<TestConfig> {
     toml::from_str(toml)
-        .map_err(|e| CleanroomError::config_error(format!("TOML parse error: {}", e)))
+        .map_err(|e| CleanroomError::configuration_error(format!("TOML parse error: {}", e)))
 }
 
 // ============================================================================

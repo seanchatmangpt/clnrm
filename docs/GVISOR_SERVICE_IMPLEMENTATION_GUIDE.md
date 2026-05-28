@@ -131,10 +131,11 @@ assert_eq!(env.get("SURREALDB_PORT"), Some(&"10000".to_string()));
 
 **Usage:**
 ```toml
-[services.my_db]
-extends = "template.surrealdb"
+[containers.my_db]
+image = "surrealdb/surrealdb:latest"
+# extends = "template.surrealdb" # Advanced usage
 
-[services.my_db.env]
+[containers.my_db.env]
 SURREAL_USER = "admin"
 SURREAL_PASS = "secret"
 ```
@@ -205,10 +206,7 @@ let backend = GvisorBackend::new("alpine:latest")?
 ### Complete Service Definition
 
 ```toml
-[services.<name>]
-# Plugin type (always "gvisor_container")
-plugin = "gvisor_container"
-
+[containers.<name>]
 # OCI image reference
 image = "docker.io/surrealdb/surrealdb:v1.0.0"
 
@@ -216,55 +214,39 @@ image = "docker.io/surrealdb/surrealdb:v1.0.0"
 command = ["surreal", "start", "--bind", "0.0.0.0:8000"]
 
 # Container args (optional)
-args = ["--log-level", "debug"]
-
-# Template extension (optional)
-extends = "template.surrealdb"
+# args = ["--log-level", "debug"]
 
 # Service dependencies (optional)
 depends_on = ["database", "cache"]
 
 # Environment variables
-[services.<name>.env]
+[containers.<name>.env]
 KEY = "value"
 DYNAMIC = "${ENV_VAR:-default}"
 
 # Port mappings
-[[services.<name>.ports]]
-container = 8000
-host = 10000  # Optional, auto-allocated if not specified
-protocol = "tcp"  # or "udp"
+ports = [
+    "8000:8000",      # host:container
+    "9000"            # auto-allocated host port
+]
 
 # Volume mounts
-[[services.<name>.volumes]]
-host_path = "/tmp/data"
-container_path = "/data"
-read_only = false
+volumes = [
+    { host = "/tmp/data", container = "/data", readonly = false }
+]
 
 # Health check
-[services.<name>.health_check]
-type = "http"  # or "tcp", "exec", "grpc"
-path = "/health"
-port = 8000
-scheme = "http"  # or "https"
+[containers.<name>.healthcheck]
+command = "curl -f http://localhost:8000/health"
 interval = "5s"
 timeout = "3s"
 retries = 3
 
-# Readiness probe
-[services.<name>.readiness]
-type = "tcp"  # or "http", "exec"
-port = 8000
-initial_delay = "2s"
-timeout = "30s"
-
 # Resource limits
-[services.<name>.resources]
-memory_limit = "512M"
-memory_swap = "1G"
-cpu_limit = "1.0"
-cpu_shares = 1024
-pids_limit = 100
+[containers.<name>.resources]
+memory = "512M"
+cpu = "1.0"
+pids = 100
 ```
 
 ## Integration with CleanroomEnvironment
@@ -466,20 +448,20 @@ backend = "gvisor"  # Default
 ### Recommended Security Settings
 
 ```toml
-[services.untrusted_service]
+[containers.untrusted_service]
+image = "alpine:latest"
 # Use most restrictive settings
 network_mode = "none"  # No network access
 
-[services.untrusted_service.resources]
-memory_limit = "128M"
-cpu_limit = "0.5"
-pids_limit = 50
+[containers.untrusted_service.resources]
+memory = "128M"
+cpu = "0.5"
+pids = 50
 
-# Read-only root filesystem
-[[services.untrusted_service.volumes]]
-host_path = "/tmp/data"
-container_path = "/data"
-read_only = true
+# Read-only volume mount
+volumes = [
+    { host = "/tmp/data", container = "/data", readonly = true }
+]
 ```
 
 ## Troubleshooting

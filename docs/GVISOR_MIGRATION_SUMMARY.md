@@ -63,32 +63,20 @@ Production-ready templates for:
 
 ### Configuration Format
 
-**New gVisor TOML Schema:**
+**New v2.0.0 TOML Schema (gVisor-native):**
 ```toml
-[[services]]
-name = "surrealdb"
-service_type = "database"
+[test]
+name = "surrealdb_integration"
+timeout = "60s"
 
-[services.image]
-url = "docker://surrealdb/surrealdb:latest"
-digest = "sha256:..."
-pull_policy = "if-not-present"
+[containers.surrealdb]
+image = "surrealdb/surrealdb:latest"
+command = ["surreal", "start", "--bind", "0.0.0.0:8000"]
+healthcheck = "curl -f http://localhost:8000/health"
 
-[services.runtime]
-platform = "kvm"  # gVisor runtime
-entrypoint = ["/surreal", "start"]
-args = ["--bind", "0.0.0.0:8000"]
-
-[services.resources]
-memory_limit_mb = 1024
-cpu_limit_cores = 2.0
-
-[services.health_check]
-enabled = true
-type = "http"
-[services.health_check.http]
-path = "/health"
-port = 8000
+[containers.surrealdb.resources]
+memory = "1024M"
+cpu = "2.0"
 ```
 
 ## Performance Benefits

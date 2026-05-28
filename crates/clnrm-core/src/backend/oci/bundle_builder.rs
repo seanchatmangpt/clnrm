@@ -3,6 +3,7 @@
 use super::{ConfigParser, LayerManager, OciImage, RuntimeConfig};
 use crate::backend::Cmd;
 use crate::error::Result;
+use crate::policy::Policy;
 use std::path::PathBuf;
 use tracing::info;
 
@@ -16,6 +17,7 @@ pub struct OciBundle {
 }
 
 /// OCI bundle builder for runsc
+#[derive(Debug)]
 pub struct OciBundleBuilder {
     pub layer_manager: LayerManager,
     pub config_parser: ConfigParser,
@@ -46,6 +48,7 @@ impl OciBundleBuilder {
         &self,
         image: &OciImage,
         cmd: Option<&Cmd>,
+        policy: Option<&Policy>,
     ) -> Result<OciBundle> {
         // Create unique bundle directory
         let bundle_id = uuid::Uuid::new_v4().to_string();
@@ -63,7 +66,7 @@ impl OciBundleBuilder {
         info!("Rootfs extracted to: {}", rootfs_path.display());
 
         // 2. Generate runtime config.json
-        let runtime_config = self.config_parser.to_runtime_config(&image.config, cmd)?;
+        let runtime_config = self.config_parser.to_runtime_config(&image.config, cmd, policy)?;
 
         let config_path = bundle_path.join("config.json");
         let config_json = serde_json::to_string_pretty(&runtime_config)?;

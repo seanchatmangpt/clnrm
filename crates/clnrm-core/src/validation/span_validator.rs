@@ -332,7 +332,7 @@ impl SpanValidator {
     /// * JSON parsing errors
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content = std::fs::read_to_string(path.as_ref()).map_err(|e| {
-            CleanroomError::config_error(format!("Failed to read spans file: {}", e))
+            CleanroomError::configuration_error(format!("Failed to read spans file: {}", e))
         })?;
 
         Self::from_json(&content)

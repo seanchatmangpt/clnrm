@@ -41,7 +41,7 @@ fn test_simple_variable_substitution_in_config() -> Result<()> {
 
     // Act
     let config: TestConfig = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()))?;
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()))?;
 
     // Assert - config should parse successfully
     assert!(config.vars.is_some());
@@ -67,7 +67,7 @@ fn test_multiple_variables_same_step() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - should parse without error
     assert!(result.is_ok());
@@ -92,7 +92,7 @@ fn test_variable_in_service_environment() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -120,7 +120,7 @@ fn test_nested_variable_structure() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - TOML will parse nested vars as table structure
     assert!(result.is_ok());
@@ -143,7 +143,7 @@ fn test_deeply_nested_variables() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -169,7 +169,7 @@ fn test_variables_in_service_image() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -192,7 +192,7 @@ fn test_variables_in_service_ports() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -217,7 +217,7 @@ fn test_variables_in_service_volumes() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -242,7 +242,7 @@ fn test_variables_in_step_command() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -265,7 +265,7 @@ fn test_variables_in_step_working_directory() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -289,7 +289,7 @@ fn test_variables_in_step_environment() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -310,7 +310,7 @@ fn test_undefined_variable_detection() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - TOML parsing succeeds, but runtime template rendering should fail
     assert!(result.is_ok());
@@ -333,7 +333,7 @@ fn test_undefined_nested_variable() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - parsing succeeds, runtime should handle undefined nested var
     assert!(result.is_ok());
@@ -358,7 +358,7 @@ fn test_integer_variable_coercion() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -383,7 +383,7 @@ fn test_boolean_variable_coercion() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -407,7 +407,7 @@ fn test_array_variable_support() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -433,7 +433,7 @@ fn test_mixed_type_variables() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -465,7 +465,7 @@ fn test_variable_override_precedence() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -491,7 +491,7 @@ fn test_variable_shadowing() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -515,7 +515,7 @@ fn test_empty_variable_value() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -535,7 +535,7 @@ fn test_special_characters_in_variable() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -555,7 +555,7 @@ fn test_variable_with_spaces() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());

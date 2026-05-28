@@ -72,7 +72,7 @@ command = ["echo", "Hello from hot reload test"]
 
     // Step 3: TOML parsing (CRITICAL - measured here)
     let _test_config: TestConfig = toml::from_str(&rendered).map_err(|e| {
-        clnrm_core::error::CleanroomError::config_error(format!("TOML parse: {}", e))
+        clnrm_core::error::CleanroomError::configuration_error(format!("TOML parse: {}", e))
     })?;
 
     // Step 4: Test execution would happen here

@@ -26,7 +26,7 @@ pub async fn generate_report(
         })?;
 
         serde_json::from_str::<FrameworkTestResults>(&content).map_err(|e| {
-            CleanroomError::config_error("Invalid JSON format in input file")
+            CleanroomError::configuration_error("Invalid JSON format in input file")
                 .with_context("Input file must contain valid test results JSON")
                 .with_source(e.to_string())
         })?

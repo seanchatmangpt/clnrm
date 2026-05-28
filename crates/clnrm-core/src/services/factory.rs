@@ -74,6 +74,11 @@ impl ServiceFactory {
                     "Unknown service type: '{}'. Supported types: surrealdb, generic_container, testcontainers, ollama, tgi, vllm",
                     config.plugin
                 );
+                #[cfg(not(feature = "backend-testcontainers"))]
+                let msg = format!(
+                    "Unknown service type: '{}'. Supported types: surrealdb, ollama, tgi, vllm",
+                    config.plugin
+                );
                 Err(CleanroomError::configuration_error(msg))
             },
         }

@@ -275,7 +275,7 @@ async fn test_multi_container_concurrent_telemetry_no_conflicts() -> Result<()> 
     let mut handles = vec![];
 
     for (name, image) in &container_names {
-        let plugin = GenericContainerPlugin::new(name, image);
+        let plugin = GenericContainerPlugin::new(*name, *image);
         env.register_service(Box::new(plugin)).await?;
         let handle = env.start_service(name).await?;
         handles.push((name.to_string(), handle));

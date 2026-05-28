@@ -5,6 +5,61 @@ All notable changes to the clnrm project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-01-05
+
+### Breaking Changes
+
+- **gVisor is now the default and only backend** - Docker/testcontainers removed from default
+  - `AutoBackend` now uses `GvisorBackend` by default
+  - Backend selection: `"gvisor"` and `"auto"` both use gVisor
+  - `"testcontainers"` backend removed from default (available via `backend-testcontainers` feature)
+- **Service plugins migrated to gVisor**:
+  - `GenericContainerPlugin` now uses gVisor backend
+  - `SurrealDbPlugin` now uses gVisor backend
+  - `OtelCollectorPlugin` now uses gVisor backend
+- **testcontainers is legacy-only**:
+  - Available only via `backend-testcontainers` feature flag
+  - Deprecation warnings emitted when used
+  - Will be removed in a future major version
+
+### Added
+
+- **Complete gVisor backend implementation**:
+  - OCI image loading from Docker registries
+  - OCI bundle creation for runsc
+  - Direct runsc execution (no Docker daemon required)
+  - Port allocation system for service management
+  - Volume mount support
+- **gVisor-native service management**:
+  - Port allocator for deterministic port assignment
+  - Service lifecycle management with gVisor
+  - Health check support for gVisor containers
+
+### Changed
+
+- Default backend feature changed from `backend-testcontainers` to `backend-gvisor`
+- All service plugins now use gVisor by default
+- Error handling updated to prioritize gVisor errors
+- `AutoBackend::detect()` now detects and uses gVisor
+- `AutoBackend::from_name()` supports `"gvisor"` and `"auto"` (both use gVisor)
+
+### Migration
+
+**From v2.x to v3.0.0:**
+
+1. **Install gVisor**: Follow instructions at https://gvisor.dev/docs/user_guide/install/
+2. **Update backend selection**: Change `backend = "testcontainers"` to `backend = "gvisor"` (or use `"auto"`)
+3. **Service plugins**: No changes needed - they automatically use gVisor
+4. **For legacy testcontainers support**: Enable `backend-testcontainers` feature:
+   ```toml
+   [dependencies]
+   clnrm-core = { version = "3.0.0", features = ["backend-testcontainers"] }
+   ```
+
+See `docs/MIGRATION_GUIDE_3.0.md` for detailed migration instructions.
+
+---
+
 ## [1.7.1] - 2025-12-03
 
 ### Fixed

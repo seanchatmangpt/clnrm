@@ -310,7 +310,7 @@ async fn check_ollama_health() -> Result<()> {
         .send()
         .await
         .map_err(|e| {
-            CleanroomError::connection_failed("Ollama connection failed").with_source(e.to_string())
+            CleanroomError::network_error("Ollama connection failed").with_source(e.to_string())
         })?;
 
     if response.status().is_success() {

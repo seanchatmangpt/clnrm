@@ -88,7 +88,7 @@ fn lint_single_file(file: &Path) -> Result<LintResult> {
 
     // Parse as TestConfig
     let config: crate::config::TestConfig = toml::from_str(&content)
-        .map_err(|e| CleanroomError::config_error(format!("Failed to parse TOML: {}", e)))?;
+        .map_err(|e| CleanroomError::configuration_error(format!("Failed to parse TOML: {}", e)))?;
 
     // Check for common issues
     if config.meta.is_none() && config.test.is_none() {

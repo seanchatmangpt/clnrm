@@ -1,7 +1,11 @@
-# gVisor Test Migration Guide
+# gVisor Test Migration Guide (v3.0.0)
 
 **Companion to:** GVISOR_MIGRATION_PLAN.md
-**Purpose:** Detailed test-by-test migration instructions with code examples
+**Status:** gVisor is now the default and only production backend. Testcontainers is legacy-only.
+
+## Overview
+
+Starting with v3.0, clnrm has migrated to a gVisor-first architecture. This guide provides detailed test-by-test migration instructions for moving from legacy Testcontainers-based tests to the gVisor-native backend.
 
 ## Quick Reference
 
@@ -23,7 +27,7 @@
 
 **Test Function:** `test_container_execution_exports_container_id`
 
-**Before (Testcontainers):**
+**Before (Legacy Testcontainers):**
 ```rust
 #[tokio::test]
 async fn test_container_execution_exports_container_id() -> Result<()> {
@@ -117,7 +121,7 @@ let env = CleanroomEnvironment::with_backend(backend).await?;
 
 **Test Function:** `test_basic_workflow_single_container`
 
-**Before (Testcontainers):**
+**Before (Legacy Testcontainers):**
 ```rust
 #[tokio::test]
 async fn test_basic_workflow_single_container() -> Result<()> {
@@ -186,7 +190,7 @@ async fn test_basic_workflow_single_container() -> Result<()> {
 
 **Test Function:** `test_concurrent_execution_exports_individual_telemetry`
 
-**Before (Testcontainers):**
+**Before (Legacy Testcontainers):**
 ```rust
 #[tokio::test]
 async fn test_concurrent_execution_exports_individual_telemetry() -> Result<()> {
@@ -279,7 +283,7 @@ async fn test_concurrent_execution_exports_individual_telemetry() -> Result<()> 
 
 **Test Function:** `test_env_var_propagation_exports_telemetry`
 
-**Before (Testcontainers):**
+**Before (Legacy Testcontainers):**
 ```rust
 #[tokio::test]
 async fn test_env_var_propagation_exports_telemetry() -> Result<()> {
@@ -352,7 +356,7 @@ async fn test_env_var_propagation_exports_telemetry() -> Result<()> {
 
 #### File: `crates/clnrm-core/src/services/generic.rs`
 
-**Before (Testcontainers):**
+**Before (Legacy Testcontainers):**
 ```rust
 use testcontainers::runners::AsyncRunner;
 use testcontainers::{GenericImage, ImageExt};
@@ -504,7 +508,7 @@ impl GVisorBackend {
 
 #### Test Function: `test_volume_mount_read_only`
 
-**Before (Testcontainers):**
+**Before (Legacy Testcontainers):**
 ```rust
 #[tokio::test]
 async fn test_volume_mount_read_only() -> Result<()> {

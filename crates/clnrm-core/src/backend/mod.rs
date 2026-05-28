@@ -36,6 +36,7 @@ pub use oci::{
     ImageCache, ImageSource, OciBundle, OciBundleBuilder, OciImage, OciImageLoader, RunscExecutor,
 };
 pub use pool::{ContainerHandle, ContainerPool, PoolConfig, PoolStats, PooledContainer};
+
 pub use volume::{VolumeMount, VolumeValidator};
 
 /// Get a mock backend for fast testing
@@ -172,3 +173,62 @@ pub trait Backend: Send + Sync + std::fmt::Debug {
     fn supports_deterministic(&self) -> bool;
 }
 
+#[derive(Debug)]
+pub struct AutoBackend {
+    inner: GvisorBackend,
+}
+
+impl AutoBackend {
+    pub fn new(backend: GvisorBackend) -> Self {
+        Self { inner: backend }
+    }
+
+    pub fn detect() -> Result<Self> {
+        let backend = GvisorBackend::new("alpine:latest")?;
+        Ok(Self { inner: backend })
+    }
+
+    pub fn from_name(name: &str) -> Result<Self> {
+        match name {
+            _ => Err(crate::error::CleanroomError::new(
+                crate::error::ErrorKind::ConfigurationError,
+                format!(
+                    "{}", name
+                ),
+            )),
+        }
+    }
+
+    /// Get the resolved backend name
+    pub fn resolved_backend(&self) -> String {
+        self.inner.name().to_string()
+    }
+
+    pub fn is_backend_available(name: &str) -> bool {
+        match name {
+            _ => false,
+        }
+    }
+}
+
+impl Backend for AutoBackend {
+    fn run_cmd(&self, cmd: Cmd) -> Result<RunResult> {
+        self.inner.run_cmd(cmd)
+    }
+
+    fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    fn is_available(&self) -> bool {
+        self.inner.is_available()
+    }
+
+    fn supports_hermetic(&self) -> bool {
+        self.inner.supports_hermetic()
+    }
+
+    fn supports_deterministic(&self) -> bool {
+        self.inner.supports_deterministic()
+    }
+}

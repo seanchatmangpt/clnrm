@@ -42,7 +42,7 @@ fn test_performance_config_parses_but_warns() {
 
     // Act - TOML parsing should succeed (structure is valid)
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - parsing succeeds, but performance field exists
     assert!(result.is_ok());
@@ -71,7 +71,7 @@ fn test_sample_size_configuration_detected() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -98,7 +98,7 @@ fn test_baseline_configuration_detected() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -125,7 +125,7 @@ fn test_regression_detection_configuration_detected() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -186,7 +186,7 @@ fn test_all_performance_fields_detected() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - all fields should be present
     assert!(result.is_ok());
@@ -236,7 +236,7 @@ fn test_optional_performance_fields() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -266,7 +266,7 @@ fn test_config_without_performance_section() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());

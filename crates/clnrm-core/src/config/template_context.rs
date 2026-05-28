@@ -244,7 +244,7 @@ fn parse_key_value(line: &str) -> Result<Option<(String, Value)>> {
         // Float
         Value::Number(
             serde_json::Number::from_f64(f)
-                .ok_or_else(|| CleanroomError::config_error(format!("Invalid float: {}", f)))?,
+                .ok_or_else(|| CleanroomError::configuration_error(format!("Invalid float: {}", f)))?,
         )
     } else if value_str.starts_with('"') && value_str.ends_with('"') && value_str.len() >= 2 {
         // Quoted string
@@ -276,7 +276,7 @@ fn parse_array(value_str: &str) -> Result<Value> {
             if let Ok(f) = s.parse::<f64>() {
                 return serde_json::Number::from_f64(f)
                     .map(Value::Number)
-                    .ok_or_else(|| CleanroomError::config_error(format!("Invalid float: {}", f)));
+                    .ok_or_else(|| CleanroomError::configuration_error(format!("Invalid float: {}", f)));
             }
             // Try boolean
             if s == "true" {

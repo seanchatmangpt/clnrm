@@ -377,7 +377,7 @@ async fn stop_container(container_id: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ContainerConfig, StepConfig, TestConfig};
+    use crate::config::types::{ContainerConfig, StepConfig, TestConfig};
     use std::collections::HashMap;
 
     /// Test that container execution fails gracefully with invalid config

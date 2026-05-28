@@ -322,11 +322,11 @@ impl CleanroomConfig {
 pub fn load_cleanroom_config_from_file<P: AsRef<Path>>(path: P) -> Result<CleanroomConfig> {
     let path = path.as_ref();
     let content = std::fs::read_to_string(path).map_err(|e| {
-        CleanroomError::config_error(format!("Failed to read cleanroom.toml: {}", e))
+        CleanroomError::configuration_error(format!("Failed to read cleanroom.toml: {}", e))
     })?;
 
     let config: CleanroomConfig = toml::from_str(&content).map_err(|e| {
-        CleanroomError::config_error(format!("Invalid cleanroom.toml format: {}", e))
+        CleanroomError::configuration_error(format!("Invalid cleanroom.toml format: {}", e))
     })?;
 
     config.validate()?;

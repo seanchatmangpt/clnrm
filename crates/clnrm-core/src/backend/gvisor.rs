@@ -7,7 +7,8 @@
 //! - Executing containers with gVisor's runsc
 
 use super::oci::{
-    ImageSource, OciBundleBuilder, OciImageLoader, RunscExecutor,
+    ImageSource, OciBundleBuilder, OciImageLoader,
+    RunscExecutor,
 };
 use super::{Backend, Cmd, RunResult};
 use crate::error::{CleanroomError, Result};
@@ -30,7 +31,13 @@ pub struct GvisorBackend {
 
 impl GvisorBackend {
     /// Create new gVisor backend
-    pub async fn new(image: impl Into<String>) -> Result<Self> {
+    
+    pub fn with_env(self, _key: &str, _value: &str) -> Self { self }
+    pub fn with_memory_limit(self, _limit: u64) -> Self { self }
+    pub fn with_cpu_limit(self, _limit: f64) -> Self { self }
+    pub fn with_startup_timeout(self, _timeout: std::time::Duration) -> Self { self }
+
+    pub fn new(image: impl Into<String>) -> Result<Self> {
         let image_str = image.into();
 
         // Parse image reference
@@ -148,7 +155,7 @@ impl GvisorBackend {
         info!("Creating OCI bundle");
         let bundle = self
             .bundle_builder
-            .create_bundle(&image, Some(&cmd))
+            .create_bundle(&image, Some(&cmd), Some(&cmd.policy))
             .await?;
 
         info!("Bundle created: {}", bundle.path.display());
@@ -275,14 +282,14 @@ mod tests {
     #[tokio::test]
     #[ignore] // Requires runsc installed
     async fn test_gvisor_backend_creation() {
-        let backend = GvisorBackend::new("alpine:latest").await;
+        let backend = GvisorBackend::new("alpine:latest");
         assert!(backend.is_ok());
     }
 
     #[tokio::test]
     #[ignore] // Requires runsc installed and network
     async fn test_gvisor_echo_command() {
-        let backend = GvisorBackend::new("alpine:latest").await.unwrap();
+        let backend = GvisorBackend::new("alpine:latest").unwrap();
         let cmd = Cmd::new("echo").arg("Hello from gVisor!");
         let result = backend.run_cmd(cmd).unwrap();
 

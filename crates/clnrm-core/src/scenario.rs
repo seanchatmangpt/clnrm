@@ -259,7 +259,7 @@ impl Scenario {
     /// Run the scenario with testcontainers backend
     #[cfg(feature = "backend-testcontainers")]
     pub fn run(self) -> Result<RunResult> {
-        let backend = crate::backend::TestcontainerBackend::new("rust:1-slim")?;
+        let backend = crate::backend::GvisorBackend::new("rust:1-slim")?;
         self.run_with_backend(backend)
     }
 
@@ -271,7 +271,7 @@ impl Scenario {
     /// - ✅ No unwrap() or expect() calls
     #[cfg(feature = "backend-testcontainers")]
     pub async fn run_async(self) -> Result<RunResult> {
-        let backend = crate::backend::TestcontainerBackend::new("rust:1-slim")?;
+        let backend = crate::backend::GvisorBackend::new("rust:1-slim")?;
         self.run_with_backend_async(backend).await
     }
 
@@ -279,7 +279,7 @@ impl Scenario {
     #[cfg(feature = "backend-testcontainers")]
     pub fn run_with_backend(
         self,
-        backend: crate::backend::TestcontainerBackend,
+        backend: crate::backend::GvisorBackend,
     ) -> Result<RunResult> {
         let start_time = std::time::Instant::now();
         let mut steps = Vec::new();
@@ -342,7 +342,7 @@ impl Scenario {
     #[cfg(feature = "backend-testcontainers")]
     pub async fn run_with_backend_async(
         self,
-        backend: crate::backend::TestcontainerBackend,
+        backend: crate::backend::GvisorBackend,
     ) -> Result<RunResult> {
         // Use spawn_blocking to run the synchronous backend in a separate thread
         // This prevents the "Cannot start a runtime from within a runtime" error

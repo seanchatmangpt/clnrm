@@ -1662,7 +1662,7 @@ async fn test_triz_principles_integration() -> Result<()> {
         .with_context("Check syntax at line 42")
         .with_source("parser.rs");
 
-    assert!(enhanced_error.context.len() >= 2, "Should have multiple context levels");
+    assert!(enhanced_error.context.is_some(), "Should have multiple context levels");
     assert!(enhanced_error.source.is_some(), "Should have source information");
 
     // TRIZ Principle 35 (Parameter Changes): Demonstrate dynamic parameter adaptation

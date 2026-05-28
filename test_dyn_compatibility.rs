@@ -19,3 +19,4 @@ fn test_dyn_service_plugin_compatibility() {
 
     println!("✅ dyn ServicePlugin compatibility verified!");
 }
+

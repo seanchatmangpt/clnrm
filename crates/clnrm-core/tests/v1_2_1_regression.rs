@@ -33,7 +33,7 @@ fn test_basic_config_parsing() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -57,7 +57,7 @@ fn test_v0_4_x_format_compatibility() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - should still parse
     assert!(result.is_ok());
@@ -84,7 +84,7 @@ fn test_init_generated_config_compatible() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -108,7 +108,7 @@ fn test_minimal_valid_toml() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -134,7 +134,7 @@ fn test_services_section_parsing() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -161,7 +161,7 @@ fn test_service_section_parsing() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -192,7 +192,7 @@ fn test_multiple_steps_parsing() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -222,7 +222,7 @@ fn test_otel_config_section_parsing() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -251,7 +251,7 @@ fn test_otel_validation_section_parsing() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -278,7 +278,7 @@ fn test_expect_span_section() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -319,7 +319,7 @@ fn test_service_isolation_config() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -348,7 +348,7 @@ fn test_determinism_config_parsing() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -387,7 +387,7 @@ fn test_v1_0_0_config_still_works() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - v1.0.0 config should work in v1.2.1
     assert!(result.is_ok());
@@ -414,7 +414,7 @@ fn test_assertions_section_compatibility() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -437,7 +437,7 @@ fn test_legacy_timeout_format() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert
     assert!(result.is_ok());
@@ -462,7 +462,7 @@ fn test_vars_section_optional() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - should work without vars
     assert!(result.is_ok());
@@ -499,7 +499,7 @@ fn test_mixed_old_new_features() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - both old and new features should work
     assert!(result.is_ok());
@@ -519,7 +519,7 @@ fn test_all_optional_fields_still_optional() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - minimal config should still work
     assert!(result.is_ok());
@@ -545,7 +545,7 @@ fn test_invalid_toml_still_fails_gracefully() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - should fail with parse error
     assert!(result.is_err());
@@ -561,7 +561,7 @@ fn test_missing_required_fields_still_fails() {
 
     // Act
     let result: Result<TestConfig> = toml::from_str(toml_content)
-        .map_err(|e| clnrm_core::error::CleanroomError::config_error(e.to_string()));
+        .map_err(|e| clnrm_core::error::CleanroomError::configuration_error(e.to_string()));
 
     // Assert - should fail (command is required)
     assert!(result.is_err());

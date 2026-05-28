@@ -1,55 +1,25 @@
 [package]
 name = "clnrm-cli"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-authors.workspace = true
-repository.workspace = true
-description = "Cleanroom Testing Framework - CLI library"
-keywords = ["testing", "integration", "containers", "hermetic", "ai", "cli"]
-categories = ["development-tools", "command-line-utilities"]
-
-[lib]
-name = "clnrm_cli"
-path = "src/lib.rs"
+version = "26.5.28"
+edition = "2021"
+authors = ["Cleanroom Core Team"]
+description = "Cleanroom CLI - Noun-Verb interface for hermetic testing"
 
 [dependencies]
-# Core dependencies
-clnrm-core = { path = "../clnrm-core", version = "2.0.0" }
-clnrm-shared = { path = "../clnrm-shared", version = "2.0.0" }
-tokio = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-anyhow = { workspace = true }
-tracing = { workspace = true }
-
-# CLI dependencies
-clap = { workspace = true }
-clap-noun-verb = { version = "5.3.2", features = ["async"] }
-clap-noun-verb-macros = "5.3.2"
-linkme = "0.3"                                               # Required for clap-noun-verb macro auto-discovery
-env_logger = { workspace = true }
-log = { workspace = true }
-toml = { workspace = true }
-regex = { workspace = true }
-walkdir = { workspace = true }
-tempfile = { workspace = true }
-junit-report = { workspace = true }
-notify = { workspace = true }
-toml_edit = { workspace = true }
-quick-xml = { workspace = true }
-
-# Additional CLI utilities
-semver = "1.0"
-glob = "0.3"
-colored = "2.1"
-which = "6.0"
-sha2 = "0.10"
+clap = { version = "4.5", features = ["derive"] }
+linkme = "0.3"
+clnrm-core = { path = "../clnrm-core", version = "26.5.28" }
+clap-noun-verb = { version = "5.6.2", features = ["async"] }
+clap-noun-verb-macros = "5.6.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "1.1.0"
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+walkdir = "2.3"
+uuid = { version = "1.0", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 
-[dev-dependencies]
-assert_cmd = "2.0"
-predicates = "3.0"
-tempfile = { workspace = true }
-toml = { workspace = true }
-
+[[bin]]
+name = "clnrm"
+path = "src/main.rs"

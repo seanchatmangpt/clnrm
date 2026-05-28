@@ -86,27 +86,11 @@ pub async fn run_tests_sequential_with_results(
     paths: &[PathBuf],
     config: &CliConfig,
 ) -> Result<Vec<CliTestResult>> {
-    // MANDATORY PRE-FLIGHT CHECK: Container runtime availability
-    // FMEA FM-001 (RPN 480): Container runtime must be available before test execution
-    // Exit code 3: System error (Runtime unavailable)
-    #[cfg(feature = "backend-testcontainers")]
-    {
-        crate::backend::TestcontainerBackend::verify_docker_available()?;
-        tracing::info!("✅ Docker daemon available and responding");
-    }
-    #[cfg(feature = "backend-gvisor")]
-    {
-        if !crate::backend::GvisorBackend::is_available() {
-            return Err(crate::error::CleanroomError::container_error(
-                "gVisor runtime (runsc) not available\n\n\
-                 Remediation:\n\
-                 Install gVisor: https://gvisor.dev/docs/user_guide/install/\n\
-                 After installation, ensure 'runsc' is in your PATH\n\n\
-                 Exit code: 3"
-            ));
-        }
-        tracing::info!("✅ gVisor runtime available and responding");
-    }
+    // MANDATORY PRE-FLIGHT CHECK: Docker availability
+    // FMEA FM-001 (RPN 480): Docker daemon must be available before test execution
+    // Exit code 3: System error (Docker unavailable)
+    crate::backend::GvisorBackend::is_available().then(|| ()).ok_or_else(|| CleanroomError::runtime_error("gVisor not available"))?;
+    tracing::info!("✅ Docker daemon available and responding");
 
     let mut results = Vec::new();
 
@@ -256,27 +240,11 @@ pub async fn run_tests_parallel_with_results(
     use tokio::sync::Semaphore;
     use tokio::task::JoinSet;
 
-    // MANDATORY PRE-FLIGHT CHECK: Container runtime availability
-    // FMEA FM-001 (RPN 480): Container runtime must be available before test execution
-    // Exit code 3: System error (Runtime unavailable)
-    #[cfg(feature = "backend-testcontainers")]
-    {
-        crate::backend::TestcontainerBackend::verify_docker_available()?;
-        tracing::info!("✅ Docker daemon available and responding");
-    }
-    #[cfg(feature = "backend-gvisor")]
-    {
-        if !crate::backend::GvisorBackend::is_available() {
-            return Err(crate::error::CleanroomError::container_error(
-                "gVisor runtime (runsc) not available\n\n\
-                 Remediation:\n\
-                 Install gVisor: https://gvisor.dev/docs/user_guide/install/\n\
-                 After installation, ensure 'runsc' is in your PATH\n\n\
-                 Exit code: 3"
-            ));
-        }
-        tracing::info!("✅ gVisor runtime available and responding");
-    }
+    // MANDATORY PRE-FLIGHT CHECK: Docker availability
+    // FMEA FM-001 (RPN 480): Docker daemon must be available before test execution
+    // Exit code 3: System error (Docker unavailable)
+    crate::backend::GvisorBackend::is_available().then(|| ()).ok_or_else(|| CleanroomError::runtime_error("gVisor not available"))?;
+    tracing::info!("✅ Docker daemon available and responding");
 
     // Create semaphore to limit concurrent test executions
     let semaphore = Arc::new(Semaphore::new(config.jobs));

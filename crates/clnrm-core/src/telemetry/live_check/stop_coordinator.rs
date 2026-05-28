@@ -62,7 +62,7 @@ impl StopConfig {
     /// Validate configuration
     pub fn validate(&self) -> Result<()> {
         if self.phase1_timeout == 0 {
-            return Err(CleanroomError::config_error("phase1_timeout must be > 0"));
+            return Err(CleanroomError::configuration_error("phase1_timeout must be > 0"));
         }
 
         if self.phase2_timeout < self.phase1_timeout {

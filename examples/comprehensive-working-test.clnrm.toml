@@ -36,3 +36,4 @@ name = "run_integration_test"
 container = "test_runner"
 exec = ["sh", "-c", "echo 'Integration test passed - API and DB are working!'"]
 assert.stdout_contains = "Integration test passed"
+

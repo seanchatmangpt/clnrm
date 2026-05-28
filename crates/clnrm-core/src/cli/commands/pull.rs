@@ -124,7 +124,7 @@ fn extract_images_from_test_files(test_files: &[PathBuf]) -> Result<Vec<String>>
 
         // Parse TOML
         let config: TestConfig = toml::from_str(&content).map_err(|e| {
-            CleanroomError::config_error(format!(
+            CleanroomError::configuration_error(format!(
                 "Failed to parse test file {}: {}",
                 test_file.display(),
                 e

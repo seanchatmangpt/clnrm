@@ -8,3 +8,4 @@ exclude = [
     "examples/framework-self-testing/simple-framework-test.rs",
     "examples/otel_stdout_exporter_demo.rs",
 ]
+

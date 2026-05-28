@@ -6,9 +6,7 @@
 //! - Extracting and merging image layers
 //! - Creating OCI bundles for runsc execution
 
-use crate::error::Result;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 pub mod bundle_builder;
 pub mod cache;
@@ -17,6 +15,7 @@ pub mod image_loader;
 pub mod layer_manager;
 pub mod registry_client;
 pub mod runsc_executor;
+pub use image_loader::LocalImageStore;
 
 pub use bundle_builder::{OciBundle, OciBundleBuilder};
 pub use cache::ImageCache;
@@ -47,7 +46,7 @@ pub struct OciManifest {
 }
 
 /// OCI descriptor for config or layer
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct OciDescriptor {
     #[serde(rename = "mediaType")]
     pub media_type: String,
@@ -170,11 +169,53 @@ pub struct NamespaceConfig {
 pub struct LinuxConfig {
     pub namespaces: Vec<NamespaceConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub resources: Option<serde_json::Value>,
+    pub resources: Option<ResourcesConfig>,
     #[serde(rename = "maskedPaths", skip_serializing_if = "Vec::is_empty", default)]
     pub masked_paths: Vec<String>,
     #[serde(rename = "readonlyPaths", skip_serializing_if = "Vec::is_empty", default)]
     pub readonly_paths: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seccomp: Option<SeccompConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourcesConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory: Option<MemoryResources>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpu: Option<CpuResources>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryResources {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reservation: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CpuResources {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shares: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quota: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub period: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SeccompConfig {
+    #[serde(rename = "defaultAction")]
+    pub default_action: String,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub syscalls: Vec<SeccompSyscall>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SeccompSyscall {
+    pub names: Vec<String>,
+    pub action: String,
 }
 
 #[cfg(test)]
