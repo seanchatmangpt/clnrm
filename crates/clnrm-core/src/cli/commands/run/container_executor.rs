@@ -1,51 +1,33 @@
 //! Container-based test execution
 //!
 //! Executes test configurations with containers and steps as defined in TOML files.
-//! Provides hermetic testing capabilities with automatic container lifecycle management.
+//! Provides hermetic testing capabilities with automatic container lifecycle management using gVisor.
 
 use crate::config::types::{ContainerConfig, StepConfig, TestConfig};
 use crate::error::{CleanroomError, Result};
+use crate::cleanroom::CleanroomEnvironment;
 use std::collections::HashMap;
-use std::process::Stdio;
 use std::time::Instant;
-use tokio::process::Command;
 use tracing::{debug, info, warn};
-
-/// Container execution context
-pub struct ContainerContext {
-    /// Container ID to name mapping
-    pub containers: HashMap<String, String>,
-    /// Container configurations
-    pub configs: HashMap<String, ContainerConfig>,
-}
 
 /// Step execution result
 #[derive(Debug, Clone)]
 pub struct StepResult {
-    /// Step name
     pub name: String,
-    /// Container used
     pub container: String,
-    /// Command executed
     pub command: Vec<String>,
-    /// Exit code
     pub exit_code: i32,
-    /// Standard output
     pub stdout: String,
-    /// Standard error
     pub stderr: String,
-    /// Execution duration in milliseconds
     pub duration_ms: u64,
-    /// Whether the step passed assertions
     pub passed: bool,
-    /// Assertion failure message (if any)
     pub assertion_error: Option<String>,
 }
 
 /// Execute a container-based test configuration
 pub async fn execute_container_test(test_config: &TestConfig) -> Result<Vec<StepResult>> {
     info!(
-        "🚀 Executing container-based test: {}",
+        "🚀 Executing container-based test via gVisor: {}",
         test_config
             .test
             .as_ref()
@@ -53,19 +35,13 @@ pub async fn execute_container_test(test_config: &TestConfig) -> Result<Vec<Step
             .unwrap_or("unnamed")
     );
 
-    // Initialize container context
-    let mut context = ContainerContext {
-        containers: HashMap::new(),
-        configs: test_config.containers.clone().unwrap_or_default(),
-    };
-
-    // Start containers
-    start_containers(&mut context).await?;
+    // Initialize the CleanroomEnvironment to use the gVisor backend
+    let env = CleanroomEnvironment::new().await?;
 
     // Execute steps
     let mut results = Vec::new();
     for step in &test_config.steps {
-        let result = execute_step(&context, step).await?;
+        let result = execute_step(&env, step).await?;
         results.push(result.clone());
 
         // Log result
@@ -85,97 +61,16 @@ pub async fn execute_container_test(test_config: &TestConfig) -> Result<Vec<Step
         }
     }
 
-    // Cleanup containers
-    cleanup_containers(&context).await?;
-
     Ok(results)
 }
 
-/// Start all containers defined in the configuration
-async fn start_containers(context: &mut ContainerContext) -> Result<()> {
-    for (name, config) in &context.configs {
-        info!(
-            "🐳 Starting container '{}': {}:{}",
-            name, config.image, config.tag
-        );
-        let container_id = start_container(name, config).await?;
-        context.containers.insert(name.clone(), container_id);
-    }
-    Ok(())
-}
-
-/// Start a single container
-async fn start_container(name: &str, config: &ContainerConfig) -> Result<String> {
-    let image = format!("{}:{}", config.image, config.tag);
-
-    // Build docker run command
-    let mut cmd = Command::new("docker");
-    cmd.arg("run")
-        .arg("-d") // Detached
-        .arg("--rm") // Remove on stop
-        .arg("--name")
-        .arg(format!("clnrm-test-{}", name));
-
-    // Add environment variables
-    for (key, value) in &config.env {
-        cmd.arg("-e").arg(format!("{}={}", key, value));
-    }
-
-    // Add volumes
-    for volume in &config.volumes {
-        cmd.arg("-v").arg(volume);
-    }
-
-    // Add working directory
-    if let Some(workdir) = &config.workdir {
-        cmd.arg("-w").arg(workdir);
-    }
-
-    // Add additional arguments
-    for arg in &config.args {
-        cmd.arg(arg);
-    }
-
-    // Add image
-    cmd.arg(&image);
-
-    // Execute
-    let output = cmd
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .await
-        .map_err(|e| {
-            CleanroomError::execution_error(format!("Failed to start container '{}': {}", name, e))
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(CleanroomError::execution_error(format!(
-            "Container '{}' failed to start: {}",
-            name, stderr
-        )));
-    }
-
-    let container_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    debug!("Container '{}' started with ID: {}", name, container_id);
-    Ok(container_id)
-}
-
 /// Execute a single test step
-async fn execute_step(context: &ContainerContext, step: &StepConfig) -> Result<StepResult> {
+async fn execute_step(env: &CleanroomEnvironment, step: &StepConfig) -> Result<StepResult> {
     let start_time = Instant::now();
 
     // Determine container to use
     let container_name = step.container.as_ref().ok_or_else(|| {
         CleanroomError::validation_error(format!("Step '{}' must specify a container", step.name))
-    })?;
-
-    let container_id = context.containers.get(container_name).ok_or_else(|| {
-        CleanroomError::validation_error(format!(
-            "Step '{}' references unknown container '{}'",
-            step.name, container_name
-        ))
     })?;
 
     // Determine command to execute
@@ -195,38 +90,20 @@ async fn execute_step(context: &ContainerContext, step: &StepConfig) -> Result<S
         step.name, container_name, command
     );
 
-    // Build docker exec command
-    let mut docker_cmd = Command::new("docker");
-    docker_cmd.arg("exec");
-
-    // Add step-specific environment variables
-    if let Some(env) = &step.env {
-        for (key, value) in env {
-            docker_cmd.arg("-e").arg(format!("{}={}", key, value));
-        }
-    }
-
-    // Add container ID and command
-    docker_cmd.arg(container_id);
-    docker_cmd.args(&command);
-
-    // Execute command
-    let output = docker_cmd
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .await
-        .map_err(|e| {
-            CleanroomError::execution_error(format!(
-                "Failed to execute step '{}' in container '{}': {}",
-                step.name, container_name, e
-            ))
-        })?;
+    let env_vars = step.env.clone().unwrap_or_default();
+    
+    // Execute command using the environment
+    let exec_result = env.execute_in_container(
+        container_name,
+        &command,
+        step.workdir.as_deref(),
+        Some(&env_vars)
+    ).await?;
 
     let duration_ms = start_time.elapsed().as_millis() as u64;
-    let exit_code = output.status.code().unwrap_or(-1);
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let exit_code = exec_result.exit_code;
+    let stdout = exec_result.stdout;
+    let stderr = exec_result.stderr;
 
     // Validate assertions
     let (passed, assertion_error) = validate_assertions(step, exit_code, &stdout, &stderr)?;
@@ -333,45 +210,6 @@ fn validate_assertions(
     }
 
     Ok((true, None))
-}
-
-/// Clean up containers
-async fn cleanup_containers(context: &ContainerContext) -> Result<()> {
-    for (name, container_id) in &context.containers {
-        info!("🧹 Stopping container '{}'", name);
-        if let Err(e) = stop_container(container_id).await {
-            warn!("Failed to stop container '{}': {}", name, e);
-        }
-    }
-    Ok(())
-}
-
-/// Stop a single container
-async fn stop_container(container_id: &str) -> Result<()> {
-    let output = Command::new("docker")
-        .arg("stop")
-        .arg(container_id)
-        .output()
-        .await
-        .map_err(|e| {
-            CleanroomError::execution_error(format!(
-                "Failed to stop container {}: {}",
-                container_id, e
-            ))
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        // Container might already be stopped, which is OK
-        if !stderr.contains("No such container") {
-            return Err(CleanroomError::execution_error(format!(
-                "Failed to stop container {}: {}",
-                container_id, stderr
-            )));
-        }
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

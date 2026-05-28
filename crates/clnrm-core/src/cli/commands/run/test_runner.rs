@@ -1,89 +1,70 @@
 //! Test Runner
 //!
-//! Executes tests using Config and proper `docker exec` semantics.
-//! This runner uses `DockerContainerManager` and `TestRunner` from the executor module.
-//!
-//! # Key Features
-//!
-//! - Parses clnrm config format
-//! - Uses `docker exec` for step execution (not new containers!)
-//! - Container lifecycle: start → exec steps → stop
-//! - Proper environment variable propagation
-//!
-//! # Config Format
-//!
-//! ```toml
-//! [test]
-//! name = "my_test"
-//! timeout = "60s"
-//!
-//! [containers.alpine]
-//! image = "alpine:latest"
-//! env = { MY_VAR = "hello" }
-//!
-//! [[steps]]
-//! name = "verify_env"
-//! container = "alpine"
-//! exec = ["sh", "-c", "echo $MY_VAR"]
-//! assert.stdout_contains = "hello"
-//! ```
+//! Executes tests using the new TestConfig format and gVisor backend.
+//! This bridges the CLI to the unified cleanroom execution pipeline.
 
-use crate::config::spec::Config;
+use crate::config::load_config_from_file;
 use crate::error::{CleanroomError, Result};
-use crate::executor::{DockerContainerManager, ExecutionResult, TestRunner};
+use crate::cli::commands::run::container_executor::{execute_container_test, StepResult};
 use std::path::Path;
 use tracing::{debug, error, info};
 
-/// Run a test using the clnrm config format and executor
-///
-/// Returns `Ok(ExecutionResult)` with all step results
+/// Unified execution result matching the old signature
+pub struct ExecutionResult {
+    pub passed: bool,
+    pub summary: String,
+    pub step_results: Vec<StepResult>,
+    pub containers_used: Vec<String>,
+}
+
+/// Run a test using the unified Pipeline B executor
 pub async fn run_test(path: &Path) -> Result<ExecutionResult> {
-    // Read config file
-    let content = std::fs::read_to_string(path).map_err(|e| {
-        CleanroomError::configuration_error(format!(
-            "Failed to read config file '{}': {}",
-            path.display(),
-            e
-        ))
-    })?;
+    // Read and parse config file, applying templates and validations
+    let config = load_config_from_file(path)?;
 
-    // Parse config
-    let config: Config = toml::from_str(&content).map_err(|e| {
-        CleanroomError::configuration_error(format!("TOML parse error in '{}': {}", path.display(), e))
-    })?;
-
-    // Validate at parse time (fail fast) - includes reference validation
-    config.validate()?;
-
-    info!("🚀 Executing test: {}", config.test.name);
-    debug!(
-        "Containers: {:?}, Steps: {}",
-        config.containers.keys().collect::<Vec<_>>(),
-        config.steps.len()
+    info!(
+        "🚀 Executing unified test: {}",
+        config.test.as_ref().map(|t| t.metadata().name.as_str()).unwrap_or("unnamed")
     );
 
-    // Create container manager and runner
-    let manager = DockerContainerManager::new();
-    let mut runner = TestRunner::new(manager);
+    // Execute via container executor (which now uses CleanroomEnvironment + gVisor)
+    let step_results = execute_container_test(&config).await?;
 
-    // Execute test
-    let result = runner.run(&config).await?;
+    let passed = step_results.iter().all(|r| r.passed);
+    let total_duration: u64 = step_results.iter().map(|r| r.duration_ms).sum();
+    let summary = if passed {
+        format!("All {} steps passed in {}ms", step_results.len(), total_duration)
+    } else {
+        format!("Test failed after {}ms", total_duration)
+    };
+
+    let mut containers_used = Vec::new();
+    for step in &step_results {
+        if !containers_used.contains(&step.container) {
+            containers_used.push(step.container.clone());
+        }
+    }
 
     // Log summary
-    if result.passed {
-        info!("✅ {}", result.summary);
+    if passed {
+        info!("✅ {}", summary);
     } else {
-        error!("❌ {}", result.summary);
-        for step_result in &result.step_results {
+        error!("❌ {}", summary);
+        for step_result in &step_results {
             if !step_result.passed {
-                if let Some(reason) = &step_result.failure_reason {
+                if let Some(reason) = &step_result.assertion_error {
                     error!("  Step '{}' failed: {}", step_result.name, reason);
                 }
             }
         }
     }
 
-    Ok(result)
+    Ok(ExecutionResult {
+        passed,
+        summary,
+        step_results,
+        containers_used,
+    })
 }
 
 /// Synchronous wrapper for run_test
@@ -99,32 +80,5 @@ pub fn run_test_sync(path: &std::path::Path) -> String {
             format!("{}: {}", status, result.summary)
         }
         Err(e) => format!("Error: {}", e),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
-
-    #[test]
-    fn test_config_parse_valid() {
-        let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, "[test]").unwrap();
-        writeln!(file, r#"name = "test""#).unwrap();
-        writeln!(file, "[containers.alpine]").unwrap();
-        writeln!(file, r#"image = "alpine:latest""#).unwrap();
-        writeln!(file, "[[steps]]").unwrap();
-        writeln!(file, r#"name = "step1""#).unwrap();
-        writeln!(file, r#"container = "alpine""#).unwrap();
-        writeln!(file, r#"exec = ["echo", "hello"]"#).unwrap();
-
-        // Just verify it parses without error
-        let content = std::fs::read_to_string(file.path()).unwrap();
-        let config: Config = toml::from_str(&content).unwrap();
-        assert_eq!(config.test.name, "test");
-        assert!(config.containers.contains_key("alpine"));
-        assert_eq!(config.steps.len(), 1);
     }
 }
