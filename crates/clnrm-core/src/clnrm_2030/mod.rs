@@ -17,3 +17,5 @@ pub mod slashing;
 pub mod replay_market;
 pub mod jurisdiction;
 pub mod genesis;
+pub mod genesis_contracts;
+pub mod bots;
