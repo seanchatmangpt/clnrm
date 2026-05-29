@@ -1,0 +1,22 @@
+[package]
+name = "truex-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+clnrm-core = { path = "../clnrm-core" }
+tempfile = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+hex = "0.4"
+thiserror = "2.0.18"
+sha2 = "0.10"
+semver = "1.0"
+regex = { workspace = true }
+walkdir = { workspace = true }
