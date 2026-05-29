@@ -30,9 +30,12 @@ fn test_span_expectation_configuration() {
         name = "test"
         command = ["echo", "test"]
 
-        [expect.span]
-        names = ["test.execution", "step.run"]
-        count.min = 2
+        [[expect.span]]
+        name = "test.execution"
+        count.min = 1
+        [[expect.span]]
+        name = "step.run"
+        count.min = 1
     "#;
 
     // Act
@@ -56,9 +59,17 @@ fn test_multiple_span_expectations() {
         name = "test"
         command = ["echo", "test"]
 
-        [expect.span]
-        names = ["span1", "span2", "span3"]
-        count.min = 3
+        [[expect.span]]
+        name = "span1"
+        count.min = 1
+        count.max = 10
+        [[expect.span]]
+        name = "span2"
+        count.min = 1
+        count.max = 10
+        [[expect.span]]
+        name = "span3"
+        count.min = 1
         count.max = 10
     "#;
 
@@ -84,7 +95,9 @@ fn test_span_expectation_with_attributes() {
         name = "test"
         command = ["echo", "test"]
 
-        [[otel_validation.expected_spans]]
+        [otel_validation]
+enabled = true
+[[otel_validation.expected_spans]]
         name = "test.span"
         attributes = { "service.name" = "clnrm", "test.name" = "test" }
     "#;
@@ -112,8 +125,8 @@ fn test_span_count_validation() {
         name = "test"
         command = ["echo", "test"]
 
-        [expect.span]
-        names = ["test.span"]
+        [[expect.span]]
+        name = "test.span"
         count.min = 1
         count.max = 5
     "#;
@@ -140,7 +153,9 @@ fn test_span_required_attributes() {
         name = "test"
         command = ["echo", "test"]
 
-        [[otel_validation.expected_spans]]
+        [otel_validation]
+enabled = true
+[[otel_validation.expected_spans]]
         name = "test.execution"
         attributes = { "test.status" = "success", "test.duration_ms" = "100" }
     "#;
@@ -470,7 +485,8 @@ fn test_minimum_span_count() {
         name = "test"
         command = ["echo", "test"]
 
-        [expect.span]
+        [[expect.span]]
+        name = "default"
         count.min = 2
     "#;
 
@@ -496,7 +512,8 @@ fn test_maximum_span_count() {
         name = "test"
         command = ["echo", "test"]
 
-        [expect.span]
+        [[expect.span]]
+        name = "default"
         count.max = 10
     "#;
 
@@ -520,7 +537,8 @@ fn test_exact_span_count_range() {
         name = "test"
         command = ["echo", "test"]
 
-        [expect.span]
+        [[expect.span]]
+        name = "default"
         count.min = 5
         count.max = 5
     "#;
@@ -565,7 +583,6 @@ fn test_otel_validation_section() {
 
         [otel_validation]
         enabled = true
-
         [[otel_validation.expected_spans]]
         name = "test.execution"
         attributes = { "service.name" = "clnrm" }
@@ -592,9 +609,12 @@ fn test_expect_section_integration() {
         name = "test"
         command = ["echo", "test"]
 
-        [expect.span]
-        names = ["test.run", "step.execute"]
-        count.min = 2
+        [[expect.span]]
+        name = "test.run"
+        count.min = 1
+        [[expect.span]]
+        name = "step.execute"
+        count.min = 1
 
         [expect.status]
         allow = ["ok"]

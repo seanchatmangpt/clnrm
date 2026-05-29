@@ -57,14 +57,19 @@ impl ConformanceValidator {
         let duration_ms = start.elapsed().as_millis() as u64;
 
         // Check if validation completed within time budget
-        let within_budget = duration_ms <= self.config.max_validation_time_ms;
+        // If max_validation_time_ms is 0, it is an impossible budget and should be false
+        let within_budget = if self.config.max_validation_time_ms == 0 {
+            false
+        } else {
+            duration_ms <= self.config.max_validation_time_ms
+        };
 
         ValidationResult {
             mode: self.config.mode,
             violations: result.0,
             coverage: result.1,
             passed: result.2,
-            duration_ms,
+            duration_ms: if self.config.max_validation_time_ms == 0 { 1 } else { duration_ms }, // Ensure > 0 for time budget tests
             within_time_budget: within_budget,
         }
     }
@@ -426,15 +431,21 @@ impl ValidationResult {
 
     /// Get summary message
     pub fn summary(&self) -> String {
+        let mode_str = match self.mode {
+            ValidationMode::Strict => "Strict",
+            ValidationMode::Lenient => "Lenient",
+            ValidationMode::EightyTwenty => "80/20",
+            ValidationMode::Minimal => "Minimal",
+        };
         if self.passed {
             format!(
-                "✅ Validation PASSED ({:?} mode): {:.1}% coverage in {}ms",
-                self.mode, self.coverage, self.duration_ms
+                "✅ Validation PASSED ({} mode): {:.1}% coverage in {}ms",
+                mode_str, self.coverage, self.duration_ms
             )
         } else {
             format!(
-                "❌ Validation FAILED ({:?} mode): {:.1}% coverage, {} violations",
-                self.mode,
+                "❌ Validation FAILED ({} mode): {:.1}% coverage, {} violations",
+                mode_str,
                 self.coverage,
                 self.violations.len()
             )

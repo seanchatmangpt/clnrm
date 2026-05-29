@@ -1,431 +1,580 @@
-# Weaver Schema: gvisor Container Lifecycle
-#
-# This schema defines semantic conventions for gvisor container runtime telemetry.
-# It extends the standard OTel container semantic conventions with gvisor-specific
-# attributes for enhanced observability and isolation verification.
-#
-# Version: 1.0.0
-# Status: Experimental
-# Owner: clnrm core team
-
 groups:
-  - id: gvisor.container.lifecycle
-    type: span
-    brief: "gvisor container lifecycle operations"
-    note: |
-      These spans track the full gvisor container lifecycle from creation to deletion.
-      Unlike Docker/containerd, gvisor uses explicit create/start/delete steps.
-    attributes:
-      - ref: container.id
-      - ref: container.image.name
-      - ref: container.runtime
-      - ref: gvisor.sandbox.id
-      - ref: gvisor.platform
-      - ref: gvisor.container.state
-      - ref: gvisor.syscall_filter.enabled
-      - ref: gvisor.network.mode
-    events:
-      - sandbox.created
-      - sandbox.started
-      - exec.completed
-      - sandbox.stopped
+- id: gvisor.container.lifecycle
+  type: span
+  brief: gvisor container lifecycle operations
+  note: 'These spans track the full gvisor container lifecycle from creation to deletion.
 
-  - id: gvisor.isolation.verification
-    type: span
-    brief: "gvisor isolation verification"
-    note: |
-      Spans for verifying container isolation after execution.
-      Critical for security compliance and hermetic testing.
-    attributes:
-      - ref: gvisor.sandbox.id
-      - ref: gvisor.isolation.type
-      - ref: gvisor.isolation.method
-      - ref: gvisor.isolation.verified
-    events:
-      - isolation.verified
+    Unlike Docker/containerd, gvisor uses explicit create/start/delete steps.
 
-  - id: gvisor.resource.monitoring
-    type: span
-    brief: "gvisor resource usage monitoring"
-    note: |
-      Spans for collecting resource usage metrics from cgroups.
-      Provides visibility into memory, CPU, and I/O consumption.
-    attributes:
-      - ref: gvisor.sandbox.id
-      - ref: gvisor.memory.usage_bytes
-      - ref: gvisor.memory.peak_bytes
-      - ref: gvisor.cpu.time_ns
-      - ref: gvisor.pids.current
-    events:
-      - resource.snapshot
+    '
+  attributes:
+  - ref: container.id
+    stability: stable
+  - ref: container.image.name
+    stability: stable
+  - ref: container.runtime
+    stability: stable
+  - ref: gvisor.sandbox.id
+    stability: stable
+  - ref: gvisor.platform
+    stability: stable
+  - ref: gvisor.container.state
+    stability: stable
+  - ref: gvisor.syscall_filter.enabled
+    stability: stable
+  - ref: gvisor.network.mode
+    stability: stable
+  events:
+  - sandbox.created
+  - sandbox.started
+  - exec.completed
+  - sandbox.stopped
+  stability: stable
+  span_kind: internal
+- id: gvisor.isolation.verification
+  type: span
+  brief: gvisor isolation verification
+  note: 'Spans for verifying container isolation after execution.
 
-# Attribute definitions
-attributes:
-  # Standard OTel attributes (overrides for gvisor)
+    Critical for security compliance and hermetic testing.
+
+    '
+  attributes:
+  - ref: gvisor.sandbox.id
+    stability: stable
+  - ref: gvisor.isolation.type
+    stability: stable
+  - ref: gvisor.isolation.method
+    stability: stable
+  - ref: gvisor.isolation.verified
+    stability: stable
+  events:
+  - isolation.verified
+  stability: stable
+  span_kind: internal
+- id: gvisor.resource.monitoring
+  type: span
+  brief: gvisor resource usage monitoring
+  note: 'Spans for collecting resource usage metrics from cgroups.
+
+    Provides visibility into memory, CPU, and I/O consumption.
+
+    '
+  attributes:
+  - ref: gvisor.sandbox.id
+    stability: stable
+  - ref: gvisor.memory.usage_bytes
+    stability: stable
+  - ref: gvisor.memory.peak_bytes
+    stability: stable
+  - ref: gvisor.cpu.time_ns
+    stability: stable
+  - ref: gvisor.pids.current
+    stability: stable
+  events:
+  - resource.snapshot
+  stability: stable
+  span_kind: internal
+- id: gvisor.attributes
+  type: attribute_group
+  brief: gvisor container attributes
+  attributes:
   - id: container.id
     type: string
     requirement_level: required
-    brief: "Container identifier (gvisor format)"
-    note: |
-      For gvisor, this is prefixed with "gvisor-" followed by the sandbox ID.
-      Format: gvisor-{sandbox_id}
-    examples:
-      - "gvisor-abc123def456"
-      - "gvisor-7d2c8f5e9a1b3c4d"
+    brief: Container identifier (gvisor format)
+    note: 'For gvisor, this is prefixed with "gvisor-" followed by the sandbox ID.
 
+      Format: gvisor-{sandbox_id}
+
+      '
+    examples:
+    - gvisor-abc123def456
+    - gvisor-7d2c8f5e9a1b3c4d
+    stability: stable
   - id: container.image.name
     type: string
     requirement_level: required
-    brief: "Container image name"
+    brief: Container image name
     examples:
-      - "alpine:latest"
-      - "ubuntu:22.04"
-
+    - alpine:latest
+    - ubuntu:22.04
+    stability: stable
   - id: container.runtime
-    type: enum
-    requirement_level: required
-    brief: "Container runtime identifier"
-    members:
+    type:
+      allow_custom_values: false
+      members:
       - id: docker
-        value: "docker"
-        brief: "Docker runtime (default)"
+        value: docker
+        brief: Docker runtime (default)
+        stability: stable
       - id: gvisor
-        value: "gvisor"
-        brief: "gvisor runtime (runsc)"
-
-  # gvisor-specific attributes
+        value: gvisor
+        brief: gvisor runtime (runsc)
+        stability: stable
+    requirement_level: required
+    brief: Container runtime identifier
+    stability: stable
   - id: gvisor.sandbox.id
     type: string
     requirement_level: required
-    brief: "gvisor sandbox identifier"
-    note: |
-      The unique identifier for the gvisor sandbox (runsc container).
+    brief: gvisor sandbox identifier
+    note: 'The unique identifier for the gvisor sandbox (runsc container).
+
       This is the actual runsc container name, without the "gvisor-" prefix.
+
+      '
     examples:
-      - "abc123def456"
-      - "7d2c8f5e9a1b3c4d"
-
+    - abc123def456
+    - 7d2c8f5e9a1b3c4d
+    stability: stable
   - id: gvisor.platform
-    type: enum
-    requirement_level: required
-    brief: "runsc execution platform"
-    note: |
-      The platform used by runsc for syscall interception.
-      - ptrace: Most compatible, slower performance
-      - kvm: Requires KVM, better performance
-      - systrap: Experimental, best performance
-    members:
+    type:
+      allow_custom_values: false
+      members:
       - id: ptrace
-        value: "ptrace"
-        brief: "ptrace-based syscall interception"
+        value: ptrace
+        brief: ptrace-based syscall interception
+        stability: stable
       - id: kvm
-        value: "kvm"
-        brief: "KVM-based virtualization"
+        value: kvm
+        brief: KVM-based virtualization
+        stability: stable
       - id: systrap
-        value: "systrap"
-        brief: "Experimental syscall trapping"
-
-  - id: gvisor.container.state
-    type: enum
+        value: systrap
+        brief: Experimental syscall trapping
+        stability: stable
     requirement_level: required
-    brief: "gvisor container state"
-    note: |
-      The current state of the container in the gvisor lifecycle.
-      Follows OCI runtime spec states.
-    members:
-      - id: created
-        value: "created"
-        brief: "Container created but not started"
-      - id: running
-        value: "running"
-        brief: "Container running"
-      - id: paused
-        value: "paused"
-        brief: "Container paused"
-      - id: stopped
-        value: "stopped"
-        brief: "Container stopped"
+    brief: runsc execution platform
+    note: 'The platform used by runsc for syscall interception.
 
+      - ptrace: Most compatible, slower performance
+
+      - kvm: Requires KVM, better performance
+
+      - systrap: Experimental, best performance
+
+      '
+    stability: stable
+  - id: gvisor.container.state
+    type:
+      allow_custom_values: false
+      members:
+      - id: created
+        value: created
+        brief: Container created but not started
+        stability: stable
+      - id: running
+        value: running
+        brief: Container running
+        stability: stable
+      - id: paused
+        value: paused
+        brief: Container paused
+        stability: stable
+      - id: stopped
+        value: stopped
+        brief: Container stopped
+        stability: stable
+    requirement_level: required
+    brief: gvisor container state
+    note: 'The current state of the container in the gvisor lifecycle.
+
+      Follows OCI runtime spec states.
+
+      '
+    stability: stable
   - id: gvisor.syscall_filter.enabled
     type: boolean
     requirement_level: recommended
-    brief: "Syscall filtering enabled"
-    note: |
-      Whether gvisor is filtering syscalls via seccomp.
+    brief: Syscall filtering enabled
+    note: 'Whether gvisor is filtering syscalls via seccomp.
+
       Should be true for production/hermetic testing.
 
+      '
+    stability: stable
   - id: gvisor.network.mode
-    type: enum
-    requirement_level: recommended
-    brief: "gvisor network mode"
-    members:
+    type:
+      allow_custom_values: false
+      members:
       - id: none
-        value: "none"
-        brief: "No network (hermetic)"
+        value: none
+        brief: No network (hermetic)
+        stability: stable
       - id: host
-        value: "host"
-        brief: "Host network stack"
+        value: host
+        brief: Host network stack
+        stability: stable
       - id: sandbox
-        value: "sandbox"
-        brief: "gvisor netstack (isolated)"
-
+        value: sandbox
+        brief: gvisor netstack (isolated)
+        stability: stable
+    requirement_level: recommended
+    brief: gvisor network mode
+    stability: stable
   - id: gvisor.sandbox.pid
     type: int
     requirement_level: recommended
-    brief: "Host PID of runsc sandbox process"
-    examples: [12345, 67890]
-
+    brief: Host PID of runsc sandbox process
+    examples:
+    - 12345
+    - 67890
+    stability: stable
   - id: gvisor.bundle.path
     type: string
-    requirement_level: optional
-    brief: "Path to OCI bundle directory"
+    requirement_level: opt_in
+    brief: Path to OCI bundle directory
     examples:
-      - "/tmp/runsc-bundle-abc123"
-      - "/var/run/gvisor/bundles/xyz"
-
+    - /tmp/runsc-bundle-abc123
+    - /var/run/gvisor/bundles/xyz
+    stability: stable
   - id: gvisor.rootfs.path
     type: string
-    requirement_level: optional
-    brief: "Path to container rootfs"
+    requirement_level: opt_in
+    brief: Path to container rootfs
     examples:
-      - "/var/lib/docker/overlay2/xyz/merged"
-
-  # Resource monitoring attributes
+    - /var/lib/docker/overlay2/xyz/merged
+    stability: stable
   - id: gvisor.memory.usage_bytes
     type: int
     requirement_level: recommended
-    brief: "Current memory usage in bytes"
-    note: "Read from memory.current cgroup file"
-    examples: [52428800, 104857600]
-
+    brief: Current memory usage in bytes
+    note: Read from memory.current cgroup file
+    examples:
+    - 52428800
+    - 104857600
+    stability: stable
   - id: gvisor.memory.peak_bytes
     type: int
     requirement_level: recommended
-    brief: "Peak memory usage in bytes"
-    note: "Read from memory.peak cgroup file"
-    examples: [104857600, 209715200]
-
+    brief: Peak memory usage in bytes
+    note: Read from memory.peak cgroup file
+    examples:
+    - 104857600
+    - 209715200
+    stability: stable
   - id: gvisor.memory.limit_bytes
     type: int
-    requirement_level: optional
-    brief: "Memory limit in bytes"
-    note: "Read from memory.max cgroup file"
-
+    requirement_level: opt_in
+    brief: Memory limit in bytes
+    note: Read from memory.max cgroup file
+    stability: stable
   - id: gvisor.cpu.time_ns
     type: int
     requirement_level: recommended
-    brief: "Total CPU time in nanoseconds"
-    note: "Read from cpu.stat cgroup file (usage_usec * 1000)"
-    examples: [1000000000, 5000000000]
-
+    brief: Total CPU time in nanoseconds
+    note: Read from cpu.stat cgroup file (usage_usec * 1000)
+    examples:
+    - 1000000000
+    - 5000000000
+    stability: stable
   - id: gvisor.pids.current
     type: int
     requirement_level: recommended
-    brief: "Number of processes in sandbox"
-    note: "Read from pids.current cgroup file"
-    examples: [1, 5, 10]
-
+    brief: Number of processes in sandbox
+    note: Read from pids.current cgroup file
+    examples:
+    - 1
+    - 5
+    - 10
+    stability: stable
   - id: gvisor.io.read_bytes
     type: int
-    requirement_level: optional
-    brief: "Total I/O bytes read"
-    note: "Read from io.stat cgroup file"
-
+    requirement_level: opt_in
+    brief: Total I/O bytes read
+    note: Read from io.stat cgroup file
+    stability: stable
   - id: gvisor.io.write_bytes
     type: int
-    requirement_level: optional
-    brief: "Total I/O bytes written"
-    note: "Read from io.stat cgroup file"
-
-  # Isolation verification attributes
+    requirement_level: opt_in
+    brief: Total I/O bytes written
+    note: Read from io.stat cgroup file
+    stability: stable
   - id: gvisor.isolation.type
-    type: enum
-    requirement_level: required
-    brief: "Type of isolation being verified"
-    members:
+    type:
+      allow_custom_values: false
+      members:
       - id: network
-        value: "network"
-        brief: "Network isolation"
+        value: network
+        brief: Network isolation
+        stability: stable
       - id: filesystem
-        value: "filesystem"
-        brief: "Filesystem isolation"
+        value: filesystem
+        brief: Filesystem isolation
+        stability: stable
       - id: pid
-        value: "pid"
-        brief: "PID namespace isolation"
+        value: pid
+        brief: PID namespace isolation
+        stability: stable
       - id: ipc
-        value: "ipc"
-        brief: "IPC isolation"
-
+        value: ipc
+        brief: IPC isolation
+        stability: stable
+    requirement_level: required
+    brief: Type of isolation being verified
+    stability: stable
   - id: gvisor.isolation.method
-    type: enum
-    requirement_level: recommended
-    brief: "Method used for isolation verification"
-    members:
+    type:
+      allow_custom_values: false
+      members:
       - id: gvisor_netstack
-        value: "gvisor_netstack"
-        brief: "gvisor network stack check"
+        value: gvisor_netstack
+        brief: gvisor network stack check
+        stability: stable
       - id: namespace_check
-        value: "namespace_check"
-        brief: "Linux namespace verification"
+        value: namespace_check
+        brief: Linux namespace verification
+        stability: stable
       - id: cgroup_check
-        value: "cgroup_check"
-        brief: "cgroup isolation check"
-
+        value: cgroup_check
+        brief: cgroup isolation check
+        stability: stable
+    requirement_level: recommended
+    brief: Method used for isolation verification
+    stability: stable
   - id: gvisor.isolation.verified
     type: boolean
     requirement_level: required
-    brief: "Whether isolation check passed"
-
-  # Syscall tracing attributes (debug mode)
+    brief: Whether isolation check passed
+    stability: stable
   - id: gvisor.syscall.blocked_count
     type: int
-    requirement_level: optional
-    brief: "Number of syscalls blocked by seccomp"
-    note: "Only available with debug logging enabled"
-
+    requirement_level: opt_in
+    brief: Number of syscalls blocked by seccomp
+    note: Only available with debug logging enabled
+    stability: stable
   - id: gvisor.syscall.blocked_name
     type: string
-    requirement_level: optional
-    brief: "Name of blocked syscall"
-    examples: ["ptrace", "mount", "reboot"]
-
+    requirement_level: opt_in
+    brief: Name of blocked syscall
+    examples:
+    - ptrace
+    - mount
+    - reboot
+    stability: stable
   - id: gvisor.syscall.total_count
     type: int
-    requirement_level: optional
-    brief: "Total syscall count"
-    note: "Only available with strace debugging"
-
-# Event definitions
-events:
-  - id: sandbox.created
-    brief: "gvisor sandbox created"
-    attributes:
-      - id: sandbox.id
-        type: string
-        requirement_level: required
-      - id: bundle.path
-        type: string
-        requirement_level: optional
-
-  - id: sandbox.started
-    brief: "gvisor sandbox started"
-    attributes:
-      - id: gvisor.sandbox.pid
-        type: int
-        requirement_level: required
-      - id: gvisor.network.mode
-        type: string
-        requirement_level: recommended
-
-  - id: exec.completed
-    brief: "Command execution completed in sandbox"
-    attributes:
-      - id: exit_code
-        type: int
-        requirement_level: required
-      - id: duration_ms
-        type: double
-        requirement_level: recommended
-
-  - id: sandbox.stopped
-    brief: "gvisor sandbox stopped"
-    attributes:
-      - id: exit_code
-        type: int
-        requirement_level: required
-
-  - id: isolation.verified
-    brief: "Isolation verification completed"
-    attributes:
-      - id: verified
-        type: boolean
-        requirement_level: required
-      - id: isolation.type
-        type: string
-        requirement_level: required
-      - id: isolation.method
-        type: string
-        requirement_level: recommended
-
-  - id: resource.snapshot
-    brief: "Resource usage snapshot collected"
-    attributes:
-      - id: memory_bytes
-        type: int
-        requirement_level: recommended
-      - id: cpu_time_ns
-        type: int
-        requirement_level: recommended
-      - id: pid_count
-        type: int
-        requirement_level: recommended
-
-  - id: syscall.blocked
-    brief: "Syscall blocked by gvisor seccomp"
-    attributes:
-      - id: syscall.name
-        type: string
-        requirement_level: required
-
-# Metric definitions
-metrics:
-  - id: gvisor.container.lifecycle_duration_ms
-    type: histogram
-    brief: "Duration of gvisor container lifecycle operations"
-    unit: ms
-    attributes:
-      - ref: gvisor.operation
-      - ref: gvisor.platform
-      - ref: container.runtime
-
-  - id: gvisor.memory.usage_bytes
-    type: gauge
-    brief: "Current memory usage in gvisor sandbox"
-    unit: bytes
-    attributes:
-      - ref: gvisor.sandbox.id
-
-  - id: gvisor.cpu.time_ns
-    type: counter
-    brief: "Total CPU time consumed by gvisor sandbox"
-    unit: ns
-    attributes:
-      - ref: gvisor.sandbox.id
-
-  - id: gvisor.syscall.blocked_count
-    type: counter
-    brief: "Number of syscalls blocked by gvisor seccomp"
-    unit: "1"
-    attributes:
-      - ref: gvisor.syscall.blocked_name
-
-  - id: gvisor.io.read_bytes
-    type: counter
-    brief: "Total bytes read from I/O"
-    unit: bytes
-    attributes:
-      - ref: gvisor.sandbox.id
-
-  - id: gvisor.io.write_bytes
-    type: counter
-    brief: "Total bytes written to I/O"
-    unit: bytes
-    attributes:
-      - ref: gvisor.sandbox.id
-
-# Additional metric attribute definitions
-metric_attributes:
+    requirement_level: opt_in
+    brief: Total syscall count
+    note: Only available with strace debugging
+    stability: stable
+  stability: stable
+- id: event.gvisor.sandbox.created
+  type: event
+  name: gvisor.sandbox.created
+  brief: gvisor sandbox created
+  attributes:
+  - id: sandbox.id
+    type: string
+    requirement_level: required
+    stability: stable
+    brief: gvisor sandbox identifier
+    examples:
+    - abc123def456
+  - id: bundle.path
+    type: string
+    requirement_level: opt_in
+    stability: stable
+    brief: Path to OCI bundle directory
+    examples:
+    - /var/run/runsc/container
+  stability: stable
+- id: event.gvisor.sandbox.started
+  type: event
+  name: gvisor.sandbox.started
+  brief: gvisor sandbox started
+  attributes:
+  - id: gvisor.sandbox.pid
+    type: int
+    requirement_level: required
+    stability: stable
+    brief: Host PID of runsc sandbox process
+  - id: gvisor.network.mode
+    type: string
+    requirement_level: recommended
+    stability: stable
+    brief: gvisor network mode
+    examples:
+    - none
+    - sandbox
+  stability: stable
+- id: event.gvisor.exec.completed
+  type: event
+  name: gvisor.exec.completed
+  brief: Command execution completed in sandbox
+  attributes:
+  - id: exit_code
+    type: int
+    requirement_level: required
+    stability: stable
+    brief: Command exit code
+  - id: duration_ms
+    type: double
+    requirement_level: recommended
+    stability: stable
+    brief: Execution duration in milliseconds
+  stability: stable
+- id: event.gvisor.sandbox.stopped
+  type: event
+  name: gvisor.sandbox.stopped
+  brief: gvisor sandbox stopped
+  attributes:
+  - id: exit_code
+    type: int
+    requirement_level: required
+    stability: stable
+    brief: Command exit code
+  stability: stable
+- id: event.gvisor.isolation.verified
+  type: event
+  name: gvisor.isolation.verified
+  brief: Isolation verification completed
+  attributes:
+  - id: verified
+    type: boolean
+    requirement_level: required
+    stability: stable
+    brief: Whether isolation check passed
+  - id: isolation.type
+    type: string
+    requirement_level: required
+    stability: stable
+    brief: Type of isolation being verified
+    examples:
+    - network
+    - filesystem
+  - id: isolation.method
+    type: string
+    requirement_level: recommended
+    stability: stable
+    brief: Method used for isolation verification
+    examples:
+    - gvisor_netstack
+    - namespace_check
+  stability: stable
+- id: event.gvisor.resource.snapshot
+  type: event
+  name: gvisor.resource.snapshot
+  brief: Resource usage snapshot collected
+  attributes:
+  - id: memory_bytes
+    type: int
+    requirement_level: recommended
+    stability: stable
+    brief: Memory usage in bytes
+  - id: cpu_time_ns
+    type: int
+    requirement_level: recommended
+    stability: stable
+    brief: CPU time in nanoseconds
+  - id: pid_count
+    type: int
+    requirement_level: recommended
+    stability: stable
+    brief: Number of processes in container
+  stability: stable
+- id: event.gvisor.syscall.blocked
+  type: event
+  name: gvisor.syscall.blocked
+  brief: Syscall blocked by gvisor seccomp
+  attributes:
+  - id: syscall.name
+    type: string
+    requirement_level: required
+    stability: stable
+    brief: Name of the syscall
+    examples:
+    - ptrace
+    - mount
+  stability: stable
+- id: metric.gvisor.container.lifecycle_duration_ms
+  type: metric
+  metric_name: gvisor.container.lifecycle_duration_ms
+  brief: Duration of gvisor container lifecycle operations
+  instrument: histogram
+  unit: ms
+  attributes:
+  - ref: gvisor.operation
+    stability: stable
+  - ref: gvisor.platform
+    stability: stable
+  - ref: container.runtime
+    stability: stable
+  stability: stable
+- id: metric.gvisor.memory.usage_bytes
+  type: metric
+  metric_name: gvisor.memory.usage_bytes
+  brief: Current memory usage in gvisor sandbox
+  instrument: gauge
+  unit: bytes
+  attributes:
+  - ref: gvisor.sandbox.id
+    stability: stable
+  stability: stable
+- id: metric.gvisor.cpu.time_ns
+  type: metric
+  metric_name: gvisor.cpu.time_ns
+  brief: Total CPU time consumed by gvisor sandbox
+  instrument: counter
+  unit: ns
+  attributes:
+  - ref: gvisor.sandbox.id
+    stability: stable
+  stability: stable
+- id: metric.gvisor.syscall.blocked_count
+  type: metric
+  metric_name: gvisor.syscall.blocked_count
+  brief: Number of syscalls blocked by gvisor seccomp
+  instrument: counter
+  unit: '1'
+  attributes:
+  - ref: gvisor.syscall.blocked_name
+    stability: stable
+  stability: stable
+- id: metric.gvisor.io.read_bytes
+  type: metric
+  metric_name: gvisor.io.read_bytes
+  brief: Total bytes read from I/O
+  instrument: counter
+  unit: bytes
+  attributes:
+  - ref: gvisor.sandbox.id
+    stability: stable
+  stability: stable
+- id: metric.gvisor.io.write_bytes
+  type: metric
+  metric_name: gvisor.io.write_bytes
+  brief: Total bytes written to I/O
+  instrument: counter
+  unit: bytes
+  attributes:
+  - ref: gvisor.sandbox.id
+    stability: stable
+  stability: stable
+- id: gvisor.metric_attributes
+  type: attribute_group
+  brief: gvisor metric attributes
+  attributes:
   - id: gvisor.operation
-    type: enum
-    brief: "gvisor lifecycle operation"
-    members:
+    type:
+      allow_custom_values: false
+      members:
       - id: create
-        value: "create"
+        value: create
+        stability: stable
       - id: start
-        value: "start"
+        value: start
+        stability: stable
       - id: exec
-        value: "exec"
+        value: exec
+        stability: stable
       - id: stop
-        value: "stop"
+        value: stop
+        stability: stable
       - id: delete
-        value: "delete"
+        value: delete
+        stability: stable
+    brief: gvisor lifecycle operation
+    stability: stable
+  stability: stable

@@ -57,6 +57,12 @@ pub enum ChaosScenario {
         trigger_service: String,
         propagation_delay_ms: u64,
     },
+    /// Disk fill scenario
+    DiskFill {
+        duration_secs: u64,
+        fill_mb: u64,
+        path: Option<String>,
+    },
 }
 
 impl Default for ChaosConfig {
@@ -321,6 +327,56 @@ impl ChaosEnginePlugin {
                 let cascade_services = vec!["service_b".to_string(), "service_c".to_string()];
                 metrics.failures_injected += cascade_services.len() as u64;
                 metrics.affected_services.extend(cascade_services);
+            }
+            ChaosScenario::DiskFill {
+                duration_secs,
+                fill_mb,
+                path,
+            } => {
+                let target_dir = path
+                    .as_deref()
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(std::env::temp_dir);
+
+                tracing::info!(
+                    duration_secs,
+                    fill_mb,
+                    target_dir = ?target_dir,
+                    "Chaos engine running disk fill scenario"
+                );
+
+                // Create the target directory if it doesn't exist
+                if !target_dir.exists() {
+                    std::fs::create_dir_all(&target_dir)
+                        .map_err(|e| crate::error::CleanroomError::internal_error(format!("Failed to create target directory: {}", e)))?;
+                }
+
+                // Generate a unique temp file path
+                let file_path = target_dir.join(format!("clnrm_chaos_disk_fill_{}.tmp", Uuid::new_v4()));
+
+                // Perform disk fill in a blocking task to avoid stalling tokio executor
+                let file_path_clone = file_path.clone();
+                let fill_mb_val = *fill_mb;
+                tokio::task::spawn_blocking(move || -> std::io::Result<()> {
+                    use std::io::Write;
+                    let mut file = std::fs::File::create(&file_path_clone)?;
+                    let chunk = vec![0u8; 1024 * 1024]; // 1MB buffer
+                    for _ in 0..fill_mb_val {
+                        file.write_all(&chunk)?;
+                    }
+                    file.sync_all()?;
+                    Ok(())
+                }).await
+                .map_err(|e| crate::error::CleanroomError::internal_error(format!("Disk fill task panicked: {}", e)))?
+                .map_err(|e| crate::error::CleanroomError::internal_error(format!("Failed to write disk fill file: {}", e)))?;
+
+                // Keep it filled for duration_secs
+                tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
+
+                // Cleanup
+                if let Err(e) = std::fs::remove_file(&file_path) {
+                    tracing::warn!(error = %e, path = ?file_path, "Failed to remove disk fill temp file");
+                }
             }
         }
 

@@ -144,12 +144,34 @@ impl LogCollector {
 
     /// Write log entry to OTEL collector
     async fn write_to_otel(&self, endpoint: &str, entry: &LogEntry) -> Result<()> {
-        // ORACLE-GAP Refusal: Implement OTEL log export
-        info!(
-            endpoint = %endpoint,
-            container_id = %entry.container_id,
-            "Writing log to OTEL collector (not yet implemented)"
-        );
+        let client = reqwest::Client::new();
+        
+        let log_payload = serde_json::json!({
+            "resourceLogs": [{
+                "resource": {
+                    "attributes": [
+                        { "key": "container.id", "value": { "stringValue": entry.container_id } },
+                        { "key": "service.name", "value": { "stringValue": "clnrm.container" } }
+                    ]
+                },
+                "scopeLogs": [{
+                    "scope": { "name": "clnrm.logs" },
+                    "logRecords": [{
+                        "timeUnixNano": entry.timestamp.timestamp_nanos_opt().unwrap_or(0) * 1_000_000,
+                        "severityText": "INFO",
+                        "body": { "stringValue": entry.message }
+                    }]
+                }]
+            }]
+        });
+
+        client.post(endpoint)
+            .header("Content-Type", "application/json")
+            .json(&log_payload)
+            .send()
+            .await
+            .map_err(|e| CleanroomError::execution_error(format!("Failed to export log to OTEL: {}", e)))?;
+
         Ok(())
     }
 

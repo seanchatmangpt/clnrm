@@ -69,7 +69,7 @@ pub use dry_run::{dry_run_validate, ValidationResult as DryRunValidationResult};
 pub use fmt::format_files;
 pub use graph::visualize_graph;
 pub use lint::lint_files;
-pub use pull::pull_images;
+pub use pull::{pull_images, pull_oci_image};
 pub use record::run_record;
 pub use redgreen::run_red_green_validation;
 pub use render::render_template_with_vars;

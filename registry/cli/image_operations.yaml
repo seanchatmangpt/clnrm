@@ -4,31 +4,38 @@ groups:
   span_kind: internal
   stability: stable
   brief: Represents Docker image pre-pulling via 'clnrm pull' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - images.pulled + images.failed + images.skipped MUST equal images.discovered
+
     - operation.duration_ms > 0 proves actual pull operations occurred
+
     - Child spans (clnrm.cli.pull.image) prove per-image operations
+
     - parallel.jobs proves concurrent execution (when parallel.enabled = true)
 
+
     This span proves that clnrm successfully pre-pulled Docker images
+
     from test configurations to avoid pull delays during test execution.
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["pull"]
-
+    examples:
+    - pull
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: images.discovered
     type: int
     stability: stable
@@ -39,7 +46,6 @@ groups:
     - 5
     - 10
     - 25
-
   - id: images.pulled
     type: int
     stability: stable
@@ -50,7 +56,6 @@ groups:
     - 5
     - 8
     - 20
-
   - id: images.failed
     type: int
     stability: stable
@@ -60,7 +65,6 @@ groups:
     - 0
     - 2
     - 3
-
   - id: images.skipped
     type: int
     stability: stable
@@ -70,7 +74,6 @@ groups:
     - 0
     - 5
     - 10
-
   - id: parallel.enabled
     type: boolean
     stability: stable
@@ -79,7 +82,6 @@ groups:
     examples:
     - true
     - false
-
   - id: parallel.jobs
     type: int
     stability: stable
@@ -91,7 +93,6 @@ groups:
     - 4
     - 8
     - 16
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -102,7 +103,6 @@ groups:
     - 15250.5
     - 45000.8
     - 120000.2
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -112,7 +112,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -123,7 +122,6 @@ groups:
     - RegistryConnectionError
     - AuthenticationFailed
     - AllPullsFailed
-
   - id: error.message
     type: string
     stability: stable
@@ -132,22 +130,27 @@ groups:
       conditionally_required: Only when operation.success is false
     examples:
     - Failed to connect to Docker registry
-
 - id: span.clnrm.cli.pull.image
   type: span
   span_kind: internal
   stability: stable
   brief: Represents individual Docker image pull operation (child of clnrm.cli.pull)
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - image.digest proves actual image download (SHA256 hash)
+
     - pull.duration_ms > 0 proves actual pull occurred
+
     - image.size_bytes > 0 proves image was downloaded
+
     - image.layers proves layer-by-layer pull tracking
 
+
     This span proves that clnrm successfully pulled a specific Docker image
+
     including verification of digest, size, and layer count.
 
+    '
   attributes:
   - id: image.name
     type: string
@@ -158,7 +161,6 @@ groups:
     - alpine:latest
     - postgres:15
     - redis:7.0-alpine
-
   - id: image.registry
     type: string
     stability: stable
@@ -168,7 +170,6 @@ groups:
     - docker.io
     - gcr.io
     - ghcr.io
-
   - id: image.repository
     type: string
     stability: stable
@@ -178,7 +179,6 @@ groups:
     - library/alpine
     - postgres
     - redis
-
   - id: image.tag
     type: string
     stability: stable
@@ -186,9 +186,8 @@ groups:
     requirement_level: required
     examples:
     - latest
-    - "15.2"
+    - '15.2'
     - 7.0-alpine
-
   - id: image.digest
     type: string
     stability: stable
@@ -198,7 +197,6 @@ groups:
     examples:
     - sha256:9c6f0724472873bb50a2ae67a9e7adcb57673a183cea8b06eb778dca859181b5
     - sha256:5d41402abc4b2a76b9719d911017c592
-
   - id: image.size_bytes
     type: int
     stability: stable
@@ -209,7 +207,6 @@ groups:
     - 5242880
     - 314572800
     - 1073741824
-
   - id: image.layers
     type: int
     stability: stable
@@ -219,7 +216,6 @@ groups:
     - 3
     - 8
     - 15
-
   - id: pull.duration_ms
     type: double
     stability: stable
@@ -230,7 +226,6 @@ groups:
     - 3250.5
     - 12450.8
     - 45000.2
-
   - id: pull.success
     type: boolean
     stability: stable
@@ -239,7 +234,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -250,7 +244,6 @@ groups:
     - ImageNotFound
     - RegistryTimeout
     - DigestMismatch
-
   - id: error.message
     type: string
     stability: stable

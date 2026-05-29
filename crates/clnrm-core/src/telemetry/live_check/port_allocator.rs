@@ -32,11 +32,16 @@
 /// # }
 /// ```
 use crate::error::{CleanroomError, Result};
+use once_cell::sync::Lazy;
+use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Write as IoWrite};
 use std::net::TcpListener;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::time::Instant;
+
+static PROCESS_PORT_LOCKS: Lazy<Mutex<HashSet<u16>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 /// Atomic port allocator with flock-based locking
 ///
@@ -245,37 +250,46 @@ impl PortAllocator {
     /// * `Ok(None)` - Port in use or lock held by another process
     /// * `Err` - I/O error or lock failure
     async fn try_lock_port(&self, port: u16) -> Result<Option<PortLock>> {
+        // Step 0: Check in-process lock to prevent thread-level conflicts within same process
+        {
+            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap();
+            if locks.contains(&port) {
+                return Ok(None);
+            }
+            locks.insert(port);
+        }
+
+        // Helper to remove port from in-process locks on failure
+        let cleanup_in_process_lock = || {
+            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap();
+            locks.remove(&port);
+        };
+
         // Step 1: Verify port is bindable
         if !Self::is_port_available(port).await? {
             tracing::debug!("Port {} not bindable", port);
+            cleanup_in_process_lock();
             return Ok(None);
         }
 
         let lock_file_path = self.lock_file_path(port);
 
-        // Step 2: Create lock file
-        let mut file = OpenOptions::new()
+        // Step 2: Open lock file without truncating it (in case another process holds lock)
+        let mut file = match OpenOptions::new()
             .create(true)
             .write(true)
-            .truncate(true)
             .open(&lock_file_path)
-            .map_err(|e| {
-                CleanroomError::internal_error(format!(
-                    "Failed to create lock file {}: {}",
+        {
+            Ok(f) => f,
+            Err(e) => {
+                cleanup_in_process_lock();
+                return Err(CleanroomError::internal_error(format!(
+                    "Failed to open lock file {}: {}",
                     lock_file_path.display(),
                     e
-                ))
-            })?;
-
-        // Write metadata to lock file (for debugging)
-        let metadata = format!(
-            "{{\"port\":{},\"pid\":{},\"locked_at\":\"{}\"}}\n",
-            port,
-            std::process::id(),
-            chrono::Utc::now().to_rfc3339()
-        );
-        let _ = file.write_all(metadata.as_bytes());
-        let _ = file.flush();
+                )));
+            }
+        };
 
         // Step 3: Acquire exclusive flock
         #[cfg(unix)]
@@ -285,7 +299,18 @@ impl PortAllocator {
 
             match flock(file.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
                 Ok(_) => {
-                    // Lock acquired! Double-check port is still available
+                    // Lock acquired! Safe to write metadata and truncate
+                    let metadata = format!(
+                        "{{\"port\":{},\"pid\":{},\"locked_at\":\"{}\"}}\n",
+                        port,
+                        std::process::id(),
+                        chrono::Utc::now().to_rfc3339()
+                    );
+                    let _ = file.set_len(0);
+                    let _ = file.write_all(metadata.as_bytes());
+                    let _ = file.flush();
+
+                    // Double-check port is still available
                     if Self::is_port_available(port).await? {
                         tracing::debug!("Port {} locked successfully", port);
                         Ok(Some(PortLock {
@@ -299,24 +324,40 @@ impl PortAllocator {
                             port
                         );
                         // Release lock (via drop) and return None
+                        cleanup_in_process_lock();
                         Ok(None)
                     }
                 }
                 Err(nix::errno::Errno::EWOULDBLOCK) => {
                     // Lock held by another process
                     tracing::debug!("Port {} lock held by another process", port);
+                    cleanup_in_process_lock();
                     Ok(None)
                 }
-                Err(e) => Err(CleanroomError::internal_error(format!(
-                    "flock failed on port {}: {}",
-                    port, e
-                ))),
+                Err(e) => {
+                    cleanup_in_process_lock();
+                    Err(CleanroomError::internal_error(format!(
+                        "flock failed on port {}: {}",
+                        port, e
+                    )))
+                }
             }
         }
 
         #[cfg(not(unix))]
         {
             // Windows: File creation is the lock (less robust)
+            // Write metadata and flush
+            let metadata = format!(
+                "{{\"port\":{},\"pid\":{},\"locked_at\":\"{}\"}}\n",
+                port,
+                std::process::id(),
+                chrono::Utc::now().to_rfc3339()
+            );
+            let _ = file.set_len(0);
+            let _ = file.write_all(metadata.as_bytes());
+            let _ = file.flush();
+
             // Try to bind to verify availability
             if Self::is_port_available(port).await? {
                 tracing::debug!("Port {} allocated (Windows)", port);
@@ -327,6 +368,7 @@ impl PortAllocator {
                 }));
             } else {
                 tracing::debug!("Port {} not available (Windows)", port);
+                cleanup_in_process_lock();
                 return Ok(None);
             }
         }
@@ -340,24 +382,34 @@ impl PortAllocator {
     /// * `Ok(false)` - Port is in use
     /// * `Err` - I/O error during check
     async fn is_port_available(port: u16) -> Result<bool> {
-        match TcpListener::bind(("0.0.0.0", port)) {
-            Ok(_listener) => {
-                // Port is available (listener is immediately dropped)
-                Ok(true)
+        use socket2::{Socket, Domain, Type, Protocol};
+        use std::net::SocketAddr;
+
+        let check_bind = |addr_str: &str| -> Result<bool> {
+            let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP))
+                .map_err(|e| CleanroomError::internal_error(format!("Failed to create socket: {}", e)))?;
+            let _ = socket.set_reuse_address(true);
+            let address: SocketAddr = format!("{}:{}", addr_str, port)
+                .parse()
+                .map_err(|e| CleanroomError::internal_error(format!("Failed to parse address: {}", e)))?;
+            match socket.bind(&address.into()) {
+                Ok(_) => Ok(true),
+                Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => Ok(false),
+                Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => Ok(false),
+                Err(e) => Err(CleanroomError::internal_error(format!(
+                    "Port availability check failed for port {}: {}",
+                    port, e
+                ))),
             }
-            Err(e) if e.kind() == io::ErrorKind::AddrInUse => {
-                // Port is in use
-                Ok(false)
-            }
-            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
-                // Port requires elevated privileges (likely <1024)
-                Ok(false)
-            }
-            Err(e) => Err(CleanroomError::internal_error(format!(
-                "Port availability check failed for port {}: {}",
-                port, e
-            ))),
+        };
+
+        if !check_bind("127.0.0.1")? {
+            return Ok(false);
         }
+        if !check_bind("0.0.0.0")? {
+            return Ok(false);
+        }
+        Ok(true)
     }
 
     /// Get lock file path for port
@@ -410,15 +462,15 @@ impl PortLock {
 impl Drop for PortLock {
     fn drop(&mut self) {
         tracing::debug!("Releasing port lock: {}", self.port);
-        // flock automatically released when file closed
-        // Clean up lock file
-        if let Err(e) = std::fs::remove_file(&self.lock_file_path) {
-            tracing::warn!(
-                "Failed to remove lock file {}: {}",
-                self.lock_file_path.display(),
-                e
-            );
+        // Release from process-wide lock tracking
+        {
+            if let Ok(mut locks) = PROCESS_PORT_LOCKS.lock() {
+                locks.remove(&self.port);
+            }
         }
+        // flock automatically released when file closed.
+        // We do NOT remove the file from the filesystem to avoid
+        // inode-replacement race conditions between parallel tests.
     }
 }
 

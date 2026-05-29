@@ -100,41 +100,87 @@ fn create_report_with_warnings() -> ConformanceReport {
 // Format Detection Tests
 // ═══════════════════════════════════════════════════════════
 
+static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[test]
 fn test_format_detection_github_actions() {
+    let _guard = ENV_MUTEX.lock().unwrap();
+    let old_github = std::env::var("GITHUB_ACTIONS").ok();
+    let old_ci = std::env::var("CI").ok();
+    let old_cont = std::env::var("CONTINUOUS_INTEGRATION").ok();
+
     std::env::set_var("GITHUB_ACTIONS", "true");
+    std::env::remove_var("CI");
+    std::env::remove_var("CONTINUOUS_INTEGRATION");
 
     let format = detect_format();
     assert_eq!(format, DiagnosticFormat::GithubWorkflow);
 
-    std::env::remove_var("GITHUB_ACTIONS");
+    // Restore
+    if let Some(v) = old_github { std::env::set_var("GITHUB_ACTIONS", v); } else { std::env::remove_var("GITHUB_ACTIONS"); }
+    if let Some(v) = old_ci { std::env::set_var("CI", v); } else { std::env::remove_var("CI"); }
+    if let Some(v) = old_cont { std::env::set_var("CONTINUOUS_INTEGRATION", v); } else { std::env::remove_var("CONTINUOUS_INTEGRATION"); }
 }
 
 #[test]
 fn test_format_detection_generic_ci() {
+    let _guard = ENV_MUTEX.lock().unwrap();
+    let old_github = std::env::var("GITHUB_ACTIONS").ok();
+    let old_ci = std::env::var("CI").ok();
+    let old_cont = std::env::var("CONTINUOUS_INTEGRATION").ok();
+
+    std::env::remove_var("GITHUB_ACTIONS");
     std::env::set_var("CI", "true");
+    std::env::remove_var("CONTINUOUS_INTEGRATION");
 
     let format = detect_format();
     assert_eq!(format, DiagnosticFormat::Json);
 
-    std::env::remove_var("CI");
+    // Restore
+    if let Some(v) = old_github { std::env::set_var("GITHUB_ACTIONS", v); } else { std::env::remove_var("GITHUB_ACTIONS"); }
+    if let Some(v) = old_ci { std::env::set_var("CI", v); } else { std::env::remove_var("CI"); }
+    if let Some(v) = old_cont { std::env::set_var("CONTINUOUS_INTEGRATION", v); } else { std::env::remove_var("CONTINUOUS_INTEGRATION"); }
 }
 
 #[test]
 fn test_format_detection_continuous_integration() {
+    let _guard = ENV_MUTEX.lock().unwrap();
+    let old_github = std::env::var("GITHUB_ACTIONS").ok();
+    let old_ci = std::env::var("CI").ok();
+    let old_cont = std::env::var("CONTINUOUS_INTEGRATION").ok();
+
+    std::env::remove_var("GITHUB_ACTIONS");
+    std::env::remove_var("CI");
     std::env::set_var("CONTINUOUS_INTEGRATION", "true");
 
     let format = detect_format();
     assert_eq!(format, DiagnosticFormat::Json);
 
-    std::env::remove_var("CONTINUOUS_INTEGRATION");
+    // Restore
+    if let Some(v) = old_github { std::env::set_var("GITHUB_ACTIONS", v); } else { std::env::remove_var("GITHUB_ACTIONS"); }
+    if let Some(v) = old_ci { std::env::set_var("CI", v); } else { std::env::remove_var("CI"); }
+    if let Some(v) = old_cont { std::env::set_var("CONTINUOUS_INTEGRATION", v); } else { std::env::remove_var("CONTINUOUS_INTEGRATION"); }
 }
 
 #[test]
 fn test_format_detection_non_tty() {
+    let _guard = ENV_MUTEX.lock().unwrap();
+    let old_github = std::env::var("GITHUB_ACTIONS").ok();
+    let old_ci = std::env::var("CI").ok();
+    let old_cont = std::env::var("CONTINUOUS_INTEGRATION").ok();
+
+    std::env::remove_var("GITHUB_ACTIONS");
+    std::env::remove_var("CI");
+    std::env::remove_var("CONTINUOUS_INTEGRATION");
+
     // In test environment, should default to JSON (non-TTY) but can be Ansi if a PTY is allocated
     let format = detect_format();
     assert!(format == DiagnosticFormat::Json || format == DiagnosticFormat::Ansi);
+
+    // Restore
+    if let Some(v) = old_github { std::env::set_var("GITHUB_ACTIONS", v); } else { std::env::remove_var("GITHUB_ACTIONS"); }
+    if let Some(v) = old_ci { std::env::set_var("CI", v); } else { std::env::remove_var("CI"); }
+    if let Some(v) = old_cont { std::env::set_var("CONTINUOUS_INTEGRATION", v); } else { std::env::remove_var("CONTINUOUS_INTEGRATION"); }
 }
 
 // ═══════════════════════════════════════════════════════════

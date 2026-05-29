@@ -80,7 +80,7 @@ async fn test_e2e_basic_workflow_with_environment_variables() -> Result<()> {
         .await?;
 
     assert!(result.succeeded());
-    assert!(result.stdout.contains("test_value"));
+    assert_eq!(result.stdout.trim(), "test_value");
 
     env.stop_service(&handle.id).await?;
     Ok(())

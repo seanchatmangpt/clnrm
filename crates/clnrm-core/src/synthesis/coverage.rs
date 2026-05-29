@@ -310,7 +310,7 @@ mod tests {
         constraints.hermetic = hermetic;
 
         let receipt = TestReceipt {
-            id: unimplemented!("ORACLE-GAP Refusal: Content hashing is not yet implemented"),
+            id: ContentHash::from_string("hash"),
             scenario_id: ScenarioId("test".to_string()),
             capabilities,
             effects: EffectSet::new(),

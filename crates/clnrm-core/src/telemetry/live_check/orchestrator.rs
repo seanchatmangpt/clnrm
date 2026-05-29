@@ -110,7 +110,7 @@ pub enum ValidationStatus {
 }
 
 /// Validation report from Weaver live-check
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ValidationReport {
     /// Overall status
     pub status: ValidationStatus,
@@ -126,6 +126,70 @@ pub struct ValidationReport {
     pub sample_count: u32,
     /// Detailed violation/improvement messages
     pub details: Vec<ValidationDetail>,
+}
+
+impl<'de> Deserialize<'de> for ValidationReport {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        if value.get("status").is_some() {
+            #[derive(Deserialize)]
+            struct Helper {
+                status: ValidationStatus,
+                violations: u32,
+                improvements: u32,
+                information: u32,
+                registry_coverage: f64,
+                sample_count: u32,
+                details: Vec<ValidationDetail>,
+            }
+            let h = Helper::deserialize(value).map_err(serde::de::Error::custom)?;
+            Ok(ValidationReport {
+                status: h.status,
+                violations: h.violations,
+                improvements: h.improvements,
+                information: h.information,
+                registry_coverage: h.registry_coverage,
+                sample_count: h.sample_count,
+                details: h.details,
+            })
+        } else {
+            #[derive(Deserialize)]
+            struct RawWeaverStatistics {
+                #[serde(default)]
+                advice_level_counts: std::collections::HashMap<String, u64>,
+                registry_coverage: f64,
+            }
+            #[derive(Deserialize)]
+            struct RawWeaverReport {
+                samples: Vec<serde_json::Value>,
+                statistics: RawWeaverStatistics,
+            }
+            let raw = RawWeaverReport::deserialize(value).map_err(serde::de::Error::custom)?;
+            let violations = (raw.statistics.advice_level_counts.get("violation").copied().unwrap_or(0)
+                + raw.statistics.advice_level_counts.get("error").copied().unwrap_or(0)) as u32;
+            let improvements = (raw.statistics.advice_level_counts.get("improvement").copied().unwrap_or(0)
+                + raw.statistics.advice_level_counts.get("warning").copied().unwrap_or(0)) as u32;
+            let information = (raw.statistics.advice_level_counts.get("information").copied().unwrap_or(0)
+                + raw.statistics.advice_level_counts.get("info").copied().unwrap_or(0)) as u32;
+            let status = if violations > 0 {
+                ValidationStatus::Failure
+            } else {
+                ValidationStatus::Success
+            };
+            Ok(ValidationReport {
+                status,
+                violations,
+                improvements,
+                information,
+                registry_coverage: raw.statistics.registry_coverage,
+                sample_count: raw.samples.len() as u32,
+                details: Vec::new(),
+            })
+        }
+    }
 }
 
 /// Detail entry in validation report
@@ -527,8 +591,116 @@ impl LiveCheckOrchestrator<WeaverRunning> {
 
     /// Parse report JSON string to ValidationReport
     fn parse_report(json: &str) -> Result<ValidationReport> {
-        serde_json::from_str(json).map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to parse validation report: {}", e))
+        let value: serde_json::Value = serde_json::from_str(json).map_err(|e| {
+            CleanroomError::internal_error(format!("Failed to parse validation report JSON: {}", e))
+        })?;
+
+        // If it's already in the target format (having 'status' key), parse directly
+        if value.get("status").is_some() {
+            return serde_json::from_value(value).map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to parse legacy validation report: {}", e))
+            });
+        }
+
+        // Otherwise, extract stats from the new Weaver live-check JSON format
+        let statistics = value.get("statistics");
+        let samples = value.get("samples").and_then(|v| v.as_array());
+
+        let mut violations = 0;
+        let mut improvements = 0;
+        let mut information = 0;
+        let mut details = Vec::new();
+        let mut sample_count = 0;
+        let mut registry_coverage = 0.0;
+
+        if let Some(stats) = statistics {
+            if let Some(cov) = stats.get("registry_coverage").and_then(|v| v.as_f64()) {
+                registry_coverage = cov;
+            }
+        }
+
+        if let Some(s_arr) = samples {
+            sample_count = s_arr.len() as u32;
+
+            // Helper to recursively extract advice from any Value (dictionary or list)
+            fn extract_advice(v: &serde_json::Value, details: &mut Vec<ValidationDetail>) {
+                if let Some(obj) = v.as_object() {
+                    // Check if this object contains advice list
+                    if let Some(all_advice) = obj.get("all_advice").and_then(|a| a.as_array()) {
+                        for advice in all_advice {
+                            if let Some(advice_obj) = advice.as_object() {
+                                let advice_level = advice_obj.get("advice_level").and_then(|l| l.as_str()).unwrap_or("information");
+                                let level = match advice_level.to_lowercase().as_str() {
+                                    "violation" => "violation",
+                                    "improvement" => "improvement",
+                                    _ => "information",
+                                };
+
+                                let message = advice_obj.get("message").and_then(|m| m.as_str()).unwrap_or("").to_string();
+                                let signal_type = advice_obj.get("signal_type").and_then(|t| t.as_str());
+                                let signal_name = advice_obj.get("signal_name").and_then(|n| n.as_str()).map(|s| s.to_string());
+
+                                let mut span_name = None;
+                                let mut metric_name = None;
+
+                                if let Some(sig_type) = signal_type {
+                                    if sig_type.to_lowercase().contains("span") {
+                                        span_name = signal_name;
+                                    } else if sig_type.to_lowercase().contains("metric") {
+                                        metric_name = signal_name;
+                                    }
+                                }
+
+                                details.push(ValidationDetail {
+                                    level: level.to_string(),
+                                    metric_name,
+                                    span_name,
+                                    message,
+                                    registry_path: None,
+                                });
+                            }
+                        }
+                    }
+
+                    // Also check nested live_check_result or other objects
+                    for val in obj.values() {
+                        extract_advice(val, details);
+                    }
+                } else if let Some(arr) = v.as_array() {
+                    for val in arr {
+                        extract_advice(val, details);
+                    }
+                }
+            }
+
+            for sample in s_arr {
+                extract_advice(sample, &mut details);
+            }
+        }
+
+        // Count levels
+        for detail in &details {
+            match detail.level.as_str() {
+                "violation" => violations += 1,
+                "improvement" => improvements += 1,
+                _ => information += 1,
+            }
+        }
+
+        let status = if violations > 0 {
+            ValidationStatus::Failure
+        } else {
+            ValidationStatus::Success
+        };
+
+        Ok(ValidationReport {
+            status,
+            violations,
+            improvements,
+            information,
+            registry_coverage,
+            sample_count,
+            details,
         })
     }
 
@@ -733,7 +905,7 @@ impl<State> Drop for LiveCheckOrchestrator<State> {
 /// let orchestrator = LiveCheckOrchestrator::new(LiveCheckConfig::default())?
 ///     .start_weaver().await?;
 ///
-/// let guard = LiveCheckGuard::new(orchestrator);
+/// let mut guard = LiveCheckGuard::new(orchestrator);
 ///
 /// // ... run tests (even if panic occurs, cleanup happens) ...
 ///
@@ -774,7 +946,7 @@ impl LiveCheckGuard {
     /// # Errors
     ///
     /// Returns error if orchestrator has already been taken.
-    pub fn take_orchestrator(mut self) -> Result<LiveCheckOrchestrator<WeaverRunning>> {
+    pub fn take_orchestrator(&mut self) -> Result<LiveCheckOrchestrator<WeaverRunning>> {
         self.orchestrator
             .take()
             .ok_or_else(|| CleanroomError::invalid_state("orchestrator already taken from guard"))

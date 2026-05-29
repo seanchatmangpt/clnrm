@@ -211,7 +211,44 @@ impl ServiceRegistry {
             ))
         })?;
 
-        unimplemented!("SERVICE-GALL-1 Refusal: get_service_logs must pull real logs from the container backend, not return mocked strings.");
+        let stdout_path = std::path::PathBuf::from("/tmp/runsc-root").join(format!("{}.stdout", handle.id));
+        let stderr_path = std::path::PathBuf::from("/tmp/runsc-root").join(format!("{}.stderr", handle.id));
+        
+        let mut logs = Vec::new();
+
+        if stdout_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&stdout_path) {
+                logs.extend(content.lines().map(|s| s.to_string()));
+            }
+        }
+        
+        if stderr_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&stderr_path) {
+                logs.extend(content.lines().map(|s| s.to_string()));
+            }
+        }
+        
+        if logs.is_empty() {
+            // Fallback to docker logs if not using gvisor/files
+            let output = tokio::process::Command::new("docker")
+                .arg("logs")
+                .arg(&handle.id)
+                .output()
+                .await;
+                
+            if let Ok(out) = output {
+                logs.extend(String::from_utf8_lossy(&out.stdout).lines().map(|s| s.to_string()));
+                logs.extend(String::from_utf8_lossy(&out.stderr).lines().map(|s| s.to_string()));
+            }
+        }
+
+        // Return only the requested number of lines from the end
+        if logs.len() > lines {
+            let start = logs.len() - lines;
+            Ok(logs[start..].to_vec())
+        } else {
+            Ok(logs)
+        }
     }
 }
 

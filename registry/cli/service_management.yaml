@@ -4,31 +4,38 @@ groups:
   span_kind: internal
   stability: stable
   brief: Represents service status and management via 'clnrm services' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - services.running + services.stopped + services.error should equal services.total
+
     - service.operation determines which conditional attributes are required
+
     - logs.lines > 0 proves actual log retrieval (when operation=logs)
+
     - operation.duration_ms > 0 proves actual service interaction
 
+
     This span proves that clnrm successfully interacted with running services
+
     to show status, retrieve logs, or perform lifecycle operations.
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["services"]
-
+    examples:
+    - services
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: service.operation
     type:
       allow_custom_values: false
@@ -49,7 +56,6 @@ groups:
     brief: The service operation being performed
     requirement_level: required
     note: Determines which conditional attributes are required
-
   - id: service.name
     type: string
     stability: stable
@@ -60,7 +66,6 @@ groups:
     - postgres
     - redis
     - surrealdb
-
   - id: services.total
     type: int
     stability: stable
@@ -71,7 +76,6 @@ groups:
     - 3
     - 5
     - 10
-
   - id: services.running
     type: int
     stability: stable
@@ -81,7 +85,6 @@ groups:
     - 2
     - 5
     - 8
-
   - id: services.stopped
     type: int
     stability: stable
@@ -91,7 +94,6 @@ groups:
     - 0
     - 1
     - 2
-
   - id: services.error
     type: int
     stability: stable
@@ -101,7 +103,6 @@ groups:
     - 0
     - 1
     - 2
-
   - id: logs.lines
     type: int
     stability: stable
@@ -113,7 +114,6 @@ groups:
     - 50
     - 100
     - 500
-
   - id: logs.tail_lines
     type: int
     stability: stable
@@ -123,7 +123,6 @@ groups:
     - 50
     - 100
     - 1000
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -134,7 +133,6 @@ groups:
     - 45.2
     - 125.8
     - 250.3
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -144,7 +142,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -155,7 +152,6 @@ groups:
     - ServiceNotFound
     - ServiceNotRunning
     - OperationTimeout
-
   - id: error.message
     type: string
     stability: stable
@@ -164,37 +160,43 @@ groups:
       conditionally_required: Only when operation.success is false
     examples:
     - Service 'postgres' not found in running services
-
 - id: span.clnrm.cli.collector
   type: span
   span_kind: internal
   stability: stable
   brief: Represents OTEL collector lifecycle management via 'clnrm collector' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - collector.operation determines which attributes are required
-    - collector.http_port and collector.grpc_port prove actual port binding (for 'up')
-    - collector.running = true proves collector is actually running (for 'status')
+
+    - collector.http_port and collector.grpc_port prove actual port binding (for ''up'')
+
+    - collector.running = true proves collector is actually running (for ''status'')
+
     - operation.duration_ms > 0 proves actual operation occurred
 
+
     This span proves that clnrm successfully managed the OTEL collector
+
     lifecycle for development and testing workflows.
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["collector"]
-
+    examples:
+    - collector
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: collector.operation
     type:
       allow_custom_values: false
@@ -219,7 +221,6 @@ groups:
     brief: The collector operation being performed
     requirement_level: required
     note: Determines which conditional attributes are required
-
   - id: collector.image
     type: string
     stability: stable
@@ -229,7 +230,6 @@ groups:
     examples:
     - otel/opentelemetry-collector:latest
     - otel/opentelemetry-collector:0.88.0
-
   - id: collector.http_port
     type: int
     stability: stable
@@ -240,7 +240,6 @@ groups:
     examples:
     - 4318
     - 4320
-
   - id: collector.grpc_port
     type: int
     stability: stable
@@ -251,7 +250,6 @@ groups:
     examples:
     - 4317
     - 4319
-
   - id: collector.detached
     type: boolean
     stability: stable
@@ -261,7 +259,6 @@ groups:
     examples:
     - true
     - false
-
   - id: collector.running
     type: boolean
     stability: stable
@@ -271,7 +268,6 @@ groups:
     examples:
     - true
     - false
-
   - id: collector.container_id
     type: string
     stability: stable
@@ -280,7 +276,6 @@ groups:
     examples:
     - a3b8c9d2e1f4
     - collector-dev-12345
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -291,7 +286,6 @@ groups:
     - 1250.5
     - 85.3
     - 340.7
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -301,7 +295,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -312,7 +305,6 @@ groups:
     - CollectorStartupFailed
     - PortAlreadyInUse
     - ImagePullFailed
-
   - id: error.message
     type: string
     stability: stable

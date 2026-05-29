@@ -148,19 +148,17 @@ impl ChaosOrchestrator {
             }
 
             "disk_fill" => {
-                // Disk fill is not yet implemented in ChaosEnginePlugin
-                // For now, map to memory exhaustion as a EXAMPLE-ONLY: placeholder
-                tracing::warn!(
-                    experiment_type = %exp.experiment_type,
-                    "disk_fill experiment not yet implemented, using memory_stress as fallback"
-                );
-
                 let duration_secs = exp.duration_seconds.unwrap_or(5);
-                let target_mb = exp.fill_mb.unwrap_or(100);
+                let fill_mb = exp
+                    .fill_mb
+                    .ok_or_else(|| CleanroomError::validation_error(
+                        "disk_fill experiment requires fill_mb parameter"
+                    ))?;
 
-                Ok(ChaosScenario::MemoryExhaustion {
+                Ok(ChaosScenario::DiskFill {
                     duration_secs,
-                    target_mb,
+                    fill_mb,
+                    path: None,
                 })
             }
 
@@ -412,5 +410,35 @@ mod tests {
         )));
         assert!(attrs.contains(&("chaos.latency_ms".to_string(), "100".to_string())));
         assert!(attrs.contains(&("chaos.duration_seconds".to_string(), "10".to_string())));
+    }
+
+    #[test]
+    fn test_map_disk_fill_experiment() {
+        let exp = ChaosExperiment {
+            experiment_type: "disk_fill".to_string(),
+            target_service: "test_service".to_string(),
+            latency_ms: None,
+            duration_seconds: Some(8),
+            cpu_percent: None,
+            memory_mb: None,
+            fill_mb: Some(500),
+            timing: None,
+            count: None,
+        };
+
+        let scenario = ChaosOrchestrator::map_single_experiment(&exp).unwrap();
+
+        match scenario {
+            ChaosScenario::DiskFill {
+                duration_secs,
+                fill_mb,
+                path,
+            } => {
+                assert_eq!(duration_secs, 8);
+                assert_eq!(fill_mb, 500);
+                assert!(path.is_none());
+            }
+            _ => panic!("Expected DiskFill scenario"),
+        }
     }
 }

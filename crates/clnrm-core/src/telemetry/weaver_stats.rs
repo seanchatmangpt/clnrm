@@ -62,10 +62,7 @@ pub struct RegistryStatistics {
 impl RegistryStatistics {
     /// Calculate coverage percentage (required attributes vs total)
     pub fn coverage_percentage(&self) -> f64 {
-        if self.total_attributes == 0 {
-            return 0.0;
-        }
-        (self.required_attributes as f64 / self.total_attributes as f64) * 100.0
+        self.required_coverage * 100.0
     }
 
     /// Check if registry is production-ready (>= 80% required coverage)

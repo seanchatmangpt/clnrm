@@ -69,7 +69,7 @@ fn test_concurrent_updates_100_threads() {
 fn test_concurrent_mixed_operations() {
     // Arrange
     let metrics = Arc::new(create_test_metrics());
-    let num_threads = 50;
+    let num_threads = 52;
     let mut handles = Vec::new();
 
     // Act - Mix of different operations across threads

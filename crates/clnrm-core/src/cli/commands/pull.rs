@@ -221,3 +221,48 @@ async fn pull_single_image(image: &str) -> Result<()> {
     println!("  ✓ Pulled {}", image);
     Ok(())
 }
+
+/// Pull a single OCI image using OciImageLoader
+pub async fn pull_oci_image(image_ref: &str) -> Result<crate::backend::oci::OciImage> {
+    use crate::backend::oci::{OciImageLoader, ImageSource};
+
+    // Parse image reference
+    let source = if Path::new(image_ref).exists() {
+        ImageSource::Local {
+            path: image_ref.into(),
+        }
+    } else {
+        let (registry, repo_tag) = if image_ref.contains('/') {
+            let parts: Vec<&str> = image_ref.splitn(2, '/').collect();
+            if parts[0].contains('.') || parts[0].contains(':') {
+                (parts[0].to_string(), parts[1].to_string())
+            } else {
+                (
+                    "registry-1.docker.io".to_string(),
+                    format!("library/{}", image_ref),
+                )
+            }
+        } else {
+            (
+                "registry-1.docker.io".to_string(),
+                format!("library/{}", image_ref),
+            )
+        };
+
+        let (repository, tag) = if let Some((repo, tag)) = repo_tag.split_once(':') {
+            (repo.to_string(), tag.to_string())
+        } else {
+            (repo_tag, "latest".to_string())
+        };
+
+        ImageSource::Registry {
+            registry,
+            repository,
+            tag,
+        }
+    };
+
+    let loader = OciImageLoader::new()?;
+    loader.load_image(source).await
+}
+

@@ -710,15 +710,15 @@ pub mod validation {
             ));
         }
 
-        // OTEL-GALL-1 Refusal
-        unimplemented!("OTEL-GALL-1 Refusal: validate_span_existence must query the actual exporter for real spans, not return a simulated success.");
+        let spans = super::span_storage::get_collected_spans();
+        let exists = spans.iter().any(|span| span.name == operation_name);
+        Ok(exists)
     }
 
     /// Capture spans created during test execution
     /// Returns span count for basic validation
     pub fn capture_test_spans() -> Result<usize> {
-        // OTEL-GALL-1 Refusal
-        unimplemented!("OTEL-GALL-1 Refusal: capture_test_spans must return the actual span count from the runtime, not a mocked number.");
+        Ok(super::span_storage::span_count())
     }
 }
 

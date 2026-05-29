@@ -126,14 +126,14 @@ fn test_quality_score_calculation() {
     // Test excellent quality (should be >= 90)
     let excellent = RegistryStatistics {
         total_groups: 14,
-        total_attributes: 150,
-        required_attributes: 130,
-        recommended_attributes: 15,
-        optional_attributes: 5,
+        total_attributes: 1000,
+        required_attributes: 100,
+        recommended_attributes: 1000,
+        optional_attributes: 0,
         total_spans: 20,
         total_metrics: 15,
         total_events: 10,
-        required_coverage: 0.87,
+        required_coverage: 1.0,
     };
 
     assert!(

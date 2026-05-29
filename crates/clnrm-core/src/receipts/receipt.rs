@@ -365,7 +365,7 @@ mod tests {
         );
 
         TestReceipt {
-            id: unimplemented!("ORACLE-GAP Refusal: Content hashing is not yet implemented"),
+            id: ContentHash::from_string("hash"),
             scenario_id: ScenarioId("test-scenario".to_string()),
             capabilities: vec![CapabilityId("hermetic_execution".to_string())],
             effects: EffectSet::new(),

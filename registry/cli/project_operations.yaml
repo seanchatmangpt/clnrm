@@ -4,31 +4,38 @@ groups:
   span_kind: internal
   stability: stable
   brief: Represents template formatting via 'clnrm fmt' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - files.formatted + files.unchanged + files.errors MUST equal files.input.length
+
     - operation.duration_ms > 0 proves actual formatting occurred
+
     - idempotency.verified = true proves re-formatting produces same result
+
     - Cannot be faked - file modifications require real I/O
 
+
     This span proves that clnrm successfully formatted template files
+
     and optionally verified idempotency (re-formatting produces same output).
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["fmt"]
-
+    examples:
+    - fmt
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: files.input_count
     type: int
     stability: stable
@@ -39,7 +46,6 @@ groups:
     - 5
     - 10
     - 25
-
   - id: files.formatted
     type: int
     stability: stable
@@ -50,7 +56,6 @@ groups:
     - 3
     - 8
     - 15
-
   - id: files.unchanged
     type: int
     stability: stable
@@ -61,7 +66,6 @@ groups:
     - 2
     - 5
     - 10
-
   - id: files.errors
     type: int
     stability: stable
@@ -72,7 +76,6 @@ groups:
     - 0
     - 1
     - 2
-
   - id: check_mode.enabled
     type: boolean
     stability: stable
@@ -81,7 +84,6 @@ groups:
     examples:
     - true
     - false
-
   - id: verify_mode.enabled
     type: boolean
     stability: stable
@@ -90,7 +92,6 @@ groups:
     examples:
     - true
     - false
-
   - id: idempotency.verified
     type: boolean
     stability: stable
@@ -100,7 +101,6 @@ groups:
     examples:
     - true
     - false
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -111,7 +111,6 @@ groups:
     - 125.5
     - 340.2
     - 55.8
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -121,7 +120,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -132,7 +130,6 @@ groups:
     - FileNotFound
     - SyntaxError
     - PermissionDenied
-
   - id: error.message
     type: string
     stability: stable
@@ -141,37 +138,43 @@ groups:
       conditionally_required: Only when operation.success is false
     examples:
     - Failed to parse template file at /path/template.tera
-
 - id: span.clnrm.cli.render
   type: span
   span_kind: internal
   stability: stable
   brief: Represents Tera template rendering via 'clnrm render' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - template.exists MUST be true (proves template file found)
+
     - variables.count proves variable parsing occurred
+
     - output.size_bytes > 0 proves actual rendering (when not show-vars mode)
+
     - operation.duration_ms > 0 proves actual work occurred
 
+
     This span proves that clnrm successfully rendered a Tera template
+
     with provided variables and produced output.
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["render"]
-
+    examples:
+    - render
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: template.path
     type: string
     stability: stable
@@ -180,7 +183,6 @@ groups:
     examples:
     - /workspace/templates/api.tera
     - ./templates/config.toml.tera
-
   - id: template.exists
     type: boolean
     stability: stable
@@ -190,7 +192,6 @@ groups:
     examples:
     - true
     - false
-
   - id: variables.count
     type: int
     stability: stable
@@ -201,7 +202,6 @@ groups:
     - 5
     - 10
     - 25
-
   - id: variables.used
     type: int
     stability: stable
@@ -212,7 +212,6 @@ groups:
     - 5
     - 8
     - 20
-
   - id: output.path
     type: string
     stability: stable
@@ -221,7 +220,6 @@ groups:
     examples:
     - /output/rendered.txt
     - ./generated/config.toml
-
   - id: output.size_bytes
     type: int
     stability: stable
@@ -232,7 +230,6 @@ groups:
     - 1024
     - 5120
     - 102400
-
   - id: show_vars.enabled
     type: boolean
     stability: stable
@@ -241,7 +238,6 @@ groups:
     examples:
     - true
     - false
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -252,7 +248,6 @@ groups:
     - 45.3
     - 125.7
     - 230.5
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -261,7 +256,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -272,7 +266,6 @@ groups:
     - TemplateNotFound
     - RenderError
     - VariableMissing
-
   - id: error.message
     type: string
     stability: stable
@@ -281,37 +274,43 @@ groups:
       conditionally_required: Only when operation.success is false
     examples:
     - Template variable 'api_key' is undefined
-
 - id: span.clnrm.cli.record
   type: span
   span_kind: internal
   stability: stable
   brief: Represents baseline recording via 'clnrm record' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - tests.recorded <= tests.discovered (cannot record more than found)
+
     - baseline.path MUST exist as a file after span completes
+
     - baseline.digest proves actual baseline content (SHA-256 hash)
+
     - telemetry.spans_captured > 0 proves actual OTEL capture
 
+
     This span proves that clnrm successfully executed tests and captured
+
     their telemetry output as a baseline for reproducibility validation.
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["record"]
-
+    examples:
+    - record
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: tests.discovered
     type: int
     stability: stable
@@ -322,7 +321,6 @@ groups:
     - 10
     - 25
     - 50
-
   - id: tests.recorded
     type: int
     stability: stable
@@ -333,7 +331,6 @@ groups:
     - 10
     - 23
     - 48
-
   - id: baseline.path
     type: string
     stability: stable
@@ -343,7 +340,6 @@ groups:
     examples:
     - /workspace/.clnrm/baselines/test_suite.baseline.json
     - ./baselines/integration_tests.json
-
   - id: baseline.digest
     type: string
     stability: stable
@@ -353,7 +349,6 @@ groups:
     examples:
     - 5d41402abc4b2a76b9719d911017c592
     - e99a18c428cb38d5f260853678922e03
-
   - id: telemetry.spans_captured
     type: int
     stability: stable
@@ -364,7 +359,6 @@ groups:
     - 150
     - 500
     - 1200
-
   - id: telemetry.size_bytes
     type: int
     stability: stable
@@ -374,7 +368,6 @@ groups:
     - 10240
     - 51200
     - 204800
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -385,7 +378,6 @@ groups:
     - 5230.5
     - 12450.8
     - 25000.2
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -394,7 +386,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -405,7 +396,6 @@ groups:
     - TestExecutionFailed
     - TelemetryCaptureError
     - FileWriteError
-
   - id: error.message
     type: string
     stability: stable

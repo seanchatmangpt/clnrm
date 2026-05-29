@@ -12,13 +12,9 @@ description: |
   Every span, metric, and event in this registry represents a PROVABLE
   runtime behavior that cannot be faked by stub implementations.
 
-semconv_version: 1.0.0
-schema_base_url: https://github.com/seanchatmangpt/clnrm/schemas/
+schema_url: https://opentelemetry.io/schemas/1.21.0
 
-# Dependencies on OpenTelemetry semantic conventions
-dependencies:
-  - name: otel
-    registry_path: https://github.com/open-telemetry/semantic-conventions/archive/refs/tags/v1.34.0.zip[model]
+
 
 # Schema groups
 groups:

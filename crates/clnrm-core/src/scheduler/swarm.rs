@@ -501,6 +501,9 @@ pub struct SwarmScheduler {
 
     /// Statistics
     stats: Arc<SchedulerStats>,
+
+    /// Global maximum concurrency limit
+    global_max_concurrent: usize,
 }
 
 /// Scheduler statistics
@@ -532,12 +535,105 @@ impl SwarmScheduler {
                 total_completed: Arc::new(AtomicU64::new(0)),
                 queue_depth: Arc::new(AtomicU64::new(0)),
             }),
+            global_max_concurrent,
         }
     }
 
     /// Get policy engine (for registering policies)
     pub fn policy_engine(&self) -> Arc<PolicyEngine> {
         self.policy.clone()
+    }
+
+    /// Estimate start time for a request by walking the timeline (helper)
+    fn estimate_start_time_locked(&self, queue: &BinaryHeap<TestRequest>, target_request_id: &RequestId) -> Option<chrono::DateTime<chrono::Utc>> {
+        let now = chrono::Utc::now();
+        let global_limit = self.global_max_concurrent;
+
+        // Clone the pending queue to simulate
+        let mut pending = queue.clone().into_sorted_vec();
+        // Since into_sorted_vec returns ascending (lowest priority first), reverse it to get highest priority first
+        pending.reverse();
+
+        // Active executions: maps completion time -> TenantId
+        let mut release_events: Vec<(chrono::DateTime<chrono::Utc>, TenantId)> = Vec::new();
+        let mut active_by_tenant: std::collections::HashMap<TenantId, usize> = std::collections::HashMap::new();
+
+        for entry in self.active.iter() {
+            let tenant = entry.key().clone();
+            let handles = entry.value();
+            active_by_tenant.insert(tenant.clone(), handles.len());
+
+            for handle in handles {
+                let completion = if let Some(ref completion_str) = handle.estimated_completion {
+                    chrono::DateTime::parse_from_rfc3339(completion_str)
+                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                        .unwrap_or_else(|_| now + std::time::Duration::from_secs(1))
+                } else {
+                    chrono::DateTime::parse_from_rfc3339(&handle.started_at)
+                        .map(|dt| dt.with_timezone(&chrono::Utc) + std::time::Duration::from_secs(1))
+                        .unwrap_or_else(|_| now + std::time::Duration::from_secs(1))
+                };
+                // Ensure completion time is not in the past relative to now
+                let completion = if completion < now { now } else { completion };
+                release_events.push((completion, tenant.clone()));
+            }
+        }
+
+        // Sort release events so the earliest is at the end (for easy popping)
+        release_events.sort_by(|a, b| b.0.cmp(&a.0));
+
+        let mut sim_time = now;
+        let mut global_active = release_events.len();
+
+        let mut target_start_time: Option<chrono::DateTime<chrono::Utc>> = None;
+
+        while !pending.is_empty() {
+            let mut progress = false;
+
+            let mut i = 0;
+            while i < pending.len() {
+                let req = &pending[i];
+                let tenant_active = *active_by_tenant.get(&req.tenant).unwrap_or(&0);
+                let tenant_limit = req.capability_budget.max_concurrent;
+
+                if global_active < global_limit && tenant_active < tenant_limit {
+                    // Can start!
+                    let req_to_start = pending.remove(i);
+                    global_active += 1;
+                    active_by_tenant.insert(req_to_start.tenant.clone(), tenant_active + 1);
+
+                    let duration = req_to_start.latency_target.max_duration();
+                    let completion_time = sim_time + duration;
+
+                    // If this is our target request, record the start time
+                    if req_to_start.request_id == *target_request_id {
+                        target_start_time = Some(sim_time);
+                        return target_start_time;
+                    }
+
+                    release_events.push((completion_time, req_to_start.tenant.clone()));
+                    release_events.sort_by(|a, b| b.0.cmp(&a.0));
+
+                    progress = true;
+                } else {
+                    i += 1;
+                }
+            }
+
+            if !progress {
+                if let Some((next_time, tenant)) = release_events.pop() {
+                    sim_time = next_time;
+                    global_active = global_active.saturating_sub(1);
+                    if let Some(count) = active_by_tenant.get_mut(&tenant) {
+                        *count = count.saturating_sub(1);
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+
+        target_start_time
     }
 
     /// Admit test request (policy check + budget validation)
@@ -578,11 +674,14 @@ impl SwarmScheduler {
             .queue_depth
             .store(queue.len() as u64, AtomicOrdering::Relaxed);
 
+        let estimated_start = self.estimate_start_time_locked(&queue, &request.request_id)
+            .map(|dt| dt.to_rfc3339());
+
         Ok(AdmissionTicket {
             request_id: request.request_id,
             admitted_at: chrono::Utc::now().to_rfc3339(),
             queue_position,
-            estimated_start: None, // ORACLE-GAP Refusal: Estimate based on current load
+            estimated_start,
         })
     }
 

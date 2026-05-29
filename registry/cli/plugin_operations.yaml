@@ -4,31 +4,38 @@ groups:
   span_kind: internal
   stability: stable
   brief: Represents plugin discovery and listing via 'clnrm plugins' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - plugins.discovered MUST be >= 0 (proves discovery ran)
+
     - plugins.builtin + plugins.custom should account for most plugins
+
     - operation.duration_ms > 0 proves actual discovery occurred
+
     - plugins.by_type JSON proves type classification works
 
+
     This span proves that clnrm successfully discovered and categorized
+
     all available service plugins (built-in and custom).
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["plugins"]
-
+    examples:
+    - plugins
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: plugins.discovered
     type: int
     stability: stable
@@ -39,7 +46,6 @@ groups:
     - 7
     - 12
     - 20
-
   - id: plugins.builtin
     type: int
     stability: stable
@@ -50,7 +56,6 @@ groups:
     - 5
     - 7
     - 10
-
   - id: plugins.custom
     type: int
     stability: stable
@@ -61,19 +66,19 @@ groups:
     - 0
     - 2
     - 5
-
   - id: plugins.by_type
     type: string
     stability: stable
     brief: JSON map of plugin type to count
     requirement_level: recommended
-    note: |
-      Proves type classification works. Format: {"type": count}
+    note: 'Proves type classification works. Format: {"type": count}
+
       Example: {"database": 2, "cache": 1, "llm": 3, "generic": 1}
+
+      '
     examples:
     - '{"database": 2, "cache": 1, "generic": 1, "llm": 3}'
     - '{"generic": 5, "database": 1}'
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -84,7 +89,6 @@ groups:
     - 25.3
     - 45.7
     - 85.2
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -94,7 +98,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -104,7 +107,6 @@ groups:
     examples:
     - PluginLoadError
     - InvalidPluginConfiguration
-
   - id: error.message
     type: string
     stability: stable

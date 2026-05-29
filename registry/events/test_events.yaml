@@ -173,7 +173,7 @@ groups:
     requirement_level: recommended
     examples:
     - "Error: Test failed\n  at test_function (test.rs:42:5)\n  at main (main.rs:10:1)"
-    - "thread 'main' panicked at 'assertion failed', src/lib.rs:100:9"
+    - thread 'main' panicked at 'assertion failed', src/lib.rs:100:9
     stability: stable
   - id: timestamp
     type: string

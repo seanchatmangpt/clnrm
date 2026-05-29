@@ -76,6 +76,7 @@ url = "2.5"
 which = "6.0"
 colored = "2.1"  # For beautiful terminal output in diagnostic formatter
 crossbeam = "0.8"  # Lock-free concurrent data structures (SegQueue)
+socket2 = "0.5"
 num_cpus = "1.16"  # For CPU core detection
 
 # Unix signal handling and file locking for Weaver controller and port allocator

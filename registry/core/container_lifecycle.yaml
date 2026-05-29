@@ -148,16 +148,18 @@ groups:
     brief: Exposed ports mapping
     requirement_level: recommended
     examples:
-    - ["5432:5432", "6379:6379"]
-    - ["8080:8080"]
+    - - 5432:5432
+      - 6379:6379
+    - - 8080:8080
     stability: stable
   - id: container.volumes
     type: string[]
     brief: Volume mounts
     requirement_level: recommended
     examples:
-    - ["/tmp/data:/data", "/var/run/docker.sock:/var/run/docker.sock"]
-    - ["/data:/mnt/data"]
+    - - /tmp/data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    - - /data:/mnt/data
     stability: stable
   - id: cleanup.success
     type: boolean

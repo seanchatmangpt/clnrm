@@ -105,16 +105,20 @@ mod tests {
             Ok(self.should_change)
         }
 
-        fn update(&mut self, file_path: &Path, _rendered_content: &str) -> Result<()> {
+        fn update(&self, file_path: &Path, _rendered_content: &str) -> Result<()> {
             self.update_calls.lock().unwrap().push(file_path.to_path_buf());
             Ok(())
         }
 
-        fn invalidate(&mut self, _file_path: &Path) -> Result<()> {
+        fn remove(&self, _file_path: &Path) -> Result<()> {
             Ok(())
         }
 
-        fn clear(&mut self) -> Result<()> {
+        fn save(&self) -> Result<()> {
+            Ok(())
+        }
+
+        fn clear(&self) -> Result<()> {
             Ok(())
         }
 
@@ -175,7 +179,7 @@ mod tests {
     #[test]
     fn test_mock_cache_update() {
         // Test mock cache update method
-        let mut cache = MockCache::new(true);
+        let cache = MockCache::new(true);
         let path = Path::new("test.txt");
 
         assert_eq!(cache.update_call_count(), 0);
@@ -200,19 +204,19 @@ mod tests {
     }
 
     #[test]
-    fn test_mock_cache_invalidate() {
-        // Test mock cache invalidate method
-        let mut cache = MockCache::new(true);
+    fn test_mock_cache_remove() {
+        // Test mock cache remove method
+        let cache = MockCache::new(true);
         let path = Path::new("test.txt");
 
         // Should not panic
-        cache.invalidate(path).unwrap();
+        cache.remove(path).unwrap();
     }
 
     #[test]
     fn test_mock_cache_clear() {
         // Test mock cache clear method
-        let mut cache = MockCache::new(true);
+        let cache = MockCache::new(true);
 
         // Should not panic
         cache.clear().unwrap();

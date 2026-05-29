@@ -139,7 +139,18 @@ fn test_strict_mode_missing_optional_attribute() -> Result<()> {
 #[test]
 fn test_eighty_twenty_mode_critical_only() -> Result<()> {
     let config = ValidationConfig::eighty_twenty();
-    let eighty_twenty = EightyTwentyConfig::default();
+    let eighty_twenty = EightyTwentyConfig {
+        critical_spans: vec![
+            "clnrm.test.execute".to_string(),
+            "clnrm.container.start".to_string(),
+        ],
+        required_attributes: vec![
+            "clnrm.version".to_string(),
+            "test.hermetic".to_string(),
+            "container.id".to_string(),
+        ],
+        optional_attributes: vec![],
+    };
 
     let validator = ConformanceValidator::with_80_20_config(config, eighty_twenty);
 
@@ -161,12 +172,14 @@ fn test_eighty_twenty_mode_critical_only() -> Result<()> {
     }
 
     let result = validator.validate(&report);
+    println!("DEBUG: mode={:?}, coverage={}, violations={:?}, present_spans={:?}, present_attrs={:?}", result.mode, result.coverage, result.violations, report.present_spans, report.present_attributes);
 
     // 80/20 mode only checks critical items, not all required items
     // This test verifies that missing non-critical items don't fail validation
     assert!(
         result.coverage >= 80.0,
-        "Coverage should be at least 80% in 80/20 mode"
+        "Coverage should be at least 80% in 80/20 mode (actual: {})",
+        result.coverage
     );
 
     Ok(())

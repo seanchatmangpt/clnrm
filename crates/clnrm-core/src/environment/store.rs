@@ -127,7 +127,7 @@ mod tests {
 
         let sigma = SigmaBase {
             version: SemVer::new(1, 0, 0),
-            hash: unimplemented!("ORACLE-GAP Refusal: Content hashing is not yet implemented"),
+            hash: ContentHash::from_string("hash"),
             description: description.to_string(),
             services: HashMap::new(),
             networks: HashMap::new(),

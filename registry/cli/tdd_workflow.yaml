@@ -4,31 +4,38 @@ groups:
   span_kind: internal
   stability: stable
   brief: Represents TDD workflow validation via 'clnrm red-green' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - tdd.validation_passed = (tdd.expected_state == tdd.actual_state)
+
     - tests.passed + tests.failed MUST equal tests.total
+
     - operation.duration_ms > 0 proves actual test execution occurred
+
     - Cannot be faked - requires actual test execution and comparison
 
+
     This span proves that clnrm successfully validated TDD workflow
+
     by checking whether tests are in the expected state (red or green).
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["red-green"]
-
+    examples:
+    - red-green
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: tdd.expected_state
     type:
       allow_custom_values: false
@@ -45,7 +52,6 @@ groups:
     brief: Expected test state in TDD cycle
     requirement_level: required
     note: What the developer expects tests to do
-
   - id: tdd.actual_state
     type:
       allow_custom_values: false
@@ -62,7 +68,6 @@ groups:
     brief: Actual test state after execution
     requirement_level: required
     note: What the tests actually did
-
   - id: tdd.validation_passed
     type: boolean
     stability: stable
@@ -72,7 +77,6 @@ groups:
     examples:
     - true
     - false
-
   - id: tests.total
     type: int
     stability: stable
@@ -83,7 +87,6 @@ groups:
     - 10
     - 25
     - 50
-
   - id: tests.passed
     type: int
     stability: stable
@@ -93,7 +96,6 @@ groups:
     - 10
     - 20
     - 50
-
   - id: tests.failed
     type: int
     stability: stable
@@ -103,7 +105,6 @@ groups:
     - 0
     - 5
     - 10
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -114,7 +115,6 @@ groups:
     - 5230.5
     - 12450.8
     - 25000.2
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -124,7 +124,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -134,7 +133,6 @@ groups:
     examples:
     - TestExecutionError
     - ConfigurationError
-
   - id: error.message
     type: string
     stability: stable
@@ -143,37 +141,43 @@ groups:
       conditionally_required: Only when operation.success is false
     examples:
     - Failed to execute tests - container creation timeout
-
 - id: span.clnrm.cli.repro
   type: span
   span_kind: internal
   stability: stable
   brief: Represents test reproduction from baseline via 'clnrm repro' command
-  note: |
-    CRITICAL VALIDATION POINTS:
+  note: 'CRITICAL VALIDATION POINTS:
+
     - baseline.exists = true proves baseline file was found
+
     - baseline.digest proves baseline content integrity (SHA-256)
+
     - digest.verified proves comparison between current and baseline
+
     - tests.reproduced + tests.diverged proves actual reproduction attempt
 
+
     This span proves that clnrm successfully reproduced tests from a
+
     baseline recording and compared results to detect divergence.
 
+    '
   attributes:
   - id: cli.command
     type: string
     stability: stable
     brief: The CLI command name
     requirement_level: required
-    examples: ["repro"]
-
+    examples:
+    - repro
   - id: cli.version
     type: string
     stability: stable
     brief: clnrm version executing the command
     requirement_level: recommended
-    examples: ["1.2.0", "1.1.0"]
-
+    examples:
+    - 1.2.0
+    - 1.1.0
   - id: baseline.path
     type: string
     stability: stable
@@ -182,7 +186,6 @@ groups:
     examples:
     - /workspace/.clnrm/baselines/test_suite.baseline.json
     - ./baselines/integration_tests.json
-
   - id: baseline.exists
     type: boolean
     stability: stable
@@ -192,7 +195,6 @@ groups:
     examples:
     - true
     - false
-
   - id: baseline.digest
     type: string
     stability: stable
@@ -202,7 +204,6 @@ groups:
     examples:
     - 5d41402abc4b2a76b9719d911017c592
     - e99a18c428cb38d5f260853678922e03
-
   - id: baseline.digest_current
     type: string
     stability: stable
@@ -212,7 +213,6 @@ groups:
     examples:
     - 5d41402abc4b2a76b9719d911017c592
     - a1b2c3d4e5f67890abcdef1234567890
-
   - id: digest.verified
     type: boolean
     stability: stable
@@ -223,7 +223,6 @@ groups:
     examples:
     - true
     - false
-
   - id: tests.total
     type: int
     stability: stable
@@ -233,7 +232,6 @@ groups:
     - 10
     - 25
     - 50
-
   - id: tests.reproduced
     type: int
     stability: stable
@@ -244,7 +242,6 @@ groups:
     - 10
     - 23
     - 48
-
   - id: tests.diverged
     type: int
     stability: stable
@@ -255,7 +252,6 @@ groups:
     - 0
     - 2
     - 5
-
   - id: output.path
     type: string
     stability: stable
@@ -264,7 +260,6 @@ groups:
     examples:
     - /workspace/.clnrm/repro-report.json
     - ./repro-results.txt
-
   - id: operation.duration_ms
     type: double
     stability: stable
@@ -275,7 +270,6 @@ groups:
     - 5230.5
     - 12450.8
     - 25000.2
-
   - id: operation.success
     type: boolean
     stability: stable
@@ -285,7 +279,6 @@ groups:
     examples:
     - true
     - false
-
   - id: error.type
     type: string
     stability: stable
@@ -296,7 +289,6 @@ groups:
     - BaselineNotFound
     - TestExecutionError
     - DigestVerificationFailed
-
   - id: error.message
     type: string
     stability: stable

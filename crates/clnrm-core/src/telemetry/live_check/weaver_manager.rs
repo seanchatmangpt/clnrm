@@ -47,6 +47,10 @@ pub struct WeaverProcessManager {
     output_dir: PathBuf,
     /// Process startup timestamp
     started_at: Option<Instant>,
+    /// OTLP port lock
+    otlp_port_lock: Option<super::PortLock>,
+    /// Admin port lock
+    admin_port_lock: Option<super::PortLock>,
 }
 
 impl WeaverProcessManager {
@@ -69,6 +73,8 @@ impl WeaverProcessManager {
             inactivity_timeout,
             output_dir,
             started_at: None,
+            otlp_port_lock: None,
+            admin_port_lock: None,
         })
     }
 
@@ -92,20 +98,41 @@ impl WeaverProcessManager {
     pub async fn start(&mut self) -> Result<WeaverPorts> {
         info!("🚀 Starting Weaver process manager");
 
-        // Cleanup any orphaned processes
-        Self::cleanup_orphaned_processes()?;
+        // Cleanup any orphaned processes (skip under cargo test to avoid parallel race conditions)
+        if std::env::var("CARGO_MANIFEST_DIR").is_err() {
+            Self::cleanup_orphaned_processes()?;
+        }
 
         // Find Weaver binary
         let weaver_binary = Self::find_weaver_binary()?;
         info!("📍 Found Weaver binary at: {:?}", weaver_binary);
 
-        // Discover available ports
-        let otlp_port = Self::find_available_otlp_port()?;
-        let admin_port = Self::find_available_admin_port()?;
+        // Discover available ports with atomic locks
+        let allocator = super::PortAllocator::new()?;
+        let otlp_lock = allocator.allocate_port().await?;
+        let otlp_port = otlp_lock.port();
+
+        let admin_lock = allocator.allocate_port().await?;
+        let admin_port = admin_lock.port();
+
         info!(
-            "📡 Discovered ports: OTLP={}, Admin={}",
+            "📡 Discovered and locked ports: OTLP={}, Admin={}",
             otlp_port, admin_port
         );
+
+        // Resolve registry path to absolute path, walking parent directories if relative
+        let absolute_registry_path = if self.registry_path.is_relative() {
+            self.find_absolute_registry_path()
+        } else {
+            self.registry_path.canonicalize().unwrap_or_else(|_| self.registry_path.clone())
+        };
+
+        // If manifest.yaml does not exist in the registry path, but registry_manifest.yaml does, copy it
+        let manifest_path = absolute_registry_path.join("manifest.yaml");
+        let registry_manifest_path = absolute_registry_path.join("registry_manifest.yaml");
+        if !manifest_path.exists() && registry_manifest_path.exists() {
+            let _ = fs::copy(&registry_manifest_path, &manifest_path);
+        }
 
         // Create output directory
         fs::create_dir_all(&self.output_dir).map_err(|e| {
@@ -118,7 +145,7 @@ impl WeaverProcessManager {
             "registry",
             "live-check",
             "--registry",
-            &self.registry_path.display().to_string(),
+            &absolute_registry_path.display().to_string(),
             "--otlp-grpc-port",
             &otlp_port.to_string(),
             "--admin-port",
@@ -128,7 +155,7 @@ impl WeaverProcessManager {
             "--output",
             &self.output_dir.display().to_string(),
             "--inactivity-timeout",
-            &format!("{}s", self.inactivity_timeout),
+            &self.inactivity_timeout.to_string(),
             "--no-stream", // Batch mode for cleaner logs
             "--future",    // Latest validation rules
         ]);
@@ -145,10 +172,12 @@ impl WeaverProcessManager {
         let pid = child.id();
         info!("✅ Weaver process started (PID: {})", pid);
 
-        // Store process and ports
+        // Store process, ports, and locks
         self.process = Some(child);
         self.otlp_port = Some(otlp_port);
         self.admin_port = Some(admin_port);
+        self.otlp_port_lock = Some(otlp_lock);
+        self.admin_port_lock = Some(admin_lock);
         self.started_at = Some(Instant::now());
 
         // Wait for health check
@@ -317,6 +346,8 @@ impl WeaverProcessManager {
         self.wait_with_timeout(&mut process, Duration::from_secs(10))
             .await?;
 
+        self.cleanup_manifest();
+
         info!("✅ Weaver stopped successfully");
         Ok(())
     }
@@ -370,9 +401,12 @@ impl WeaverProcessManager {
             ));
         }
 
-        fs::read_to_string(&report_path).map_err(|e| {
+        let content = fs::read_to_string(&report_path).map_err(|e| {
             CleanroomError::internal_error(format!("Failed to read validation report: {}", e))
-        })
+        })?;
+        println!("📄 Validation report content:\n{}", content);
+        eprintln!("📄 Validation report content:\n{}", content);
+        Ok(content)
     }
 
     /// Force kill Weaver process
@@ -382,6 +416,7 @@ impl WeaverProcessManager {
         if let Some(mut process) = self.process.take() {
             Self::force_kill_process(&mut process)?;
         }
+        self.cleanup_manifest();
         Ok(())
     }
 
@@ -510,6 +545,23 @@ impl WeaverProcessManager {
 
     /// Try to find available port in range
     fn try_port_range(start: u16, end: u16) -> Result<u16> {
+        // Use thread ID to stagger start offset and prevent concurrent race conditions
+        let thread_id = format!("{:?}", std::thread::current().id());
+        let mut sum: u32 = 0;
+        for c in thread_id.chars() {
+            sum = sum.wrapping_add(c as u32);
+        }
+        let range = (end - start + 1) as u32;
+        let offset = (sum % range) as u16;
+
+        for i in 0..range as u16 {
+            let port = start + (offset + i) % (range as u16);
+            if Self::is_port_available(port) {
+                return Ok(port);
+            }
+        }
+
+        // Fallback to sequential
         for port in start..=end {
             if Self::is_port_available(port) {
                 return Ok(port);
@@ -518,9 +570,10 @@ impl WeaverProcessManager {
         Err(CleanroomError::validation_error("Port range exhausted"))
     }
 
-    /// Check if port is available by attempting to bind
+    /// Check if port is available by attempting to bind on both localhost and all interfaces (macOS compatibility)
     fn is_port_available(port: u16) -> bool {
         std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
+            && std::net::TcpListener::bind(("0.0.0.0", port)).is_ok()
     }
 
     /// Cleanup orphaned Weaver processes from previous runs
@@ -566,6 +619,42 @@ impl WeaverProcessManager {
     /// Get discovered admin port
     pub fn admin_port(&self) -> Option<u16> {
         self.admin_port
+    }
+
+    /// Resolve registry path to absolute path, walking parent directories if relative
+    fn find_absolute_registry_path(&self) -> PathBuf {
+        if let Ok(cwd) = std::env::current_dir() {
+            let mut current = cwd;
+            loop {
+                let target = current.join(&self.registry_path);
+                if target.exists() {
+                    if let Ok(canonical) = target.canonicalize() {
+                        return canonical;
+                    }
+                    return target;
+                }
+                if let Some(parent) = current.parent() {
+                    current = parent.to_path_buf();
+                } else {
+                    break;
+                }
+            }
+        }
+        self.registry_path.clone()
+    }
+
+    /// Helper to cleanup temporary manifest.yaml
+    fn cleanup_manifest(&self) {
+        let absolute_registry_path = if self.registry_path.is_relative() {
+            self.find_absolute_registry_path()
+        } else {
+            self.registry_path.canonicalize().unwrap_or_else(|_| self.registry_path.clone())
+        };
+        let manifest_path = absolute_registry_path.join("manifest.yaml");
+        let registry_manifest_path = absolute_registry_path.join("registry_manifest.yaml");
+        if manifest_path.exists() && registry_manifest_path.exists() {
+            let _ = fs::remove_file(manifest_path);
+        }
     }
 
     /// Get startup duration
