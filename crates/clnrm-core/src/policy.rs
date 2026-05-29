@@ -21,7 +21,7 @@
 //! ### Basic Policy Creation
 //!
 //! ```no_run
-//! use clnrm::{Policy, SecurityLevel};
+//! use clnrm_core::{Policy, SecurityLevel};
 //!
 //! // Create policy with specific security level
 //! let policy = Policy::with_security_level(SecurityLevel::High);
@@ -49,7 +49,7 @@
 //! ### Policy Validation
 //!
 //! ```no_run
-//! use clnrm::Policy;
+//! use clnrm_core::Policy;
 //!
 //! let policy = Policy::locked();
 //!

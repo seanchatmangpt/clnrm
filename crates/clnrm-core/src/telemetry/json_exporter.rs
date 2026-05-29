@@ -14,6 +14,58 @@ use opentelemetry_sdk::{
 };
 use serde_json::{json, Value};
 use std::io::{self, Write};
+use std::path::PathBuf;
+
+/// NDJSON file exporter
+///
+/// Exports spans as NDJSON to a file on disk.
+#[derive(Debug)]
+pub struct NdjsonFileExporter {
+    path: PathBuf,
+}
+
+impl NdjsonFileExporter {
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+#[allow(refining_impl_trait)]
+impl SpanExporter for NdjsonFileExporter {
+    fn export(
+        &self,
+        batch: Vec<SpanData>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = OTelSdkResult> + Send + '_>> {
+        let path = self.path.clone();
+        Box::pin(async move {
+            let mut file = match std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&path)
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("Failed to open telemetry fallback file {}: {}", path.display(), e);
+                    return Ok(());
+                }
+            };
+
+            for span in batch {
+                let json = NdjsonStdoutExporter::span_to_json(&span);
+                let json_str = match serde_json::to_string(&json) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                };
+                let _ = writeln!(file, "{}", json_str);
+            }
+            Ok(())
+        })
+    }
+
+    fn shutdown(&mut self) -> OTelSdkResult {
+        Ok(())
+    }
+}
 
 /// NDJSON stdout exporter
 ///

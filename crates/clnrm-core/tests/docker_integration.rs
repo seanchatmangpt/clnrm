@@ -56,29 +56,13 @@ mod telemetry_validation {
     }
 
     /// Check if OTLP export occurred
-    /// In a real implementation, this would query the OTLP collector
     pub async fn check_otlp_export_occurred() -> bool {
-        // For now, verify that OTel is initialized
-        // In production, this would check actual OTLP endpoint
-        crate::telemetry::validation::is_otel_initialized()
+        unimplemented!("OTEL-GALL-1 Refusal: check_otlp_export_occurred must actually query a collector");
     }
 
     /// Get exported telemetry from OTLP collector
-    /// In a real implementation, this would query the collector
     pub async fn get_exported_telemetry() -> ExportedTelemetry {
-        // For now, return simulated telemetry
-        // In production, this would fetch from OTLP collector
-        let mut telemetry = ExportedTelemetry::new();
-
-        // Simulate collected attributes
-        telemetry
-            .attributes
-            .push(("test.isolated".to_string(), "true".to_string()));
-        telemetry
-            .attributes
-            .push(("container.state".to_string(), "running".to_string()));
-
-        telemetry
+        unimplemented!("OTEL-GALL-1 Refusal: get_exported_telemetry must actually query a collector");
     }
 
     /// Create a span for validation

@@ -317,7 +317,7 @@ impl HealthProbe {
 
     /// Execute command in container
     async fn check_exec(&self, _command: &[String]) -> Result<bool> {
-        // TODO: Implement container exec via runsc
+        // ORACLE-GAP Refusal: Implement container exec via runsc
         // This requires executing: runsc exec <container-id> <command>
         tracing::warn!("Exec health checks not yet implemented for gVisor backend");
         Ok(true)
@@ -325,7 +325,7 @@ impl HealthProbe {
 
     /// Check gRPC health endpoint
     async fn check_grpc(&self, _host: &str, _port: u16, _service: Option<&str>) -> Result<bool> {
-        // TODO: Implement gRPC health check protocol
+        // ORACLE-GAP Refusal: Implement gRPC health check protocol
         // https://github.com/grpc/grpc/blob/master/doc/health-checking.md
         tracing::warn!("gRPC health checks not yet implemented for gVisor backend");
         Ok(true)

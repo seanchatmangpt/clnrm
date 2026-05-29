@@ -20,8 +20,9 @@ use tokio::sync::RwLock;
 ///
 /// # Example
 ///
-/// ```rust
-/// use clnrm_core::{cleanroom_test, with_database, with_cache};
+/// ```rust,ignore
+/// use clnrm_core::{with_database, with_cache};
+
 ///
 /// #[cleanroom_test]
 /// async fn test_user_registration() {
@@ -243,28 +244,15 @@ impl ServicePlugin for DatabaseServicePlugin {
     }
 
     fn start(&self) -> Result<ServiceHandle> {
-        // In a real implementation, this would start the database container
-        // and return connection details
-        Ok(ServiceHandle {
-            id: format!("db_{}", uuid::Uuid::new_v4()),
-            service_name: self.name.clone(),
-            metadata: HashMap::from([
-                ("type".to_string(), "database".to_string()),
-                ("image".to_string(), self.image.clone()),
-                ("port".to_string(), "5432".to_string()),
-                ("status".to_string(), "running".to_string()),
-            ]),
-        })
+        Err(crate::error::CleanroomError::not_implemented("Database lifecycle via macro is not yet supported in the gVisor backend"))
     }
 
     fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        // In a real implementation, this would stop the database container
-        Ok(())
+        Err(crate::error::CleanroomError::not_implemented("Database lifecycle via macro is not yet supported"))
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
-        // In a real implementation, this would check if the database is responding
-        HealthStatus::Healthy
+        HealthStatus::Unhealthy
     }
 }
 
@@ -401,73 +389,21 @@ impl ServicePlugin for WebServerServicePlugin {
 /// These provide the simple, declarative API that Jane wants
 ///
 /// Set up a database service with the specified image
-pub async fn with_database(image: &str) -> Result<()> {
-    tracing::info!("Setting up database service with image: {}", image);
-
-    // In a real implementation, this would:
-    // 1. Create a database container using the specified image
-    // 2. Wait for the database to be ready
-    // 3. Set up connection configuration
-    // 4. Return connection details
-
-    // For now, just log the setup
-    tracing::info!(
-        "Database service '{}' setup completed (placeholder implementation)",
-        image
-    );
-
-    // In a real implementation, this would return connection details
-    // and the service would be managed by the test framework
-    Ok(())
+pub async fn with_database(_image: &str) -> Result<()> {
+    Err(crate::error::CleanroomError::not_implemented("Database lifecycle via declarative helper is not yet supported in the gVisor backend"))
 }
 
 /// Set up a cache service with the specified image
-pub async fn with_cache(image: &str) -> Result<()> {
-    tracing::info!("Setting up cache service with image: {}", image);
-
-    // In a real implementation, this would:
-    // 1. Create a cache container (Redis, Memcached, etc.)
-    // 2. Configure cache settings
-    // 3. Wait for cache to be ready
-    // 4. Return connection details
-
-    tracing::info!(
-        "Cache service '{}' setup completed (placeholder implementation)",
-        image
-    );
-    Ok(())
+pub async fn with_cache(_image: &str) -> Result<()> {
+    Err(crate::error::CleanroomError::not_implemented("Cache lifecycle via declarative helper is not yet supported"))
 }
 
 /// Set up a message queue service with the specified image
-pub async fn with_message_queue(image: &str) -> Result<()> {
-    tracing::info!("Setting up message queue service with image: {}", image);
-
-    // In a real implementation, this would:
-    // 1. Create a message queue container (RabbitMQ, Kafka, etc.)
-    // 2. Configure queue settings
-    // 3. Wait for queue to be ready
-    // 4. Return connection details
-
-    tracing::info!(
-        "Message queue service '{}' setup completed (placeholder implementation)",
-        image
-    );
-    Ok(())
+pub async fn with_message_queue(_image: &str) -> Result<()> {
+    Err(crate::error::CleanroomError::not_implemented("Message queue lifecycle via declarative helper is not yet supported"))
 }
 
 /// Set up a web server service with the specified image
-pub async fn with_web_server(image: &str) -> Result<()> {
-    tracing::info!("Setting up web server service with image: {}", image);
-
-    // In a real implementation, this would:
-    // 1. Create a web server container (nginx, Apache, etc.)
-    // 2. Configure server settings
-    // 3. Wait for server to be ready
-    // 4. Return connection details
-
-    tracing::info!(
-        "Web server service '{}' setup completed (placeholder implementation)",
-        image
-    );
-    Ok(())
+pub async fn with_web_server(_image: &str) -> Result<()> {
+    Err(crate::error::CleanroomError::not_implemented("Web server lifecycle via declarative helper is not yet supported"))
 }

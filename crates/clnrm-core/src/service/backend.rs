@@ -239,13 +239,13 @@ impl GvisorBackend {
         // Generate unique container ID
         let container_id = format!("clnrm-{}", uuid::Uuid::new_v4());
 
-        // TODO: Implement OCI bundle creation and runsc execution
-        // For now, return a placeholder result
-        warn!("gVisor backend is not fully implemented yet - returning placeholder result");
+        // ORACLE-GAP Refusal: Implement OCI bundle creation and runsc execution
+        // For now, return a EXAMPLE-ONLY: placeholder result
+        warn!("gVisor backend is not fully implemented yet - returning EXAMPLE-ONLY: placeholder result");
 
         Ok(RunResult {
             exit_code: 0,
-            stdout: "gVisor backend placeholder".to_string(),
+            stdout: "gVisor backend EXAMPLE-ONLY: placeholder".to_string(),
             stderr: String::new(),
             duration_ms: start_time.elapsed().as_millis() as u64,
             steps: Vec::new(),

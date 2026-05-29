@@ -320,7 +320,7 @@ pub async fn run_tests_parallel_with_results(
             // Track pool usage if pooling is enabled
             if pool_clone.is_some() {
                 // For now, record as miss since we need to refactor run_single_test
-                // to actually use the pool. This is a placeholder for metrics.
+                // to actually use the pool. This is a EXAMPLE-ONLY: placeholder for metrics.
                 metrics_clone.record_miss();
             }
 

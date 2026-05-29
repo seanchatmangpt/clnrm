@@ -34,6 +34,100 @@ impl LayerManager {
         })
     }
 
+    /// Extract a single layer to cache directory if it doesn't already exist
+    async fn extract_layer_to_cache(&self, layer: &OciLayer) -> Result<PathBuf> {
+        let digest_safe = layer.digest.replace("sha256:", "");
+        let layer_dir = self.cache_dir.join(&digest_safe);
+        
+        if layer_dir.exists() {
+            return Ok(layer_dir);
+        }
+        
+        // Extract to temporary directory first to prevent partial extractions
+        let temp_ext_dir = self.temp_dir.join(format!("extract-{}", uuid::Uuid::new_v4()));
+        tokio::fs::create_dir_all(&temp_ext_dir).await?;
+        
+        match layer.media_type.as_str() {
+            "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            | "application/vnd.oci.image.layer.v1.tar+gzip" => {
+                self.extract_gzip_layer(layer, &temp_ext_dir).await?;
+            }
+            "application/vnd.docker.image.rootfs.diff.tar"
+            | "application/vnd.oci.image.layer.v1.tar" => {
+                self.extract_tar_layer(layer, &temp_ext_dir).await?;
+            }
+            _ => {
+                warn!("Unsupported layer media type: {}", layer.media_type);
+                return Err(CleanroomError::oci_error(format!(
+                    "Unsupported layer media type: {}",
+                    layer.media_type
+                )));
+            }
+        }
+        
+        // Atomically rename
+        if let Err(e) = tokio::fs::rename(&temp_ext_dir, &layer_dir).await {
+            // Might have been extracted concurrently by another thread/process
+            if !layer_dir.exists() {
+                return Err(CleanroomError::oci_error(format!("Failed to persist cached layer: {}", e)));
+            }
+            let _ = tokio::fs::remove_dir_all(&temp_ext_dir).await;
+        }
+        
+        Ok(layer_dir)
+    }
+
+    /// Mount layers using OverlayFS for rapid container instantiation
+    pub async fn mount_overlayfs(
+        &self,
+        layers: &[OciLayer],
+        target_dir: &Path,
+    ) -> Result<PathBuf> {
+        let rootfs_path = target_dir.join("rootfs");
+        tokio::fs::create_dir_all(&rootfs_path).await?;
+        
+        let work_dir = self.temp_dir.join(uuid::Uuid::new_v4().to_string());
+        let upper_dir = work_dir.join("upper");
+        let work_dir_inner = work_dir.join("work");
+        
+        tokio::fs::create_dir_all(&upper_dir).await?;
+        tokio::fs::create_dir_all(&work_dir_inner).await?;
+
+        let mut lowerdirs = Vec::new();
+        // OverlayFS lowerdirs are ordered from top layer to base layer
+        for layer in layers.iter().rev() {
+            let layer_dir = self.extract_layer_to_cache(layer).await?;
+            lowerdirs.push(layer_dir.to_string_lossy().to_string());
+        }
+        
+        if lowerdirs.is_empty() {
+            return Err(CleanroomError::oci_error("No layers provided to mount overlayfs"));
+        }
+        
+        let lowerdir_arg = lowerdirs.join(":");
+        let options = format!("lowerdir={},upperdir={},workdir={}", lowerdir_arg, upper_dir.display(), work_dir_inner.display());
+        
+        let output = tokio::process::Command::new("mount")
+            .arg("-t")
+            .arg("overlay")
+            .arg("overlay")
+            .arg("-o")
+            .arg(&options)
+            .arg(&rootfs_path)
+            .output()
+            .await
+            .map_err(|e| CleanroomError::oci_error(format!("Failed to execute mount command: {}", e)))?;
+            
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(CleanroomError::oci_error(format!("OverlayFS mount failed: {}", stderr)));
+        }
+
+        info!("Mounted {} layers via OverlayFS to {}", layers.len(), rootfs_path.display());
+        
+        Ok(rootfs_path)
+    }
+
     /// Extract all layers to create merged rootfs
     pub async fn extract_rootfs(
         &self,

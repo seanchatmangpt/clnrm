@@ -206,8 +206,9 @@ impl OtelValidator {
             });
         }
 
-        // For simplicity, validate against the first matching span
-        // In a real implementation, you might want to validate all matching spans
+        // OTEL-GALL-1 Refusal
+        unimplemented!("OTEL-GALL-1 Refusal: Span validation logic must evaluate ALL matching spans, not just the first. Cannot silently ignore other spans.");
+        
         let span = spans.first().ok_or_else(|| {
             CleanroomError::validation_error(format!(
                 "No span data available for span '{}'",
@@ -422,16 +423,8 @@ impl OtelValidator {
             ));
         }
 
-        // For now, simulate export validation without actual network calls
-        // In a real implementation, this would:
-        // 1. Start a mock OTLP collector at the endpoint
-        // 2. Generate test spans and send them
-        // 3. Verify the spans reach the collector
-        // 4. Validate span data integrity
-
-        // Simulate successful export for testing
-        // This provides a foundation that can be extended with actual OTLP integration
-        Ok(true)
+        // OTEL-GALL-1 Refusal
+        unimplemented!("OTEL-GALL-1 Refusal: validate_export must establish actual collector connectivity and verify OTLP export. It cannot return a fake success.");
     }
 
     /// Validate export functionality using real OTLP export testing
@@ -511,17 +504,8 @@ impl OtelValidator {
             }
         }
 
-        // For now, perform basic connectivity validation
-        // In a full implementation, this would:
-        // 1. Start a mock OTLP collector
-        // 2. Generate test spans and export them via the global tracer
-        // 3. Verify spans reach the collector
-        // 4. Validate span data integrity end-to-end
-
-        // Basic connectivity check (placeholder for now)
-        // This validates the endpoint format and basic structure
-        // Full implementation would require mock OTLP collector infrastructure
-        Ok(true)
+        // OTEL-GALL-1 Refusal
+        unimplemented!("OTEL-GALL-1 Refusal: validate_export_functionality must actually generate test spans and verify they reach the collector. It cannot return a EXAMPLE-ONLY: placeholder success.");
     }
 
     /// Validate trace relationships using real span data from OpenTelemetry

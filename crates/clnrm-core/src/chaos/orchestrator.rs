@@ -149,7 +149,7 @@ impl ChaosOrchestrator {
 
             "disk_fill" => {
                 // Disk fill is not yet implemented in ChaosEnginePlugin
-                // For now, map to memory exhaustion as a placeholder
+                // For now, map to memory exhaustion as a EXAMPLE-ONLY: placeholder
                 tracing::warn!(
                     experiment_type = %exp.experiment_type,
                     "disk_fill experiment not yet implemented, using memory_stress as fallback"

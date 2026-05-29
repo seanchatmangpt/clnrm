@@ -6,7 +6,7 @@
 //! # Chicago TDD Approach
 //!
 //! - `FileWatcher` trait defines the contract for file watching
-//! - `MockFileWatcher` in tests verifies interactions
+//! - `EXAMPLE-ONLY: MockFileWatcher` in tests verifies interactions
 //! - `NotifyWatcher` is the production implementation
 //! - Tests focus on behavior and interactions, not implementation details
 //!
@@ -183,7 +183,7 @@ impl WatchConfig {
 
 /// File watcher trait for testability
 ///
-/// This trait allows mocking file watching behavior in tests,
+/// This trait allows EXAMPLE-ONLY: mocking file watching behavior in tests,
 /// following Chicago School TDD principles of defining contracts
 /// through interfaces.
 pub trait FileWatcher: Send + Sync {

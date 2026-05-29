@@ -18,7 +18,7 @@
 //! ### Basic Scenario
 //!
 //! ```no_run
-//! use clnrm::{scenario, Policy};
+//! use clnrm_core::{scenario, Policy};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let scenario = scenario("integration_test")
@@ -35,7 +35,7 @@
 //! ### Scenario with Policy
 //!
 //! ```no_run
-//! use clnrm::{scenario, Policy, SecurityLevel};
+//! use clnrm_core::{scenario, Policy, SecurityLevel};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let policy = Policy::with_security_level(SecurityLevel::High);

@@ -386,7 +386,7 @@ mod tests {
         // Arrange: Create minimal ontology
         let sigma = SigmaBase {
             version: SemVer::new(1, 0, 0),
-            hash: ContentHash::from_string("placeholder"),
+            hash: unimplemented!("ORACLE-GAP Refusal: Content hashing is not yet implemented"),
             description: "Test ontology".to_string(),
             services: HashMap::new(),
             networks: HashMap::new(),

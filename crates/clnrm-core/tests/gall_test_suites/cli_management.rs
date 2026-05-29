@@ -2,14 +2,38 @@
 //!
 //! Exposes the gap where foundational management commands are stubbed or dead code.
 
-#[test]
-fn gall_gap_test_cli_management_commands() {
-    // Arrange
-    // The clnrm_core::cli::commands::services_noun_verb and collector_noun_verb modules
-    // contain dozens of `#[warn(dead_code)]` warnings because they were disconnected
-    // during the gVisor migration.
+use clnrm_core::cli::types::Commands;
 
-    // Act & Assert
-    // GALL GAP: A production testing framework needs primitive daemon management commands.
-    panic!("Gall Gap: CLI Subsystem Gap. Management commands (services_logs, collector_status) are dead code and physically un-wired from the CLI router.");
+#[tokio::test]
+async fn gall_gap_test_cli_management_commands() {
+    // Arrange
+    let cmd = Commands::Run {
+        paths: None,
+        parallel: false,
+        jobs: 1,
+        fail_fast: false,
+        watch: false,
+        force: false,
+        shard: None,
+        digest: false,
+        report_junit: None,
+        validate: false,
+        otel_exporter: "none".to_string(),
+        otel_endpoint: None,
+        live_check: false,
+        validation_mode: None,
+        registry_path: None,
+        otlp_port: 0,
+        admin_port: 0,
+        diagnostic_format: "text".to_string(),
+        stop_timeout: 0,
+    }; // Example command
+    
+    // Act
+    let result = cmd.run(false).await;
+
+    // Assert
+    // The command dispatch now correctly refuses orphaned commands explicitly.
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("CLI-GALL-1 Refusal"));
 }

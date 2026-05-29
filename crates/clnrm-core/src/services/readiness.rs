@@ -200,18 +200,6 @@ async fn check_span_in_otlp_http(span_name: &str, endpoint: &str) -> Result<bool
 ///
 /// Queries the collector via gRPC to check for span existence.
 async fn check_span_in_otlp_grpc(_span_name: &str, endpoint: &str) -> Result<bool> {
-    // CRITICAL: Placeholder implementation
-    // Real implementation requires:
-    // 1. gRPC client setup with tonic/grpcio
-    // 2. Connection to OTLP gRPC endpoint
-    // 3. Query traces API
-    // 4. Search for span by name
-    //
-    // For MVP, we'll return false to indicate span not found
-    // This allows tests to timeout with clear error message
-    tracing::warn!(
-        endpoint = %endpoint,
-        "OTLP gRPC span checking not yet implemented, returning false"
-    );
-    Ok(false)
+    // ORACLE-GAP Refusal: Placeholder implementation
+    unimplemented!("OTEL-GALL-1 Refusal: check_span_in_otlp_grpc must query the real collector");
 }

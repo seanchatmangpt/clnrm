@@ -33,15 +33,14 @@ fn gall_test_template_variable_replacement() {
         .expect("Failed to render string");
 
     // Assert
-    // GALL GAP: The current template engine is a stub that returns the string unchanged.
-    // This test enforces the strict mathematical requirement that variable replacement MUST occur.
+    // The TemplateRenderer now correctly resolves dynamic variables
     assert!(
         rendered.contains("dynamic_value"),
-        "Gall Gap: Template renderer did not inject the dynamic variable"
+        "Template renderer did not inject the dynamic variable"
     );
     assert!(
         !rendered.contains("{{"),
-        "Gall Gap: Unresolved template tokens leaked into the output"
+        "Unresolved template tokens leaked into the output"
     );
 }
 
@@ -57,6 +56,6 @@ fn gall_test_template_missing_variable_failure() {
     let result = renderer.render_str(&raw_payload, "test_payload");
 
     // Assert
-    // The stub engine never fails.
-    assert!(result.is_ok());
+    // The template engine now correctly returns an error when a variable is missing
+    assert!(result.is_err(), "Template renderer should strictly fail on missing variables");
 }

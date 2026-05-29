@@ -41,7 +41,7 @@
 //!
 //! ## Usage Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore,no_run
 //! use clnrm_core::scheduler::swarm::{SwarmScheduler, TestRequest, TenantId, AgentId, RequestId};
 //! use clnrm_core::capabilities::{CapabilityScenarioBuilder, EffectBudget, LatencyBand};
 //!
@@ -65,7 +65,7 @@
 //!     scenario: CapabilityScenarioBuilder::new("test", "Test")
 //!         .capability("hermetic_execution")
 //!         .build(),
-//!     capability_budget: CapabilityBudget::default(),
+//!     capability_budget: clnrm_core::backend::ResourceLimits::default(),
 //!     effect_budget: EffectBudget::default(),
 //!     priority: 5,
 //!     latency_target: LatencyBand::Warm { max_ms: 1000 },

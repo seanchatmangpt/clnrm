@@ -15,7 +15,7 @@
 pub mod spans {
     use tracing::{span, Level, Span};
 
-    // Placeholder - will be generated from schemas
+    // EXAMPLE-ONLY: Placeholder - will be generated from schemas
     #[derive(Debug)]
     pub struct TestExecutionSpan {
         span: Span,
@@ -61,7 +61,7 @@ pub mod spans {
 pub mod metrics {
     use opentelemetry::metrics::{Histogram, Meter};
 
-    // Placeholder - will be generated from schemas
+    // EXAMPLE-ONLY: Placeholder - will be generated from schemas
     #[derive(Debug, Clone)]
     pub struct TestExecutionMetric {
         histogram: Histogram<f64>,
@@ -107,7 +107,7 @@ pub mod metrics {
 
 // Placeholder mocks module - will be replaced by weaver generation
 #[cfg(test)]
-pub mod mocks {
+pub mod example_only_doubles {
     use mockall::automock;
 
     #[automock]

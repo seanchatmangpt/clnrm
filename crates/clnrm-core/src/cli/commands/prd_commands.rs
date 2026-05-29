@@ -1,6 +1,6 @@
-//! PRD v1.0 additional command implementations (stubs)
+//! PRD v1.0 additional command implementations (EXAMPLE-ONLY: stubs)
 //!
-//! These are placeholder implementations for PRD v1.0 features.
+//! These are EXAMPLE-ONLY: placeholder implementations for PRD v1.0 features.
 //! Full implementations to be added as PRD requirements are finalized.
 
 use crate::cli::types::OutputFormat;

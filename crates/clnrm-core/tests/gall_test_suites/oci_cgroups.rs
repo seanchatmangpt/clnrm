@@ -34,9 +34,15 @@ fn gall_gap_test_oci_cgroups_limits() {
     let runtime_config = parser.to_runtime_config(&oci_config, None, Some(&policy)).unwrap();
 
     // Assert
-    // GALL GAP: The parser generates a `linux` config block but doesn't actually
-    // wire the `policy.resources` into the `linux.resources` cgroups structure.
-    let linux_config = runtime_config.linux.expect("Gall Gap: Linux config block should be generated for cgroups");
-    
-    panic!("Gall Gap: OCI Resource Constraint Gap. SecurityPolicy memory limits are not injected into the OCI config.json linux.resources cgroups");
-}
+    // The parser generates a `linux` config block and wires the `policy.resources` 
+    // into the `linux.resources` cgroups structure.
+    let linux_config = runtime_config.linux.expect("Linux config block should be generated for cgroups");
+
+    let resources = linux_config.resources.expect("Resources block should be generated");
+    let memory = resources.memory.expect("Memory block should be generated");
+    assert_eq!(
+        memory.limit,
+        Some(100 * 1024 * 1024),
+        "SecurityPolicy memory limits should be injected into the OCI config.json linux.resources cgroups"
+    );
+    }

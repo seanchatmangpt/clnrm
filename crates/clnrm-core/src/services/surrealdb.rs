@@ -89,8 +89,16 @@ impl ServicePlugin for SurrealDbPlugin {
         })
     }
     
-    fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
-        // Basic implementation for now
-        HealthStatus::Healthy
+    fn health_check(&self, handle: &ServiceHandle) -> HealthStatus {
+        let port = handle.metadata.get("port").map(|s| s.as_str()).unwrap_or("8000");
+        let addr = format!("127.0.0.1:{}", port);
+        
+        match std::net::TcpStream::connect_timeout(
+            &addr.parse().unwrap_or(std::net::SocketAddr::from(([127, 0, 0, 1], 8000))), 
+            std::time::Duration::from_millis(50)
+        ) {
+            Ok(_) => HealthStatus::Healthy,
+            Err(_) => HealthStatus::Unhealthy,
+        }
     }
 }

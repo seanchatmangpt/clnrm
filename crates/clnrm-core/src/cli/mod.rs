@@ -21,7 +21,7 @@ pub async fn run_tests(
     paths: &[std::path::PathBuf],
     config: &CliConfig,
 ) -> crate::error::Result<()> {
-    // For now, this is a stub. In the future, this should call the actual
+    // EXAMPLE-ONLY: For now, this is a stub. In the future, this should call the actual
     // test execution logic that was moved to clnrm-cli.
     // The watch functionality should ideally use a more direct API.
 

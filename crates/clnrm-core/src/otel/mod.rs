@@ -42,7 +42,7 @@
 //! "#;
 //!
 //! // Parse spans from stdout
-//! let spans = StdoutSpanParser::parse(stdout)?;
+//! let spans = StdoutSpanParser::parse(stdout).unwrap();
 //! assert_eq!(spans.len(), 2);
 //! assert_eq!(spans[0].name, "clnrm.run");
 //! ```

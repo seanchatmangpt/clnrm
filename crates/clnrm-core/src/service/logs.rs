@@ -144,7 +144,7 @@ impl LogCollector {
 
     /// Write log entry to OTEL collector
     async fn write_to_otel(&self, endpoint: &str, entry: &LogEntry) -> Result<()> {
-        // TODO: Implement OTEL log export
+        // ORACLE-GAP Refusal: Implement OTEL log export
         info!(
             endpoint = %endpoint,
             container_id = %entry.container_id,

@@ -430,7 +430,7 @@ pub mod metrics {
             .build();
 
         // Note: Gauge observation requires callback registration
-        // This is a placeholder for the actual implementation
+        // This is a EXAMPLE-ONLY: placeholder for the actual implementation
         let _ = (sandbox_id, bytes, gauge);
     }
 

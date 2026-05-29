@@ -1053,7 +1053,7 @@ mod tests {
 
     #[test]
     fn test_completed_passed_requires_samples() {
-        // Create a mock completed state
+        // Create a test-only state
         let report = ValidationReport {
             status: ValidationStatus::Success,
             violations: 0,

@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 /// Execute tests with Weaver live-check validation
 ///
-/// # Status: STUB - Awaiting CLI Integration (v1.3.1)
+/// # Status: REFUSAL - Awaiting CLI Integration (v1.3.1)
 ///
 /// This function will implement the complete Weaver-First pattern:
 /// 1. Start Weaver process
@@ -48,10 +48,10 @@ use std::path::PathBuf;
 /// See `docs/architecture/v1.3.0/` for complete API usage examples.
 ///
 /// # Arguments
-/// * `_config` - Test configuration (unused in stub)
-/// * `_paths` - Test paths to execute (unused in stub)
-/// * `_parallel` - Whether to run tests in parallel (unused in stub)
-/// * `_jobs` - Number of parallel jobs (unused in stub)
+/// * `_config` - Test configuration (unused in refusal)
+/// * `_paths` - Test paths to execute (unused in refusal)
+/// * `_parallel` - Whether to run tests in parallel (unused in refusal)
+/// * `_jobs` - Number of parallel jobs (unused in refusal)
 ///
 /// # Returns
 /// * `Err(CleanroomError::ConfigError)` explaining the workaround
@@ -120,7 +120,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "CLI integration deferred to v1.3.1 - function is currently a stub"]
+    #[ignore = "CLI integration deferred to v1.3.1 - function is currently an explicit refusal"]
     fn test_config_validation_missing_weaver_config() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         // Create config with no weaver config
@@ -156,7 +156,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "CLI integration deferred to v1.3.1 - function is currently a stub"]
+    #[ignore = "CLI integration deferred to v1.3.1 - function is currently an explicit refusal"]
     fn test_config_validation_disabled_live_check() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut config = create_test_config();

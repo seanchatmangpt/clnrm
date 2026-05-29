@@ -868,8 +868,7 @@ impl ContainerPool {
                             adapter.update_acquire_rate(total_acquires);
 
                             if let Some(_new_max) = adapter.adjust_size(&stats, &config).await {
-                                // Size adjustment logged in adjust_size()
-                                // In a future version, we could adjust the semaphore here
+                                tracing::warn!("POOL-GALL-1 Refusal: Dynamic semaphore adjustment is not fully wired to container limits.");
                             }
                         }
                     }

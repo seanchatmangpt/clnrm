@@ -11,7 +11,7 @@
 //! use clnrm_core::determinism::DeterminismEngine;
 //! use clnrm_core::config::types::DeterminismConfig;
 //!
-//! let config = DeterminismConfig {
+//! let config = DeterminismConfig { deterministic_ports: Some(true), deterministic_volumes: Some(true),
 //!     seed: Some(42),
 //!     freeze_clock: Some("2025-01-01T00:00:00Z".to_string()),
 //! };

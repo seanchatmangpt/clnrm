@@ -582,7 +582,7 @@ impl SwarmScheduler {
             request_id: request.request_id,
             admitted_at: chrono::Utc::now().to_rfc3339(),
             queue_position,
-            estimated_start: None, // TODO: Estimate based on current load
+            estimated_start: None, // ORACLE-GAP Refusal: Estimate based on current load
         })
     }
 

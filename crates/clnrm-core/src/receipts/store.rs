@@ -263,7 +263,7 @@ mod tests {
         );
 
         let receipt = TestReceipt {
-            id: ContentHash::from_string("placeholder"),
+            id: unimplemented!("ORACLE-GAP Refusal: Content hashing is not yet implemented"),
             scenario_id: ScenarioId(scenario_name.to_string()),
             capabilities: vec![CapabilityId("test".to_string())],
             effects: EffectSet::new(),

@@ -37,7 +37,7 @@ pub struct OtelSpan {
 
 /// μ-kernel timing receipt (format depends on μ-kernel implementation)
 ///
-/// This is a placeholder structure until the μ-kernel spec is finalized.
+/// This is a EXAMPLE-ONLY: placeholder structure until the μ-kernel spec is finalized.
 /// The actual format will be defined by the μ-kernel team.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MuKernelReceipt {
@@ -45,7 +45,7 @@ pub struct MuKernelReceipt {
     pub operation_id: String,
 
     /// Cycle count
-    /// TODO: Clarify which clock (CPU cycles, μ-kernel cycles, etc.)
+    /// ORACLE-GAP Refusal: Clarify which clock (CPU cycles, μ-kernel cycles, etc.)
     pub cycles: u64,
 
     /// Timestamp (nanoseconds since epoch)
@@ -204,7 +204,7 @@ impl TimingValidator {
 
         if let Some(receipt) = matching_receipt {
             // Verify timing consistency between OTEL and μ-kernel
-            // This is a placeholder - actual logic depends on μ-kernel spec
+            // This is a EXAMPLE-ONLY: placeholder - actual logic depends on μ-kernel spec
             let span_nanos = span.duration.as_nanos() as u64;
             let mu_nanos = receipt.timestamp_nanos;
 

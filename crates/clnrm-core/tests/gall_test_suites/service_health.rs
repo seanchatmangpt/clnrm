@@ -10,18 +10,20 @@ use clnrm_core::services::surrealdb::SurrealDbPlugin;
 fn gall_gap_test_service_health_check_tcp_probe() {
     // Arrange
     let plugin = SurrealDbPlugin::new();
-    let handle = ServiceHandle::new("surrealdb");
+    let mut handle = ServiceHandle::new("surrealdb");
+    handle.metadata.insert("port".to_string(), "59873".to_string()); // Ephemeral random port
+
     
     // Act
     // We check the health of a container that hasn't actually been started on the network.
     let status = plugin.health_check(&handle);
 
     // Assert
-    // GALL GAP: The plugin always returns HealthStatus::Healthy immediately.
-    // A production system must actually probe the TCP port or wait for readiness.
+    // The plugin now correctly performs a real TCP probe. Since the container
+    // wasn't actually started and bound to the host, it must return Unhealthy.
     assert_eq!(
         status, 
         HealthStatus::Unhealthy, 
-        "Gall Gap: Service health check returned Healthy without performing a real TCP or readiness probe"
+        "Service health check returned Healthy without performing a real TCP or readiness probe"
     );
 }

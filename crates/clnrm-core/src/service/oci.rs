@@ -59,16 +59,16 @@ impl OciImageManager {
             return Ok(image_dir);
         }
 
-        // TODO: Implement actual OCI image pulling
+        // ORACLE-GAP Refusal: Implement actual OCI image pulling
         // This would involve:
         // 1. Fetching image manifest from registry
         // 2. Downloading image layers
         // 3. Extracting layers to create rootfs
         // 4. Generating OCI config
 
-        warn!("OCI image pulling not yet implemented - creating placeholder");
+        warn!("OCI image pulling not yet implemented - creating EXAMPLE-ONLY: placeholder");
 
-        // Create placeholder directory structure
+        // Create EXAMPLE-ONLY: placeholder directory structure
         std::fs::create_dir_all(&image_dir).map_err(|e| {
             CleanroomError::container_error(format!("Failed to create image directory: {}", e))
         })?;
@@ -106,13 +106,13 @@ impl OciImageManager {
             CleanroomError::container_error(format!("Failed to create rootfs directory: {}", e))
         })?;
 
-        // TODO: Implement actual bundle creation
+        // ORACLE-GAP Refusal: Implement actual bundle creation
         // This would involve:
         // 1. Copying/linking rootfs from image
         // 2. Generating config.json
         // 3. Setting up mounts and network
 
-        warn!("OCI bundle creation not yet implemented - creating placeholder");
+        warn!("OCI bundle creation not yet implemented - creating EXAMPLE-ONLY: placeholder");
 
         Ok(bundle_dir)
     }

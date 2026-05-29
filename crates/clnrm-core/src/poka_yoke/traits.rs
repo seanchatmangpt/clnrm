@@ -11,7 +11,7 @@
 //! 3. **Mock Implementation** - For testing (via mockall or manual mocks)
 //!
 //! This enables:
-//! - **Testability**: Mock validators for unit tests
+//! - **Testability**: EXAMPLE-ONLY: Mock validators for unit tests
 //! - **Extensibility**: Custom validators for specific use cases
 //! - **Consistency**: Same pattern as Cache, Backend, Formatter traits
 

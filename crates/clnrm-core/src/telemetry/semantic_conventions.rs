@@ -16,7 +16,7 @@
 //! use clnrm_core::telemetry::semantic_conventions::{SpanBuilder, clnrm};
 //!
 //! // ✅ CORRECT - Semantic conventions
-//! let span = SpanBuilder::container_start("alpine:latest", "container_abc123");
+//! let span = clnrm_core::telemetry::semantic_conventions::SpanBuilder::container_start("alpine:latest", "container_abc123");
 //!
 //! // ❌ WRONG - Custom keys (will fail Weaver validation)
 //! let span = tracing::info_span!("container.start",
@@ -90,7 +90,7 @@ impl SpanBuilder {
     /// # Example
     ///
     /// ```rust
-    /// let span = SpanBuilder::test_execution("my_test");
+    /// let span = clnrm_core::telemetry::semantic_conventions::SpanBuilder::test_execution("my_test");
     /// let _enter = span.enter();
     /// // Test code here
     /// ```
@@ -118,7 +118,7 @@ impl SpanBuilder {
     /// # Example
     ///
     /// ```rust
-    /// let span = SpanBuilder::container_start("alpine:latest", "abc123");
+    /// let span = clnrm_core::telemetry::semantic_conventions::SpanBuilder::container_start("alpine:latest", "abc123");
     /// let _enter = span.enter();
     /// ```
     pub fn container_start(image: &str, id: &str) -> tracing::Span {
@@ -265,10 +265,10 @@ mod tests {
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
 
         // Test that span builders create valid spans
-        let span = SpanBuilder::test_execution("test_1");
+        let span = clnrm_core::telemetry::semantic_conventions::SpanBuilder::test_execution("test_1");
         assert_eq!(span.metadata().map(|m| m.name()), Some("test.execute"));
 
-        let span = SpanBuilder::container_start("alpine:latest", "abc123");
+        let span = clnrm_core::telemetry::semantic_conventions::SpanBuilder::container_start("alpine:latest", "abc123");
         assert_eq!(span.metadata().map(|m| m.name()), Some("container.start"));
     }
 

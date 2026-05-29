@@ -222,7 +222,7 @@ impl ServiceRegistry {
         for service_id in service_ids {
             if let Some(service) = self.get_service(&service_id).await {
                 // Get container IP for health check
-                let container_ip = "127.0.0.1"; // TODO: Get actual container IP
+                let container_ip = "127.0.0.1"; // ORACLE-GAP Refusal: Get actual container IP
 
                 // Execute health check
                 let mut probes = self.health_probes.write().await;

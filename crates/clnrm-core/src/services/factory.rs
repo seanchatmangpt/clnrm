@@ -43,7 +43,7 @@ impl ServiceFactory {
     /// use clnrm_core::config::ServiceConfig;
     /// use std::collections::HashMap;
     ///
-    /// let mut config = ServiceConfig {
+    /// let mut config = ServiceConfig { args: None, password: None, strict: None, username: None, wait_for_span: None, wait_for_span_timeout_secs: None,
     ///     plugin: "surrealdb".to_string(),
     ///     image: Some("surrealdb/surrealdb:latest".to_string()),
     ///     env: None,

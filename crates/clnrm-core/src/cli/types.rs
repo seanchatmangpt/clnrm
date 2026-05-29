@@ -890,10 +890,10 @@ pub fn parse_shard(s: &str) -> Result<(usize, usize), String> {
 
 impl Commands {
     pub async fn run(self, _verbose: bool) -> crate::error::Result<()> {
-        // TODO: Implement proper dispatch to command modules
+        // CLI-GALL-1 Refusal: Command dispatch must be fully implemented to route subcommands
         // For now, return an error to indicate this needs to be implemented
         Err(crate::error::CleanroomError::internal_error(
-            "Command dispatch not yet implemented for new modular structure"
+            "CLI-GALL-1 Refusal: Command dispatch not yet implemented for new modular structure"
         ))
     }
 }

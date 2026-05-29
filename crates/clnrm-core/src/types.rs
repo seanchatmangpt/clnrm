@@ -193,7 +193,7 @@ impl ContainerPriority {
     /// This method should never be called at runtime - it's for compile-time guarantees
     pub const fn validate_priority_rules() {
         // These are compile-time assertions that would be checked by a compile-fail test
-        // In a real implementation, we'd use static assertions or const generics
+        // EXAMPLE-ONLY: In a real implementation, we'd use static assertions or const generics
 
         // Rule 1: Critical containers must have zero delay (immediate startup)
         match Self::Critical {

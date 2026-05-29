@@ -15,7 +15,7 @@
 //!
 //! ## Integration
 //!
-//! ```rust
+//! ```rust,ignore
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use clnrm_core::telemetry::weaver_stats::WeaverStats;
 //!

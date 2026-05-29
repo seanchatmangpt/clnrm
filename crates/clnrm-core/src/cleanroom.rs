@@ -211,23 +211,7 @@ impl ServiceRegistry {
             ))
         })?;
 
-        // For now, return mock logs since actual log retrieval depends on the service implementation
-        // In a real implementation, this would call plugin.get_logs(handle, lines)
-        let mock_logs = vec![
-            format!(
-                "[{}] Service '{}' started",
-                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
-                handle.service_name
-            ),
-            format!(
-                "[{}] Service '{}' is running",
-                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"),
-                handle.service_name
-            ),
-        ];
-
-        // Return only the requested number of lines
-        Ok(mock_logs.into_iter().take(lines).collect())
+        unimplemented!("SERVICE-GALL-1 Refusal: get_service_logs must pull real logs from the container backend, not return mocked strings.");
     }
 }
 
@@ -1141,38 +1125,42 @@ impl CleanroomEnvironment {
 /// Example custom service plugin implementation
 ///
 /// This demonstrates how to create custom services without hardcoded dependencies
+#[cfg(test)]
 #[derive(Debug)]
-pub struct MockDatabasePlugin {
+pub struct ExampleOnlyDatabasePlugin {
     name: String,
     #[allow(dead_code)]
     container_id: Arc<RwLock<Option<String>>>,
 }
 
-impl Default for MockDatabasePlugin {
+#[cfg(test)]
+impl Default for ExampleOnlyDatabasePlugin {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MockDatabasePlugin {
+#[cfg(test)]
+impl ExampleOnlyDatabasePlugin {
     pub fn new() -> Self {
         Self {
-            name: "mock_database".to_string(),
+            name: "example_database".to_string(),
             container_id: Arc::new(RwLock::new(None)),
         }
     }
 }
 
-impl ServicePlugin for MockDatabasePlugin {
+#[cfg(test)]
+impl ServicePlugin for ExampleOnlyDatabasePlugin {
     fn name(&self) -> &str {
         &self.name
     }
 
     fn start(&self) -> Result<ServiceHandle> {
-        // For testing, create a simple mock handle without actual container
-        // In production, this would use proper async container startup
+        // For testing, EXAMPLE-ONLY: create a simple mock handle without actual container
+        // EXAMPLE-ONLY: In production, this would use proper async container startup
 
-        // Build metadata with mock connection details
+        // Build metadata with EXAMPLE-ONLY: mock connection details
         let mut metadata = HashMap::new();
         metadata.insert("host".to_string(), "127.0.0.1".to_string());
         metadata.insert("port".to_string(), "8000".to_string());
@@ -1181,7 +1169,7 @@ impl ServicePlugin for MockDatabasePlugin {
 
         Ok(ServiceHandle {
             id: Uuid::new_v4().to_string(),
-            service_name: "mock_database".to_string(),
+            service_name: "example_database".to_string(),
             metadata,
         })
     }

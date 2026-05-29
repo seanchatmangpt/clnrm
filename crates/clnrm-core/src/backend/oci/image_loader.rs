@@ -101,19 +101,16 @@ impl LocalImageStore {
     }
 
     /// Load image from local OCI directory
-    pub async fn load_from_path(&self, path: PathBuf) -> Result<OciImage> {
-        // TODO: Implement OCI directory layout parsing
-        // See: https://github.com/opencontainers/image-spec/blob/main/image-layout.md
+    pub async fn load_from_path(&self, _path: PathBuf) -> Result<OciImage> {
         Err(CleanroomError::not_implemented(
-            "Local OCI directory loading not yet implemented",
+            "OCI-GALL-1 Refusal: Local OCI directory loading not yet implemented",
         ))
     }
 
-    /// Load image from embedded tarball
-    pub async fn load_from_tarball(&self, data: &[u8]) -> Result<OciImage> {
-        // TODO: Implement tarball extraction and parsing
+    /// Load image from tarball
+    pub async fn load_from_tarball(&self, _data: &[u8]) -> Result<OciImage> {
         Err(CleanroomError::not_implemented(
-            "Embedded tarball loading not yet implemented",
+            "OCI-GALL-1 Refusal: Tarball extraction not yet implemented",
         ))
     }
 }

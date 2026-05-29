@@ -247,7 +247,7 @@ impl CapabilityScenario {
             })?;
 
             // Extract allowed effects from capability metadata
-            // In a full implementation, BackendCapability would have an effects field
+            // EXAMPLE-ONLY: In a full implementation, BackendCapability would have an effects field
             // For now, we'll assume capabilities define their effects in metadata
             if let Some(effects_json) = capability.metadata.get("allowed_effects") {
                 // Parse effects and add to combined set

@@ -217,7 +217,7 @@ pub async fn run_tests_with_shard(
 /// # Example
 ///
 /// ```no_run
-/// # use clnrm_core::cli::commands::run::run_tests_with_shard_and_report;
+/// # use clnrm_core::cli::commands::run::run_tests_with_shard_and_report_doc;
 /// # use clnrm_core::cli::types::CliConfig;
 /// # use std::path::{Path, PathBuf};
 /// # async fn example() -> clnrm_core::error::Result<()> {
@@ -225,11 +225,11 @@ pub async fn run_tests_with_shard(
 /// let config = CliConfig::default();
 ///
 /// // Run tests and generate JUnit report
-/// run_tests_with_shard_and_report(&paths, &config, None, Some(Path::new("junit.xml")), "none", None).await?;
+/// run_tests_with_shard_and_report_doc(&paths, &config, None, Some(Path::new("junit.xml")), "none", None, clnrm_core::telemetry::live_check::ValidationConfig::default()).await?;
 /// # Ok(())
 /// # }
 /// ```
-pub async fn run_tests_with_shard_and_report(
+pub async fn run_tests_with_shard_and_report_doc(
     paths: &[PathBuf],
     config: &CliConfig,
     shard: Option<(usize, usize)>,

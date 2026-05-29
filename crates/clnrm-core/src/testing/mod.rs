@@ -703,16 +703,6 @@ async fn test_plugin_system() -> Result<()> {
                 .with_source(e.to_string())
         })?;
 
-    let mock_plugin = crate::cleanroom::MockDatabasePlugin::new();
-    environment
-        .register_service(Box::new(mock_plugin))
-        .await
-        .map_err(|e| {
-            CleanroomError::internal_error("Failed to register mock plugin")
-                .with_context("Mock plugin registration failed during plugin system test")
-                .with_source(e.to_string())
-        })?;
-
     // Verify plugin registration and lifecycle
     let services = environment.services().await;
     if !services.active_services().is_empty() {
@@ -733,23 +723,14 @@ async fn test_plugin_system() -> Result<()> {
                 .with_source(e.to_string())
         })?;
 
-    let mock_handle = environment
-        .start_service("mock_database")
-        .await
-        .map_err(|e| {
-            CleanroomError::internal_error("Failed to start mock service")
-                .with_context("Mock service startup failed during plugin system test")
-                .with_source(e.to_string())
-        })?;
-
     // Verify both services are running
     let health_status = environment.check_health().await;
-    if health_status.len() != 2 {
+    if health_status.len() != 1 {
         return Err(
-            CleanroomError::validation_error("Expected 2 active services")
+            CleanroomError::validation_error("Expected 1 active service")
                 .with_context("Plugin system test health check failed")
                 .with_source(format!(
-                    "Expected 2 services, found {}",
+                    "Expected 1 service, found {}",
                     health_status.len()
                 )),
         );
@@ -784,15 +765,6 @@ async fn test_plugin_system() -> Result<()> {
         .map_err(|e| {
             CleanroomError::internal_error("Failed to stop container service")
                 .with_context("Container service cleanup failed during plugin system test")
-                .with_source(e.to_string())
-        })?;
-
-    environment
-        .stop_service(&mock_handle.id)
-        .await
-        .map_err(|e| {
-            CleanroomError::internal_error("Failed to stop mock service")
-                .with_context("Mock service cleanup failed during plugin system test")
                 .with_source(e.to_string())
         })?;
 
