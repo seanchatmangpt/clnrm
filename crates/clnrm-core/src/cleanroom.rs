@@ -65,9 +65,9 @@ pub enum HealthStatus {
 #[derive(Debug, Default)]
 pub struct ServiceRegistry {
     /// Registered service plugins
-    plugins: HashMap<String, Box<dyn ServicePlugin>>,
+    pub plugins: HashMap<String, Box<dyn ServicePlugin>>,
     /// Active service instances
-    active_services: HashMap<String, ServiceHandle>,
+    pub active_services: HashMap<String, ServiceHandle>,
 }
 
 impl ServiceRegistry {
