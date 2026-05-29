@@ -8,7 +8,7 @@ use clnrm_core::cli::types::Commands;
 async fn gall_gap_test_cli_management_commands() {
     // Arrange
     let cmd = Commands::Plugins;
-    
+
     // Act
     let result = cmd.run(false).await;
 

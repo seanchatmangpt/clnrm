@@ -17,7 +17,7 @@ fn gall_test_gvisor_container_create_span() {
 
     // Act (Ignite)
     let span = GvisorSpanBuilder::container_create(&image_ref, &container_id, "linux/amd64");
-    
+
     // Assert (Measure)
     // Span metadata is unavailable without a subscriber, so we verify it doesn't panic
     // and correctly accepts the semantic arguments.

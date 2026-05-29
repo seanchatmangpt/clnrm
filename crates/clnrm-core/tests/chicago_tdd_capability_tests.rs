@@ -35,6 +35,7 @@ fn scenario_with_valid_capability_validates_successfully() {
         category: CapabilityCategory::Execution,
         requirements: Vec::new(),
         features: Vec::new(),
+        allowed_effects: EffectSet::new(),
         metadata: HashMap::new(),
     };
     registry.register_capability(capability).unwrap();
@@ -438,6 +439,7 @@ fn builder_constructs_valid_scenario() {
         category: CapabilityCategory::Execution,
         requirements: Vec::new(),
         features: Vec::new(),
+        allowed_effects: EffectSet::new(),
         metadata: HashMap::new(),
     };
     registry.register_capability(capability).unwrap();
@@ -494,6 +496,7 @@ fn full_scenario_lifecycle_validates_end_to_end() {
             category: CapabilityCategory::Execution,
             requirements: Vec::new(),
             features: Vec::new(),
+            allowed_effects: EffectSet::new(),
             metadata: HashMap::new(),
         };
         registry.register_capability(capability).unwrap();

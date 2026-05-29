@@ -1,9 +1,11 @@
 pub mod gall_test_suites {
+    pub mod authoritative_implementations;
     pub mod cli_management;
     pub mod config_parsing;
     pub mod determinism_rng;
     pub mod determinism_volumes;
     pub mod macro_lifecycle;
+    pub mod nist_adversarial;
     pub mod oci_cgroups;
     pub mod oci_overlay;
     pub mod oracle_gaps;

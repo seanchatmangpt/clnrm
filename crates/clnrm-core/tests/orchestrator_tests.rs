@@ -115,7 +115,10 @@ async fn test_orchestrator_with_valid_registry() -> Result<()> {
     let config = test_config();
     let registry_path = &config.registry_path;
     if !registry_path.exists() {
-        eprintln!("Skipping test: registry/ directory not found at {:?}", registry_path);
+        eprintln!(
+            "Skipping test: registry/ directory not found at {:?}",
+            registry_path
+        );
         return Ok(());
     }
     let orchestrator = LiveCheckOrchestrator::new(config)?;
@@ -312,7 +315,10 @@ async fn test_graceful_fallback_with_valid_registry() -> Result<()> {
     let config = test_config();
     let registry_path = &config.registry_path;
     if !registry_path.exists() {
-        eprintln!("Skipping test: registry/ directory not found at {:?}", registry_path);
+        eprintln!(
+            "Skipping test: registry/ directory not found at {:?}",
+            registry_path
+        );
         return Ok(());
     }
 
@@ -428,7 +434,10 @@ async fn test_report_structure() -> Result<()> {
     let config = test_config();
     let registry_path = &config.registry_path;
     if !registry_path.exists() {
-        eprintln!("Skipping test: registry/ directory not found at {:?}", registry_path);
+        eprintln!(
+            "Skipping test: registry/ directory not found at {:?}",
+            registry_path
+        );
         return Ok(());
     }
     let completed = LiveCheckOrchestrator::new(config)?
@@ -634,7 +643,10 @@ async fn test_full_lifecycle_with_otel() -> Result<()> {
     let config = test_config();
     let registry_path = &config.registry_path;
     if !registry_path.exists() {
-        eprintln!("Skipping test: registry/ directory not found at {:?}", registry_path);
+        eprintln!(
+            "Skipping test: registry/ directory not found at {:?}",
+            registry_path
+        );
         return Ok(());
     }
 

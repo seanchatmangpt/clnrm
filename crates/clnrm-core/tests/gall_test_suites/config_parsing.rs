@@ -17,7 +17,8 @@ fn gall_test_config_parser_happy_path() {
     let image_tag: String = Word().fake();
     let step_name: String = Word().fake();
 
-    let valid_toml = format!(r#"
+    let valid_toml = format!(
+        r#"
 [test]
 name = "{test_name}"
 description = "{description}"
@@ -31,7 +32,8 @@ name = "{step_name}"
 container = "{container_name}"
 exec = ["echo", "gall test"]
 assert.exit_code = 0
-"#);
+"#
+    );
 
     // Act (Ignite)
     let result = parse_toml_config(&valid_toml);
@@ -40,7 +42,11 @@ assert.exit_code = 0
     assert!(result.is_ok(), "Valid TOML should parse successfully");
     let config = result.unwrap();
     assert_eq!(config.test.as_ref().unwrap().metadata().name, test_name);
-    assert!(config.containers.as_ref().unwrap().contains_key(&container_name));
+    assert!(config
+        .containers
+        .as_ref()
+        .unwrap()
+        .contains_key(&container_name));
     assert_eq!(config.steps.len(), 1);
     assert_eq!(config.steps[0].name, step_name);
 }
@@ -52,7 +58,8 @@ fn gall_test_config_parser_empty_command_fails() {
     let container_name: String = Word().fake();
     let step_name: String = Word().fake();
 
-    let invalid_toml = format!(r#"
+    let invalid_toml = format!(
+        r#"
 [test]
 name = "{test_name}"
 
@@ -63,7 +70,8 @@ image = "alpine:latest"
 name = "{step_name}"
 container = "{container_name}"
 exec = []
-"#);
+"#
+    );
 
     // Act (Ignite)
     let result = parse_toml_config(&invalid_toml);
@@ -72,7 +80,10 @@ exec = []
     match result {
         Ok(config) => {
             let val_result = config.validate();
-            assert!(val_result.is_err(), "Validation should fail for empty command array");
+            assert!(
+                val_result.is_err(),
+                "Validation should fail for empty command array"
+            );
         }
         Err(_) => {
             // Parsing failed directly, which is also fine.

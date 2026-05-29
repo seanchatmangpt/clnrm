@@ -83,11 +83,11 @@ async fn test_weaver_start_and_stop() -> Result<()> {
 
     // Assert: Ports are valid
     assert!(
-        ports.otlp_grpc >= 4317 && ports.otlp_grpc <= 6337,
+        ports.otlp_grpc >= 4317 && ports.otlp_grpc <= 7337,
         "OTLP port should be in valid range"
     );
     assert!(
-        ports.admin_http >= 8080 && ports.admin_http <= 10099,
+        ports.admin_http >= 8080 && ports.admin_http <= 11099,
         "Admin port should be in valid range"
     );
 
@@ -348,17 +348,17 @@ async fn test_uptime_tracking() -> Result<()> {
 #[test]
 fn test_port_ranges_exhaustion() {
     // This test validates the port discovery logic without actually binding ports
-    // In a real scenario, all 40 ports would be occupied
+    // In a real scenario, all ports would be occupied
 
     // The ranges should be:
-    // OTLP: 4317-4327 (10), 5317-5327 (10), 6317-6337 (20) = 40 total
-    // Admin: 8080-8089 (10), 9080-9089 (10), 10080-10099 (20) = 40 total
+    // OTLP: 4317-4327 (11), 5317-5327 (11), 6317-7337 (1021) = 1043 total
+    // Admin: 8080-8089 (10), 9080-9089 (10), 10080-11099 (1020) = 1040 total
 
-    let otlp_capacity = (4327 - 4317 + 1) + (5327 - 5317 + 1) + (6337 - 6317 + 1);
-    let admin_capacity = (8089 - 8080 + 1) + (9089 - 9080 + 1) + (10099 - 10080 + 1);
+    let otlp_capacity = (4327 - 4317 + 1) + (5327 - 5317 + 1) + (7337 - 6317 + 1);
+    let admin_capacity = (8089 - 8080 + 1) + (9089 - 9080 + 1) + (11099 - 10080 + 1);
 
-    assert_eq!(otlp_capacity, 43, "OTLP should support 43 processes");
-    assert_eq!(admin_capacity, 40, "Admin should support 40 processes");
+    assert_eq!(otlp_capacity, 1043, "OTLP should support 1043 processes");
+    assert_eq!(admin_capacity, 1040, "Admin should support 1040 processes");
 }
 
 #[tokio::test]

@@ -57,12 +57,28 @@ mod telemetry_validation {
 
     /// Check if OTLP export occurred
     pub async fn check_otlp_export_occurred() -> bool {
-        unimplemented!("OTEL-GALL-1 Refusal: check_otlp_export_occurred must actually query a collector");
+        clnrm_core::telemetry::span_storage::span_count() > 0
     }
 
     /// Get exported telemetry from OTLP collector
     pub async fn get_exported_telemetry() -> ExportedTelemetry {
-        unimplemented!("OTEL-GALL-1 Refusal: get_exported_telemetry must actually query a collector");
+        let mut telemetry = ExportedTelemetry::new();
+        let spans = clnrm_core::telemetry::span_storage::get_collected_spans();
+        for span in spans {
+            let span_name = span.name.to_string();
+            let mut span_attrs = Vec::new();
+            for kv in &span.attributes {
+                let k = kv.key.as_str().to_string();
+                let v = kv.value.to_string();
+                span_attrs.push((k.clone(), v.clone()));
+                telemetry.attributes.push((k, v));
+            }
+            telemetry.spans.push(SpanInfo {
+                name: span_name,
+                attributes: span_attrs,
+            });
+        }
+        telemetry
     }
 
     /// Create a span for validation

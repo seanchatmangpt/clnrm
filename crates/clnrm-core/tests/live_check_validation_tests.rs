@@ -172,7 +172,14 @@ fn test_eighty_twenty_mode_critical_only() -> Result<()> {
     }
 
     let result = validator.validate(&report);
-    println!("DEBUG: mode={:?}, coverage={}, violations={:?}, present_spans={:?}, present_attrs={:?}", result.mode, result.coverage, result.violations, report.present_spans, report.present_attributes);
+    println!(
+        "DEBUG: mode={:?}, coverage={}, violations={:?}, present_spans={:?}, present_attrs={:?}",
+        result.mode,
+        result.coverage,
+        result.violations,
+        report.present_spans,
+        report.present_attributes
+    );
 
     // 80/20 mode only checks critical items, not all required items
     // This test verifies that missing non-critical items don't fail validation

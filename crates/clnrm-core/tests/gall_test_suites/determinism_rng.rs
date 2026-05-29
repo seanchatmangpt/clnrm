@@ -10,7 +10,7 @@ use rand::RngCore;
 fn gall_test_seeded_rng_determinism() {
     // Arrange
     let seed = 123456789;
-    
+
     // Act
     let mut rng1 = create_seeded_rng(seed);
     let mut rng2 = create_seeded_rng(seed);
@@ -18,7 +18,11 @@ fn gall_test_seeded_rng_determinism() {
     // Assert
     // Verify a sequence of 10 numbers is identical
     for _ in 0..10 {
-        assert_eq!(rng1.next_u64(), rng2.next_u64(), "Seeded RNG must produce identical sequences");
+        assert_eq!(
+            rng1.next_u64(),
+            rng2.next_u64(),
+            "Seeded RNG must produce identical sequences"
+        );
     }
 }
 
@@ -39,5 +43,8 @@ fn gall_test_different_seeds_diverge() {
     let col2 = rng1.next_u64() == rng2.next_u64();
     let col3 = rng1.next_u64() == rng2.next_u64();
 
-    assert!(!(col1 && col2 && col3), "Different seeds should produce divergent sequences");
+    assert!(
+        !(col1 && col2 && col3),
+        "Different seeds should produce divergent sequences"
+    );
 }

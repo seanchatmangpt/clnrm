@@ -117,9 +117,21 @@ fn test_format_detection_github_actions() {
     assert_eq!(format, DiagnosticFormat::GithubWorkflow);
 
     // Restore
-    if let Some(v) = old_github { std::env::set_var("GITHUB_ACTIONS", v); } else { std::env::remove_var("GITHUB_ACTIONS"); }
-    if let Some(v) = old_ci { std::env::set_var("CI", v); } else { std::env::remove_var("CI"); }
-    if let Some(v) = old_cont { std::env::set_var("CONTINUOUS_INTEGRATION", v); } else { std::env::remove_var("CONTINUOUS_INTEGRATION"); }
+    if let Some(v) = old_github {
+        std::env::set_var("GITHUB_ACTIONS", v);
+    } else {
+        std::env::remove_var("GITHUB_ACTIONS");
+    }
+    if let Some(v) = old_ci {
+        std::env::set_var("CI", v);
+    } else {
+        std::env::remove_var("CI");
+    }
+    if let Some(v) = old_cont {
+        std::env::set_var("CONTINUOUS_INTEGRATION", v);
+    } else {
+        std::env::remove_var("CONTINUOUS_INTEGRATION");
+    }
 }
 
 #[test]
@@ -137,9 +149,21 @@ fn test_format_detection_generic_ci() {
     assert_eq!(format, DiagnosticFormat::Json);
 
     // Restore
-    if let Some(v) = old_github { std::env::set_var("GITHUB_ACTIONS", v); } else { std::env::remove_var("GITHUB_ACTIONS"); }
-    if let Some(v) = old_ci { std::env::set_var("CI", v); } else { std::env::remove_var("CI"); }
-    if let Some(v) = old_cont { std::env::set_var("CONTINUOUS_INTEGRATION", v); } else { std::env::remove_var("CONTINUOUS_INTEGRATION"); }
+    if let Some(v) = old_github {
+        std::env::set_var("GITHUB_ACTIONS", v);
+    } else {
+        std::env::remove_var("GITHUB_ACTIONS");
+    }
+    if let Some(v) = old_ci {
+        std::env::set_var("CI", v);
+    } else {
+        std::env::remove_var("CI");
+    }
+    if let Some(v) = old_cont {
+        std::env::set_var("CONTINUOUS_INTEGRATION", v);
+    } else {
+        std::env::remove_var("CONTINUOUS_INTEGRATION");
+    }
 }
 
 #[test]
@@ -157,9 +181,21 @@ fn test_format_detection_continuous_integration() {
     assert_eq!(format, DiagnosticFormat::Json);
 
     // Restore
-    if let Some(v) = old_github { std::env::set_var("GITHUB_ACTIONS", v); } else { std::env::remove_var("GITHUB_ACTIONS"); }
-    if let Some(v) = old_ci { std::env::set_var("CI", v); } else { std::env::remove_var("CI"); }
-    if let Some(v) = old_cont { std::env::set_var("CONTINUOUS_INTEGRATION", v); } else { std::env::remove_var("CONTINUOUS_INTEGRATION"); }
+    if let Some(v) = old_github {
+        std::env::set_var("GITHUB_ACTIONS", v);
+    } else {
+        std::env::remove_var("GITHUB_ACTIONS");
+    }
+    if let Some(v) = old_ci {
+        std::env::set_var("CI", v);
+    } else {
+        std::env::remove_var("CI");
+    }
+    if let Some(v) = old_cont {
+        std::env::set_var("CONTINUOUS_INTEGRATION", v);
+    } else {
+        std::env::remove_var("CONTINUOUS_INTEGRATION");
+    }
 }
 
 #[test]
@@ -178,9 +214,21 @@ fn test_format_detection_non_tty() {
     assert!(format == DiagnosticFormat::Json || format == DiagnosticFormat::Ansi);
 
     // Restore
-    if let Some(v) = old_github { std::env::set_var("GITHUB_ACTIONS", v); } else { std::env::remove_var("GITHUB_ACTIONS"); }
-    if let Some(v) = old_ci { std::env::set_var("CI", v); } else { std::env::remove_var("CI"); }
-    if let Some(v) = old_cont { std::env::set_var("CONTINUOUS_INTEGRATION", v); } else { std::env::remove_var("CONTINUOUS_INTEGRATION"); }
+    if let Some(v) = old_github {
+        std::env::set_var("GITHUB_ACTIONS", v);
+    } else {
+        std::env::remove_var("GITHUB_ACTIONS");
+    }
+    if let Some(v) = old_ci {
+        std::env::set_var("CI", v);
+    } else {
+        std::env::remove_var("CI");
+    }
+    if let Some(v) = old_cont {
+        std::env::set_var("CONTINUOUS_INTEGRATION", v);
+    } else {
+        std::env::remove_var("CONTINUOUS_INTEGRATION");
+    }
 }
 
 // ═══════════════════════════════════════════════════════════

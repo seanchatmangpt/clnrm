@@ -14,7 +14,7 @@ fn gall_gap_test_oci_cgroups_limits() {
     let mut policy = Policy::with_security_level(SecurityLevel::High);
     // Enforce a strict 100MB memory limit
     policy.resources.max_memory_usage_bytes = 100 * 1024 * 1024;
-    
+
     let parser = ConfigParser;
     let dummy_image_config_data = json!({
         "architecture": "amd64",
@@ -31,18 +31,24 @@ fn gall_gap_test_oci_cgroups_limits() {
     let oci_config: OciImageConfig = serde_json::from_value(dummy_image_config_data).unwrap();
 
     // Act
-    let runtime_config = parser.to_runtime_config(&oci_config, None, Some(&policy)).unwrap();
+    let runtime_config = parser
+        .to_runtime_config(&oci_config, None, Some(&policy))
+        .unwrap();
 
     // Assert
-    // The parser generates a `linux` config block and wires the `policy.resources` 
+    // The parser generates a `linux` config block and wires the `policy.resources`
     // into the `linux.resources` cgroups structure.
-    let linux_config = runtime_config.linux.expect("Linux config block should be generated for cgroups");
+    let linux_config = runtime_config
+        .linux
+        .expect("Linux config block should be generated for cgroups");
 
-    let resources = linux_config.resources.expect("Resources block should be generated");
+    let resources = linux_config
+        .resources
+        .expect("Resources block should be generated");
     let memory = resources.memory.expect("Memory block should be generated");
     assert_eq!(
         memory.limit,
         Some(100 * 1024 * 1024),
         "SecurityPolicy memory limits should be injected into the OCI config.json linux.resources cgroups"
     );
-    }
+}
