@@ -18,6 +18,7 @@ pub mod cli; // CLI types and utilities (commands moved to clnrm-cli)
 pub mod config;
 pub mod constants;
 pub mod coverage;
+pub mod dao;
 pub mod determinism;
 pub mod environment; // v1.7.0: Σ*-aware environment compiler (Phase 2)
 pub mod error;
@@ -28,6 +29,7 @@ pub mod metrics;
 pub mod otel;
 pub mod phases; // v1.8.0: Phases 8-10 determinism, conformance, & contracts
 pub mod policy;
+pub mod pqc;
 pub mod template; // Template generation functions
 pub mod poka_yoke {
     //! Poka-Yoke (Error-Proofing) Mechanisms
