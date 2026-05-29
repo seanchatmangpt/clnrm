@@ -33,6 +33,7 @@ impl ServicePlugin for MockPlugin {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn gall_test_service_registry_lifecycle() -> Result<()> {
     // Arrange - Generate dynamic service names
     let mut env = CleanroomEnvironment::with_config(None).await?;

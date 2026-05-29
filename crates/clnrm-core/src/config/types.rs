@@ -728,6 +728,24 @@ impl StepConfig {
             ));
         }
 
+        if let Some(ref container) = self.container {
+            if container.trim().is_empty() {
+                return Err(CleanroomError::validation_error(format!(
+                    "Step '{}' has an empty container name",
+                    self.name
+                )));
+            }
+        }
+
+        if let Some(ref workdir) = self.workdir {
+            if workdir.trim().is_empty() {
+                return Err(CleanroomError::validation_error(format!(
+                    "Step '{}' has an empty workdir",
+                    self.name
+                )));
+            }
+        }
+
         if self.command.is_empty() && self.exec.as_ref().map_or(true, |v| v.is_empty()) {
             return Err(CleanroomError::validation_error(
                 "Step must have a non-empty 'command' or 'exec' array",

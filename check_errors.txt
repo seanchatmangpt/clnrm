@@ -1,0 +1,829 @@
+    Checking clnrm-core v26.5.28 (/Users/sac/clnrm/crates/clnrm-core)
+warning: unused import: `ContainerConfig`
+ --> crates/clnrm-core/src/cli/commands/run/container_executor.rs:6:28
+  |
+6 | use crate::config::types::{ContainerConfig, StepConfig, TestConfig};
+  |                            ^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::collections::HashMap`
+ --> crates/clnrm-core/src/cli/commands/run/container_executor.rs:9:5
+  |
+9 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `CleanroomError`
+ --> crates/clnrm-core/src/cli/commands/run/test_runner.rs:7:20
+  |
+7 | use crate::error::{CleanroomError, Result};
+  |                    ^^^^^^^^^^^^^^
+
+warning: unused import: `debug`
+  --> crates/clnrm-core/src/cli/commands/run/test_runner.rs:10:15
+   |
+10 | use tracing::{debug, error, info};
+   |               ^^^^^
+
+warning: use of deprecated function `cli::commands::collector_noun_verb::collector_up`: #[noun] is no longer needed — nouns are auto-detected from filename and module doc comments (//!). Remove this attribute.
+   --> crates/clnrm-core/src/cli/commands/collector_noun_verb.rs:156:4
+    |
+156 | fn collector_up(
+    |    ^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated function `cli::commands::collector_noun_verb::collector_down`: #[noun] is no longer needed — nouns are auto-detected from filename and module doc comments (//!). Remove this attribute.
+   --> crates/clnrm-core/src/cli/commands/collector_noun_verb.rs:182:4
+    |
+182 | fn collector_down(volumes: Option<bool>) -> CnvResult<CollectorActionOutput> {
+    |    ^^^^^^^^^^^^^^
+
+warning: use of deprecated function `cli::commands::collector_noun_verb::collector_status`: #[noun] is no longer needed — nouns are auto-detected from filename and module doc comments (//!). Remove this attribute.
+   --> crates/clnrm-core/src/cli/commands/collector_noun_verb.rs:193:4
+    |
+193 | fn collector_status() -> CnvResult<CollectorStatusOutput> {
+    |    ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `cli::commands::collector_noun_verb::collector_logs`: #[noun] is no longer needed — nouns are auto-detected from filename and module doc comments (//!). Remove this attribute.
+   --> crates/clnrm-core/src/cli/commands/collector_noun_verb.rs:207:4
+    |
+207 | fn collector_logs(lines: Option<usize>, follow: Option<bool>) -> CnvResult<CollectorLogsOutput> {
+    |    ^^^^^^^^^^^^^^
+
+warning: use of deprecated function `cli::commands::services_noun_verb::services_status`: #[noun] is no longer needed — nouns are auto-detected from filename and module doc comments (//!). Remove this attribute.
+   --> crates/clnrm-core/src/cli/commands/services_noun_verb.rs:113:4
+    |
+113 | fn services_status() -> CnvResult<ServiceStatusOutput> {
+    |    ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `cli::commands::services_noun_verb::services_logs`: #[noun] is no longer needed — nouns are auto-detected from filename and module doc comments (//!). Remove this attribute.
+   --> crates/clnrm-core/src/cli/commands/services_noun_verb.rs:126:4
+    |
+126 | fn services_logs(service: String, lines: Option<usize>) -> CnvResult<ServiceLogsOutput> {
+    |    ^^^^^^^^^^^^^
+
+warning: use of deprecated function `cli::commands::services_noun_verb::services_start`: #[noun] is no longer needed — nouns are auto-detected from filename and module doc comments (//!). Remove this attribute.
+   --> crates/clnrm-core/src/cli/commands/services_noun_verb.rs:140:4
+    |
+140 | fn services_start(name: String, force: Option<bool>) -> CnvResult<ServiceActionOutput> {
+    |    ^^^^^^^^^^^^^^
+
+warning: use of deprecated function `cli::commands::services_noun_verb::services_stop`: #[noun] is no longer needed — nouns are auto-detected from filename and module doc comments (//!). Remove this attribute.
+   --> crates/clnrm-core/src/cli/commands/services_noun_verb.rs:154:4
+    |
+154 | fn services_stop(name: String, timeout: Option<u64>) -> CnvResult<ServiceActionOutput> {
+    |    ^^^^^^^^^^^^^
+
+error[E0061]: this function takes 2 arguments but 11 arguments were supplied
+   --> crates/clnrm-core/src/cli/types.rs:918:21
+    |
+918 |                     commands::run_tests_parallel(
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+919 |                         paths.as_ref().map(|p| p.as_slice()),
+920 |                         jobs,
+    |                         ---- expected `&CliConfig`, found `usize`
+    |
+note: expected `&[PathBuf]`, found `Option<&[PathBuf]>`
+   --> crates/clnrm-core/src/cli/types.rs:919:25
+    |
+919 |                         paths.as_ref().map(|p| p.as_slice()),
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: expected reference `&[PathBuf]`
+                    found enum `std::option::Option<&[PathBuf]>`
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/run/executor.rs:436:14
+    |
+436 | pub async fn run_tests_parallel(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
+    |              ^^^^^^^^^^^^^^^^^^ -----------------  ------------------
+help: consider using `Option::expect` to unwrap the `std::option::Option<&[PathBuf]>` value, panicking if the value is an `Option::None`
+    |
+919 |                         paths.as_ref().map(|p| p.as_slice()).expect("REASON"),
+    |                                                             +++++++++++++++++
+help: remove the extra arguments
+    |
+919 ~                         /* &[PathBuf] */,
+920 ~                         /* &cli::types::CliConfig */,
+    |
+
+error[E0061]: this function takes 2 arguments but 10 arguments were supplied
+   --> crates/clnrm-core/src/cli/types.rs:932:21
+    |
+932 |                     commands::run_tests_sequential(
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+933 |                         paths.as_ref().map(|p| p.as_slice()),
+934 |                         fail_fast,
+    |                         --------- expected `&CliConfig`, found `bool`
+    |
+note: expected `&[PathBuf]`, found `Option<&[PathBuf]>`
+   --> crates/clnrm-core/src/cli/types.rs:933:25
+    |
+933 |                         paths.as_ref().map(|p| p.as_slice()),
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: expected reference `&[PathBuf]`
+                    found enum `std::option::Option<&[PathBuf]>`
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/run/executor.rs:186:14
+    |
+186 | pub async fn run_tests_sequential(paths: &[PathBuf], config: &CliConfig) -> Result<()> {
+    |              ^^^^^^^^^^^^^^^^^^^^ -----------------  ------------------
+help: consider using `Option::expect` to unwrap the `std::option::Option<&[PathBuf]>` value, panicking if the value is an `Option::None`
+    |
+933 |                         paths.as_ref().map(|p| p.as_slice()).expect("REASON"),
+    |                                                             +++++++++++++++++
+help: remove the extra arguments
+    |
+933 ~                         /* &[PathBuf] */,
+934 ~                         /* &cli::types::CliConfig */,
+    |
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+   --> crates/clnrm-core/src/cli/types.rs:947:17
+    |
+947 |                 commands::init_project(force)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^------- argument #2 of type `bool` is missing
+    |
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/init.rs:10:8
+    |
+ 10 | pub fn init_project(force: bool, with_config: bool) -> Result<()> {
+    |        ^^^^^^^^^^^^              -----------------
+help: provide the argument
+    |
+947 |                 commands::init_project(force, /* bool */)
+    |                                             ++++++++++++
+
+error[E0061]: this function takes 2 arguments but 3 arguments were supplied
+   --> crates/clnrm-core/src/cli/types.rs:950:17
+    |
+950 |                 commands::generate_from_template(&template, name.as_deref(), output.as_ref())
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                             --------------- unexpected argument #3 of type `std::option::Option<&PathBuf>`
+    |
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/template.rs:381:8
+    |
+381 | pub fn generate_from_template(template: &str, name: Option<&str>) -> Result<()> {
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+help: remove the extra argument
+    |
+950 -                 commands::generate_from_template(&template, name.as_deref(), output.as_ref())
+950 +                 commands::generate_from_template(&template, name.as_deref())
+    |
+
+error[E0308]: mismatched types
+   --> crates/clnrm-core/src/cli/types.rs:953:43
+    |
+953 |                 commands::validate_config(&files)
+    |                 ------------------------- ^^^^^^ expected `&PathBuf`, found `&Vec<PathBuf>`
+    |                 |
+    |                 arguments to this function are incorrect
+    |
+    = note: expected reference `&PathBuf`
+               found reference `&Vec<PathBuf>`
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/validate.rs:13:8
+    |
+ 13 | pub fn validate_config(path: &PathBuf) -> Result<()> {
+    |        ^^^^^^^^^^^^^^^ --------------
+
+error[E0308]: mismatched types
+   --> crates/clnrm-core/src/cli/types.rs:960:48
+    |
+960 |                     ServiceCommands::Status => commands::show_service_status(),
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), CleanroomError>`, found future
+    |
+note: calling an async function returns a future
+   --> crates/clnrm-core/src/cli/types.rs:960:48
+    |
+960 |                     ServiceCommands::Status => commands::show_service_status(),
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider `await`ing on the `Future`
+    |
+960 |                     ServiceCommands::Status => commands::show_service_status().await,
+    |                                                                               ++++++
+
+error[E0599]: `cli::types::ReportFormat` doesn't implement `std::fmt::Display`
+   --> crates/clnrm-core/src/cli/types.rs:970:84
+    |
+658 | pub enum ReportFormat {
+    | --------------------- method `to_string` not found for this enum because it doesn't satisfy `cli::types::ReportFormat: ToString` or `cli::types::ReportFormat: std::fmt::Display`
+...
+970 |                 commands::generate_report(input.as_ref(), output.as_ref(), &format.to_string())
+    |                                                                                    ^^^^^^^^^ method cannot be called on `cli::types::ReportFormat` due to unsatisfied trait bounds
+    |
+    = note: the following trait bounds were not satisfied:
+            `cli::types::ReportFormat: std::fmt::Display`
+            which is required by `cli::types::ReportFormat: ToString`
+note: the trait `std::fmt::Display` must be implemented
+   --> /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/fmt/mod.rs:1186:0
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `to_string`, perhaps you need to implement it:
+            candidate #1: `ToString`
+
+error[E0308]: mismatched types
+   --> crates/clnrm-core/src/cli/types.rs:970:17
+    |
+970 |                 commands::generate_report(input.as_ref(), output.as_ref(), &format.to_string())
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), CleanroomError>`, found future
+    |
+note: calling an async function returns a future
+   --> crates/clnrm-core/src/cli/types.rs:970:17
+    |
+970 |                 commands::generate_report(input.as_ref(), output.as_ref(), &format.to_string())
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider `await`ing on the `Future`
+    |
+970 |                 commands::generate_report(input.as_ref(), output.as_ref(), &format.to_string()).await
+    |                                                                                                ++++++
+
+error[E0308]: arguments to this function are incorrect
+   --> crates/clnrm-core/src/cli/types.rs:973:17
+    |
+973 |                 commands::run_self_tests(suite.as_deref(), report, &otel_exporter, otel_endpoint.as_deref()).await
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^                           -------------- expected `String`, found `&String`
+    |
+note: expected `Option<String>`, found `Option<&str>`
+   --> crates/clnrm-core/src/cli/types.rs:973:42
+    |
+973 |                 commands::run_self_tests(suite.as_deref(), report, &otel_exporter, otel_endpoint.as_deref()).await
+    |                                          ^^^^^^^^^^^^^^^^
+    = note: expected enum `std::option::Option<std::string::String>`
+               found enum `std::option::Option<&str>`
+note: expected `Option<String>`, found `Option<&str>`
+   --> crates/clnrm-core/src/cli/types.rs:973:84
+    |
+973 |                 commands::run_self_tests(suite.as_deref(), report, &otel_exporter, otel_endpoint.as_deref()).await
+    |                                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: expected enum `std::option::Option<std::string::String>`
+               found enum `std::option::Option<&str>`
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/self_test.rs:18:14
+    |
+ 18 | pub async fn run_self_tests(
+    |              ^^^^^^^^^^^^^^
+ 19 |     suite: Option<String>,
+    |     ---------------------
+ 20 |     report: bool,
+ 21 |     otel_exporter: String,
+    |     ---------------------
+ 22 |     _otel_endpoint: Option<String>,
+    |     ------------------------------
+help: try removing the method call
+    |
+973 -                 commands::run_self_tests(suite.as_deref(), report, &otel_exporter, otel_endpoint.as_deref()).await
+973 +                 commands::run_self_tests(suite, report, &otel_exporter, otel_endpoint.as_deref()).await
+    |
+help: consider removing the borrow
+    |
+973 -                 commands::run_self_tests(suite.as_deref(), report, &otel_exporter, otel_endpoint.as_deref()).await
+973 +                 commands::run_self_tests(suite.as_deref(), report, otel_exporter, otel_endpoint.as_deref()).await
+    |
+help: try removing the method call
+    |
+973 -                 commands::run_self_tests(suite.as_deref(), report, &otel_exporter, otel_endpoint.as_deref()).await
+973 +                 commands::run_self_tests(suite.as_deref(), report, &otel_exporter, otel_endpoint).await
+    |
+
+error[E0308]: mismatched types
+   --> crates/clnrm-core/src/cli/types.rs:976:17
+    |
+976 |                 commands::system_health_check(verbose)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), CleanroomError>`, found future
+    |
+note: calling an async function returns a future
+   --> crates/clnrm-core/src/cli/types.rs:976:17
+    |
+976 |                 commands::system_health_check(verbose)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider `await`ing on the `Future`
+    |
+976 |                 commands::system_health_check(verbose).await
+    |                                                       ++++++
+
+error[E0061]: this function takes 6 arguments but 5 arguments were supplied
+   --> crates/clnrm-core/src/cli/types.rs:979:17
+    |
+979 |                   commands::run_dev_mode_with_filters(
+    |  _________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+980 | |                     paths.as_ref().map(|p| p.as_slice()),
+981 | |                     debounce_ms,
+982 | |                     clear,
+983 | |                     only.as_deref(),
+984 | |                     timebox,
+985 | |                 ).await
+    | |_________________- argument #6 of type `cli::types::CliConfig` is missing
+    |
+note: expected `Option<Vec<PathBuf>>`, found `Option<&[PathBuf]>`
+   --> crates/clnrm-core/src/cli/types.rs:980:21
+    |
+980 |                     paths.as_ref().map(|p| p.as_slice()),
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: expected enum `std::option::Option<Vec<PathBuf>>`
+               found enum `std::option::Option<&[PathBuf]>`
+note: expected `Option<String>`, found `Option<&str>`
+   --> crates/clnrm-core/src/cli/types.rs:983:21
+    |
+983 |                     only.as_deref(),
+    |                     ^^^^^^^^^^^^^^^
+    = note: expected enum `std::option::Option<std::string::String>`
+               found enum `std::option::Option<&str>`
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/dev.rs:58:14
+    |
+ 58 | pub async fn run_dev_mode_with_filters(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+ 59 |     paths: Option<Vec<PathBuf>>,
+    |     ---------------------------
+...
+ 62 |     only_pattern: Option<String>,
+    |     ----------------------------
+ 63 |     timebox_ms: Option<u64>,
+ 64 |     cli_config: CliConfig,
+    |     ---------------------
+help: try removing the method call
+    |
+983 -                     only.as_deref(),
+983 +                     only,
+    |
+help: provide the argument
+    |
+979 ~                 commands::run_dev_mode_with_filters(
+980 +                     /* std::option::Option<Vec<PathBuf>> */,
+981 +                     debounce_ms,
+982 +                     clear,
+983 +                     /* std::option::Option<std::string::String> */,
+984 +                     timebox,
+985 +                     /* cli::types::CliConfig */,
+986 ~                 ).await
+    |
+
+error[E0308]: mismatched types
+   --> crates/clnrm-core/src/cli/types.rs:988:44
+    |
+988 |                 commands::dry_run_validate(&files, verbose).map(|_| ())
+    |                 -------------------------- ^^^^^^ expected `Vec<&Path>`, found `&Vec<PathBuf>`
+    |                 |
+    |                 arguments to this function are incorrect
+    |
+    = note: expected struct `Vec<&std::path::Path>`
+            found reference `&Vec<PathBuf>`
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/dry_run.rs:23:8
+    |
+ 23 | pub fn dry_run_validate(files: Vec<&Path>, verbose: bool) -> Result<Vec<ValidationResult>> {
+    |        ^^^^^^^^^^^^^^^^ -----------------
+
+error[E0599]: `LintFormat` doesn't implement `std::fmt::Display`
+   --> crates/clnrm-core/src/cli/types.rs:994:54
+    |
+682 | pub enum LintFormat {
+    | ------------------- method `to_string` not found for this enum because it doesn't satisfy `LintFormat: ToString` or `LintFormat: std::fmt::Display`
+...
+994 |                 commands::lint_files(&files, &format.to_string(), deny_warnings)
+    |                                                      ^^^^^^^^^ method cannot be called on `LintFormat` due to unsatisfied trait bounds
+    |
+    = note: the following trait bounds were not satisfied:
+            `LintFormat: std::fmt::Display`
+            which is required by `LintFormat: ToString`
+note: the trait `std::fmt::Display` must be implemented
+   --> /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/fmt/mod.rs:1186:0
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `to_string`, perhaps you need to implement it:
+            candidate #1: `ToString`
+
+error[E0308]: mismatched types
+   --> crates/clnrm-core/src/cli/types.rs:994:38
+    |
+994 |                 commands::lint_files(&files, &format.to_string(), deny_warnings)
+    |                 -------------------- ^^^^^^ expected `Vec<&Path>`, found `&Vec<PathBuf>`
+    |                 |
+    |                 arguments to this function are incorrect
+    |
+    = note: expected struct `Vec<&std::path::Path>`
+            found reference `&Vec<PathBuf>`
+note: function defined here
+   --> crates/clnrm-core/src/cli/commands/lint.rs:20:8
+    |
+ 20 | pub fn lint_files(files: Vec<&Path>, format: &str, deny_warnings: bool) -> Result<()> {
+    |        ^^^^^^^^^^ -----------------
+
+error[E0599]: `DiffFormat` doesn't implement `std::fmt::Display`
+   --> crates/clnrm-core/src/cli/types.rs:997:68
+    |
+692 | pub enum DiffFormat {
+    | ------------------- method `to_string` not found for this enum because it doesn't satisfy `DiffFormat: ToString` or `DiffFormat: std::fmt::Display`
+...
+997 |                 commands::diff_traces(&baseline, &current, &format.to_string(), only_changes)
+    |                                                                    ^^^^^^^^^ method cannot be called on `DiffFormat` due to unsatisfied trait bounds
+    |
+    = note: the following trait bounds were not satisfied:
+            `DiffFormat: std::fmt::Display`
+            which is required by `DiffFormat: ToString`
+note: the trait `std::fmt::Display` must be implemented
+   --> /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/fmt/mod.rs:1186:0
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `to_string`, perhaps you need to implement it:
+            candidate #1: `ToString`
+
+error[E0308]: mismatched types
+   --> crates/clnrm-core/src/cli/types.rs:997:17
+    |
+892 |     pub async fn run(self, verbose: bool) -> crate::error::Result<()> {
+    |                                              ------------------------ expected `std::result::Result<(), CleanroomError>` because of return type
+...
+997 |                 commands::diff_traces(&baseline, &current, &format.to_string(), only_changes)
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), CleanroomError>`, found `Result<DiffResult, CleanroomError>`
+    |
+    = note: expected enum `std::result::Result<(), _>`
+               found enum `std::result::Result<DiffResult, _>`
+
+error[E0308]: arguments to this function are incorrect
+    --> crates/clnrm-core/src/cli/types.rs:1000:17
+     |
+1000 |                 commands::run_record(paths.as_ref().map(|p| p.as_slice()), output.as_ref()).await
+     |                 ^^^^^^^^^^^^^^^^^^^^
+     |
+note: expected `Option<Vec<PathBuf>>`, found `Option<&[PathBuf]>`
+    --> crates/clnrm-core/src/cli/types.rs:1000:38
+     |
+1000 |                 commands::run_record(paths.as_ref().map(|p| p.as_slice()), output.as_ref()).await
+     |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = note: expected enum `std::option::Option<Vec<PathBuf>>`
+                found enum `std::option::Option<&[PathBuf]>`
+note: expected `Option<PathBuf>`, found `Option<&PathBuf>`
+    --> crates/clnrm-core/src/cli/types.rs:1000:76
+     |
+1000 |                 commands::run_record(paths.as_ref().map(|p| p.as_slice()), output.as_ref()).await
+     |                                                                            ^^^^^^^^^^^^^^^
+     = note: expected enum `std::option::Option<PathBuf>`
+                found enum `std::option::Option<&PathBuf>`
+note: function defined here
+    --> crates/clnrm-core/src/cli/commands/record.rs:61:14
+     |
+  61 | pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) -> Result<()> {
+     |              ^^^^^^^^^^ ---------------------------  -----------------------
+help: try removing the method call
+     |
+1000 -                 commands::run_record(paths.as_ref().map(|p| p.as_slice()), output.as_ref()).await
+1000 +                 commands::run_record(paths.as_ref().map(|p| p.as_slice()), output).await
+     |
+
+error[E0308]: mismatched types
+    --> crates/clnrm-core/src/cli/types.rs:1009:72
+     |
+1009 |                 commands::reproduce_baseline(&baseline, verify_digest, output.as_ref()).await
+     |                 ----------------------------                           ^^^^^^^^^^^^^^^ expected `Option<&Path>`, found `Option<&PathBuf>`
+     |                 |
+     |                 arguments to this function are incorrect
+     |
+     = note: expected enum `std::option::Option<&std::path::Path>`
+                found enum `std::option::Option<&PathBuf>`
+note: function defined here
+    --> crates/clnrm-core/src/cli/commands/repro.rs:46:14
+     |
+  46 | pub async fn reproduce_baseline(
+     |              ^^^^^^^^^^^^^^^^^^
+...
+  49 |     output: Option<&Path>,
+     |     ---------------------
+help: try using `.map(|v| &**v)` to convert `std::option::Option<&PathBuf>` to `std::option::Option<&std::path::Path>`
+     |
+1009 |                 commands::reproduce_baseline(&baseline, verify_digest, output.as_ref().map(|v| &**v)).await
+     |                                                                                       ++++++++++++++
+
+error[E0599]: `TddState` doesn't implement `std::fmt::Display`
+    --> crates/clnrm-core/src/cli/types.rs:1013:27
+     |
+ 714 | pub enum TddState {
+     | ----------------- method `to_string` not found for this enum because it doesn't satisfy `TddState: ToString` or `TddState: std::fmt::Display`
+...
+1013 |                     state.to_string()
+     |                           ^^^^^^^^^ method cannot be called on `TddState` due to unsatisfied trait bounds
+     |
+     = note: the following trait bounds were not satisfied:
+             `TddState: std::fmt::Display`
+             which is required by `TddState: ToString`
+note: the trait `std::fmt::Display` must be implemented
+    --> /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/fmt/mod.rs:1186:0
+     = help: items from traits can only be used if the trait is implemented and in scope
+     = note: the following trait defines an item `to_string`, perhaps you need to implement it:
+             candidate #1: `ToString`
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+    --> crates/clnrm-core/src/cli/types.rs:1021:17
+     |
+1021 |                 commands::run_red_green_validation(&paths, &state_str).await
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------- argument #3 of type `bool` is missing
+     |
+note: function defined here
+    --> crates/clnrm-core/src/cli/commands/redgreen.rs:45:14
+     |
+  45 | pub async fn run_red_green_validation(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+  48 |     verify_green: bool,
+     |     ------------------
+help: provide the argument
+     |
+1021 |                 commands::run_red_green_validation(&paths, &state_str, /* bool */).await
+     |                                                                      ++++++++++++
+
+error[E0308]: arguments to this function are incorrect
+    --> crates/clnrm-core/src/cli/types.rs:1024:17
+     |
+1024 |                 commands::render_template_with_vars(&template, &map, output.as_ref(), show_vars)
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: expected `&str`, found `&Vec<String>`
+    --> crates/clnrm-core/src/cli/types.rs:1024:64
+     |
+1024 |                 commands::render_template_with_vars(&template, &map, output.as_ref(), show_vars)
+     |                                                                ^^^^
+     = note: expected reference `&str`
+                found reference `&Vec<std::string::String>`
+note: expected `Option<&Path>`, found `Option<&PathBuf>`
+    --> crates/clnrm-core/src/cli/types.rs:1024:70
+     |
+1024 |                 commands::render_template_with_vars(&template, &map, output.as_ref(), show_vars)
+     |                                                                      ^^^^^^^^^^^^^^^
+     = note: expected enum `std::option::Option<&std::path::Path>`
+                found enum `std::option::Option<&PathBuf>`
+note: function defined here
+    --> crates/clnrm-core/src/cli/commands/render.rs:25:8
+     |
+  25 | pub fn render_template_with_vars(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  26 |     template: &Path,
+  27 |     map: &str,
+     |     ---------
+  28 |     output: Option<&Path>,
+     |     ---------------------
+help: try using `.map(|v| &**v)` to convert `std::option::Option<&PathBuf>` to `std::option::Option<&std::path::Path>`
+     |
+1024 |                 commands::render_template_with_vars(&template, &map, output.as_ref().map(|v| &**v), show_vars)
+     |                                                                                     ++++++++++++++
+
+error[E0599]: `cli::types::OutputFormat` doesn't implement `std::fmt::Display`
+    --> crates/clnrm-core/src/cli/types.rs:1027:73
+     |
+ 644 | pub enum OutputFormat {
+     | --------------------- method `to_string` not found for this enum because it doesn't satisfy `cli::types::OutputFormat: ToString` or `cli::types::OutputFormat: std::fmt::Display`
+...
+1027 |                 commands::filter_spans(&trace, grep.as_deref(), &format.to_string(), show_attrs, show_events)
+     |                                                                         ^^^^^^^^^ method cannot be called on `cli::types::OutputFormat` due to unsatisfied trait bounds
+     |
+     = note: the following trait bounds were not satisfied:
+             `cli::types::OutputFormat: std::fmt::Display`
+             which is required by `cli::types::OutputFormat: ToString`
+note: the trait `std::fmt::Display` must be implemented
+    --> /rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/fmt/mod.rs:1186:0
+     = help: items from traits can only be used if the trait is implemented and in scope
+     = note: the following trait defines an item `to_string`, perhaps you need to implement it:
+             candidate #1: `ToString`
+
+error[E0308]: mismatched types
+    --> crates/clnrm-core/src/cli/types.rs:1038:25
+     |
+1038 |                         commands::show_collector_status()
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), CleanroomError>`, found future
+     |
+note: calling an async function returns a future
+    --> crates/clnrm-core/src/cli/types.rs:1038:25
+     |
+1038 |                         commands::show_collector_status()
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider `await`ing on the `Future`
+     |
+1038 |                         commands::show_collector_status().await
+     |                                                          ++++++
+
+error[E0308]: mismatched types
+    --> crates/clnrm-core/src/cli/types.rs:1041:25
+     |
+1041 |                         commands::show_collector_logs(lines, follow)
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), CleanroomError>`, found future
+     |
+note: calling an async function returns a future
+    --> crates/clnrm-core/src/cli/types.rs:1041:25
+     |
+1041 |                         commands::show_collector_logs(lines, follow)
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider `await`ing on the `Future`
+     |
+1041 |                         commands::show_collector_logs(lines, follow).await
+     |                                                                     ++++++
+
+error[E0308]: mismatched types
+    --> crates/clnrm-core/src/cli/types.rs:1046:54
+     |
+1046 |                 commands::analyze_traces(&test_file, traces.as_ref()).await
+     |                 ------------------------             ^^^^^^^^^^^^^^^ expected `Option<&Path>`, found `Option<&PathBuf>`
+     |                 |
+     |                 arguments to this function are incorrect
+     |
+     = note: expected enum `std::option::Option<&std::path::Path>`
+                found enum `std::option::Option<&PathBuf>`
+note: function defined here
+    --> crates/clnrm-core/src/cli/commands/analyze.rs:108:8
+     |
+ 108 | pub fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<AnalysisReport> {
+     |        ^^^^^^^^^^^^^^                   --------------------------
+help: try using `.map(|v| &**v)` to convert `std::option::Option<&PathBuf>` to `std::option::Option<&std::path::Path>`
+     |
+1046 |                 commands::analyze_traces(&test_file, traces.as_ref().map(|v| &**v)).await
+     |                                                                     ++++++++++++++
+
+error[E0277]: `std::result::Result<AnalysisReport, CleanroomError>` is not a future
+    --> crates/clnrm-core/src/cli/types.rs:1046:71
+     |
+1046 |                 commands::analyze_traces(&test_file, traces.as_ref()).await
+     |                 ----------------------------------------------------- ^^^^^ `std::result::Result<AnalysisReport, CleanroomError>` is not a future
+     |                 |
+     |                 this call returns `std::result::Result<AnalysisReport, CleanroomError>`
+     |
+     = help: the trait `futures::Future` is not implemented for `std::result::Result<AnalysisReport, CleanroomError>`
+     = note: std::result::Result<AnalysisReport, CleanroomError> must be a future or must implement `IntoFuture` to be awaited
+     = note: required for `std::result::Result<AnalysisReport, CleanroomError>` to implement `IntoFuture`
+help: remove the `.await`
+     |
+1046 -                 commands::analyze_traces(&test_file, traces.as_ref()).await
+1046 +                 commands::analyze_traces(&test_file, traces.as_ref())
+     |
+help: alternatively, consider making `fn analyze_traces` asynchronous
+    -->  crates/clnrm-core/src/cli/commands/analyze.rs:108:4
+     |
+ 108 | pub async fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<AnalysisReport> {
+     |     +++++
+
+error[E0277]: `std::result::Result<(), CleanroomError>` is not a future
+    --> crates/clnrm-core/src/cli/types.rs:1050:74
+     |
+1050 |                     LiveCheckCommands::Status => commands::show_status().await,
+     |                                                  ----------------------- ^^^^^ `std::result::Result<(), CleanroomError>` is not a future
+     |                                                  |
+     |                                                  this call returns `std::result::Result<(), CleanroomError>`
+     |
+     = help: the trait `futures::Future` is not implemented for `std::result::Result<(), CleanroomError>`
+     = note: std::result::Result<(), CleanroomError> must be a future or must implement `IntoFuture` to be awaited
+     = note: required for `std::result::Result<(), CleanroomError>` to implement `IntoFuture`
+help: remove the `.await`
+     |
+1050 -                     LiveCheckCommands::Status => commands::show_status().await,
+1050 +                     LiveCheckCommands::Status => commands::show_status(),
+     |
+help: alternatively, consider making `fn show_status` asynchronous
+    -->  crates/clnrm-core/src/cli/commands/live_check.rs:11:4
+     |
+  11 | pub async fn show_status() -> Result<()> {
+     |     +++++
+
+error[E0277]: `std::result::Result<(), CleanroomError>` is not a future
+    --> crates/clnrm-core/src/cli/types.rs:1051:112
+     |
+1051 |                     LiveCheckCommands::ValidateRegistry { registry } => commands::validate_registry(&registry).await,
+     |                                                                         -------------------------------------- ^^^^^ `std::result::Result<(), CleanroomError>` is not a future
+     |                                                                         |
+     |                                                                         this call returns `std::result::Result<(), CleanroomError>`
+     |
+     = help: the trait `futures::Future` is not implemented for `std::result::Result<(), CleanroomError>`
+     = note: std::result::Result<(), CleanroomError> must be a future or must implement `IntoFuture` to be awaited
+     = note: required for `std::result::Result<(), CleanroomError>` to implement `IntoFuture`
+help: remove the `.await`
+     |
+1051 -                     LiveCheckCommands::ValidateRegistry { registry } => commands::validate_registry(&registry).await,
+1051 +                     LiveCheckCommands::ValidateRegistry { registry } => commands::validate_registry(&registry),
+     |
+help: alternatively, consider making `fn validate_registry` asynchronous
+    -->  crates/clnrm-core/src/cli/commands/live_check.rs:64:4
+     |
+  64 | pub async fn validate_registry(registry_path: &Path) -> Result<()> {
+     |     +++++
+
+error[E0277]: `std::result::Result<(), CleanroomError>` is not a future
+    --> crates/clnrm-core/src/cli/types.rs:1052:78
+     |
+1052 |                     LiveCheckCommands::TestWeaver => commands::test_weaver().await,
+     |                                                      ----------------------- ^^^^^ `std::result::Result<(), CleanroomError>` is not a future
+     |                                                      |
+     |                                                      this call returns `std::result::Result<(), CleanroomError>`
+     |
+     = help: the trait `futures::Future` is not implemented for `std::result::Result<(), CleanroomError>`
+     = note: std::result::Result<(), CleanroomError> must be a future or must implement `IntoFuture` to be awaited
+     = note: required for `std::result::Result<(), CleanroomError>` to implement `IntoFuture`
+help: remove the `.await`
+     |
+1052 -                     LiveCheckCommands::TestWeaver => commands::test_weaver().await,
+1052 +                     LiveCheckCommands::TestWeaver => commands::test_weaver(),
+     |
+help: alternatively, consider making `fn test_weaver` asynchronous
+    -->  crates/clnrm-core/src/cli/commands/live_check.rs:128:4
+     |
+ 128 | pub async fn test_weaver() -> Result<()> {
+     |     +++++
+
+error[E0277]: `std::result::Result<(), CleanroomError>` is not a future
+    --> crates/clnrm-core/src/cli/types.rs:1053:72
+     |
+1053 |                     LiveCheckCommands::Modes => commands::show_modes().await,
+     |                                                 ---------------------- ^^^^^ `std::result::Result<(), CleanroomError>` is not a future
+     |                                                 |
+     |                                                 this call returns `std::result::Result<(), CleanroomError>`
+     |
+     = help: the trait `futures::Future` is not implemented for `std::result::Result<(), CleanroomError>`
+     = note: std::result::Result<(), CleanroomError> must be a future or must implement `IntoFuture` to be awaited
+     = note: required for `std::result::Result<(), CleanroomError>` to implement `IntoFuture`
+help: remove the `.await`
+     |
+1053 -                     LiveCheckCommands::Modes => commands::show_modes().await,
+1053 +                     LiveCheckCommands::Modes => commands::show_modes(),
+     |
+help: alternatively, consider making `fn show_modes` asynchronous
+    -->  crates/clnrm-core/src/cli/commands/live_check.rs:180:4
+     |
+ 180 | pub async fn show_modes() -> Result<()> {
+     |     +++++
+
+error[E0277]: `std::result::Result<(), CleanroomError>` is not a future
+    --> crates/clnrm-core/src/cli/types.rs:1054:76
+     |
+1054 |                     LiveCheckCommands::Version => commands::show_version().await,
+     |                                                   ------------------------ ^^^^^ `std::result::Result<(), CleanroomError>` is not a future
+     |                                                   |
+     |                                                   this call returns `std::result::Result<(), CleanroomError>`
+     |
+     = help: the trait `futures::Future` is not implemented for `std::result::Result<(), CleanroomError>`
+     = note: std::result::Result<(), CleanroomError> must be a future or must implement `IntoFuture` to be awaited
+     = note: required for `std::result::Result<(), CleanroomError>` to implement `IntoFuture`
+help: remove the `.await`
+     |
+1054 -                     LiveCheckCommands::Version => commands::show_version().await,
+1054 +                     LiveCheckCommands::Version => commands::show_version(),
+     |
+help: alternatively, consider making `fn show_version` asynchronous
+    -->  crates/clnrm-core/src/cli/commands/live_check.rs:223:4
+     |
+ 223 | pub async fn show_version() -> Result<()> {
+     |     +++++
+
+warning: unreachable statement
+   --> crates/clnrm-core/src/validation/otel/validator.rs:212:9
+    |
+210 |           unimplemented!("OTEL-GALL-1 Refusal: Span validation logic must evaluate ALL matching spans, not just the first. Cannot silently ignore other spans.");
+    |           ------------------------------------------------------------------------------------------------------------------------------------------------------ any code following this expression is unreachable
+211 |           
+212 | /         let span = spans.first().ok_or_else(|| {
+213 | |             CleanroomError::validation_error(format!(
+214 | |                 "No span data available for span '{}'",
+215 | |                 assertion.name
+216 | |             ))
+217 | |         })?;
+    | |____________^ unreachable statement
+    |
+    = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> crates/clnrm-core/src/cleanroom.rs:80:30
+   |
+80 |     pub fn with_ggen_plugins(mut self) -> Result<Self> {
+   |                              ----^^^^
+   |                              |
+   |                              help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `lines`
+   --> crates/clnrm-core/src/cleanroom.rs:204:60
+    |
+204 |     pub async fn get_service_logs(&self, service_id: &str, lines: usize) -> Result<Vec<String>> {
+    |                                                            ^^^^^ help: if this is intentional, prefix it with an underscore: `_lines`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `name`
+   --> crates/clnrm-core/src/config/spec.rs:220:9
+    |
+220 |         name: String, // This is actually the image name in legacy format
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_name`
+
+warning: unused variable: `user`
+   --> crates/clnrm-core/src/config/spec.rs:229:9
+    |
+229 |         user: Option<String>, // Legacy field (not used in current struct)
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_user`
+
+warning: unused variable: `labels`
+   --> crates/clnrm-core/src/config/spec.rs:232:9
+    |
+232 |         labels: HashMap<String, String>, // Legacy field (not used)
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_labels`
+
+warning: unused variable: `endpoint`
+   --> crates/clnrm-core/src/services/readiness.rs:202:52
+    |
+202 | async fn check_span_in_otlp_grpc(_span_name: &str, endpoint: &str) -> Result<bool> {
+    |                                                    ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_endpoint`
+
+Some errors have detailed explanations: E0061, E0277, E0308, E0599.
+For more information about an error, try `rustc --explain E0061`.
+warning: `clnrm-core` (lib) generated 19 warnings
+error: could not compile `clnrm-core` (lib) due to 31 previous errors; 19 warnings emitted

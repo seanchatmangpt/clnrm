@@ -221,11 +221,11 @@ pub async fn run_red_green_validation(
         ));
     }
 
-    println!("🚦 TDD Red/Green Validation");
-    println!();
+    tracing::info!("🚦 TDD Red/Green Validation");
+    tracing::info!("");
 
     if let Some(ref state) = expected_state {
-        println!(
+        tracing::info!(
             "Expected state: {:?} (tests should {})",
             state,
             match state {
@@ -234,9 +234,9 @@ pub async fn run_red_green_validation(
             }
         );
     } else {
-        println!("Recording TDD state (no expectation set)");
+        tracing::info!("Recording TDD state (no expectation set)");
     }
-    println!();
+    tracing::info!("");
 
     // Load TDD history
     let history_path = PathBuf::from(".clnrm/tdd-history.json");
@@ -245,8 +245,8 @@ pub async fn run_red_green_validation(
     debug!("Loaded TDD history with {} records", history.records.len());
 
     // Run tests sequentially (deterministic)
-    println!("🔄 Running {} test(s)...", paths.len());
-    println!();
+    tracing::info!("🔄 Running {} test(s)...", paths.len());
+    tracing::info!("");
 
     let config = CliConfig {
         parallel: false, // Sequential for deterministic TDD validation
@@ -268,12 +268,12 @@ pub async fn run_red_green_validation(
     let passed_count = results.iter().filter(|r| r.passed).count();
     let failed_count = results.len() - passed_count;
 
-    println!();
-    println!("📊 Test Results:");
-    println!("   Total:  {}", results.len());
-    println!("   Passed: {}", passed_count);
-    println!("   Failed: {}", failed_count);
-    println!();
+    tracing::info!("");
+    tracing::info!("📊 Test Results:");
+    tracing::info!("   Total:  {}", results.len());
+    tracing::info!("   Passed: {}", passed_count);
+    tracing::info!("   Failed: {}", failed_count);
+    tracing::info!("");
 
     // Determine actual state based on results
     let actual_state = if passed_count == results.len() {
@@ -286,8 +286,8 @@ pub async fn run_red_green_validation(
             "Mixed test results: {} passed, {} failed",
             passed_count, failed_count
         );
-        println!("⚠️  Mixed results: some tests passed, some failed");
-        println!("   This is not a clear red or green state");
+        tracing::info!("⚠️  Mixed results: some tests passed, some failed");
+        tracing::info!("   This is not a clear red or green state");
 
         // Record individual test states
         record_test_states(&results, &mut history, None)?;
@@ -298,16 +298,16 @@ pub async fn run_red_green_validation(
         ));
     };
 
-    println!("🎯 Actual state: {:?}", actual_state);
+    tracing::info!("🎯 Actual state: {:?}", actual_state);
 
     // Validate against expected state
     if let Some(ref expected) = expected_state {
-        println!();
+        tracing::info!("");
         if actual_state == *expected {
-            println!("✅ TDD validation PASSED: {:?} as expected", actual_state);
+            tracing::info!("✅ TDD validation PASSED: {:?} as expected", actual_state);
             info!("TDD validation passed: {:?} as expected", actual_state);
         } else {
-            println!(
+            tracing::info!(
                 "❌ TDD validation FAILED: expected {:?}, got {:?}",
                 expected, actual_state
             );
@@ -326,8 +326,8 @@ pub async fn run_red_green_validation(
             )));
         }
     } else {
-        println!();
-        println!("✓ TDD state recorded: {:?}", actual_state);
+        tracing::info!("");
+        tracing::info!("✓ TDD state recorded: {:?}", actual_state);
         info!("TDD state recorded: {:?} (no expectation)", actual_state);
     }
 
@@ -337,10 +337,10 @@ pub async fn run_red_green_validation(
     // Check for TDD violations
     let violations = history.detect_violations();
     if !violations.is_empty() {
-        println!();
-        println!("⚠️  TDD Violations Detected:");
+        tracing::info!("");
+        tracing::info!("⚠️  TDD Violations Detected:");
         for violation in &violations {
-            println!("   • {}", violation);
+            tracing::info!("   • {}", violation);
             warn!("TDD violation: {}", violation);
         }
     }
@@ -349,19 +349,19 @@ pub async fn run_red_green_validation(
     history.save(&history_path)?;
     debug!("Saved TDD history to: {}", history_path.display());
 
-    println!();
-    println!("📝 TDD history updated: {}", history_path.display());
+    tracing::info!("");
+    tracing::info!("📝 TDD history updated: {}", history_path.display());
 
     // Show recent history for validated files
-    println!();
-    println!("📚 Recent TDD History:");
+    tracing::info!("");
+    tracing::info!("📚 Recent TDD History:");
     for path in paths {
         let path_str = path.display().to_string();
         let recent = history.get_recent_records(&path_str, 3);
 
         if !recent.is_empty() {
-            println!();
-            println!("  {}:", path_str);
+            tracing::info!("");
+            tracing::info!("  {}:", path_str);
             for (i, record) in recent.iter().enumerate() {
                 let state_icon = match record.state.as_str() {
                     "red" => "🔴",
@@ -369,7 +369,7 @@ pub async fn run_red_green_validation(
                     _ => "⚪",
                 };
                 let pass_status = if record.passed { "PASS" } else { "FAIL" };
-                println!(
+                tracing::info!(
                     "    {}. {} {} ({}) - {}ms ago",
                     i + 1,
                     state_icon,
@@ -381,7 +381,7 @@ pub async fn run_red_green_validation(
         }
     }
 
-    println!();
+    tracing::info!("");
     info!("Red/green validation completed successfully");
     Ok(())
 }

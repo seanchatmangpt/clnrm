@@ -656,7 +656,7 @@ impl LiveCheckOrchestrator<WeaverRunning> {
             sample_count = s_arr.len() as u32;
 
             // Helper to recursively extract advice from any Value (dictionary or list)
-            fn extract_advice(v: &serde_json::Value, details: &mut Vec<ValidationDetail>) {
+            fn extract_advice(v: &serde_json::Value, details: &mut Vec<ValidationDetail>) -> Result<()> {
                 if let Some(obj) = v.as_object() {
                     // Check if this object contains advice list
                     if let Some(all_advice) = obj.get("all_advice").and_then(|a| a.as_array()) {
@@ -669,7 +669,8 @@ impl LiveCheckOrchestrator<WeaverRunning> {
                                 let level = match advice_level.to_lowercase().as_str() {
                                     "violation" => "violation",
                                     "improvement" => "improvement",
-                                    _ => "information",
+                                    "information" => "information",
+                                    unknown => return Err(crate::error::CleanroomError::validation_error(format!("Unknown advice level: {}", unknown))),
                                 };
 
                                 let message = advice_obj
@@ -708,17 +709,19 @@ impl LiveCheckOrchestrator<WeaverRunning> {
 
                     // Also check nested live_check_result or other objects
                     for val in obj.values() {
-                        extract_advice(val, details);
+                        extract_advice(val, details)?;
                     }
                 } else if let Some(arr) = v.as_array() {
                     for val in arr {
-                        extract_advice(val, details);
+                        extract_advice(val, details)?;
                     }
                 }
+                
+                Ok(())
             }
 
             for sample in s_arr {
-                extract_advice(sample, &mut details);
+                extract_advice(sample, &mut details)?;
             }
         }
 
@@ -727,7 +730,8 @@ impl LiveCheckOrchestrator<WeaverRunning> {
             match detail.level.as_str() {
                 "violation" => violations += 1,
                 "improvement" => improvements += 1,
-                _ => information += 1,
+                "information" => information += 1,
+                unknown => return Err(crate::error::CleanroomError::validation_error(format!("Unknown advice level: {}", unknown))),
             }
         }
 

@@ -126,35 +126,35 @@ async fn main() -> Result<()> {
             .build()?
     };
 
-    println!("\n=== Stress Test Configuration ===");
-    println!("Containers: {:?}", config.containers);
-    println!("Test Count per Container: {}", config.test_count);
-    println!("Span Depth: {}", config.span_depth);
-    println!("Max Containers: {}", config.limits.max_containers);
-    println!("Concurrency: {}", config.concurrency);
-    println!("Total Permutations: {}", config.total_permutations());
-    println!("==================================\n");
+    tracing::info!("\n=== Stress Test Configuration ===");
+    tracing::info!("Containers: {:?}", config.containers);
+    tracing::info!("Test Count per Container: {}", config.test_count);
+    tracing::info!("Span Depth: {}", config.span_depth);
+    tracing::info!("Max Containers: {}", config.limits.max_containers);
+    tracing::info!("Concurrency: {}", config.concurrency);
+    tracing::info!("Total Permutations: {}", config.total_permutations());
+    tracing::info!("==================================\n");
 
     let executor = StressTestExecutor::new(config);
     let results = executor.run().await?;
 
-    println!("\n=== Stress Test Results ===");
-    println!("Total Tests: {}", results.total_tests);
-    println!(
+    tracing::info!("\n=== Stress Test Results ===");
+    tracing::info!("Total Tests: {}", results.total_tests);
+    tracing::info!(
         "Passed: {} ({:.2}%)",
         results.passed_tests,
         results.success_rate()
     );
-    println!("Failed: {}", results.failed_tests);
-    println!("Skipped: {}", results.skipped_tests);
-    println!("Total Duration: {}ms", results.total_duration_ms);
-    println!("Avg Test Duration: {:.2}ms", results.avg_test_duration_ms);
-    println!(
+    tracing::info!("Failed: {}", results.failed_tests);
+    tracing::info!("Skipped: {}", results.skipped_tests);
+    tracing::info!("Total Duration: {}ms", results.total_duration_ms);
+    tracing::info!("Avg Test Duration: {:.2}ms", results.avg_test_duration_ms);
+    tracing::info!(
         "Peak Pool Utilization: {:.2}%",
         results.peak_pool_utilization
     );
-    println!("Total Spans Generated: {}", results.total_spans_generated);
-    println!("===========================\n");
+    tracing::info!("Total Spans Generated: {}", results.total_spans_generated);
+    tracing::info!("===========================\n");
 
     // Write results to JSON
     let output_path = PathBuf::from("test_output/stress_results/stress_test_results.json");
@@ -162,21 +162,21 @@ async fn main() -> Result<()> {
         std::fs::create_dir_all(parent)?;
     }
     let json = serde_json::to_string_pretty(&results)?;
-    std::fs::write(&output_path, json)?;
-    println!("Results written to: {}", output_path.display());
+    tokio::fs::write(&output_path, json).await?;
+    tracing::info!("Results written to: {}", output_path.display());
 
     if !results.errors.is_empty() {
-        println!("\nErrors encountered:");
+        tracing::info!("\nErrors encountered:");
         for (i, error) in results.errors.iter().enumerate() {
-            println!("  {}. {}", i + 1, error);
+            tracing::info!("  {}. {}", i + 1, error);
         }
     }
 
     if results.all_passed() {
-        println!("\n✓ All stress tests passed!");
+        tracing::info!("\n✓ All stress tests passed!");
         Ok(())
     } else {
-        println!("\n✗ Some stress tests failed");
+        tracing::info!("\n✗ Some stress tests failed");
         Err(clnrm_core::error::CleanroomError::validation_error(
             format!(
                 "{} of {} tests failed",

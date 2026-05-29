@@ -1,0 +1,80 @@
+[
+  {
+    "file": "crates/clnrm-core/src/cleanroom.rs",
+    "type": "fs",
+    "old": "        }\n\n        if stderr_path.exists() {\n            if let Ok(content) = std::fs::read_to_string(&stderr_path) {\n                logs.extend(content.lines().map(|s| s.to_string()));\n            }\n        }",
+    "new": "        }\n\n        if stderr_path.exists() {\n            if let Ok(content) = tokio::fs::read_to_string(&stderr_path).await {\n                logs.extend(content.lines().map(|s| s.to_string()));\n            }\n        }"
+  },
+  {
+    "file": "crates/clnrm-core/src/bin/run_stress_test.rs",
+    "type": "fs",
+    "old": "        std::fs::create_dir_all(parent)?;\n    }\n    let json = serde_json::to_string_pretty(&results)?;\n    std::fs::write(&output_path, json)?;\n    println!(\"Results written to: {}\", output_path.display());\n\n    if !results.errors.is_empty() {",
+    "new": "        std::fs::create_dir_all(parent)?;\n    }\n    let json = serde_json::to_string_pretty(&results)?;\n    tokio::fs::write(&output_path, json).await?;\n    println!(\"Results written to: {}\", output_path.display());\n\n    if !results.errors.is_empty() {"
+  },
+  {
+    "file": "crates/clnrm-core/src/backend/oci/runsc_executor.rs",
+    "type": "fs",
+    "old": "\n        // Cleanup log files\n        let _ = std::fs::remove_file(stdout_path);\n        let _ = std::fs::remove_file(stderr_path);\n\n        Ok(LogOutput { stdout, stderr })\n    }",
+    "new": "\n        // Cleanup log files\n        let _ = std::fs::remove_file(stdout_path);\n        let _ = tokio::fs::remove_file(stderr_path).await;\n\n        Ok(LogOutput { stdout, stderr })\n    }"
+  },
+  {
+    "file": "crates/clnrm-core/src/backend/oci/layer_manager.rs",
+    "type": "fs",
+    "old": "                        entry.unpack(&full_path)?;\n                    }\n                    tar::EntryType::Directory => {\n                        std::fs::create_dir_all(&full_path)?;\n                    }\n                    tar::EntryType::Symlink | tar::EntryType::Link => {\n                        // Handle symlinks",
+    "new": "                        entry.unpack(&full_path)?;\n                    }\n                    tar::EntryType::Directory => {\n                        tokio::fs::create_dir_all(&full_path).await?;\n                    }\n                    tar::EntryType::Symlink | tar::EntryType::Link => {\n                        // Handle symlinks"
+  },
+  {
+    "file": "crates/clnrm-core/src/cli/commands/prd_commands.rs",
+    "type": "fs",
+    "old": "            CleanroomError::internal_error(format!(\"Failed to serialize comparison results: {}\", e))\n        })?;\n\n        std::fs::write(out, comparison_json).map_err(|e| {\n            CleanroomError::io_error(format!(\n                \"Failed to write comparison results to '{}': {}\",\n                out.display(),",
+    "new": "            CleanroomError::internal_error(format!(\"Failed to serialize comparison results: {}\", e))\n        })?;\n\n        tokio::fs::write(out, comparison_json).await.map_err(|e| {\n            CleanroomError::io_error(format!(\n                \"Failed to write comparison results to '{}': {}\",\n                out.display(),"
+  },
+  {
+    "file": "crates/clnrm-core/src/cli/commands/record.rs",
+    "type": "fs",
+    "old": "    })?;\n\n    // Write digest to separate file\n    std::fs::write(&digest_path, &digest).map_err(|e| {\n        CleanroomError::io_error(format!(\n            \"Failed to write digest to '{}': {}\",\n            digest_path.display(),",
+    "new": "    })?;\n\n    // Write digest to separate file\n    tokio::fs::write(&digest_path, &digest).await.map_err(|e| {\n        CleanroomError::io_error(format!(\n            \"Failed to write digest to '{}': {}\",\n            digest_path.display(),"
+  },
+  {
+    "file": "crates/clnrm-core/src/cli/commands/stress.rs",
+    "type": "fs",
+    "old": "            .map(|d| d.join(\"stress_test_results.json\"))\n    }) {\n        let json = serde_json::to_string_pretty(&results)?;\n        std::fs::write(&output_path, json)?;\n        println!(\"Results written to: {}\", output_path.display());\n    }\n",
+    "new": "            .map(|d| d.join(\"stress_test_results.json\"))\n    }) {\n        let json = serde_json::to_string_pretty(&results)?;\n        tokio::fs::write(&output_path, json).await?;\n        println!(\"Results written to: {}\", output_path.display());\n    }\n"
+  },
+  {
+    "file": "crates/clnrm-core/src/cli/commands/run/cache.rs",
+    "type": "fs",
+    "old": "\n            // Check if file exists and update cache\n            if test_path.exists() {\n                let content = std::fs::read_to_string(&test_path).map_err(|e| {\n                    CleanroomError::io_error(format!(\n                        \"Failed to read test file '{}': {}\",\n                        test_path.display(),",
+    "new": "\n            // Check if file exists and update cache\n            if test_path.exists() {\n                let content = tokio::fs::read_to_string(&test_path).await.map_err(|e| {\n                    CleanroomError::io_error(format!(\n                        \"Failed to read test file '{}': {}\",\n                        test_path.display(),"
+  },
+  {
+    "file": "crates/clnrm-core/src/cli/commands/run/single.rs",
+    "type": "fs",
+    "old": "///          Err on failure\n#[tracing::instrument(name = \"clnrm.test\", skip(_config), fields(test.hermetic = true))]\npub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Option<String>> {\n    let content = std::fs::read_to_string(path).map_err(|e| {\n        CleanroomError::configuration_error(format!(\"Failed to read config file: {}\", e))\n    })?;\n",
+    "new": "///          Err on failure\n#[tracing::instrument(name = \"clnrm.test\", skip(_config), fields(test.hermetic = true))]\npub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Option<String>> {\n    let content = tokio::fs::read_to_string(path).await.map_err(|e| {\n        CleanroomError::configuration_error(format!(\"Failed to read config file: {}\", e))\n    })?;\n"
+  },
+  {
+    "file": "crates/clnrm-core/src/cli/commands/run/mod.rs",
+    "type": "fs",
+    "old": "    if let Some(junit_path) = report_junit {\n        info!(\"\ud83d\udcc4 Generating JUnit XML report: {}\", junit_path.display());\n        let junit_xml = generate_junit_xml(&cli_results)?;\n        std::fs::write(junit_path, &junit_xml).map_err(|e| {\n            CleanroomError::io_error(format!(\n                \"Failed to write JUnit report to {}: {}\",\n                junit_path.display(),",
+    "new": "    if let Some(junit_path) = report_junit {\n        info!(\"\ud83d\udcc4 Generating JUnit XML report: {}\", junit_path.display());\n        let junit_xml = generate_junit_xml(&cli_results)?;\n        tokio::fs::write(junit_path, &junit_xml).await.map_err(|e| {\n            CleanroomError::io_error(format!(\n                \"Failed to write JUnit report to {}: {}\",\n                junit_path.display(),"
+  },
+  {
+    "file": "crates/clnrm-core/src/testing/mod.rs",
+    "type": "fs",
+    "old": "    command = [\"echo\", \"test\"]\n    \"#;\n\n    std::fs::write(&valid_path, valid_content).map_err(|e| {\n        CleanroomError::internal_error(\"Failed to write valid file\").with_source(e.to_string())\n    })?;\n",
+    "new": "    command = [\"echo\", \"test\"]\n    \"#;\n\n    tokio::fs::write(&valid_path, valid_content).await.map_err(|e| {\n        CleanroomError::internal_error(\"Failed to write valid file\").with_source(e.to_string())\n    })?;\n"
+  },
+  {
+    "file": "crates/clnrm-core/src/service/oci.rs",
+    "type": "fs",
+    "old": "        let config_src = image_dir.join(\"config.json\");\n        let config_dest = bundle_dir.join(\"config.json\");\n        if config_src.exists() {\n            std::fs::copy(&config_src, &config_dest).map_err(|e| {\n                CleanroomError::container_error(format!(\n                    \"Failed to copy config.json to bundle: {}\",\n                    e",
+    "new": "        let config_src = image_dir.join(\"config.json\");\n        let config_dest = bundle_dir.join(\"config.json\");\n        if config_src.exists() {\n            tokio::fs::copy(&config_src, &config_dest).await.map_err(|e| {\n                CleanroomError::container_error(format!(\n                    \"Failed to copy config.json to bundle: {}\",\n                    e"
+  },
+  {
+    "file": "crates/clnrm-core/src/services/chaos_engine.rs",
+    "type": "fs",
+    "old": "                tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;\n\n                // Cleanup\n                if let Err(e) = std::fs::remove_file(&file_path) {\n                    tracing::warn!(error = %e, path = ?file_path, \"Failed to remove disk fill temp file\");\n                }\n            }",
+    "new": "                tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;\n\n                // Cleanup\n                if let Err(e) = tokio::fs::remove_file(&file_path).await {\n                    tracing::warn!(error = %e, path = ?file_path, \"Failed to remove disk fill temp file\");\n                }\n            }"
+  }
+]

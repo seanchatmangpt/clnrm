@@ -210,11 +210,11 @@ pub async fn start_collector(
     // Check if collector is already running
     if let Some(state) = CollectorState::load()? {
         if is_container_running(&state.container_id)? {
-            println!("✅ OTEL collector is already running");
-            println!("   Container ID: {}", state.container_id);
-            println!("   HTTP Port: {}", state.http_port);
-            println!("   gRPC Port: {}", state.grpc_port);
-            println!("   Image: {}", state.image);
+            tracing::info!("✅ OTEL collector is already running");
+            tracing::info!("   Container ID: {}", state.container_id);
+            tracing::info!("   HTTP Port: {}", state.http_port);
+            tracing::info!("   gRPC Port: {}", state.grpc_port);
+            tracing::info!("   Image: {}", state.image);
             return Ok(());
         } else {
             // Clean up stale state
@@ -268,10 +268,10 @@ service:
     })?;
 
     tracing::info!("Starting OTEL collector container");
-    println!("🚀 Starting OTEL collector...");
-    println!("   Image: {}", image);
-    println!("   HTTP Port: {}", http_port);
-    println!("   gRPC Port: {}", grpc_port);
+    tracing::info!("🚀 Starting OTEL collector...");
+    tracing::info!("   Image: {}", image);
+    tracing::info!("   HTTP Port: {}", http_port);
+    tracing::info!("   gRPC Port: {}", grpc_port);
 
     // Start container using docker command
     use std::process::Command;
@@ -318,7 +318,7 @@ service:
 
     // Wait for collector to be ready (if not detached)
     if !detach {
-        println!("⏳ Waiting for collector to be ready...");
+        tracing::info!("⏳ Waiting for collector to be ready...");
         std::thread::sleep(std::time::Duration::from_secs(2));
 
         // Check if container is still running
@@ -339,14 +339,14 @@ service:
     };
     state.save()?;
 
-    println!("✅ OTEL collector started successfully");
-    println!("   Container ID: {}", container_id);
-    println!("   HTTP Endpoint: http://localhost:{}", http_port);
-    println!("   gRPC Endpoint: http://localhost:{}", grpc_port);
+    tracing::info!("✅ OTEL collector started successfully");
+    tracing::info!("   Container ID: {}", container_id);
+    tracing::info!("   HTTP Endpoint: http://localhost:{}", http_port);
+    tracing::info!("   gRPC Endpoint: http://localhost:{}", grpc_port);
 
     if detach {
-        println!("\n💡 View logs: clnrm collector logs");
-        println!("💡 Stop collector: clnrm collector down");
+        tracing::info!("\n💡 View logs: clnrm collector logs");
+        tracing::info!("💡 Stop collector: clnrm collector down");
     }
 
     Ok(())
@@ -369,7 +369,7 @@ pub async fn stop_collector(volumes: bool) -> Result<()> {
         CleanroomError::container_error("No OTEL collector is running".to_string())
     })?;
 
-    println!("🛑 Stopping OTEL collector...");
+    tracing::info!("🛑 Stopping OTEL collector...");
 
     // Stop and remove container
     stop_and_remove_container(&state.container_id)?;
@@ -377,13 +377,13 @@ pub async fn stop_collector(volumes: bool) -> Result<()> {
     // Remove volumes if requested
     if volumes {
         tracing::info!("Removing collector volumes");
-        println!("🗑️  Removing volumes...");
+        tracing::info!("🗑️  Removing volumes...");
     }
 
     // Clean up state
     CollectorState::delete()?;
 
-    println!("✅ OTEL collector stopped successfully");
+    tracing::info!("✅ OTEL collector stopped successfully");
 
     Ok(())
 }
@@ -397,12 +397,12 @@ pub async fn show_collector_status() -> Result<()> {
             let running = is_container_running(&state.container_id)?;
 
             if running {
-                println!("✅ OTEL collector is running");
-                println!("   Container ID: {}", state.container_id);
-                println!("   HTTP Endpoint: http://localhost:{}", state.http_port);
-                println!("   gRPC Endpoint: http://localhost:{}", state.grpc_port);
-                println!("   Image: {}", state.image);
-                println!(
+                tracing::info!("✅ OTEL collector is running");
+                tracing::info!("   Container ID: {}", state.container_id);
+                tracing::info!("   HTTP Endpoint: http://localhost:{}", state.http_port);
+                tracing::info!("   gRPC Endpoint: http://localhost:{}", state.grpc_port);
+                tracing::info!("   Image: {}", state.image);
+                tracing::info!(
                     "   Started: {}",
                     state.started_at.format("%Y-%m-%d %H:%M:%S UTC")
                 );
@@ -411,20 +411,20 @@ pub async fn show_collector_status() -> Result<()> {
                 let uptime = chrono::Utc::now() - state.started_at;
                 let hours = uptime.num_hours();
                 let minutes = uptime.num_minutes() % 60;
-                println!("   Uptime: {}h {}m", hours, minutes);
+                tracing::info!("   Uptime: {}h {}m", hours, minutes);
             } else {
-                println!("❌ OTEL collector container exists but is not running");
-                println!("   Container ID: {}", state.container_id);
-                println!(
+                tracing::info!("❌ OTEL collector container exists but is not running");
+                tracing::info!("   Container ID: {}", state.container_id);
+                tracing::info!(
                     "   Last started: {}",
                     state.started_at.format("%Y-%m-%d %H:%M:%S UTC")
                 );
-                println!("\n💡 Start the collector: clnrm collector up");
+                tracing::info!("\n💡 Start the collector: clnrm collector up");
             }
         }
         None => {
-            println!("❌ No OTEL collector is running");
-            println!("\n💡 Start a collector: clnrm collector up");
+            tracing::info!("❌ No OTEL collector is running");
+            tracing::info!("\n💡 Start a collector: clnrm collector up");
         }
     }
 
@@ -451,10 +451,10 @@ pub async fn show_collector_logs(lines: usize, follow: bool) -> Result<()> {
     }
 
     if follow {
-        println!("📜 Following OTEL collector logs (press Ctrl+C to exit)...\n");
+        tracing::info!("📜 Following OTEL collector logs (press Ctrl+C to exit)...\n");
         follow_container_logs(&state.container_id)?;
     } else {
-        println!("📜 OTEL collector logs (last {} lines):\n", lines);
+        tracing::info!("📜 OTEL collector logs (last {} lines):\n", lines);
         let logs = get_container_logs(&state.container_id, lines)?;
         print!("{}", logs);
     }

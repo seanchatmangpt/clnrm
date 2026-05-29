@@ -10,7 +10,7 @@ use tracing::warn;
 
 /// Show service status
 pub async fn show_service_status() -> Result<()> {
-    println!("📊 Service Status:");
+    tracing::info!("📊 Service Status:");
 
     // Create a temporary environment to check for any active services
     let environment = CleanroomEnvironment::new().await.map_err(|e| {
@@ -21,15 +21,15 @@ pub async fn show_service_status() -> Result<()> {
     let services = environment.services().await;
 
     if services.active_services().is_empty() {
-        println!("✅ No services currently running");
-        println!("💡 Run 'clnrm run <test_file>' to start services");
+        tracing::info!("✅ No services currently running");
+        tracing::info!("💡 Run 'clnrm run <test_file>' to start services");
     } else {
-        println!("Active Services: {}", services.active_services().len());
+        tracing::info!("Active Services: {}", services.active_services().len());
         for handle in services.active_services().values() {
-            println!("Service: {} (ID: {})", handle.service_name, handle.id);
+            tracing::info!("Service: {} (ID: {})", handle.service_name, handle.id);
             if !handle.metadata.is_empty() {
                 for (key, value) in &handle.metadata {
-                    println!("  {}: {}", key, value);
+                    tracing::info!("  {}: {}", key, value);
                 }
             }
         }
@@ -40,7 +40,7 @@ pub async fn show_service_status() -> Result<()> {
 
 /// Show service logs
 pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
-    println!("📄 Service Logs for '{}':", service);
+    tracing::info!("📄 Service Logs for '{}':", service);
 
     // Create a temporary environment to check for services
     let environment = CleanroomEnvironment::new().await.map_err(|e| {
@@ -58,23 +58,23 @@ pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
 
     match service_handle {
         Some(handle) => {
-            println!("Service found: {} (ID: {})", handle.service_name, handle.id);
+            tracing::info!("Service found: {} (ID: {})", handle.service_name, handle.id);
 
             // Try to retrieve logs from the service
             match environment.get_service_logs(&handle.id, lines).await {
                 Ok(logs) => {
                     if logs.is_empty() {
-                        println!("📄 No logs available for service '{}'", service);
+                        tracing::info!("📄 No logs available for service '{}'", service);
                     } else {
-                        println!("📄 Recent logs (last {} lines):", lines);
+                        tracing::info!("📄 Recent logs (last {} lines):", lines);
                         for log_line in logs {
-                            println!("  {}", log_line);
+                            tracing::info!("  {}", log_line);
                         }
                     }
                 }
                 Err(e) => {
-                    println!("⚠️  Could not retrieve logs: {}", e);
-                    println!(
+                    tracing::info!("⚠️  Could not retrieve logs: {}", e);
+                    tracing::info!(
                         "💡 Service '{}' is running but log access may not be available",
                         service
                     );
@@ -82,21 +82,21 @@ pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
             }
 
             if !handle.metadata.is_empty() {
-                println!("Metadata:");
+                tracing::info!("Metadata:");
                 for (key, value) in &handle.metadata {
-                    println!("  {}: {}", key, value);
+                    tracing::info!("  {}: {}", key, value);
                 }
             }
         }
         None => {
-            println!("❌ Service '{}' not found in active services", service);
-            println!("Available services:");
+            tracing::info!("❌ Service '{}' not found in active services", service);
+            tracing::info!("Available services:");
             for handle in services.active_services().values() {
-                println!("  - {}", handle.service_name);
+                tracing::info!("  - {}", handle.service_name);
             }
             if services.active_services().is_empty() {
-                println!("No services currently running");
-                println!("Run 'clnrm run <test_file>' to start services");
+                tracing::info!("No services currently running");
+                tracing::info!("Run 'clnrm run <test_file>' to start services");
             }
         }
     }
@@ -106,7 +106,7 @@ pub async fn show_service_logs(service: &str, lines: usize) -> Result<()> {
 
 /// Restart a service
 pub async fn restart_service(service: &str) -> Result<()> {
-    println!("🔄 Restarting service '{}':", service);
+    tracing::info!("🔄 Restarting service '{}':", service);
 
     // Create a temporary environment to check for services
     let environment = CleanroomEnvironment::new().await.map_err(|e| {
@@ -124,41 +124,41 @@ pub async fn restart_service(service: &str) -> Result<()> {
 
     match service_handle {
         Some(handle) => {
-            println!("Service found: {} (ID: {})", handle.service_name, handle.id);
+            tracing::info!("Service found: {} (ID: {})", handle.service_name, handle.id);
 
             // Stop the service
-            println!("Stopping service...");
+            tracing::info!("Stopping service...");
             environment.stop_service(&handle.id).await.map_err(|e| {
                 CleanroomError::internal_error("Failed to stop service")
                     .with_context(format!("Service: {}", service))
                     .with_source(e.to_string())
             })?;
-            println!("Service stopped");
+            tracing::info!("Service stopped");
 
             // Wait a moment for cleanup
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
             // Start the service again
-            println!("Starting service...");
+            tracing::info!("Starting service...");
             let new_handle = environment.start_service(service).await.map_err(|e| {
                 CleanroomError::internal_error("Failed to restart service")
                     .with_context(format!("Service: {}", service))
                     .with_source(e.to_string())
             })?;
-            println!("Service restarted");
-            println!("New service ID: {}", new_handle.id);
+            tracing::info!("Service restarted");
+            tracing::info!("New service ID: {}", new_handle.id);
 
-            println!("✅ Service '{}' restarted successfully", service);
+            tracing::info!("✅ Service '{}' restarted successfully", service);
         }
         None => {
-            println!("❌ Service '{}' not found in active services", service);
-            println!("Available services:");
+            tracing::info!("❌ Service '{}' not found in active services", service);
+            tracing::info!("Available services:");
             for handle in services.active_services().values() {
-                println!("  - {}", handle.service_name);
+                tracing::info!("  - {}", handle.service_name);
             }
             if services.active_services().is_empty() {
-                println!("No services currently running");
-                println!("Run 'clnrm run <test_file>' to start services");
+                tracing::info!("No services currently running");
+                tracing::info!("Run 'clnrm run <test_file>' to start services");
             }
         }
     }
@@ -177,8 +177,8 @@ pub async fn ai_manage(
     horizon_minutes: u32,
     service_filter: Option<String>,
 ) -> Result<()> {
-    println!("🤖 AI Service Management");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    tracing::info!("🤖 AI Service Management");
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Create a temporary environment to access services
     let environment = CleanroomEnvironment::new().await.map_err(|e| {
@@ -190,8 +190,8 @@ pub async fn ai_manage(
     let services = environment.services().await;
 
     if services.active_services().is_empty() {
-        println!("⚠️  No services currently running");
-        println!("💡 Start services with 'clnrm run <test_file>' first");
+        tracing::info!("⚠️  No services currently running");
+        tracing::info!("💡 Start services with 'clnrm run <test_file>' first");
         return Ok(());
     }
 
@@ -199,7 +199,7 @@ pub async fn ai_manage(
     let mut manager = ServiceManager::new();
 
     // Collect current service metrics
-    println!("\n📊 Collecting service metrics...");
+    tracing::info!("\n📊 Collecting service metrics...");
     for handle in services.active_services().values() {
         // Filter services if specified
         if let Some(ref filter) = service_filter {
@@ -221,7 +221,7 @@ pub async fn ai_manage(
         metrics.response_time_ms = 50.0 + (rand::random::<f64>() * 100.0);
         metrics.error_rate = rand::random::<f64>() * 0.05;
 
-        println!(
+        tracing::info!(
             "  ✓ {} - CPU: {:.1}%, Memory: {:.0}MB, RPS: {:.1}",
             handle.service_name, metrics.cpu_usage, metrics.memory_usage, metrics.request_rate
         );
@@ -234,7 +234,7 @@ pub async fn ai_manage(
     }
 
     // Simulate historical data for better predictions
-    println!("\n📈 Simulating historical data for predictions...");
+    tracing::info!("\n📈 Simulating historical data for predictions...");
     for handle in services.active_services().values() {
         if let Some(ref filter) = service_filter {
             if !handle.service_name.contains(filter) {
@@ -259,8 +259,8 @@ pub async fn ai_manage(
 
     // Load Prediction
     if predict_load {
-        println!("\n🔮 Load Prediction ({}min horizon):", horizon_minutes);
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        tracing::info!("\n🔮 Load Prediction ({}min horizon):", horizon_minutes);
+        tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         for handle in services.active_services().values() {
             if let Some(ref filter) = service_filter {
@@ -270,23 +270,23 @@ pub async fn ai_manage(
             }
 
             if let Some(predicted) = manager.predict_load(&handle.id, horizon_minutes) {
-                println!("  📦 {}", handle.service_name);
-                println!(
+                tracing::info!("  📦 {}", handle.service_name);
+                tracing::info!(
                     "     CPU: {:.1}% → {:.1}%",
                     predicted.cpu_usage - 10.0,
                     predicted.cpu_usage
                 );
-                println!(
+                tracing::info!(
                     "     Memory: {:.0}MB → {:.0}MB",
                     predicted.memory_usage - 50.0,
                     predicted.memory_usage
                 );
-                println!(
+                tracing::info!(
                     "     RPS: {:.1} → {:.1}",
                     predicted.request_rate - 5.0,
                     predicted.request_rate
                 );
-                println!("     Health Score: {:.1}/100", predicted.health_score());
+                tracing::info!("     Health Score: {:.1}/100", predicted.health_score());
 
                 // Predict health status
                 match manager.predict_service_health(&handle.id) {
@@ -296,7 +296,7 @@ pub async fn ai_manage(
                             crate::cleanroom::HealthStatus::Unhealthy => "❌",
                             crate::cleanroom::HealthStatus::Unknown => "⚠️",
                         };
-                        println!("     Predicted Health: {} {:?}", health_emoji, health);
+                        tracing::info!("     Predicted Health: {} {:?}", health_emoji, health);
                     }
                     Err(e) => {
                         warn!(
@@ -306,7 +306,7 @@ pub async fn ai_manage(
                     }
                 }
             } else {
-                println!(
+                tracing::info!(
                     "  ⚠️  {} - Insufficient data for prediction",
                     handle.service_name
                 );
@@ -316,8 +316,8 @@ pub async fn ai_manage(
 
     // Auto-Scaling
     if auto_scale {
-        println!("\n⚡ Auto-Scaling Analysis:");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        tracing::info!("\n⚡ Auto-Scaling Analysis:");
+        tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         for handle in services.active_services().values() {
             if let Some(ref filter) = service_filter {
@@ -331,22 +331,22 @@ pub async fn ai_manage(
                     use crate::services::service_manager::ScalingAction;
                     match action {
                         ScalingAction::ScaleUp(count) => {
-                            println!(
+                            tracing::info!(
                                 "  📈 {} - Scale UP by {} instance(s)",
                                 handle.service_name, count
                             );
-                            println!("     Reason: High resource utilization detected");
+                            tracing::info!("     Reason: High resource utilization detected");
                             manager.update_instance_count(
                                 handle.id.clone(),
                                 *manager.service_instances.get(&handle.id).unwrap_or(&1) + count,
                             );
                         }
                         ScalingAction::ScaleDown(count) => {
-                            println!(
+                            tracing::info!(
                                 "  📉 {} - Scale DOWN by {} instance(s)",
                                 handle.service_name, count
                             );
-                            println!("     Reason: Low resource utilization detected");
+                            tracing::info!("     Reason: Low resource utilization detected");
                             let current = *manager.service_instances.get(&handle.id).unwrap_or(&1);
                             manager.update_instance_count(
                                 handle.id.clone(),
@@ -354,7 +354,7 @@ pub async fn ai_manage(
                             );
                         }
                         ScalingAction::NoAction => {
-                            println!("  ✓ {} - No scaling needed", handle.service_name);
+                            tracing::info!("  ✓ {} - No scaling needed", handle.service_name);
                         }
                     }
                 }
@@ -370,8 +370,8 @@ pub async fn ai_manage(
 
     // Resource Optimization
     if optimize_resources {
-        println!("\n🎯 Resource Optimization:");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        tracing::info!("\n🎯 Resource Optimization:");
+        tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         for handle in services.active_services().values() {
             if let Some(ref filter) = service_filter {
@@ -382,24 +382,24 @@ pub async fn ai_manage(
 
             // Setup resource pool
             let pool = manager.get_or_create_pool(handle.service_name.clone(), 5);
-            println!("  📦 {} Resource Pool:", handle.service_name);
-            println!(
+            tracing::info!("  📦 {} Resource Pool:", handle.service_name);
+            tracing::info!(
                 "     Size: {} available, {} in-use",
                 pool.available.len(),
                 pool.in_use.len()
             );
-            println!("     Utilization: {:.1}%", pool.utilization() * 100.0);
+            tracing::info!("     Utilization: {:.1}%", pool.utilization() * 100.0);
 
             if pool.utilization() < 0.3 && pool.available.len() > 1 {
-                println!("     💡 Consider reducing pool size (low utilization)");
+                tracing::info!("     💡 Consider reducing pool size (low utilization)");
             } else if pool.utilization() > 0.8 {
-                println!("     ⚠️  Consider increasing pool size (high utilization)");
+                tracing::info!("     ⚠️  Consider increasing pool size (high utilization)");
             }
         }
 
         // Cost Optimization Recommendations
-        println!("\n💰 Cost Optimization Recommendations:");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        tracing::info!("\n💰 Cost Optimization Recommendations:");
+        tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         let mut all_recommendations = Vec::new();
         for handle in services.active_services().values() {
@@ -414,37 +414,37 @@ pub async fn ai_manage(
         }
 
         if all_recommendations.is_empty() {
-            println!("  ✓ No cost optimization recommendations at this time");
+            tracing::info!("  ✓ No cost optimization recommendations at this time");
         } else {
             for (i, rec) in all_recommendations.iter().enumerate() {
-                println!(
+                tracing::info!(
                     "\n  {}. {} - {} (Priority: {}/5)",
                     i + 1,
                     rec.service_name,
                     rec.recommendation_type,
                     rec.priority
                 );
-                println!("     {}", rec.description);
-                println!("     💰 Estimated savings: {:.0}%", rec.estimated_savings);
+                tracing::info!("     {}", rec.description);
+                tracing::info!("     💰 Estimated savings: {:.0}%", rec.estimated_savings);
             }
         }
     }
 
     // Summary
-    println!("\n📊 Management Summary:");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    tracing::info!("\n📊 Management Summary:");
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     let summary = manager.get_summary();
     for (key, value) in summary {
-        println!("  {}: {}", key, value);
+        tracing::info!("  {}: {}", key, value);
     }
 
-    println!("\n✅ AI service management completed");
-    println!("\n💡 Tips:");
-    println!("  - Enable auto-scaling to automatically adjust capacity");
-    println!("  - Use load prediction to proactively scale before peaks");
-    println!("  - Review cost recommendations regularly");
-    println!("  - Monitor resource pool utilization for optimal performance");
+    tracing::info!("\n✅ AI service management completed");
+    tracing::info!("\n💡 Tips:");
+    tracing::info!("  - Enable auto-scaling to automatically adjust capacity");
+    tracing::info!("  - Use load prediction to proactively scale before peaks");
+    tracing::info!("  - Review cost recommendations regularly");
+    tracing::info!("  - Monitor resource pool utilization for optimal performance");
 
     Ok(())
 }

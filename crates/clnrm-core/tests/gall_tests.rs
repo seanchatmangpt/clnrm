@@ -5,6 +5,7 @@ pub mod gall_test_suites {
     pub mod determinism_rng;
     pub mod determinism_volumes;
     pub mod macro_lifecycle;
+    pub mod mistake_proofing;
     pub mod nist_adversarial;
     pub mod oci_cgroups;
     pub mod oci_overlay;

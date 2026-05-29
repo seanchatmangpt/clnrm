@@ -36,7 +36,7 @@ pub fn format_files(files: &[PathBuf], check: bool, verify: bool) -> Result<()> 
     }
 
     if toml_files.is_empty() {
-        println!("No TOML files found");
+        tracing::info!("No TOML files found");
         return Ok(());
     }
 
@@ -63,12 +63,12 @@ fn check_formatting(files: &[PathBuf]) -> Result<()> {
     }
 
     if unformatted_files.is_empty() {
-        println!("✅ All files are formatted correctly");
+        tracing::info!("✅ All files are formatted correctly");
         Ok(())
     } else {
-        println!("❌ {} file(s) need formatting:", unformatted_files.len());
+        tracing::info!("❌ {} file(s) need formatting:", unformatted_files.len());
         for file in &unformatted_files {
-            println!("  {}", file.display());
+            tracing::info!("  {}", file.display());
         }
         Err(CleanroomError::validation_error(
             "Files need formatting. Run 'clnrm fmt' to format them.",
@@ -85,14 +85,14 @@ fn format_and_write(files: &[PathBuf], verify: bool) -> Result<()> {
         match format_single_file(file, verify) {
             Ok(true) => {
                 formatted_count += 1;
-                println!("  ✅ {}", file.display());
+                tracing::info!("  ✅ {}", file.display());
             }
             Ok(false) => {
                 // File was already formatted
                 tracing::debug!("File already formatted: {}", file.display());
             }
             Err(e) => {
-                println!("  ❌ {}: {}", file.display(), e);
+                tracing::info!("  ❌ {}: {}", file.display(), e);
                 errors.push((file.clone(), e));
             }
         }
@@ -106,9 +106,9 @@ fn format_and_write(files: &[PathBuf], verify: bool) -> Result<()> {
     }
 
     if formatted_count > 0 {
-        println!("\nFormatted {} file(s)", formatted_count);
+        tracing::info!("\nFormatted {} file(s)", formatted_count);
     } else {
-        println!("\n✅ All files already formatted");
+        tracing::info!("\n✅ All files already formatted");
     }
 
     Ok(())

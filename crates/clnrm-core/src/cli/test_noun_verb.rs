@@ -7,42 +7,42 @@ fn main() -> clap_noun_verb::Result<()> {
         cli.about("Test CLI using noun-verb pattern")
             .noun(noun!("services", "Manage application services", [
                 verb!("status", "Show status of all services", |_args: &VerbArgs| {
-                    println!("📊 Service Status:");
-                    println!("  web-server: Running (port 8080)");
-                    println!("  database: Running (port 5432)");
-                    println!("  redis: Running (port 6379)");
+                    tracing::info!("📊 Service Status:");
+                    tracing::info!("  web-server: Running (port 8080)");
+                    tracing::info!("  database: Running (port 5432)");
+                    tracing::info!("  redis: Running (port 6379)");
                     Ok(())
                 }),
                 verb!("logs", "Show logs for a service", |_args: &VerbArgs| {
-                    println!("📄 Service Logs:");
-                    println!("[2024-01-01 10:00:00] INFO: Service started");
-                    println!("[2024-01-01 10:00:01] INFO: Listening on port 8080");
+                    tracing::info!("📄 Service Logs:");
+                    tracing::info!("[2024-01-01 10:00:00] INFO: Service started");
+                    tracing::info!("[2024-01-01 10:00:01] INFO: Listening on port 8080");
                     Ok(())
                 }),
                 verb!("restart", "Restart a service", |_args: &VerbArgs| {
-                    println!("🔄 Restarting service...");
-                    println!("✓ Service restarted successfully");
+                    tracing::info!("🔄 Restarting service...");
+                    tracing::info!("✓ Service restarted successfully");
                     Ok(())
                 }),
             ]))
             .noun(noun!("collector", "Manage OpenTelemetry collector", [
                 verb!("up", "Start the collector", |_args: &VerbArgs| {
-                    println!("Starting OpenTelemetry Collector...");
-                    println!("✓ Collector started on ports:");
-                    println!("  HTTP: 4318");
-                    println!("  gRPC: 4317");
+                    tracing::info!("Starting OpenTelemetry Collector...");
+                    tracing::info!("✓ Collector started on ports:");
+                    tracing::info!("  HTTP: 4318");
+                    tracing::info!("  gRPC: 4317");
                     Ok(())
                 }),
                 verb!("down", "Stop the collector", |_args: &VerbArgs| {
-                    println!("Stopping OpenTelemetry Collector...");
-                    println!("✓ Collector stopped");
+                    tracing::info!("Stopping OpenTelemetry Collector...");
+                    tracing::info!("✓ Collector stopped");
                     Ok(())
                 }),
                 verb!("status", "Show collector status", |_args: &VerbArgs| {
-                    println!("Collector Status:");
-                    println!("  State: Running");
-                    println!("  HTTP endpoint: http://localhost:4318");
-                    println!("  gRPC endpoint: http://localhost:4317");
+                    tracing::info!("Collector Status:");
+                    tracing::info!("  State: Running");
+                    tracing::info!("  HTTP endpoint: http://localhost:4318");
+                    tracing::info!("  gRPC endpoint: http://localhost:4317");
                     Ok(())
                 }),
             ]))

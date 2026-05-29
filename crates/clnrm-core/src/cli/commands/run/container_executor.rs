@@ -362,7 +362,7 @@ mod tests {
                 Ok(results) => {
                     // If it succeeds (e.g., due to Docker not being available),
                     // that's acceptable - we're testing error handling, not Docker availability
-                    println!("Test '{}' unexpectedly succeeded - this may be due to Docker unavailability", test_name);
+                    tracing::info!("Test '{}' unexpectedly succeeded - this may be due to Docker unavailability", test_name);
                 }
                 Err(e) => {
                     // Should fail with a meaningful error message
@@ -371,7 +371,7 @@ mod tests {
                         "Error message should not be empty for test '{}'",
                         test_name
                     );
-                    println!("Test '{}' failed as expected: {}", test_name, e);
+                    tracing::info!("Test '{}' failed as expected: {}", test_name, e);
                 }
             }
         }
@@ -458,12 +458,12 @@ mod tests {
                     // Check if any step failed assertions
                     let has_failures = results.iter().any(|r| !r.passed);
                     if !has_failures {
-                        println!("Test '{}' - no assertion failures found (may be due to Docker unavailability)", test_name);
+                        tracing::info!("Test '{}' - no assertion failures found (may be due to Docker unavailability)", test_name);
                     }
                 }
                 Err(e) => {
                     // Failed at execution level - also acceptable
-                    println!("Test '{}' failed at execution level: {}", test_name, e);
+                    tracing::info!("Test '{}' failed at execution level: {}", test_name, e);
                 }
             }
         }
@@ -529,14 +529,14 @@ mod tests {
             Ok(results) => {
                 assert_eq!(results.len(), 2, "Should execute both steps");
                 // First step should fail, second should pass (or both fail due to Docker)
-                println!(
+                tracing::info!(
                     "Executed {} steps with continue_on_failure behavior",
                     results.len()
                 );
             }
             Err(e) => {
                 // May fail due to Docker unavailability - that's acceptable
-                println!("Test failed due to execution environment: {}", e);
+                tracing::info!("Test failed due to execution environment: {}", e);
             }
         }
     }
@@ -593,11 +593,11 @@ mod tests {
         match result {
             Ok(results) => {
                 assert_eq!(results.len(), 1, "Should execute one step");
-                println!("Successfully handled {} environment variables", 100);
+                tracing::info!("Successfully handled {} environment variables", 100);
             }
             Err(e) => {
                 // May fail due to Docker - that's acceptable for boundary testing
-                println!("Boundary test failed due to environment: {}", e);
+                tracing::info!("Boundary test failed due to environment: {}", e);
             }
         }
     }
@@ -651,13 +651,13 @@ mod tests {
             Ok(results) => {
                 assert_eq!(results.len(), 1, "Should execute long command");
                 assert!(results[0].passed, "Long command should pass");
-                println!(
+                tracing::info!(
                     "Successfully handled long command line with {} arguments",
                     52
                 );
             }
             Err(e) => {
-                println!("Long command test failed: {}", e);
+                tracing::info!("Long command test failed: {}", e);
             }
         }
     }
@@ -721,11 +721,11 @@ mod tests {
             // Assert: Should handle edge case strings gracefully
             match result {
                 Ok(results) => {
-                    println!("Test '{}' passed with edge case strings", test_name);
+                    tracing::info!("Test '{}' passed with edge case strings", test_name);
                 }
                 Err(e) => {
                     // Should fail gracefully, not panic
-                    println!(
+                    tracing::info!(
                         "Test '{}' failed gracefully with edge case: {}",
                         test_name, e
                     );
@@ -739,7 +739,7 @@ mod tests {
     async fn test_concurrent_containers() {
         // Skip if Docker not available
         if !is_docker_available() {
-            println!("Skipping concurrent containers test - Docker not available");
+            tracing::info!("Skipping concurrent containers test - Docker not available");
             return;
         }
 
@@ -795,10 +795,10 @@ mod tests {
                 for (i, result) in results.iter().enumerate() {
                     assert!(result.passed, "Container {} step should pass", i);
                 }
-                println!("Successfully executed {} concurrent containers", 3);
+                tracing::info!("Successfully executed {} concurrent containers", 3);
             }
             Err(e) => {
-                println!("Concurrent containers test failed: {}", e);
+                tracing::info!("Concurrent containers test failed: {}", e);
             }
         }
     }

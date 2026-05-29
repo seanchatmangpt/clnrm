@@ -408,8 +408,8 @@ impl WeaverProcessManager {
         let content = fs::read_to_string(&report_path).map_err(|e| {
             CleanroomError::internal_error(format!("Failed to read validation report: {}", e))
         })?;
-        println!("📄 Validation report content:\n{}", content);
-        eprintln!("📄 Validation report content:\n{}", content);
+        tracing::info!("📄 Validation report content:\n{}", content);
+        tracing::info!("📄 Validation report content:\n{}", content);
         Ok(content)
     }
 

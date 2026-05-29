@@ -126,8 +126,8 @@ impl ValidationAnalysis {
 
     /// Print a human-readable summary
     pub fn print_summary(&self) {
-        println!("\n=== WEAVER VALIDATION SUMMARY ===");
-        println!(
+        tracing::info!("\n=== WEAVER VALIDATION SUMMARY ===");
+        tracing::info!(
             "Status: {}",
             if self.passed {
                 "✅ PASSED"
@@ -135,20 +135,20 @@ impl ValidationAnalysis {
                 "❌ FAILED"
             }
         );
-        println!("Violations: {}", self.total_violations);
-        println!("Coverage: {:.1}%", self.coverage * 100.0);
+        tracing::info!("Violations: {}", self.total_violations);
+        tracing::info!("Coverage: {:.1}%", self.coverage * 100.0);
 
         if !self.missing_critical_attributes.is_empty() {
-            println!("\n⚠️  MISSING CRITICAL ATTRIBUTES:");
+            tracing::info!("\n⚠️  MISSING CRITICAL ATTRIBUTES:");
             for attr in &self.missing_critical_attributes {
-                println!("  - {}", attr);
+                tracing::info!("  - {}", attr);
             }
         }
 
         if !self.passed {
-            println!("\n❌ VIOLATIONS DETECTED:");
+            tracing::info!("\n❌ VIOLATIONS DETECTED:");
             for violation in &self.violations {
-                println!(
+                tracing::info!(
                     "  - [{}] {}: {}",
                     violation.signal_type, violation.signal_name, violation.message
                 );
@@ -156,9 +156,9 @@ impl ValidationAnalysis {
         }
 
         if !self.improvements.is_empty() {
-            println!("\n💡 IMPROVEMENTS SUGGESTED:");
+            tracing::info!("\n💡 IMPROVEMENTS SUGGESTED:");
             for improvement in &self.improvements {
-                println!(
+                tracing::info!(
                     "  - [{}] {}: {}",
                     improvement.signal_type, improvement.signal_name, improvement.message
                 );

@@ -14,41 +14,41 @@ pub fn list_plugins() -> Result<()> {
     info!("📦 Available Service Plugins:");
 
     // List core plugins
-    println!("✅ generic_container (alpine, ubuntu, debian)");
-    println!("✅ surreal_db (database integration)");
-    println!("✅ network_tools (curl, wget, netcat)");
+    tracing::info!("✅ generic_container (alpine, ubuntu, debian)");
+    tracing::info!("✅ surreal_db (database integration)");
+    tracing::info!("✅ network_tools (curl, wget, netcat)");
 
     // List AI/LLM proxy plugins for automated rollout
-    println!("✅ ollama (local AI model integration)");
-    println!("✅ vllm (high-performance LLM inference)");
-    println!("✅ tgi (Hugging Face text generation inference)");
+    tracing::info!("✅ ollama (local AI model integration)");
+    tracing::info!("✅ vllm (high-performance LLM inference)");
+    tracing::info!("✅ tgi (Hugging Face text generation inference)");
 
     // List experimental plugins
-    println!("\n🧪 Experimental Plugins (clnrm-ai crate):");
-    println!("🎭 chaos_engine (controlled failure injection, network partitions)");
-    println!("🤖 ai_test_generator (AI-powered test case generation)");
+    tracing::info!("\n🧪 Experimental Plugins (clnrm-ai crate):");
+    tracing::info!("🎭 chaos_engine (controlled failure injection, network partitions)");
+    tracing::info!("🤖 ai_test_generator (AI-powered test case generation)");
 
     // List plugin capabilities
-    println!("\n🔧 Plugin Capabilities:");
-    println!("  • Container lifecycle management");
-    println!("  • Service health monitoring");
-    println!("  • Network connectivity testing");
-    println!("  • Database integration testing");
-    println!("  • AI/LLM proxy automated rollout & testing");
-    println!("    ◦ Ollama (local development)");
-    println!("    ◦ vLLM (production inference)");
-    println!("    ◦ TGI (Hugging Face optimized)");
-    println!("  • Chaos engineering (experimental - clnrm-ai crate)");
-    println!("  • AI-powered test generation (experimental - clnrm-ai crate)");
-    println!("  • Custom service plugins");
+    tracing::info!("\n🔧 Plugin Capabilities:");
+    tracing::info!("  • Container lifecycle management");
+    tracing::info!("  • Service health monitoring");
+    tracing::info!("  • Network connectivity testing");
+    tracing::info!("  • Database integration testing");
+    tracing::info!("  • AI/LLM proxy automated rollout & testing");
+    tracing::info!("    ◦ Ollama (local development)");
+    tracing::info!("    ◦ vLLM (production inference)");
+    tracing::info!("    ◦ TGI (Hugging Face optimized)");
+    tracing::info!("  • Chaos engineering (experimental - clnrm-ai crate)");
+    tracing::info!("  • AI-powered test generation (experimental - clnrm-ai crate)");
+    tracing::info!("  • Custom service plugins");
 
-    println!("\n💡 Usage:");
-    println!("  clnrm run tests/your-test.toml");
-    println!("  # Plugins are automatically discovered and loaded");
-    println!("\n🚀 LLM Proxy Testing:");
-    println!("  # Test Ollama: endpoint=http://localhost:11434, model=qwen3-coder:30b");
-    println!("  # Test vLLM: endpoint=http://localhost:8000, model=microsoft/DialoGPT-medium");
-    println!("  # Test TGI: endpoint=http://localhost:8080, model_id=microsoft/DialoGPT-medium");
+    tracing::info!("\n💡 Usage:");
+    tracing::info!("  clnrm run tests/your-test.toml");
+    tracing::info!("  # Plugins are automatically discovered and loaded");
+    tracing::info!("\n🚀 LLM Proxy Testing:");
+    tracing::info!("  # Test Ollama: endpoint=http://localhost:11434, model=qwen3-coder:30b");
+    tracing::info!("  # Test vLLM: endpoint=http://localhost:8000, model=microsoft/DialoGPT-medium");
+    tracing::info!("  # Test TGI: endpoint=http://localhost:8080, model_id=microsoft/DialoGPT-medium");
 
     // Count plugins for telemetry
     let builtin_plugins = 6; // generic_container, surreal_db, network_tools, ollama, vllm, tgi

@@ -25,6 +25,25 @@ pub enum ServiceState {
     Failed,
 }
 
+impl ServiceState {
+    /// Validates whether a state transition is legal
+    pub fn can_transition_to(&self, new_state: &ServiceState) -> bool {
+        match (self, new_state) {
+            // Idempotent transitions
+            (a, b) if a == b => true,
+            // Any state can fail
+            (_, Self::Failed) => true,
+            // Expected lifecycle
+            (Self::Creating, Self::Starting) => true,
+            (Self::Starting, Self::Running) => true,
+            (Self::Running, Self::Stopping) => true,
+            (Self::Stopping, Self::Stopped) => true,
+            // Invalid transitions
+            _ => false,
+        }
+    }
+}
+
 /// Service metadata for discovery
 #[derive(Debug, Clone)]
 pub struct ServiceMetadata {
@@ -82,8 +101,15 @@ impl ServiceMetadata {
     }
 
     /// Update state
-    pub fn set_state(&mut self, state: ServiceState) {
+    pub fn set_state(&mut self, state: ServiceState) -> crate::error::Result<()> {
+        if !self.state.can_transition_to(&state) {
+            return Err(crate::error::CleanroomError::internal_error(format!(
+                "Illegal state transition from {:?} to {:?}",
+                self.state, state
+            )));
+        }
         self.state = state;
+        Ok(())
     }
 
     /// Update health status
@@ -190,7 +216,7 @@ impl ServiceRegistry {
             CleanroomError::internal_error(format!("Service not found: {}", service_id))
         })?;
 
-        service.set_state(state);
+        service.set_state(state)?;
         Ok(())
     }
 
@@ -349,6 +375,10 @@ mod tests {
         );
 
         registry.register(metadata).await.unwrap();
+        registry
+            .update_state("svc-1", ServiceState::Starting)
+            .await
+            .unwrap();
         registry
             .update_state("svc-1", ServiceState::Running)
             .await

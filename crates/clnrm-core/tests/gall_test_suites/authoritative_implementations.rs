@@ -180,6 +180,7 @@ fn gall_auth_otel_validator_attribute_check() {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn gall_auth_service_lifecycle_realism() {
     // ARRANGE
     let env = CleanroomEnvironment::new()

@@ -458,11 +458,11 @@ impl ValidationResult {
 
     /// Print detailed report
     pub fn print_report(&self) {
-        println!("\n{}", "=".repeat(60));
-        println!("WEAVER VALIDATION REPORT ({:?} MODE)", self.mode);
-        println!("{}", "=".repeat(60));
+        tracing::info!("\n{}", "=".repeat(60));
+        tracing::info!("WEAVER VALIDATION REPORT ({:?} MODE)", self.mode);
+        tracing::info!("{}", "=".repeat(60));
 
-        println!(
+        tracing::info!(
             "\nStatus: {}",
             if self.passed {
                 "✅ PASSED"
@@ -470,9 +470,9 @@ impl ValidationResult {
                 "❌ FAILED"
             }
         );
-        println!("Coverage: {:.1}%", self.coverage);
-        println!("Duration: {}ms", self.duration_ms);
-        println!(
+        tracing::info!("Coverage: {:.1}%", self.coverage);
+        tracing::info!("Duration: {}ms", self.duration_ms);
+        tracing::info!(
             "Time Budget: {}",
             if self.within_time_budget {
                 "✅ Met"
@@ -482,13 +482,13 @@ impl ValidationResult {
         );
 
         if !self.violations.is_empty() {
-            println!("\n{} VIOLATIONS FOUND:", self.violations.len());
+            tracing::info!("\n{} VIOLATIONS FOUND:", self.violations.len());
             for (i, violation) in self.violations.iter().enumerate() {
-                println!("  {}. {}", i + 1, violation);
+                tracing::info!("  {}. {}", i + 1, violation);
             }
         }
 
-        println!("\n{}", "=".repeat(60));
+        tracing::info!("\n{}", "=".repeat(60));
     }
 }
 
@@ -549,30 +549,30 @@ pub struct CoverageBreakdown {
 impl CoverageBreakdown {
     /// Print coverage breakdown
     pub fn print(&self) {
-        println!("\n{}", "=".repeat(60));
-        println!("COVERAGE BREAKDOWN");
-        println!("{}", "=".repeat(60));
+        tracing::info!("\n{}", "=".repeat(60));
+        tracing::info!("COVERAGE BREAKDOWN");
+        tracing::info!("{}", "=".repeat(60));
 
-        println!(
+        tracing::info!(
             "\nCritical Spans: {:.1}% ({}/{})",
             self.critical_spans_coverage, self.critical_spans_present, self.critical_spans_total
         );
 
-        println!(
+        tracing::info!(
             "Required Attributes: {:.1}% ({}/{})",
             self.required_attributes_coverage,
             self.required_attributes_present,
             self.required_attributes_total
         );
 
-        println!(
+        tracing::info!(
             "Optional Attributes: {:.1}% ({}/{})",
             self.optional_attributes_coverage,
             self.optional_attributes_present,
             self.optional_attributes_total
         );
 
-        println!("\n{}", "=".repeat(60));
+        tracing::info!("\n{}", "=".repeat(60));
     }
 }
 

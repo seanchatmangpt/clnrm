@@ -62,7 +62,7 @@ pub async fn reproduce_baseline(
     info!("  Verify digest: {}", verify_digest);
 
     // 1. Load baseline file
-    println!("📖 Loading baseline from: {}", baseline.display());
+    tracing::info!("📖 Loading baseline from: {}", baseline.display());
     let baseline_content = std::fs::read_to_string(baseline).map_err(|e| {
         CleanroomError::io_error(format!(
             "Failed to read baseline file '{}': {}",
@@ -79,7 +79,7 @@ pub async fn reproduce_baseline(
         ))
     })?;
 
-    println!(
+    tracing::info!(
         "   Version: {}, Timestamp: {}",
         baseline_record.version, baseline_record.timestamp
     );
@@ -88,7 +88,7 @@ pub async fn reproduce_baseline(
     } else {
         &baseline_record.digest
     };
-    println!(
+    tracing::info!(
         "   Tests: {} (digest: {}...)",
         baseline_record.test_results.len(),
         digest_preview
@@ -107,9 +107,9 @@ pub async fn reproduce_baseline(
         ));
     }
 
-    println!();
-    println!("🔄 Re-running {} test(s)...", test_paths.len());
-    println!();
+    tracing::info!("");
+    tracing::info!("🔄 Re-running {} test(s)...", test_paths.len());
+    tracing::info!("");
 
     // 3. Rerun tests with same configuration (sequential, deterministic)
     let config = CliConfig {
@@ -149,10 +149,10 @@ pub async fn reproduce_baseline(
     let repro_digest = compute_sha256_for_comparison(&repro_data)?;
 
     // 6. Compare results
-    println!();
-    println!("📊 Comparison Results:");
-    println!("   Baseline digest:      {}", baseline_record.digest);
-    println!("   Reproduction digest:  {}", repro_digest);
+    tracing::info!("");
+    tracing::info!("📊 Comparison Results:");
+    tracing::info!("   Baseline digest:      {}", baseline_record.digest);
+    tracing::info!("   Reproduction digest:  {}", repro_digest);
 
     let mut differences = Vec::new();
     for (idx, (baseline_test, repro_test)) in baseline_record
@@ -182,19 +182,19 @@ pub async fn reproduce_baseline(
 
     // 7. Verify digest if requested
     if verify_digest {
-        println!();
+        tracing::info!("");
         if baseline_record.digest == repro_digest {
-            println!("✅ Digest verification: PASSED");
-            println!("   Test execution is deterministic and reproducible!");
+            tracing::info!("✅ Digest verification: PASSED");
+            tracing::info!("   Test execution is deterministic and reproducible!");
         } else {
-            println!("❌ Digest verification: FAILED");
-            println!("   Test results differ from baseline!");
+            tracing::info!("❌ Digest verification: FAILED");
+            tracing::info!("   Test results differ from baseline!");
 
             if !differences.is_empty() {
-                println!();
-                println!("🔍 Differences found ({}):", differences.len());
+                tracing::info!("");
+                tracing::info!("🔍 Differences found ({}):", differences.len());
                 for diff in &differences {
-                    println!("   • {}", diff);
+                    tracing::info!("   • {}", diff);
                 }
             }
 
@@ -203,14 +203,14 @@ pub async fn reproduce_baseline(
             ));
         }
     } else if !differences.is_empty() {
-        println!();
-        println!("⚠️  Differences found ({}):", differences.len());
+        tracing::info!("");
+        tracing::info!("⚠️  Differences found ({}):", differences.len());
         for diff in &differences {
-            println!("   • {}", diff);
+            tracing::info!("   • {}", diff);
         }
     } else {
-        println!();
-        println!("✅ All tests produced the same results as baseline");
+        tracing::info!("");
+        tracing::info!("✅ All tests produced the same results as baseline");
     }
 
     // 8. Write comparison results to output if specified
@@ -239,7 +239,7 @@ pub async fn reproduce_baseline(
             CleanroomError::internal_error(format!("Failed to serialize comparison results: {}", e))
         })?;
 
-        std::fs::write(out, comparison_json).map_err(|e| {
+        tokio::fs::write(out, comparison_json).await.map_err(|e| {
             CleanroomError::io_error(format!(
                 "Failed to write comparison results to '{}': {}",
                 out.display(),
@@ -247,8 +247,8 @@ pub async fn reproduce_baseline(
             ))
         })?;
 
-        println!();
-        println!("📄 Comparison results written to: {}", out.display());
+        tracing::info!("");
+        tracing::info!("📄 Comparison results written to: {}", out.display());
     }
 
     info!("Baseline reproduction completed successfully");
@@ -345,7 +345,7 @@ pub fn render_template_with_vars(
             .map_err(|e| CleanroomError::io_error(format!("Failed to write output: {}", e)))?;
         info!("✓ Rendered template written to: {}", out.display());
     } else {
-        println!("{}", rendered);
+        tracing::info!("{}", rendered);
     }
 
     Ok(())

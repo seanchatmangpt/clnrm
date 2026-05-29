@@ -80,7 +80,7 @@ pub use test_runner::run_test;
 /// ```ignore
 /// # use clnrm_core::cli::commands::run::resolve_registry_path;
 /// let registry_path = resolve_registry_path().expect("Failed to resolve registry");
-/// println!("Registry at: {}", registry_path.display());
+/// tracing::info!("Registry at: {}", registry_path.display());
 /// ```
 fn resolve_registry_path() -> Result<PathBuf> {
     // Option 1: Check CLNRM_REGISTRY_PATH environment variable (development override)
@@ -389,14 +389,14 @@ async fn run_tests_impl(
     match config.format {
         OutputFormat::Junit => {
             let junit_xml = generate_junit_xml(&cli_results)?;
-            println!("{}", junit_xml);
+            tracing::info!("{}", junit_xml);
         }
         _ => {
             // Default human-readable output
             let passed = cli_results.tests.iter().filter(|t| t.passed).count();
             let failed = cli_results.tests.iter().filter(|t| !t.passed).count();
 
-            println!();
+            tracing::info!("");
             for result in &cli_results.tests {
                 if result.passed {
                     info!("✅ {} - PASS ({}ms)", result.name, result.duration_ms);
@@ -754,7 +754,7 @@ async fn run_tests_impl_with_report(
     if let Some(junit_path) = report_junit {
         info!("📄 Generating JUnit XML report: {}", junit_path.display());
         let junit_xml = generate_junit_xml(&cli_results)?;
-        std::fs::write(junit_path, &junit_xml).map_err(|e| {
+        tokio::fs::write(junit_path, &junit_xml).await.map_err(|e| {
             CleanroomError::io_error(format!(
                 "Failed to write JUnit report to {}: {}",
                 junit_path.display(),
@@ -768,28 +768,34 @@ async fn run_tests_impl_with_report(
     match config.format {
         OutputFormat::Junit => {
             let junit_xml = generate_junit_xml(&cli_results)?;
-            println!("{}", junit_xml);
+            tracing::info!("{}", junit_xml);
         }
         _ => {
             // Default human-readable output
             let passed = cli_results.tests.iter().filter(|t| t.passed).count();
             let failed = cli_results.tests.iter().filter(|t| !t.passed).count();
 
-            println!();
+            tracing::info!("");
             for result in &cli_results.tests {
                 if result.passed {
                     info!("✅ {} - PASS ({}ms)", result.name, result.duration_ms);
                 } else {
                     error!("❌ {} - FAIL ({}ms)", result.name, result.duration_ms);
-                    if let Some(error) = &result.error {
-                        error!("   Error: {}", error);
-                    }
                 }
             }
 
             info!("Test Results: {} passed, {} failed", passed, failed);
 
             if failed > 0 {
+                tracing::info!("\n=== Failure Details ===");
+                for result in &cli_results.tests {
+                    if !result.passed {
+                        if let Some(error) = &result.error {
+                            tracing::info!("❌ {}:\n{}\n", result.name, error);
+                        }
+                    }
+                }
+
                 // Flush telemetry before exiting with error
                 if _otel_guard.is_some() {
                     info!("🔄 Flushing telemetry before exit...");
@@ -843,13 +849,13 @@ async fn run_tests_impl_with_report(
             error!("   - Tests failed before emitting telemetry");
             error!("   - Weaver not receiving OTLP data");
 
-            println!("\n=== Weaver Validation Report ===");
-            println!("Status: FAILED (zero samples)");
-            println!("Samples Received: {}", report.sample_count);
-            println!("Violations: {}", report.violations);
-            println!("\n❌ VALIDATION FAILED: Zero telemetry samples received");
-            println!("Cannot validate telemetry that was never sent.");
-            println!("This is a FALSE NEGATIVE - fix OTEL configuration.\n");
+            tracing::info!("\n=== Weaver Validation Report ===");
+            tracing::info!("Status: FAILED (zero samples)");
+            tracing::info!("Samples Received: {}", report.sample_count);
+            tracing::info!("Violations: {}", report.violations);
+            tracing::info!("\n❌ VALIDATION FAILED: Zero telemetry samples received");
+            tracing::info!("Cannot validate telemetry that was never sent.");
+            tracing::info!("This is a FALSE NEGATIVE - fix OTEL configuration.\n");
 
             return Err(CleanroomError::validation_error(
                 "Weaver validation failed: zero telemetry samples received. \
@@ -868,13 +874,13 @@ async fn run_tests_impl_with_report(
         );
 
         // Print validation summary
-        println!("\n=== Weaver Validation Report ===");
-        println!("Status: {:?}", report.status);
-        println!("Samples Received: {} ✓", report.sample_count);
-        println!("Violations: {}", report.violations);
-        println!("Improvements: {}", report.improvements);
-        println!("Information: {}", report.information);
-        println!(
+        tracing::info!("\n=== Weaver Validation Report ===");
+        tracing::info!("Status: {:?}", report.status);
+        tracing::info!("Samples Received: {} ✓", report.sample_count);
+        tracing::info!("Violations: {}", report.violations);
+        tracing::info!("Improvements: {}", report.improvements);
+        tracing::info!("Information: {}", report.information);
+        tracing::info!(
             "Registry Coverage: {:.1}%",
             report.registry_coverage * 100.0
         );
@@ -883,9 +889,9 @@ async fn run_tests_impl_with_report(
         // STEP 7: CHECK VIOLATIONS AND EXIT WITH ERROR IF FOUND
         // ========================================
         if report.violations > 0 {
-            println!("\n❌ VALIDATION FAILED");
-            println!("Telemetry does not match semantic conventions.");
-            println!("Tests may have FALSE POSITIVES.\n");
+            tracing::info!("\n❌ VALIDATION FAILED");
+            tracing::info!("Telemetry does not match semantic conventions.");
+            tracing::info!("Tests may have FALSE POSITIVES.\n");
 
             // Show first 5 violations
             let violation_details: Vec<_> = report
@@ -896,14 +902,14 @@ async fn run_tests_impl_with_report(
                 .collect();
 
             if !violation_details.is_empty() {
-                println!("Violations:");
+                tracing::info!("Violations:");
                 for detail in violation_details {
-                    println!("  - {}", detail.message);
+                    tracing::info!("  - {}", detail.message);
                 }
             }
 
-            println!("\n💡 Tip: Fix violations to ensure tests are not producing false positives.");
-            println!("See validation_output/validation_report.json for full details.\n");
+            tracing::info!("\n💡 Tip: Fix violations to ensure tests are not producing false positives.");
+            tracing::info!("See validation_output/validation_report.json for full details.\n");
 
             return Err(CleanroomError::validation_error(format!(
                 "Weaver validation failed with {} violations. \
@@ -911,9 +917,9 @@ async fn run_tests_impl_with_report(
                 report.violations
             )));
         } else {
-            println!("✅ No violations detected");
-            println!("Telemetry matches semantic conventions.");
-            println!(
+            tracing::info!("✅ No violations detected");
+            tracing::info!("Telemetry matches semantic conventions.");
+            tracing::info!(
                 "Validation passed: {} samples validated successfully.\n",
                 report.sample_count
             );

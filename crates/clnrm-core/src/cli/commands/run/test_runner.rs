@@ -7,7 +7,7 @@ use crate::cli::commands::run::container_executor::{execute_container_test, Step
 use crate::config::load_config_from_file;
 use crate::error::Result;
 use std::path::Path;
-use tracing::{error, info};
+use tracing::debug;
 
 /// Unified execution result matching the old signature
 pub struct ExecutionResult {
@@ -22,7 +22,7 @@ pub async fn run_test(path: &Path) -> Result<ExecutionResult> {
     // Read and parse config file, applying templates and validations
     let config = load_config_from_file(path)?;
 
-    info!(
+    debug!(
         "🚀 Executing unified test: {}",
         config
             .test
@@ -55,13 +55,13 @@ pub async fn run_test(path: &Path) -> Result<ExecutionResult> {
 
     // Log summary
     if passed {
-        info!("✅ {}", summary);
+        debug!("✅ {}", summary);
     } else {
-        error!("❌ {}", summary);
+        debug!("❌ {}", summary);
         for step_result in &step_results {
             if !step_result.passed {
                 if let Some(reason) = &step_result.assertion_error {
-                    error!("  Step '{}' failed: {}", step_result.name, reason);
+                    debug!("  Step '{}' failed: {}", step_result.name, reason);
                 }
             }
         }

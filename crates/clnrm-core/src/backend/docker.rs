@@ -13,7 +13,7 @@ impl DockerBackend {
     /// Create a new Docker backend
     pub fn new(default_image: &str) -> Result<Self> {
         if !Self::is_available() {
-            return Err(CleanroomError::container_error(
+            return Err(CleanroomError::execution_error(
                 "Docker is not available in PATH. Please install Docker or Colima.",
             ));
         }
@@ -47,6 +47,16 @@ impl Backend for DockerBackend {
         // Add environment variables
         for (key, value) in &cmd.env {
             docker_cmd.arg("-e").arg(format!("{}={}", key, value));
+        }
+
+        // Apply policy resource limits
+        if cmd.policy.resources.max_memory_usage_bytes > 0 {
+            docker_cmd.arg(format!("--memory={}b", cmd.policy.resources.max_memory_usage_bytes));
+        }
+        
+        if cmd.policy.resources.max_cpu_usage_percent > 0.0 {
+            // max_cpu_usage_percent of 100.0 means 1 CPU core
+            docker_cmd.arg(format!("--cpus={}", cmd.policy.resources.max_cpu_usage_percent / 100.0));
         }
 
         // Add working directory

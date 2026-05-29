@@ -23,7 +23,7 @@ pub fn init_project(force: bool, with_config: bool) -> Result<()> {
     // Start telemetry span
     let span = CliInitSpanBuilder::new(project_path, exists_before, force).start();
 
-    println!("🚀 Initializing cleanroom test project in current directory");
+    tracing::info!("🚀 Initializing cleanroom test project in current directory");
 
     if exists_before {
         if !force {
@@ -40,7 +40,7 @@ pub fn init_project(force: bool, with_config: bool) -> Result<()> {
 
             return Err(error);
         }
-        println!("Reinitializing existing project (--force flag used)");
+        tracing::info!("Reinitializing existing project (--force flag used)");
     }
 
     // Track created files for telemetry
@@ -135,11 +135,11 @@ version = "0.1.0"
 "#;
         std::fs::write("cleanroom.toml", config_content)?;
         files_created += 1;
-        println!("✅ Project initialized successfully with configuration");
-        println!("📁 Created: tests/basic.clnrm.toml, cleanroom.toml, README.md");
+        tracing::info!("✅ Project initialized successfully with configuration");
+        tracing::info!("📁 Created: tests/basic.clnrm.toml, cleanroom.toml, README.md");
     } else {
-        println!("✅ Project initialized successfully (zero-config)");
-        println!("📁 Created: tests/basic.clnrm.toml, README.md");
+        tracing::info!("✅ Project initialized successfully (zero-config)");
+        tracing::info!("📁 Created: tests/basic.clnrm.toml, README.md");
     }
 
     // Finish telemetry span with success

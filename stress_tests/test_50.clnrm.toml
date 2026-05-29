@@ -1,0 +1,11 @@
+[test]
+name = "stress_test_50"
+description = "Stress test 50"
+
+[containers.alpine]
+image = "alpine:latest"
+
+[[steps]]
+name = "sleep"
+container = "alpine"
+exec = ["sleep", "2"]

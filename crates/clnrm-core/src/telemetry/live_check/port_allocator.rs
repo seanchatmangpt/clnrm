@@ -6,9 +6,9 @@
 /// # Architecture
 ///
 /// The port allocator uses a 3-tier fallback strategy:
-/// 1. Primary range (4317-4327): Standard OTLP port range
-/// 2. Fallback range (5317-5327): Secondary range for high contention
-/// 3. Extended range (6317-6337): Emergency range
+/// 1. Primary range (4317-5317): Standard OTLP port range
+/// 2. Fallback range (5318-6318): Secondary range for high contention
+/// 3. Extended range (6319-7339): Emergency range
 ///
 /// # Atomicity Guarantee
 ///
@@ -91,9 +91,9 @@ impl PortAllocator {
     ///
     /// # Default Ranges
     ///
-    /// - Primary: 4317-4327 (11 ports, OTLP standard)
-    /// - Fallback: 5317-5327 (11 ports)
-    /// - Extended: 6317-7337 (1021 ports)
+    /// - Primary: 4317-5317 (1001 ports, OTLP standard)
+    /// - Fallback: 5318-6318 (1001 ports)
+    /// - Extended: 6319-7339 (1021 ports)
     ///
     /// # Errors
     ///
@@ -109,9 +109,9 @@ impl PortAllocator {
         })?;
 
         Ok(Self {
-            primary_range: PortRange::new(4317, 4327),
-            fallback_range: PortRange::new(5317, 5327),
-            extended_range: PortRange::new(6317, 7337),
+            primary_range: PortRange::new(4317, 5317),
+            fallback_range: PortRange::new(5318, 6318),
+            extended_range: PortRange::new(6319, 7339),
             lock_dir,
         })
     }
@@ -571,10 +571,10 @@ mod tests {
 
     #[test]
     fn test_port_range_creation() {
-        let range = PortRange::new(4317, 4327);
+        let range = PortRange::new(4317, 5317);
         assert_eq!(range.start, 4317);
-        assert_eq!(range.end, 4327);
-        assert_eq!(range.size(), 11);
+        assert_eq!(range.end, 5317);
+        assert_eq!(range.size(), 1001);
     }
 
     #[test]
@@ -587,14 +587,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "Port range start must be <= end")]
     fn test_port_range_invalid() {
-        PortRange::new(4327, 4317);
+        PortRange::new(5317, 4317);
     }
 
     #[test]
     fn test_port_allocator_creation() {
         let allocator = PortAllocator::new().unwrap();
         assert_eq!(allocator.primary_range.start, 4317);
-        assert_eq!(allocator.primary_range.end, 4327);
+        assert_eq!(allocator.primary_range.end, 5317);
     }
 
     #[test]

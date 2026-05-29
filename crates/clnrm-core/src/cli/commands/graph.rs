@@ -53,7 +53,7 @@ pub fn visualize_graph(
     };
 
     if spans.is_empty() {
-        println!("No spans found in trace");
+        tracing::info!("No spans found in trace");
         return Ok(());
     }
 
@@ -63,19 +63,19 @@ pub fn visualize_graph(
     match format {
         GraphFormat::Ascii => {
             let output = generate_ascii_tree(&spans, highlight_missing)?;
-            println!("{}", output);
+            tracing::info!("{}", output);
         }
         GraphFormat::Dot => {
             let output = generate_dot_graph(&spans)?;
-            println!("{}", output);
+            tracing::info!("{}", output);
         }
         GraphFormat::Json => {
             let output = generate_json_graph(&spans)?;
-            println!("{}", output);
+            tracing::info!("{}", output);
         }
         GraphFormat::Mermaid => {
             let output = generate_mermaid_diagram(&spans)?;
-            println!("{}", output);
+            tracing::info!("{}", output);
         }
     }
 

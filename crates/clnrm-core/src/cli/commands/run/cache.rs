@@ -51,7 +51,7 @@ pub async fn update_cache_for_results(
 
             // Check if file exists and update cache
             if test_path.exists() {
-                let content = std::fs::read_to_string(&test_path).map_err(|e| {
+                let content = tokio::fs::read_to_string(&test_path).await.map_err(|e| {
                     CleanroomError::io_error(format!(
                         "Failed to read test file '{}': {}",
                         test_path.display(),

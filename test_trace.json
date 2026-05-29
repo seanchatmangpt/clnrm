@@ -1,0 +1,6 @@
+error: unrecognized subcommand 'run'
+
+Usage: clnrm [COMMAND]
+
+For more information, try '--help'.
+Error: ArgumentError { message: "error: unrecognized subcommand 'run'\n\nUsage: clnrm [COMMAND]\n\nFor more information, try '--help'.\n" }

@@ -56,7 +56,7 @@ impl Drop for TestContainerResource {
         self.cleanup_count.fetch_add(1, Ordering::SeqCst);
         if self.fail_cleanup {
             // Simulate cleanup failure (can't actually panic in drop safely)
-            eprintln!("TestContainerResource {} cleanup failed", self.id);
+            etracing::info!("TestContainerResource {} cleanup failed", self.id);
         }
     }
 }
@@ -235,11 +235,11 @@ mod tests {
             .filter(|r| matches!(r, ExpertTestResult::Fail(_)))
             .collect();
 
-        println!("Expert Error Path Tests: {} total, {} failures", total_tests, failures.len());
+        tracing::info!("Expert Error Path Tests: {} total, {} failures", total_tests, failures.len());
 
         for failure in &failures {
             if let ExpertTestResult::Fail(msg) = failure {
-                println!("FAILURE: {}", msg);
+                tracing::info!("FAILURE: {}", msg);
             }
         }
 
@@ -264,7 +264,7 @@ mod tests {
             .filter(|r| matches!(r, ExpertTestResult::Fail(_)))
             .collect();
 
-        println!("Expert Boundary Condition Tests: {} total, {} failures", total_tests, failures.len());
+        tracing::info!("Expert Boundary Condition Tests: {} total, {} failures", total_tests, failures.len());
 
         // Boundary tests should be highly reliable
         let success_threshold = 0.8; // 80% success rate minimum
@@ -286,7 +286,7 @@ mod tests {
             .filter(|r| matches!(r, ExpertTestResult::Fail(_)))
             .collect();
 
-        println!("Expert Resource Cleanup Tests: {} total, {} failures", total_tests, failures.len());
+        tracing::info!("Expert Resource Cleanup Tests: {} total, {} failures", total_tests, failures.len());
 
         // Resource cleanup tests should be reliable
         let success_threshold = 0.85; // 85% success rate minimum
@@ -314,15 +314,15 @@ mod tests {
             .filter(|r| matches!(r, ExpertTestResult::Pass))
             .collect();
 
-        println!("All Expert Pattern Tests Integration:");
-        println!("  Total tests: {}", total_tests);
-        println!("  Passes: {}", passes.len());
-        println!("  Expected errors: {}", expected_errors.len());
-        println!("  Failures: {}", failures.len());
+        tracing::info!("All Expert Pattern Tests Integration:");
+        tracing::info!("  Total tests: {}", total_tests);
+        tracing::info!("  Passes: {}", passes.len());
+        tracing::info!("  Expected errors: {}", expected_errors.len());
+        tracing::info!("  Failures: {}", failures.len());
 
         for failure in &failures {
             if let ExpertTestResult::Fail(msg) = failure {
-                println!("  FAILURE: {}", msg);
+                tracing::info!("  FAILURE: {}", msg);
             }
         }
 

@@ -193,7 +193,7 @@ impl GvisorSpanBuilder {
     pub fn container_create(image: &str, sandbox_id: &str, platform: &str) -> tracing::Span {
         use opentelemetry_semantic_conventions as semconv;
 
-        tracing::info_span!(
+        tracing::debug_span!(
             "gvisor.container.create",
             // Standard OTel attributes
             { semconv::resource::CONTAINER_IMAGE_NAME } = image,
@@ -218,7 +218,7 @@ impl GvisorSpanBuilder {
     pub fn container_start(sandbox_id: &str, pid: u32) -> tracing::Span {
         use opentelemetry_semantic_conventions as semconv;
 
-        tracing::info_span!(
+        tracing::debug_span!(
             "gvisor.container.start",
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
             { semconv::resource::CONTAINER_RUNTIME } = "gvisor",
@@ -240,7 +240,7 @@ impl GvisorSpanBuilder {
     pub fn container_exec(sandbox_id: &str, command: &str) -> tracing::Span {
         use opentelemetry_semantic_conventions as semconv;
 
-        tracing::info_span!(
+        tracing::debug_span!(
             "gvisor.container.exec",
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
             // Dual ID strategy for backward compatibility
@@ -260,7 +260,7 @@ impl GvisorSpanBuilder {
     pub fn container_stop(sandbox_id: &str, exit_code: i32) -> tracing::Span {
         use opentelemetry_semantic_conventions as semconv;
 
-        tracing::info_span!(
+        tracing::debug_span!(
             "gvisor.container.stop",
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
             // Dual ID strategy for backward compatibility
@@ -280,7 +280,7 @@ impl GvisorSpanBuilder {
     pub fn container_delete(sandbox_id: &str) -> tracing::Span {
         use opentelemetry_semantic_conventions as semconv;
 
-        tracing::info_span!(
+        tracing::debug_span!(
             "gvisor.container.delete",
             { semconv::resource::CONTAINER_ID } = format!("gvisor-{}", sandbox_id),
             // Dual ID strategy for backward compatibility

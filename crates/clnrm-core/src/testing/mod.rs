@@ -1423,7 +1423,7 @@ async fn test_error_path_testing_pattern() -> Result<()> {
     command = ["echo", "test"]
     "#;
 
-    std::fs::write(&valid_path, valid_content).map_err(|e| {
+    tokio::fs::write(&valid_path, valid_content).await.map_err(|e| {
         CleanroomError::internal_error("Failed to write valid file").with_source(e.to_string())
     })?;
 

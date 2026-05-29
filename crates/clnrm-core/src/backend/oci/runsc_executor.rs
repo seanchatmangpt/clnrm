@@ -12,21 +12,16 @@ use tracing::{info, warn};
 pub struct RunscExecutor {
     runsc_path: PathBuf,
     root_dir: PathBuf,
-    is_mock: bool,
 }
 
 impl RunscExecutor {
     /// Create new runsc executor
     pub fn new() -> Result<Self> {
-        let has_runsc = which::which("runsc").is_ok();
-        let runsc_path = which::which("runsc")
-            .or_else(|_| which::which("true"))
-            .or_else(|_| which::which("echo"))
-            .map_err(|_| {
-                CleanroomError::runtime_error(
-                    "runsc not found in PATH. Install gVisor: https://gvisor.dev/docs/user_guide/install/",
-                )
-            })?;
+        let runsc_path = which::which("runsc").map_err(|_| {
+            CleanroomError::execution_error(
+                "runsc not found in PATH. Install gVisor: https://gvisor.dev/docs/user_guide/install/",
+            )
+        })?;
 
         // Create root directory for runsc state
         let root_dir = dirs::cache_dir()
@@ -41,7 +36,6 @@ impl RunscExecutor {
         Ok(Self {
             runsc_path,
             root_dir,
-            is_mock: !has_runsc,
         })
     }
 
@@ -51,91 +45,6 @@ impl RunscExecutor {
         bundle: &OciBundle,
         timeout: Duration,
     ) -> Result<RunscOutput> {
-        if self.is_mock {
-            let mut args = bundle.config.process.args.clone();
-            if args.len() == 3 && args[0] == "sh" && args[1] == "-c" {
-                if let Some(stripped) = args[2].strip_prefix("sh -c ") {
-                    args[2] = stripped.to_string();
-                }
-            }
-
-            // Create container-specific temp directory
-            let container_tmp = std::env::temp_dir().join(format!("clnrm-tmp-{}", bundle.id));
-            let _ = std::fs::create_dir_all(&container_tmp);
-            let container_tmp_str =
-                format!("{}/", container_tmp.to_string_lossy().trim_end_matches('/'));
-
-            // Replace /tmp/ in arguments
-            for arg in &mut args {
-                *arg = arg.replace("/tmp/", &container_tmp_str);
-            }
-
-            if args.is_empty() {
-                return Ok(RunscOutput {
-                    exit_code: 0,
-                    stdout: String::new(),
-                    stderr: String::new(),
-                    duration_ms: 0,
-                });
-            }
-
-            let start_time = std::time::Instant::now();
-            let mut cmd = Command::new(&args[0]);
-            if args.len() > 1 {
-                cmd.args(&args[1..]);
-            }
-
-            // Set environment variables
-            for env_str in &bundle.config.process.env {
-                if let Some((k, v)) = env_str.split_once('=') {
-                    cmd.env(k, v);
-                }
-            }
-
-            println!(
-                "MOCK EXECUTION: Program = {:?}, Args = {:?}, Env = {:?}",
-                args[0],
-                &args[1..],
-                bundle.config.process.env
-            );
-
-            // Execute local command
-            let output = tokio::time::timeout(timeout, cmd.output()).await;
-            let duration_ms = start_time.elapsed().as_millis() as u64;
-
-            // Cleanup container-specific temp directory
-            let _ = std::fs::remove_dir_all(&container_tmp);
-
-            match output {
-                Ok(Ok(out)) => {
-                    let exit_code = out.status.code().unwrap_or(0);
-                    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
-                    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
-                    println!(
-                        "MOCK RESULT: ExitCode = {}, Stdout = {:?}, Stderr = {:?}",
-                        exit_code, stdout, stderr
-                    );
-                    return Ok(RunscOutput {
-                        exit_code,
-                        stdout,
-                        stderr,
-                        duration_ms,
-                    });
-                }
-                Ok(Err(e)) => {
-                    return Err(CleanroomError::runtime_error(format!(
-                        "Failed to run mock command: {}",
-                        e
-                    )));
-                }
-                Err(_) => {
-                    return Err(CleanroomError::timeout_error(format!(
-                        "Mock command timed out"
-                    )));
-                }
-            }
-        }
-
         let container_id = format!("clnrm-{}", bundle.id);
 
         info!("Starting container {} with runsc", container_id);
@@ -298,7 +207,7 @@ impl RunscExecutor {
 
         // Cleanup log files
         let _ = std::fs::remove_file(stdout_path);
-        let _ = std::fs::remove_file(stderr_path);
+        let _ = tokio::fs::remove_file(stderr_path).await;
 
         Ok(LogOutput { stdout, stderr })
     }
@@ -377,7 +286,7 @@ mod tests {
     fn test_runsc_availability() {
         let is_available = RunscExecutor::is_available();
         // Don't assert - runsc may not be installed
-        println!("runsc available: {}", is_available);
+        tracing::info!("runsc available: {}", is_available);
     }
 
     #[test]

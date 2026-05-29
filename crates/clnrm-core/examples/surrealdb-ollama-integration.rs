@@ -118,8 +118,7 @@ async fn setup_surrealdb_connection(host: &str, port: u16) -> Result<Surreal<Cli
     let db: Surreal<Client> = Surreal::init();
 
     db.connect::<Ws>(url).await.map_err(|e| {
-        CleanroomError::network_error("Failed to connect to SurrealDB")
-            .with_source(e.to_string())
+        CleanroomError::network_error("Failed to connect to SurrealDB").with_source(e.to_string())
     })?;
 
     db.signin(Root {

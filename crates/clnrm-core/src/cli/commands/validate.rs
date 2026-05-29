@@ -31,7 +31,7 @@ pub fn validate_config(path: &PathBuf) -> Result<()> {
         // Single file - validate directly without extension check
         debug!("Validating single file: {}", path.display());
         validate_single_config(path)?;
-        println!("✅ Configuration valid: {}", path.display());
+        tracing::info!("✅ Configuration valid: {}", path.display());
     } else if path.is_dir() {
         // Directory - discover and validate all test files
         let test_files = discover_test_files(path)?;
@@ -43,7 +43,7 @@ pub fn validate_config(path: &PathBuf) -> Result<()> {
             validate_single_config(test_file)?;
         }
 
-        println!("✅ All configurations valid");
+        tracing::info!("✅ All configurations valid");
     } else {
         return Err(CleanroomError::validation_error(format!(
             "Path is neither a file nor a directory: {}",

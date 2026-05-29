@@ -9,17 +9,17 @@ use tracing::info;
 
 /// Show current live-check configuration
 pub fn show_status() -> Result<()> {
-    println!("=== Weaver Live-Check Status ===\n");
+    tracing::info!("=== Weaver Live-Check Status ===\n");
 
     // Check if Weaver is installed
     match check_weaver_installation() {
         Ok(version) => {
-            println!("✓ Weaver installed: {}", version);
+            tracing::info!("✓ Weaver installed: {}", version);
         }
         Err(e) => {
-            println!("✗ Weaver not found: {}", e);
-            println!("\nInstall Weaver with:");
-            println!("  cargo install weaver-cli");
+            tracing::info!("✗ Weaver not found: {}", e);
+            tracing::info!("\nInstall Weaver with:");
+            tracing::info!("  cargo install weaver-cli");
             return Ok(());
         }
     }
@@ -27,35 +27,35 @@ pub fn show_status() -> Result<()> {
     // Check for registry
     let registry_path = resolve_default_registry_path()?;
     if registry_path.exists() {
-        println!("✓ Registry found: {}", registry_path.display());
+        tracing::info!("✓ Registry found: {}", registry_path.display());
 
         // Count schemas in registry
         if let Ok(schema_count) = count_schemas_in_registry(&registry_path) {
-            println!("  Schemas: {}", schema_count);
+            tracing::info!("  Schemas: {}", schema_count);
         }
     } else {
-        println!("✗ Registry not found at: {}", registry_path.display());
-        println!("  Set CLNRM_REGISTRY_PATH environment variable");
+        tracing::info!("✗ Registry not found at: {}", registry_path.display());
+        tracing::info!("  Set CLNRM_REGISTRY_PATH environment variable");
     }
 
     // Show current configuration
-    println!("\n=== Configuration ===");
+    tracing::info!("\n=== Configuration ===");
     if let Ok(env_path) = std::env::var("CLNRM_REGISTRY_PATH") {
-        println!("CLNRM_REGISTRY_PATH: {}", env_path);
+        tracing::info!("CLNRM_REGISTRY_PATH: {}", env_path);
     } else {
-        println!("CLNRM_REGISTRY_PATH: (not set)");
+        tracing::info!("CLNRM_REGISTRY_PATH: (not set)");
     }
 
-    println!("\n=== Validation Modes ===");
-    println!("  strict    - All violations fail validation");
-    println!("  lenient   - Only critical violations fail");
-    println!("  80_20     - Focus on 20% of schemas (80% of value)");
-    println!("  minimal   - Minimal validation for CI");
+    tracing::info!("\n=== Validation Modes ===");
+    tracing::info!("  strict    - All violations fail validation");
+    tracing::info!("  lenient   - Only critical violations fail");
+    tracing::info!("  80_20     - Focus on 20% of schemas (80% of value)");
+    tracing::info!("  minimal   - Minimal validation for CI");
 
-    println!("\n=== Usage ===");
-    println!("  clnrm run --live-check tests/");
-    println!("  clnrm run --live-check --validation-mode 80_20 tests/");
-    println!("  clnrm run --live-check --registry-path ./custom-registry tests/");
+    tracing::info!("\n=== Usage ===");
+    tracing::info!("  clnrm run --live-check tests/");
+    tracing::info!("  clnrm run --live-check --validation-mode 80_20 tests/");
+    tracing::info!("  clnrm run --live-check --registry-path ./custom-registry tests/");
 
     Ok(())
 }
@@ -80,11 +80,11 @@ pub fn validate_registry(registry_path: &Path) -> Result<()> {
         )));
     }
 
-    println!("✓ Registry structure valid");
-    println!("  Manifest: {}", manifest_path.display());
+    tracing::info!("✓ Registry structure valid");
+    tracing::info!("  Manifest: {}", manifest_path.display());
 
     // Run weaver registry check
-    println!("\nRunning weaver registry check...");
+    tracing::info!("\nRunning weaver registry check...");
     let registry_path_str = registry_path.to_str().ok_or_else(|| {
         CleanroomError::internal_error(format!(
             "Registry path contains invalid UTF-8: {}",
@@ -100,20 +100,20 @@ pub fn validate_registry(registry_path: &Path) -> Result<()> {
         })?;
 
     if output.status.success() {
-        println!("✓ Registry validation passed");
+        tracing::info!("✓ Registry validation passed");
 
         // Show stdout
         if !output.stdout.is_empty() {
-            println!("\nOutput:");
-            println!("{}", String::from_utf8_lossy(&output.stdout));
+            tracing::info!("\nOutput:");
+            tracing::info!("{}", String::from_utf8_lossy(&output.stdout));
         }
     } else {
-        println!("✗ Registry validation failed");
+        tracing::info!("✗ Registry validation failed");
 
         // Show stderr
         if !output.stderr.is_empty() {
-            eprintln!("\nErrors:");
-            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+            tracing::info!("\nErrors:");
+            tracing::info!("{}", String::from_utf8_lossy(&output.stderr));
         }
 
         return Err(CleanroomError::validation_error(
@@ -126,23 +126,23 @@ pub fn validate_registry(registry_path: &Path) -> Result<()> {
 
 /// Test Weaver installation
 pub fn test_weaver() -> Result<()> {
-    println!("=== Testing Weaver Installation ===\n");
+    tracing::info!("=== Testing Weaver Installation ===\n");
 
     // Check weaver command
     match check_weaver_installation() {
         Ok(version) => {
-            println!("✓ Weaver installed: {}", version);
+            tracing::info!("✓ Weaver installed: {}", version);
         }
         Err(e) => {
-            println!("✗ Weaver not found: {}", e);
-            println!("\nInstall Weaver with:");
-            println!("  cargo install weaver-cli");
+            tracing::info!("✗ Weaver not found: {}", e);
+            tracing::info!("\nInstall Weaver with:");
+            tracing::info!("  cargo install weaver-cli");
             return Err(CleanroomError::validation_error("Weaver not installed"));
         }
     }
 
     // Test weaver registry command
-    println!("\n✓ Testing 'weaver registry' command...");
+    tracing::info!("\n✓ Testing 'weaver registry' command...");
     let output = Command::new("weaver")
         .args(["registry", "--help"])
         .output()
@@ -151,13 +151,13 @@ pub fn test_weaver() -> Result<()> {
         })?;
 
     if output.status.success() {
-        println!("  ✓ 'weaver registry' available");
+        tracing::info!("  ✓ 'weaver registry' available");
     } else {
-        println!("  ✗ 'weaver registry' not available");
+        tracing::info!("  ✗ 'weaver registry' not available");
     }
 
     // Test weaver live-check command
-    println!("\n✓ Testing 'weaver registry live-check' command...");
+    tracing::info!("\n✓ Testing 'weaver registry live-check' command...");
     let output = Command::new("weaver")
         .args(["registry", "live-check", "--help"])
         .output()
@@ -166,55 +166,55 @@ pub fn test_weaver() -> Result<()> {
         })?;
 
     if output.status.success() {
-        println!("  ✓ 'weaver registry live-check' available");
+        tracing::info!("  ✓ 'weaver registry live-check' available");
     } else {
-        println!("  ✗ 'weaver registry live-check' not available");
-        println!("    Update Weaver to get live-check support");
+        tracing::info!("  ✗ 'weaver registry live-check' not available");
+        tracing::info!("    Update Weaver to get live-check support");
     }
 
-    println!("\n✓ Weaver installation test complete");
+    tracing::info!("\n✓ Weaver installation test complete");
     Ok(())
 }
 
 /// Show available validation modes
 pub fn show_modes() -> Result<()> {
-    println!("=== Weaver Validation Modes ===\n");
+    tracing::info!("=== Weaver Validation Modes ===\n");
 
-    println!("strict");
-    println!("  All violations fail validation");
-    println!("  Use for: Production releases, compliance requirements");
-    println!("  Example: clnrm run --live-check --validation-mode strict tests/");
-    println!();
+    tracing::info!("strict");
+    tracing::info!("  All violations fail validation");
+    tracing::info!("  Use for: Production releases, compliance requirements");
+    tracing::info!("  Example: clnrm run --live-check --validation-mode strict tests/");
+    tracing::info!("");
 
-    println!("lenient");
-    println!("  Only critical violations fail");
-    println!("  Use for: Development, iterative improvement");
-    println!("  Example: clnrm run --live-check --validation-mode lenient tests/");
-    println!();
+    tracing::info!("lenient");
+    tracing::info!("  Only critical violations fail");
+    tracing::info!("  Use for: Development, iterative improvement");
+    tracing::info!("  Example: clnrm run --live-check --validation-mode lenient tests/");
+    tracing::info!("");
 
-    println!("80_20");
-    println!("  Focus on 20% of schemas that provide 80% of value");
-    println!("  Use for: Fast validation, CI pipelines");
-    println!("  Example: clnrm run --live-check --validation-mode 80_20 tests/");
-    println!();
+    tracing::info!("80_20");
+    tracing::info!("  Focus on 20% of schemas that provide 80% of value");
+    tracing::info!("  Use for: Fast validation, CI pipelines");
+    tracing::info!("  Example: clnrm run --live-check --validation-mode 80_20 tests/");
+    tracing::info!("");
 
-    println!("minimal");
-    println!("  Minimal validation for quick feedback");
-    println!("  Use for: Local development, quick checks");
-    println!("  Example: clnrm run --live-check --validation-mode minimal tests/");
-    println!();
+    tracing::info!("minimal");
+    tracing::info!("  Minimal validation for quick feedback");
+    tracing::info!("  Use for: Local development, quick checks");
+    tracing::info!("  Example: clnrm run --live-check --validation-mode minimal tests/");
+    tracing::info!("");
 
-    println!("=== Default Behavior ===");
-    println!("If no mode is specified, 'strict' mode is used.");
-    println!();
+    tracing::info!("=== Default Behavior ===");
+    tracing::info!("If no mode is specified, 'strict' mode is used.");
+    tracing::info!("");
 
-    println!("=== TOML Configuration ===");
-    println!("You can also configure validation mode in test TOML files:");
-    println!();
-    println!("[weaver]");
-    println!("enabled = true");
-    println!("validation_mode = \"80_20\"");
-    println!("registry_path = \"./registry\"");
+    tracing::info!("=== TOML Configuration ===");
+    tracing::info!("You can also configure validation mode in test TOML files:");
+    tracing::info!("");
+    tracing::info!("[weaver]");
+    tracing::info!("enabled = true");
+    tracing::info!("validation_mode = \"80_20\"");
+    tracing::info!("registry_path = \"./registry\"");
 
     Ok(())
 }
@@ -223,13 +223,13 @@ pub fn show_modes() -> Result<()> {
 pub fn show_version() -> Result<()> {
     match check_weaver_installation() {
         Ok(version) => {
-            println!("Weaver version: {}", version);
+            tracing::info!("Weaver version: {}", version);
             Ok(())
         }
         Err(e) => {
-            println!("Weaver not found: {}", e);
-            println!("\nInstall Weaver with:");
-            println!("  cargo install weaver-cli");
+            tracing::info!("Weaver not found: {}", e);
+            tracing::info!("\nInstall Weaver with:");
+            tracing::info!("  cargo install weaver-cli");
             Err(CleanroomError::validation_error("Weaver not installed"))
         }
     }

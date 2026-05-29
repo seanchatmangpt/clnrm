@@ -209,6 +209,7 @@ impl ResourceGovernor {
                         "Unrestricted network access requires specific endpoint/protocol restrictions"
                     ));
                 }
+                Effect::Network { .. } => {}
                 Effect::Storage { mode, paths } => {
                     // Check for dangerous storage access
                     if paths.is_empty()
@@ -859,3 +860,4 @@ mod tests {
         assert!(result.is_err());
     }
 }
+

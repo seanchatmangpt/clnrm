@@ -1,0 +1,23 @@
+[project]
+name = "nextjs-playwright-e2e"
+version = "0.1.0"
+description = "JTBD Scenario: Fullstack Next.js + Playwright E2E testing"
+
+[environment.services.webapp]
+image = "node"
+tag = "20-alpine"
+command = ["npx", "serve", "-p", "3000", "public"]
+ports = [3000]
+
+[environment.services.webapp.environment]
+NODE_ENV = "test"
+
+[environment.tests.e2e]
+image = "mcr.microsoft.com/playwright"
+tag = "v1.43.0-jammy"
+depends_on = ["webapp"]
+command = ["npx", "playwright", "test"]
+
+[environment.tests.e2e.environment]
+BASE_URL = "http://webapp:3000"
+CI = "1"

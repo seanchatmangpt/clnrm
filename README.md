@@ -8,19 +8,20 @@ The hermetic integration testing framework powered by gVisor.
 
 ## Overview
 
-clnrm is a high-performance, hermetic testing framework designed for complex integration scenarios. It leverages **gVisor** as its primary execution engine to provide strong isolation, deterministic execution, and zero-dependency environments (no Docker required).
+clnrm is a high-performance testing framework designed for complex integration scenarios. It leverages multiple execution engines, including **gVisor** and **Docker**, to provide robust test environments. While gVisor provides strong isolation, **Docker is still required** for pulling images, executing CLI commands, running health checks, and for `testcontainers` backend support.
 
 ### Why clnrm?
 
-- **Hermeticity**: Every test run is isolated in a fresh gVisor sandbox.
-- **Zero Docker**: No Docker daemon dependency. Direct OCI image execution via `runsc`.
+- **Flexible Execution**: Support for gVisor sandboxes alongside standard Docker-based test environments.
+- **Hybrid Dependencies**: While gVisor helps isolate tests, a local Docker daemon is still extensively used.
+- **Shared State Architecture**: Uses `Arc<RwLock>` heavily for safe concurrent state management across the framework.
 - **Determinism**: Sequential port allocation and predictable resource management.
 - **Performance**: Optimized for fast container startup and low overhead.
 - **Type-Safe**: Native Rust implementation with strong error handling.
 
-## v3.0 gVisor-First Architecture
+## v3.0 Architecture State
 
-Starting with v3.0, clnrm has moved to a **gVisor-first architecture**. gVisor is now the default and only supported backend for production-grade isolation. Legacy `testcontainers` support is deprecated and available only via optional feature gates.
+Starting with v3.0, clnrm was intended to be gVisor-first, but **Docker remains deeply embedded** in the system's core CLI, `pull` commands, observability collectors, and health checks. `testcontainers` is fully supported behind a feature gate, and `Arc<RwLock>` is broadly used rather than pure message-passing concurrency.
 
 See the [v3.0 Migration Guide](docs/MIGRATION_GUIDE_3.0.md) for details on upgrading.
 

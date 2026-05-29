@@ -45,7 +45,7 @@ impl SpanExporter for NdjsonFileExporter {
             {
                 Ok(f) => f,
                 Err(e) => {
-                    eprintln!(
+                    tracing::info!(
                         "Failed to open telemetry fallback file {}: {}",
                         path.display(),
                         e
@@ -195,7 +195,7 @@ impl SpanExporter for NdjsonStdoutExporter {
                 let json_str = match serde_json::to_string(&json) {
                     Ok(s) => s,
                     Err(e) => {
-                        eprintln!("Failed to serialize span to JSON: {}", e);
+                        tracing::info!("Failed to serialize span to JSON: {}", e);
                         continue;
                     }
                 };
@@ -203,12 +203,12 @@ impl SpanExporter for NdjsonStdoutExporter {
                 // Write to stdout or stderr
                 if self.use_stderr {
                     if let Err(e) = writeln!(io::stderr(), "{}", json_str) {
-                        eprintln!("Failed to write span to stderr: {}", e);
+                        tracing::info!("Failed to write span to stderr: {}", e);
                     }
                 } else {
                     // Write to stdout
                     if let Err(e) = writeln!(io::stdout(), "{}", json_str) {
-                        eprintln!("Failed to write span to stdout: {}", e);
+                        tracing::info!("Failed to write span to stdout: {}", e);
                     }
                 }
             }

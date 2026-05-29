@@ -122,7 +122,7 @@ impl SpanBuilder {
     /// let _enter = span.enter();
     /// ```
     pub fn container_start(image: &str, id: &str) -> tracing::Span {
-        tracing::info_span!(
+        tracing::debug_span!(
             "container.start",
             // OTel semantic conventions for containers
             { semconv::resource::CONTAINER_IMAGE_NAME } = image,
@@ -139,7 +139,7 @@ impl SpanBuilder {
     /// - `command` - Command being executed
     /// - `otel.kind` - "internal"
     pub fn container_exec(container_id: &str, command: &str) -> tracing::Span {
-        tracing::info_span!(
+        tracing::debug_span!(
             "container.exec",
             { semconv::resource::CONTAINER_ID } = container_id,
             { clnrm::COMMAND } = command,
@@ -149,7 +149,7 @@ impl SpanBuilder {
 
     /// Create span for container stop with semantic conventions
     pub fn container_stop(container_id: &str) -> tracing::Span {
-        tracing::info_span!(
+        tracing::debug_span!(
             "container.stop",
             { semconv::resource::CONTAINER_ID } = container_id,
             otel.span.kind = "internal",

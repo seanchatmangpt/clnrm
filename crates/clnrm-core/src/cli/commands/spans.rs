@@ -440,23 +440,23 @@ fn output_json(spans: &[&OtelSpan], show_attrs: bool, show_events: bool) -> Resu
         CleanroomError::internal_error(format!("Failed to serialize JSON output: {}", e))
     })?;
 
-    println!("{}", json);
+    tracing::info!("{}", json);
     Ok(())
 }
 
 /// Output spans as a table
 fn output_table(spans: &[&OtelSpan], show_attrs: bool, show_events: bool) -> Result<()> {
     if spans.is_empty() {
-        println!("No spans found matching filter criteria.");
+        tracing::info!("No spans found matching filter criteria.");
         return Ok(());
     }
 
     // Print header
-    println!(
+    tracing::info!(
         "{:<40} {:<20} {:<12} {:<10}",
         "SPAN NAME", "SERVICE", "DURATION", "STATUS"
     );
-    println!("{}", "-".repeat(84));
+    tracing::info!("{}", "-".repeat(84));
 
     // Print rows
     for span in spans {
@@ -468,7 +468,7 @@ fn output_table(spans: &[&OtelSpan], show_attrs: bool, show_events: bool) -> Res
         let duration = format_duration(span.duration_ns);
         let status = format_status(span.status.as_ref());
 
-        println!(
+        tracing::info!(
             "{:<40} {:<20} {:<12} {:<10}",
             truncate(&span.name, 40),
             truncate(&service, 20),
@@ -478,22 +478,22 @@ fn output_table(spans: &[&OtelSpan], show_attrs: bool, show_events: bool) -> Res
 
         // Show attributes if requested
         if show_attrs && !span.attributes.is_empty() {
-            println!("  Attributes:");
+            tracing::info!("  Attributes:");
             for (key, value) in &span.attributes {
-                println!("    {} = {}", key, value);
+                tracing::info!("    {} = {}", key, value);
             }
         }
 
         // Show events if requested
         if show_events && !span.events.is_empty() {
-            println!("  Events:");
+            tracing::info!("  Events:");
             for event in &span.events {
-                println!("    - {}", event.name);
+                tracing::info!("    - {}", event.name);
             }
         }
     }
 
-    println!("\nTotal spans: {}", spans.len());
+    tracing::info!("\nTotal spans: {}", spans.len());
     Ok(())
 }
 

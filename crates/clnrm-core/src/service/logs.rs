@@ -139,7 +139,7 @@ impl LogCollector {
     /// Write log entry to stdout
     fn write_to_stdout(&self, entry: &LogEntry) {
         let formatted = self.format_entry(entry);
-        println!("{}", formatted);
+        tracing::info!("{}", formatted);
     }
 
     /// Write log entry to OTEL collector

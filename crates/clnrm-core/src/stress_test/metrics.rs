@@ -146,25 +146,25 @@ pub struct StressMetrics {
 impl StressMetrics {
     /// Print metrics summary
     pub fn print_summary(&self) {
-        println!("\n=== Stress Test Metrics Summary ===");
-        println!("Total Tests: {}", self.total_tests);
+        tracing::info!("\n=== Stress Test Metrics Summary ===");
+        tracing::info!("Total Tests: {}", self.total_tests);
 
         if let Some(avg) = self.avg_duration_ms {
-            println!("Avg Duration: {}ms", avg);
+            tracing::info!("Avg Duration: {}ms", avg);
         }
 
         if let Some(min) = self.min_duration_ms {
-            println!("Min Duration: {}ms", min);
+            tracing::info!("Min Duration: {}ms", min);
         }
 
         if let Some(max) = self.max_duration_ms {
-            println!("Max Duration: {}ms", max);
+            tracing::info!("Max Duration: {}ms", max);
         }
 
-        println!("Peak Pool Utilization: {:.2}%", self.peak_pool_utilization);
-        println!("Avg Pool Utilization: {:.2}%", self.avg_pool_utilization);
-        println!("Total Spans Generated: {}", self.total_spans);
-        println!("===================================\n");
+        tracing::info!("Peak Pool Utilization: {:.2}%", self.peak_pool_utilization);
+        tracing::info!("Avg Pool Utilization: {:.2}%", self.avg_pool_utilization);
+        tracing::info!("Total Spans Generated: {}", self.total_spans);
+        tracing::info!("===================================\n");
     }
 }
 

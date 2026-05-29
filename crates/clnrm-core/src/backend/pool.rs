@@ -292,6 +292,8 @@ pub struct PoolStats {
     pub destroyed: u64,
     /// Number of containers currently active
     pub active: u64,
+    /// Maximum number of containers active simultaneously
+    pub max_active: u64,
     /// Number of containers currently idle
     pub idle: u64,
     /// Number of health check failures
@@ -319,6 +321,13 @@ impl PoolStats {
         } else {
             total as f64 / max_size as f64
         }
+    }
+
+    /// Calculate over-production waste
+    ///
+    /// Waste is defined as containers created beyond the maximum concurrent demand.
+    pub fn overproduction_waste(&self) -> u64 {
+        self.created.saturating_sub(self.max_active)
     }
 }
 
@@ -512,6 +521,7 @@ pub struct ContainerPool {
     stats_hits: Arc<AtomicU64>,
     stats_misses: Arc<AtomicU64>,
     stats_created: Arc<AtomicU64>,
+    stats_max_active: Arc<AtomicU64>,
     stats_destroyed: Arc<AtomicU64>,
     stats_health_failures: Arc<AtomicU64>,
     stats_evictions: Arc<AtomicU64>,
@@ -526,7 +536,8 @@ pub struct ContainerPool {
 impl ContainerPool {
     /// Create a new container pool
     ///
-    /// This will pre-create min_idle containers to ensure fast acquisition.
+    /// This will NOT pre-create containers by default to ensure Just-in-Time (JIT)
+    /// resource allocation and zero over-production waste.
     ///
     /// # Arguments
     ///
@@ -534,11 +545,11 @@ impl ContainerPool {
     ///
     /// # Errors
     ///
-    /// Returns error if pre-warming fails catastrophically.
+    /// Returns error if pool initialization fails.
     #[instrument(name = "pool.create", skip(config))]
     pub async fn new(config: PoolConfig) -> Result<Arc<Self>> {
         info!(
-            "Creating container pool: max_size={}, min_idle={}, image={}",
+            "Creating container pool (JIT): max_size={}, min_idle={}, image={}",
             config.max_size, config.min_idle, config.image
         );
 
@@ -565,6 +576,7 @@ impl ContainerPool {
             stats_hits: Arc::new(AtomicU64::new(0)),
             stats_misses: Arc::new(AtomicU64::new(0)),
             stats_created: Arc::new(AtomicU64::new(0)),
+            stats_max_active: Arc::new(AtomicU64::new(0)),
             stats_destroyed: Arc::new(AtomicU64::new(0)),
             stats_health_failures: Arc::new(AtomicU64::new(0)),
             stats_evictions: Arc::new(AtomicU64::new(0)),
@@ -576,10 +588,11 @@ impl ContainerPool {
         // Start background health check worker
         pool.clone().start_health_check_worker().await;
 
-        // Pre-warm pool
-        pool.clone().prewarm().await?;
+        // JIT Policy (v1.6.0): No automatic pre-warming to avoid over-production waste.
+        // Containers are created on-demand during acquire_handle() or acquire().
+        // pool.clone().prewarm().await?;
 
-        info!("Container pool created successfully");
+        info!("Container pool created successfully (JIT mode)");
         Ok(pool)
     }
 
@@ -720,6 +733,8 @@ impl ContainerPool {
         self.active_containers
             .insert(id.clone(), ActiveContainer::Handle(container_arc.clone()));
 
+        self.update_max_active();
+
         Ok(ContainerHandle {
             container: container_arc,
             pool: self.clone(),
@@ -770,6 +785,8 @@ impl ContainerPool {
         let id = container.id.clone();
         self.active_containers
             .insert(id.clone(), ActiveContainer::Legacy(id.clone()));
+
+        self.update_max_active();
 
         Ok(container)
     }
@@ -987,9 +1004,27 @@ impl ContainerPool {
             created: self.stats_created.load(Ordering::Relaxed),
             destroyed: self.stats_destroyed.load(Ordering::Relaxed),
             active: self.active_containers.len() as u64,
+            max_active: self.stats_max_active.load(Ordering::Relaxed),
             idle: self.idle_count.load(Ordering::Relaxed) as u64, // O(1) lock-free read
             health_check_failures: self.stats_health_failures.load(Ordering::Relaxed),
             evictions: self.stats_evictions.load(Ordering::Relaxed),
+        }
+    }
+
+    /// Update maximum active container count
+    fn update_max_active(&self) {
+        let current_active = self.active_containers.len() as u64;
+        let mut max = self.stats_max_active.load(Ordering::Relaxed);
+        while current_active > max {
+            match self.stats_max_active.compare_exchange_weak(
+                max,
+                current_active,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => break,
+                Err(actual) => max = actual,
+            }
         }
     }
 
@@ -1121,8 +1156,10 @@ mod tests {
             .await
             .expect("Failed to create pool");
 
-        // First acquire - might be from pre-warmed pool
+        // First acquire - JIT creation (miss)
         let container = pool.acquire().await.expect("Failed to acquire container");
+        assert_eq!(pool.stats().misses, 1);
+        assert_eq!(pool.stats().hits, 0);
 
         // Release back to pool
         pool.release(container)
@@ -1133,11 +1170,9 @@ mod tests {
         let _container2 = pool.acquire().await.expect("Failed to acquire container");
 
         let stats = pool.stats();
-        assert!(
-            stats.hits >= 1,
-            "Expected at least 1 hit, got {}",
-            stats.hits
-        );
+        assert_eq!(stats.hits, 1, "Expected exactly 1 hit, got {}", stats.hits);
+        assert_eq!(stats.max_active, 1);
+        assert_eq!(stats.overproduction_waste(), 0);
     }
 
     #[tokio::test]
@@ -1154,6 +1189,12 @@ mod tests {
         let pool = ContainerPool::new(config)
             .await
             .expect("Failed to create pool");
+        
+        // JIT: Initial pool should be empty
+        assert_eq!(pool.stats().created, 0);
+
+        // Explicitly prewarm for benchmark
+        pool.clone().prewarm().await.expect("Failed to prewarm");
         let duration = start.elapsed();
 
         // Parallel creation should complete in ~5s, not 50s (10 containers × 5s each)
@@ -1243,7 +1284,10 @@ mod tests {
             .await
             .expect("Failed to create pool");
 
-        // Wait for initial pre-warming
+        // Explicitly prewarm for test
+        pool.clone().prewarm().await.expect("Failed to prewarm");
+
+        // Wait for initial pre-warming to settle and health check to start
         sleep(Duration::from_millis(100)).await;
 
         // Spawn many concurrent acquires while health checks are running

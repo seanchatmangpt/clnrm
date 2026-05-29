@@ -17,9 +17,9 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
     let start_time = Instant::now();
 
     info!("🏥 Starting Cleanroom System Health Check");
-    println!("\n┌─────────────────────────────────────────────────────────┐");
-    println!("│  CLEANROOM AUTONOMIC SYSTEM HEALTH CHECK               │");
-    println!("└─────────────────────────────────────────────────────────┘\n");
+    tracing::info!("\n┌─────────────────────────────────────────────────────────┐");
+    tracing::info!("│  CLEANROOM AUTONOMIC SYSTEM HEALTH CHECK               │");
+    tracing::info!("└─────────────────────────────────────────────────────────┘\n");
 
     let mut health_score = 0;
     let mut total_checks = 0;
@@ -30,19 +30,19 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
     let mut docker_type: Option<String> = None;
 
     // 1. Core System Health
-    println!("📊 Core System Status");
-    println!("─────────────────────────────────────");
+    tracing::info!("📊 Core System Status");
+    tracing::info!("─────────────────────────────────────");
 
     total_checks += 1;
     match CleanroomEnvironment::new().await {
         Ok(_env) => {
-            println!("  ✅ Cleanroom Environment: Operational");
+            tracing::info!("  ✅ Cleanroom Environment: Operational");
             health_score += 1;
             docker_available = true; // If env created, Docker is available
             docker_type = Some("docker".to_string()); // Default to docker
         }
         Err(e) => {
-            println!("  ❌ Cleanroom Environment: Failed");
+            tracing::info!("  ❌ Cleanroom Environment: Failed");
             errors.push(format!(
                 "Cleanroom environment initialization failed: {}",
                 e
@@ -64,43 +64,43 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
     }
 
     // 2. AI System Health (moved to clnrm-ai crate)
-    println!("\n🤖 AI System Status");
-    println!("─────────────────────────────────────");
+    tracing::info!("\n🤖 AI System Status");
+    tracing::info!("─────────────────────────────────────");
 
     // Note: AI Intelligence Service checks moved to clnrm-ai crate
     total_checks += 1;
-    println!("  ℹ️  AI Intelligence Service: Available in clnrm-ai crate");
-    println!("     • Enable with: --features ai");
+    tracing::info!("  ℹ️  AI Intelligence Service: Available in clnrm-ai crate");
+    tracing::info!("     • Enable with: --features ai");
     health_score += 1;
 
     // Check Ollama availability
     total_checks += 1;
     match check_ollama_health().await {
         Ok(_) => {
-            println!("  ✅ Ollama AI: Available");
+            tracing::info!("  ✅ Ollama AI: Available");
             health_score += 1;
         }
         Err(_) => {
-            println!("  ⚠️  Ollama AI: Unavailable (fallback mode active)");
+            tracing::info!("  ⚠️  Ollama AI: Unavailable (fallback mode active)");
             warnings.push("Ollama AI service not running on http://localhost:11434".to_string());
         }
     }
 
     // 3. Service Management Health
-    println!("\n🔧 Service Management Status");
-    println!("─────────────────────────────────────");
+    tracing::info!("\n🔧 Service Management Status");
+    tracing::info!("─────────────────────────────────────");
 
     total_checks += 1;
-    println!("  ✅ Service Plugin System: Operational");
+    tracing::info!("  ✅ Service Plugin System: Operational");
     health_score += 1;
 
     total_checks += 1;
-    println!("  ✅ Service Registry: Operational");
+    tracing::info!("  ✅ Service Registry: Operational");
     health_score += 1;
 
     // 4. CLI Commands Health
-    println!("\n💻 CLI Commands Status");
-    println!("─────────────────────────────────────");
+    tracing::info!("\n💻 CLI Commands Status");
+    tracing::info!("─────────────────────────────────────");
 
     let cli_commands = vec![
         ("run", "Test execution"),
@@ -115,52 +115,52 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
 
     for (cmd, desc) in &cli_commands {
         total_checks += 1;
-        println!("  ✅ {:<20} : {}", cmd, desc);
+        tracing::info!("  ✅ {:<20} : {}", cmd, desc);
         health_score += 1;
     }
 
     // 5. Integration Status
-    println!("\n🔗 Integration Status");
-    println!("─────────────────────────────────────");
+    tracing::info!("\n🔗 Integration Status");
+    tracing::info!("─────────────────────────────────────");
 
     total_checks += 1;
-    println!("  ✅ Marketplace System: Integrated");
+    tracing::info!("  ✅ Marketplace System: Integrated");
     health_score += 1;
 
     total_checks += 1;
-    println!("  ✅ Telemetry System: Integrated");
+    tracing::info!("  ✅ Telemetry System: Integrated");
     health_score += 1;
 
     total_checks += 1;
-    println!("  ✅ Error Handling: Comprehensive");
+    tracing::info!("  ✅ Error Handling: Comprehensive");
     health_score += 1;
 
     // 6. Compilation Status
     if verbose {
-        println!("\n🔨 Build Status");
-        println!("─────────────────────────────────────");
+        tracing::info!("\n🔨 Build Status");
+        tracing::info!("─────────────────────────────────────");
 
         total_checks += 1;
-        println!("  ✅ Code Compilation: Success");
+        tracing::info!("  ✅ Code Compilation: Success");
         health_score += 1;
 
         total_checks += 1;
-        println!("  ⚠️  Compiler Warnings: 11 unused imports");
+        tracing::info!("  ⚠️  Compiler Warnings: 11 unused imports");
         warnings.push("11 compiler warnings detected (unused imports)".to_string());
     }
 
     // 7. Performance Metrics
     let elapsed = start_time.elapsed();
 
-    println!("\n⚡ Performance Metrics");
-    println!("─────────────────────────────────────");
-    println!("  • Health Check Duration: {:.2}s", elapsed.as_secs_f64());
-    println!("  • System Response Time: Excellent");
+    tracing::info!("\n⚡ Performance Metrics");
+    tracing::info!("─────────────────────────────────────");
+    tracing::info!("  • Health Check Duration: {:.2}s", elapsed.as_secs_f64());
+    tracing::info!("  • System Response Time: Excellent");
 
     // Summary
-    println!("\n┌─────────────────────────────────────────────────────────┐");
-    println!("│  HEALTH CHECK SUMMARY                                   │");
-    println!("└─────────────────────────────────────────────────────────┘\n");
+    tracing::info!("\n┌─────────────────────────────────────────────────────────┐");
+    tracing::info!("│  HEALTH CHECK SUMMARY                                   │");
+    tracing::info!("└─────────────────────────────────────────────────────────┘\n");
 
     let health_percentage = (health_score as f64 / total_checks as f64 * 100.0) as u32;
     let status_emoji = if health_percentage >= 90 {
@@ -171,65 +171,65 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
         "❌"
     };
 
-    println!(
+    tracing::info!(
         "  {} Overall Health: {}% ({}/{})",
         status_emoji, health_percentage, health_score, total_checks
     );
-    println!("  📊 Status: {}", get_health_status(health_percentage));
+    tracing::info!("  📊 Status: {}", get_health_status(health_percentage));
 
     if !warnings.is_empty() {
-        println!("\n  ⚠️  Warnings: {}", warnings.len());
+        tracing::info!("\n  ⚠️  Warnings: {}", warnings.len());
         if verbose {
             for warning in &warnings {
-                println!("     • {}", warning);
+                tracing::info!("     • {}", warning);
             }
         }
     }
 
     if !errors.is_empty() {
-        println!("\n  ❌ Errors: {}", errors.len());
+        tracing::info!("\n  ❌ Errors: {}", errors.len());
         for error in &errors {
-            println!("     • {}", error);
+            tracing::info!("     • {}", error);
         }
     }
 
     // Recommendations
     if !warnings.is_empty() || !errors.is_empty() {
-        println!("\n┌─────────────────────────────────────────────────────────┐");
-        println!("│  RECOMMENDATIONS                                        │");
-        println!("└─────────────────────────────────────────────────────────┘\n");
+        tracing::info!("\n┌─────────────────────────────────────────────────────────┐");
+        tracing::info!("│  RECOMMENDATIONS                                        │");
+        tracing::info!("└─────────────────────────────────────────────────────────┘\n");
 
         if warnings.iter().any(|w| w.contains("Ollama")) {
-            println!("  💡 Start Ollama to enable real AI capabilities:");
-            println!("     ollama serve");
-            println!("     ollama pull llama3.2:3b\n");
+            tracing::info!("  💡 Start Ollama to enable real AI capabilities:");
+            tracing::info!("     ollama serve");
+            tracing::info!("     ollama pull llama3.2:3b\n");
         }
 
         if warnings.iter().any(|w| w.contains("warnings detected")) {
-            println!("  💡 Clean up code warnings:");
-            println!("     cargo clippy --fix --allow-dirty --allow-staged");
-            println!("     cargo fmt --all\n");
+            tracing::info!("  💡 Clean up code warnings:");
+            tracing::info!("     cargo clippy --fix --allow-dirty --allow-staged");
+            tracing::info!("     cargo fmt --all\n");
         }
 
         if !errors.is_empty() {
-            println!("  💡 Address critical errors:");
-            println!("     cargo build --workspace");
-            println!("     cargo test --workspace\n");
+            tracing::info!("  💡 Address critical errors:");
+            tracing::info!("     cargo build --workspace");
+            tracing::info!("     cargo test --workspace\n");
         }
     }
 
-    println!("\n┌─────────────────────────────────────────────────────────┐");
-    println!("│  SYSTEM INFORMATION                                     │");
-    println!("└─────────────────────────────────────────────────────────┘\n");
-    println!("  Version: 0.4.0");
-    println!("  Platform: {}", std::env::consts::OS);
-    println!("  Architecture: {}", std::env::consts::ARCH);
-    println!(
+    tracing::info!("\n┌─────────────────────────────────────────────────────────┐");
+    tracing::info!("│  SYSTEM INFORMATION                                     │");
+    tracing::info!("└─────────────────────────────────────────────────────────┘\n");
+    tracing::info!("  Version: 0.4.0");
+    tracing::info!("  Platform: {}", std::env::consts::OS);
+    tracing::info!("  Architecture: {}", std::env::consts::ARCH);
+    tracing::info!(
         "  Rust Version: {}",
         env!("CARGO_PKG_RUST_VERSION", "unknown")
     );
 
-    println!(
+    tracing::info!(
         "\n✨ Health check completed in {:.2}s\n",
         elapsed.as_secs_f64()
     );

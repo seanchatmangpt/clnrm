@@ -33,7 +33,7 @@ pub fn lint_files(files: Vec<&Path>, format: &str, deny_warnings: bool) -> Resul
                     "warnings": result.warnings,
                     "errors": result.errors,
                 });
-                println!(
+                tracing::info!(
                     "{}",
                     serde_json::to_string_pretty(&json).map_err(|e| {
                         CleanroomError::serialization_error(format!(
@@ -45,13 +45,13 @@ pub fn lint_files(files: Vec<&Path>, format: &str, deny_warnings: bool) -> Resul
             }
             _ => {
                 // Human-readable format
-                println!("{}", file.display());
+                tracing::info!("{}", file.display());
                 for warning in &result.warnings {
-                    println!("  ⚠️  {}", warning);
+                    tracing::info!("  ⚠️  {}", warning);
                     total_warnings += 1;
                 }
                 for error in &result.errors {
-                    println!("  ❌ {}", error);
+                    tracing::info!("  ❌ {}", error);
                     total_errors += 1;
                 }
             }
@@ -60,9 +60,9 @@ pub fn lint_files(files: Vec<&Path>, format: &str, deny_warnings: bool) -> Resul
 
     // Summary
     if format != "json" {
-        println!("\nLint summary:");
-        println!("  Warnings: {}", total_warnings);
-        println!("  Errors: {}", total_errors);
+        tracing::info!("\nLint summary:");
+        tracing::info!("  Warnings: {}", total_warnings);
+        tracing::info!("  Errors: {}", total_errors);
     }
 
     // Exit with error if needed

@@ -220,7 +220,7 @@ impl ServiceRegistry {
         }
 
         if stderr_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&stderr_path) {
+            if let Ok(content) = tokio::fs::read_to_string(&stderr_path).await {
                 logs.extend(content.lines().map(|s| s.to_string()));
             }
         }
@@ -490,7 +490,7 @@ impl CleanroomEnvironment {
                 match crate::backend::DockerBackend::new(&default_image) {
                     Ok(b) => Arc::new(b),
                     Err(e2) => {
-                        return Err(CleanroomError::container_error(
+                        return Err(CleanroomError::execution_error(
                             "No supported container runtime available",
                         )
                         .with_context("gVisor and Docker fallbacks both failed")

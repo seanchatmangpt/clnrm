@@ -58,14 +58,14 @@ pub async fn run_stress_test(
 
     let config = builder.build()?;
 
-    println!("\n=== Stress Test Configuration ===");
-    println!("Containers: {:?}", config.containers);
-    println!("Test Count per Container: {}", config.test_count);
-    println!("Span Depth: {}", config.span_depth);
-    println!("Max Containers: {}", config.limits.max_containers);
-    println!("Concurrency: {}", config.concurrency);
-    println!("Total Permutations: {}", config.total_permutations());
-    println!("==================================\n");
+    tracing::info!("\n=== Stress Test Configuration ===");
+    tracing::info!("Containers: {:?}", config.containers);
+    tracing::info!("Test Count per Container: {}", config.test_count);
+    tracing::info!("Span Depth: {}", config.span_depth);
+    tracing::info!("Max Containers: {}", config.limits.max_containers);
+    tracing::info!("Concurrency: {}", config.concurrency);
+    tracing::info!("Total Permutations: {}", config.total_permutations());
+    tracing::info!("==================================\n");
 
     // Save output_dir before moving config
     let output_dir = config.output_dir.clone();
@@ -74,30 +74,30 @@ pub async fn run_stress_test(
     let results = executor.run().await?;
 
     // Print results
-    println!("\n=== Stress Test Results ===");
-    println!("Total Tests: {}", results.total_tests);
-    println!(
+    tracing::info!("\n=== Stress Test Results ===");
+    tracing::info!("Total Tests: {}", results.total_tests);
+    tracing::info!(
         "Passed: {} ({:.2}%)",
         results.passed_tests,
         results.success_rate()
     );
-    println!("Failed: {}", results.failed_tests);
-    println!("Skipped: {}", results.skipped_tests);
-    println!("Total Duration: {}ms", results.total_duration_ms);
-    println!("Avg Test Duration: {:.2}ms", results.avg_test_duration_ms);
-    println!(
+    tracing::info!("Failed: {}", results.failed_tests);
+    tracing::info!("Skipped: {}", results.skipped_tests);
+    tracing::info!("Total Duration: {}ms", results.total_duration_ms);
+    tracing::info!("Avg Test Duration: {:.2}ms", results.avg_test_duration_ms);
+    tracing::info!(
         "Peak Pool Utilization: {:.2}%",
         results.peak_pool_utilization
     );
-    println!("Total Spans Generated: {}", results.total_spans_generated);
-    println!("===========================\n");
+    tracing::info!("Total Spans Generated: {}", results.total_spans_generated);
+    tracing::info!("===========================\n");
 
     if !results.errors.is_empty() {
-        println!("Errors encountered:");
+        tracing::info!("Errors encountered:");
         for (i, error) in results.errors.iter().enumerate() {
-            println!("  {}. {}", i + 1, error);
+            tracing::info!("  {}. {}", i + 1, error);
         }
-        println!();
+        tracing::info!("");
     }
 
     // Write results to file if output dir specified
@@ -107,15 +107,15 @@ pub async fn run_stress_test(
             .map(|d| d.join("stress_test_results.json"))
     }) {
         let json = serde_json::to_string_pretty(&results)?;
-        std::fs::write(&output_path, json)?;
-        println!("Results written to: {}", output_path.display());
+        tokio::fs::write(&output_path, json).await?;
+        tracing::info!("Results written to: {}", output_path.display());
     }
 
     if results.all_passed() {
-        println!("✓ All stress tests passed!");
+        tracing::info!("✓ All stress tests passed!");
         Ok(())
     } else {
-        println!("✗ Some stress tests failed");
+        tracing::info!("✗ Some stress tests failed");
         Err(crate::error::CleanroomError::validation_error(format!(
             "{} of {} tests failed",
             results.failed_tests, results.total_tests
@@ -191,8 +191,8 @@ mod tests {
         let example = generate_stress_config_example();
         let parsed = toml::from_str::<StressTestConfig>(&example);
         if let Err(e) = &parsed {
-            eprintln!("Parse error: {}", e);
-            eprintln!("Config:\n{}", example);
+            etracing::info!("Parse error: {}", e);
+            etracing::info!("Config:\n{}", example);
         }
         assert!(parsed.is_ok(), "Failed to parse config: {:?}", parsed.err());
     }

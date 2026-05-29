@@ -1,0 +1,9 @@
+[test.metadata]
+name = "failing_test"
+description = "A test that intentionally fails to audit CLI output"
+
+[[steps]]
+name = "fail_step"
+container = "alpine"
+command = ["sh", "-c", "exit 1"]
+assert = { exit_code = 0 }

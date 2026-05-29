@@ -123,6 +123,35 @@ pub struct HealthCheckConfig {
     pub retries: Option<u32>,
 }
 
+impl HealthCheckConfig {
+    /// Validate the health check configuration
+    pub fn validate(&self) -> Result<()> {
+        if self.cmd.is_empty() {
+            return Err(CleanroomError::validation_error(
+                "Health check command cannot be empty",
+            ));
+        }
+
+        if let Some(interval) = self.interval {
+            if interval == 0 {
+                return Err(CleanroomError::validation_error(
+                    "Health check interval must be greater than 0",
+                ));
+            }
+        }
+
+        if let Some(timeout) = self.timeout {
+            if timeout == 0 {
+                return Err(CleanroomError::validation_error(
+                    "Health check timeout must be greater than 0",
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl ServiceConfig {
     /// Validate the service configuration
     pub fn validate(&self) -> Result<()> {
@@ -145,12 +174,39 @@ impl ServiceConfig {
             ));
         }
 
+        // Validate ports
+        if let Some(ref ports) = self.ports {
+            for port in ports {
+                if *port == 0 {
+                    return Err(CleanroomError::validation_error(
+                        "Service port cannot be 0",
+                    ));
+                }
+            }
+        }
+
         // Validate volumes if present
         if let Some(ref volumes) = self.volumes {
             for (i, volume) in volumes.iter().enumerate() {
                 volume.validate().map_err(|e| {
                     CleanroomError::validation_error(format!("Volume {}: {}", i, e))
                 })?;
+            }
+        }
+
+        // Validate health check if present
+        if let Some(ref health_check) = self.health_check {
+            health_check.validate().map_err(|e| {
+                CleanroomError::validation_error(format!("Health check: {}", e))
+            })?;
+        }
+
+        // Validate wait_for_span_timeout_secs
+        if let Some(timeout) = self.wait_for_span_timeout_secs {
+            if timeout == 0 {
+                return Err(CleanroomError::validation_error(
+                    "wait_for_span_timeout_secs must be greater than 0",
+                ));
             }
         }
 

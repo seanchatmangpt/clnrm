@@ -17,5 +17,5 @@ fn test_dyn_service_plugin_compatibility() {
 
     plugin_dyn.stop(handle).unwrap();
 
-    println!("✅ dyn ServicePlugin compatibility verified!");
+    tracing::info!("✅ dyn ServicePlugin compatibility verified!");
 }

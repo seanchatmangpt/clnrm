@@ -42,20 +42,20 @@ pub fn render_template_with_vars(
 
     // Show resolved variables if requested
     if show_vars {
-        println!("=== Resolved Variables ===");
+        tracing::info!("=== Resolved Variables ===");
         for (key, value) in &user_vars {
-            println!("{} = {}", key, value);
+            tracing::info!("{} = {}", key, value);
         }
-        println!("=== Rendered Output ===");
+        tracing::info!("=== Rendered Output ===");
     }
 
     // Output rendered content
     if let Some(output_path) = output {
         std::fs::write(output_path, &rendered)
             .map_err(|e| CleanroomError::io_error(format!("Failed to write output: {}", e)))?;
-        println!("✓ Rendered to: {}", output_path.display());
+        tracing::info!("✓ Rendered to: {}", output_path.display());
     } else {
-        println!("{}", rendered);
+        tracing::info!("{}", rendered);
     }
 
     Ok(())

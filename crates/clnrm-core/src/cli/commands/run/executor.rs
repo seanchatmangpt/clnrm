@@ -65,7 +65,17 @@ async fn run_test_with_fallback(path: &PathBuf, _config: &CliConfig) -> Result<O
             if result.passed {
                 Ok(container_id)
             } else {
-                Err(CleanroomError::validation_error(result.summary))
+                let mut err_msg = result.summary;
+                for step in result.step_results {
+                    if !step.passed {
+                        if let Some(reason) = step.assertion_error {
+                            err_msg = format!("{}\n  Step '{}' failed: {}", err_msg, step.name, reason);
+                        } else {
+                            err_msg = format!("{}\n  Step '{}' failed", err_msg, step.name);
+                        }
+                    }
+                }
+                Err(CleanroomError::validation_error(err_msg))
             }
         }
         Err(e) => {
@@ -374,7 +384,7 @@ pub async fn run_tests_parallel_with_results(
                 });
             }
             Ok((test_name, Err(e), duration, telemetry_builder)) => {
-                error!("Test failed: {}", e);
+                debug!("Test failed: {}", e);
 
                 // Emit telemetry for failed test
                 let error_type = format!("{:?}", e);
@@ -457,3 +467,4 @@ pub async fn run_tests_parallel(paths: &[PathBuf], config: &CliConfig) -> Result
         Ok(())
     }
 }
+

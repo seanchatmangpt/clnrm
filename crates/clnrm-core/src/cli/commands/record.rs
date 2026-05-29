@@ -96,7 +96,7 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
     }
 
     info!("Found {} test file(s) to record", all_test_files.len());
-    println!(
+    tracing::info!(
         "📹 Recording baseline from {} test file(s)...",
         all_test_files.len()
     );
@@ -163,7 +163,7 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
     })?;
 
     // Write digest to separate file
-    std::fs::write(&digest_path, &digest).map_err(|e| {
+    tokio::fs::write(&digest_path, &digest).await.map_err(|e| {
         CleanroomError::io_error(format!(
             "Failed to write digest to '{}': {}",
             digest_path.display(),
@@ -175,12 +175,12 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
     let passed = baseline.test_results.iter().filter(|t| t.passed).count();
     let failed = baseline.test_results.iter().filter(|t| !t.passed).count();
 
-    println!();
-    println!("✅ Baseline recorded successfully");
-    println!("   Tests: {} passed, {} failed", passed, failed);
-    println!("   Output: {}", output_path.display());
-    println!("   Digest: {}", digest_path.display());
-    println!("   SHA-256: {}", digest);
+    tracing::info!("");
+    tracing::info!("✅ Baseline recorded successfully");
+    tracing::info!("   Tests: {} passed, {} failed", passed, failed);
+    tracing::info!("   Output: {}", output_path.display());
+    tracing::info!("   Digest: {}", digest_path.display());
+    tracing::info!("   SHA-256: {}", digest);
 
     info!(
         "Baseline recording completed: {} tests recorded",
@@ -189,9 +189,9 @@ pub async fn run_record(paths: Option<Vec<PathBuf>>, output: Option<PathBuf>) ->
 
     if failed > 0 {
         warn!("Baseline contains {} failed test(s)", failed);
-        println!();
-        println!("⚠️  Warning: Baseline includes {} failed test(s)", failed);
-        println!("   Consider fixing failures before using this as a baseline.");
+        tracing::info!("");
+        tracing::info!("⚠️  Warning: Baseline includes {} failed test(s)", failed);
+        tracing::info!("   Consider fixing failures before using this as a baseline.");
     }
 
     Ok(())

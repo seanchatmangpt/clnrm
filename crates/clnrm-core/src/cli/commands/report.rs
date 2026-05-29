@@ -65,7 +65,7 @@ pub async fn generate_report(
         })?;
         info!("Report generated: {}", output_path.display());
     } else {
-        println!("{}", report_content);
+        tracing::info!("{}", report_content);
     }
 
     Ok(())
@@ -182,8 +182,8 @@ fn html_escape(text: &str) -> String {
 /// - ✅ Uses tracing for structured output
 pub fn display_test_results(results: &FrameworkTestResults) {
     // Print formatted header
-    println!("\nFramework Self-Test Results:");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    tracing::info!("\nFramework Self-Test Results:");
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Group tests by suite
     let mut current_suite = String::new();
@@ -248,7 +248,7 @@ pub fn display_test_results(results: &FrameworkTestResults) {
                 };
                 let duration: u64 = suite_tests.iter().map(|t| t.duration_ms).sum();
 
-                println!(
+                tracing::info!(
                     "Suite: {} ({} tests)... {} ({}ms)",
                     current_suite, total_suite, status, duration
                 );
@@ -256,9 +256,9 @@ pub fn display_test_results(results: &FrameworkTestResults) {
                 // Show failed tests details
                 for test in &suite_tests {
                     if !test.passed {
-                        println!("  ❌ {} ({}ms)", test.name, test.duration_ms);
+                        tracing::info!("  ❌ {} ({}ms)", test.name, test.duration_ms);
                         if let Some(error) = &test.error {
-                            println!("     Error: {}", error);
+                            tracing::info!("     Error: {}", error);
                         }
                     }
                 }
@@ -278,8 +278,8 @@ pub fn display_test_results(results: &FrameworkTestResults) {
         }
     }
 
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!(
+    tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    tracing::info!(
         "Total: {} tests, {} passed, {} failed",
         results.total_tests, results.passed_tests, results.failed_tests
     );
@@ -289,7 +289,7 @@ pub fn display_test_results(results: &FrameworkTestResults) {
     } else {
         "❌ SOME FAILED"
     };
-    println!(
+    tracing::info!(
         "Overall: {} ({:.1}s)\n",
         overall_status,
         results.total_duration_ms as f64 / 1000.0

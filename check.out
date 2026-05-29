@@ -1,0 +1,11 @@
+    Checking clnrm-core v3.0.0 (/Users/sac/clnrm/crates/clnrm-core)
+error: this file contains an unclosed delimiter
+    --> crates/clnrm-core/src/backend/engine.rs:1268:7
+     |
+1261 | impl BackendSelector {
+     |                      - unclosed delimiter
+...
+1268 |     }
+     |      ^
+
+error: could not compile `clnrm-core` (lib) due to 1 previous error

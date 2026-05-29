@@ -33,13 +33,16 @@ impl GvisorBackend {
     pub fn with_env(self, _key: &str, _value: &str) -> Self {
         self
     }
-    pub fn with_memory_limit(self, _limit: u64) -> Self {
+    pub fn with_memory_limit(mut self, limit_mb: u64) -> Self {
+        self.policy.resources.max_memory_usage_bytes = limit_mb * 1024 * 1024;
         self
     }
-    pub fn with_cpu_limit(self, _limit: f64) -> Self {
+    pub fn with_cpu_limit(mut self, limit: f64) -> Self {
+        self.policy.resources.max_cpu_usage_percent = limit;
         self
     }
-    pub fn with_startup_timeout(self, _timeout: std::time::Duration) -> Self {
+    pub fn with_startup_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.timeout = timeout;
         self
     }
 
@@ -345,7 +348,7 @@ mod tests {
     #[test]
     fn test_gvisor_availability() {
         let is_available = GvisorBackend::is_available();
-        println!("gVisor available: {}", is_available);
+        tracing::info!("gVisor available: {}", is_available);
         // Don't assert - runsc may not be installed
     }
 

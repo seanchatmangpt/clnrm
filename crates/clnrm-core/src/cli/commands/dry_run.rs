@@ -42,12 +42,12 @@ pub fn dry_run_validate(files: Vec<&Path>, verbose: bool) -> Result<Vec<Validati
 
         // Print results
         if validation_result.passed {
-            println!("✅ {} - VALID", file.display());
+            tracing::info!("✅ {} - VALID", file.display());
         } else {
-            println!("❌ {} - INVALID ({} errors)", file.display(), errors.len());
+            tracing::info!("❌ {} - INVALID ({} errors)", file.display(), errors.len());
             if verbose {
                 for error in &errors {
-                    println!("  - {}", error);
+                    tracing::info!("  - {}", error);
                 }
             }
         }

@@ -16,6 +16,7 @@ pub mod gvisor; // v2.0.0: gVisor backend with OCI image loading
 pub mod multi_pool; // v1.6.0: Multi-image container pooling
 pub mod oci; // v2.0.0: OCI image loading and management
 pub mod pool;
+pub mod jit_audit;
 pub mod volume;
 
 pub use capabilities::{

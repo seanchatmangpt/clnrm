@@ -22,7 +22,7 @@ pub async fn pull_images(paths: Option<Vec<PathBuf>>, parallel: bool, jobs: usiz
     };
 
     if test_files.is_empty() {
-        println!("No test files found");
+        tracing::info!("No test files found");
         return Ok(());
     }
 
@@ -32,13 +32,13 @@ pub async fn pull_images(paths: Option<Vec<PathBuf>>, parallel: bool, jobs: usiz
     let images = extract_images_from_test_files(&test_files)?;
 
     if images.is_empty() {
-        println!("No Docker images found in test configurations");
+        tracing::info!("No Docker images found in test configurations");
         return Ok(());
     }
 
-    println!("Found {} unique image(s) to pull:", images.len());
+    tracing::info!("Found {} unique image(s) to pull:", images.len());
     for image in &images {
-        println!("  - {}", image);
+        tracing::info!("  - {}", image);
     }
 
     // Pull images
@@ -48,7 +48,7 @@ pub async fn pull_images(paths: Option<Vec<PathBuf>>, parallel: bool, jobs: usiz
         pull_images_sequential(&images).await?;
     }
 
-    println!("\n✅ Successfully pulled {} image(s)", images.len());
+    tracing::info!("\n✅ Successfully pulled {} image(s)", images.len());
     Ok(())
 }
 
@@ -158,7 +158,7 @@ fn extract_images_from_test_files(test_files: &[PathBuf]) -> Result<Vec<String>>
 /// Pull images sequentially
 async fn pull_images_sequential(images: &[String]) -> Result<()> {
     for (idx, image) in images.iter().enumerate() {
-        println!("\n[{}/{}] Pulling {}...", idx + 1, images.len(), image);
+        tracing::info!("\n[{}/{}] Pulling {}...", idx + 1, images.len(), image);
         pull_single_image(image).await?;
     }
 
@@ -181,7 +181,7 @@ async fn pull_images_parallel(images: &[String], jobs: usize) -> Result<()> {
                 .await
                 .map_err(|e| CleanroomError::internal_error(format!("Semaphore error: {}", e)))?;
 
-            println!("[{}/{}] Pulling {}...", idx + 1, total, image);
+            tracing::info!("[{}/{}] Pulling {}...", idx + 1, total, image);
             pull_single_image(&image).await
         });
 
@@ -218,7 +218,7 @@ async fn pull_single_image(image: &str) -> Result<()> {
         )));
     }
 
-    println!("  ✓ Pulled {}", image);
+    tracing::info!("  ✓ Pulled {}", image);
     Ok(())
 }
 

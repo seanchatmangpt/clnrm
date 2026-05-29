@@ -390,7 +390,7 @@ impl ChaosEnginePlugin {
                 tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
 
                 // Cleanup
-                if let Err(e) = std::fs::remove_file(&file_path) {
+                if let Err(e) = tokio::fs::remove_file(&file_path).await {
                     tracing::warn!(error = %e, path = ?file_path, "Failed to remove disk fill temp file");
                 }
             }

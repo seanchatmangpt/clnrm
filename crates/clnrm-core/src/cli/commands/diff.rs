@@ -86,7 +86,7 @@ pub fn diff_traces(
                 "removed": result.removed,
                 "modified": result.modified,
             });
-            println!(
+            tracing::info!(
                 "{}",
                 serde_json::to_string_pretty(&json).map_err(|e| {
                     CleanroomError::serialization_error(format!("Failed to serialize JSON: {}", e))
@@ -96,30 +96,30 @@ pub fn diff_traces(
         _ => {
             // Human-readable format
             if result.added_count > 0 {
-                println!("Added spans ({}):", result.added_count);
+                tracing::info!("Added spans ({}):", result.added_count);
                 for span in &result.added {
-                    println!("  + {}", span);
+                    tracing::info!("  + {}", span);
                 }
             }
 
             if result.removed_count > 0 {
-                println!("Removed spans ({}):", result.removed_count);
+                tracing::info!("Removed spans ({}):", result.removed_count);
                 for span in &result.removed {
-                    println!("  - {}", span);
+                    tracing::info!("  - {}", span);
                 }
             }
 
             if result.modified_count > 0 {
-                println!("Modified spans ({}):", result.modified_count);
+                tracing::info!("Modified spans ({}):", result.modified_count);
                 for span in &result.modified {
-                    println!("  ~ {}", span);
+                    tracing::info!("  ~ {}", span);
                 }
             }
 
             if !only_changes
                 || result.added_count + result.removed_count + result.modified_count == 0
             {
-                println!(
+                tracing::info!(
                     "\nSummary: {} added, {} removed, {} modified",
                     result.added_count, result.removed_count, result.modified_count
                 );

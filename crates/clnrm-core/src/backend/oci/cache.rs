@@ -94,19 +94,33 @@ impl ImageCache {
 
     /// Get cached image
     pub async fn get(&self, image_ref: &str) -> Result<Option<OciImage>> {
-        let mut index = self.index.write().await;
+        let load_result = {
+            let mut index = self.index.write().await;
 
-        if let Some(entry) = index.entries.get_mut(image_ref) {
-            info!("Cache hit for image: {}", image_ref);
+            if let Some(entry) = index.entries.get_mut(image_ref) {
+                info!("Cache hit for image: {}", image_ref);
 
-            // Update last accessed time
-            entry.last_accessed = SystemTime::now();
+                // Update last accessed time
+                entry.last_accessed = SystemTime::now();
 
-            // Load image from cache
-            let image = self.load_from_cache(entry).await?;
-            Ok(Some(image))
+                // Load image from cache
+                Some(self.load_from_cache(entry).await)
+            } else {
+                info!("Cache miss for image: {}", image_ref);
+                None
+            }
+        };
+
+        if let Some(result) = load_result {
+            match result {
+                Ok(image) => Ok(Some(image)),
+                Err(e) => {
+                    tracing::warn!("Corrupted cache entry detected: {}. Purging cache.", e);
+                    let _ = self.clear().await;
+                    Err(e)
+                }
+            }
         } else {
-            info!("Cache miss for image: {}", image_ref);
             Ok(None)
         }
     }
@@ -227,6 +241,18 @@ impl ImageCache {
         let mut layers = Vec::new();
         for layer_entry in &entry.layers {
             let data = tokio::fs::read(&layer_entry.path).await?;
+            
+            if let Some(expected_hex) = layer_entry.digest.strip_prefix("sha256:") {
+                let actual_digest = sha2::Sha256::digest(&data);
+                let actual_hex = hex::encode(actual_digest);
+                if actual_hex != expected_hex {
+                    return Err(CleanroomError::oci_error(format!(
+                        "Layer integrity check failed: expected {}, got {}",
+                        expected_hex, actual_hex
+                    )));
+                }
+            }
+
             layers.push(OciLayer {
                 digest: layer_entry.digest.clone(),
                 media_type: "application/vnd.docker.image.rootfs.diff.tar.gzip".to_string(),

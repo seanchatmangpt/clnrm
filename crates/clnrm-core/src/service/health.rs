@@ -326,7 +326,7 @@ impl HealthProbe {
 
                 match tokio::time::timeout(timeout, cmd.output()).await {
                     Ok(Ok(output)) => return Ok(output.status.success()),
-                    _ => return Ok(false),
+                    Ok(Err(_)) | Err(_) => return Ok(false),
                 }
             }
 

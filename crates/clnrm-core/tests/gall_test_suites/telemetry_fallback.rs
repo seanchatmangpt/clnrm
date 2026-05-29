@@ -5,6 +5,7 @@
 use clnrm_core::cleanroom::CleanroomEnvironment;
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn gall_gap_test_telemetry_direct_to_disk_fallback() {
     // Arrange
     // CleanroomEnvironment initialization logic.

@@ -35,7 +35,7 @@ impl LayerManager {
     }
 
     /// Extract a single layer to cache directory if it doesn't already exist
-    async fn extract_layer_to_cache(&self, layer: &OciLayer) -> Result<PathBuf> {
+    pub async fn extract_layer_to_cache(&self, layer: &OciLayer) -> Result<PathBuf> {
         let digest_safe = layer.digest.replace("sha256:", "");
         let layer_dir = self.cache_dir.join(&digest_safe);
 

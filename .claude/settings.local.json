@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(clnrm --version:*)",
+      "Bash(cargo test:*)",
+      "Bash(git -C /Users/sac/clnrm log --oneline -p -- \"crates/clnrm-core/src/services/factory.rs\")",
+      "Bash(git -C /Users/sac/clnrm log --oneline -- \"examples/advanced-features/simple-test.clnrm.toml\")",
+      "Bash(cargo run:*)",
+      "Bash(cargo build:*)",
+      "Bash(./target/release/clnrm:*)",
+      "Bash(cargo package:*)",
+      "Bash(cargo doc:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,90 @@
+/Users/sac/clnrm/crates/clnrm-core/src/receipts/store.rs:266: Found Oracle Gap phrase 'placeholder' -> id: ContentHash::from_string("placeholder"),
+/Users/sac/clnrm/crates/clnrm-core/src/receipts/receipt.rs:368: Found Oracle Gap phrase 'placeholder' -> id: ContentHash::from_string("placeholder"),
+/Users/sac/clnrm/crates/clnrm-core/src/test_dyn_compatibility.rs:3: Found Oracle Gap phrase 'mock' -> use clnrm_core::cleanroom::{ServicePlugin, MockDatabasePlugin};
+/Users/sac/clnrm/crates/clnrm-core/src/test_dyn_compatibility.rs:8: Found Oracle Gap phrase 'mock' -> let plugin = MockDatabasePlugin::default();
+/Users/sac/clnrm/crates/clnrm-core/src/test_dyn_compatibility.rs:12: Found Oracle Gap phrase 'mock' -> assert_eq!(plugin_dyn.name(), "mock_database");
+/Users/sac/clnrm/crates/clnrm-core/src/test_dyn_compatibility.rs:16: Found Oracle Gap phrase 'mock' -> assert_eq!(handle.service_name, "mock_database");
+/Users/sac/clnrm/crates/clnrm-core/src/types.rs:196: Found Oracle Gap phrase 'In a real implementation' -> // In a real implementation, we'd use static assertions or const generics
+/Users/sac/clnrm/crates/clnrm-core/src/capabilities/effects.rs:47: Found Oracle Gap phrase 'mock' -> TimeMock {
+/Users/sac/clnrm/crates/clnrm-core/src/capabilities/scenario.rs:250: Found Oracle Gap phrase 'In a full implementation' -> // In a full implementation, BackendCapability would have an effects field
+/Users/sac/clnrm/crates/clnrm-core/src/cache/mod.rs:26: Found Oracle Gap phrase 'mock' -> //! - **Mockable interface**: Supports test doubles for behavior verification
+/Users/sac/clnrm/crates/clnrm-core/src/error.rs:259: Found Oracle Gap phrase 'stub' -> impl From<crate::template_stubs::TemplateError> for CleanroomError {
+/Users/sac/clnrm/crates/clnrm-core/src/error.rs:260: Found Oracle Gap phrase 'stub' -> fn from(err: crate::template_stubs::TemplateError) -> Self {
+/Users/sac/clnrm/crates/clnrm-core/src/lib.rs:26: Found Oracle Gap phrase 'stub' -> pub mod template_stubs;
+/Users/sac/clnrm/crates/clnrm-core/src/scheduler/swarm.rs:585: Found Oracle Gap phrase 'TODO' -> estimated_start: None, // TODO: Estimate based on current load
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:11: Found Oracle Gap phrase 'mock' -> //! 3. **Mock Implementation** - For testing (via mockall or manual mocks)
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:14: Found Oracle Gap phrase 'mock' -> //! - **Testability**: Mock validators for unit tests
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:30: Found Oracle Gap phrase 'mock' -> /// - ✅ Mockable for testing
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:69: Found Oracle Gap phrase 'mock' -> /// - ✅ Mockable for testing
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:89: Found Oracle Gap phrase 'mock' -> /// - ✅ Mockable for testing
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:114: Found Oracle Gap phrase 'mock' -> /// - ✅ Mockable for testing
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:135: Found Oracle Gap phrase 'mock' -> /// - ✅ Mockable for testing
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:165: Found Oracle Gap phrase 'mock' -> /// - ✅ Mockable for testing (with async-trait)
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:183: Found Oracle Gap phrase 'mock' -> // Note: Mock implementations can be added in tests.rs using mockall if needed
+/Users/sac/clnrm/crates/clnrm-core/src/poka_yoke/traits.rs:184: Found Oracle Gap phrase 'mock' -> // The traits are designed to be mockable for testing purposes
+/Users/sac/clnrm/crates/clnrm-core/src/cli/types.rs:19: Found Oracle Gap phrase 'placeholder' -> .placeholder(clap::builder::styling::AnsiColor::Yellow.on_default()))]
+/Users/sac/clnrm/crates/clnrm-core/src/cli/mod.rs:24: Found Oracle Gap phrase 'stub' -> // For now, this is a stub. In the future, this should call the actual
+/Users/sac/clnrm/crates/clnrm-core/src/cli/commands/prd_commands.rs:1: Found Oracle Gap phrase 'stub' -> //! PRD v1.0 additional command implementations (stubs)
+/Users/sac/clnrm/crates/clnrm-core/src/cli/commands/prd_commands.rs:3: Found Oracle Gap phrase 'placeholder' -> //! These are placeholder implementations for PRD v1.0 features.
+/Users/sac/clnrm/crates/clnrm-core/src/cli/commands/run/executor.rs:323: Found Oracle Gap phrase 'placeholder' -> // to actually use the pool. This is a placeholder for metrics.
+/Users/sac/clnrm/crates/clnrm-core/src/synthesis/coverage.rs:313: Found Oracle Gap phrase 'placeholder' -> id: ContentHash::from_string("placeholder"),
+/Users/sac/clnrm/crates/clnrm-core/src/timing/validator.rs:40: Found Oracle Gap phrase 'placeholder' -> /// This is a placeholder structure until the μ-kernel spec is finalized.
+/Users/sac/clnrm/crates/clnrm-core/src/timing/validator.rs:48: Found Oracle Gap phrase 'TODO' -> /// TODO: Clarify which clock (CPU cycles, μ-kernel cycles, etc.)
+/Users/sac/clnrm/crates/clnrm-core/src/timing/validator.rs:207: Found Oracle Gap phrase 'placeholder' -> // This is a placeholder - actual logic depends on μ-kernel spec
+/Users/sac/clnrm/crates/clnrm-core/src/timing/mod.rs:114: Found Oracle Gap phrase 'placeholder' -> //! The μ-kernel receipt format is currently a placeholder. Once the μ-kernel
+/Users/sac/clnrm/crates/clnrm-core/src/cleanroom.rs:1128: Found Oracle Gap phrase 'mock' -> pub struct MockDatabasePlugin {
+/Users/sac/clnrm/crates/clnrm-core/src/cleanroom.rs:1135: Found Oracle Gap phrase 'mock' -> impl Default for MockDatabasePlugin {
+/Users/sac/clnrm/crates/clnrm-core/src/cleanroom.rs:1142: Found Oracle Gap phrase 'mock' -> impl MockDatabasePlugin {
+/Users/sac/clnrm/crates/clnrm-core/src/cleanroom.rs:1145: Found Oracle Gap phrase 'mock' -> name: "mock_database".to_string(),
+/Users/sac/clnrm/crates/clnrm-core/src/cleanroom.rs:1152: Found Oracle Gap phrase 'mock' -> impl ServicePlugin for MockDatabasePlugin {
+/Users/sac/clnrm/crates/clnrm-core/src/cleanroom.rs:1158: Found Oracle Gap phrase 'mock' -> // For testing, create a simple mock handle without actual container
+/Users/sac/clnrm/crates/clnrm-core/src/cleanroom.rs:1161: Found Oracle Gap phrase 'mock' -> // Build metadata with mock connection details
+/Users/sac/clnrm/crates/clnrm-core/src/cleanroom.rs:1170: Found Oracle Gap phrase 'mock' -> service_name: "mock_database".to_string(),
+/Users/sac/clnrm/crates/clnrm-core/src/formatting/formatter.rs:61: Found Oracle Gap phrase 'mock' -> /// This trait is designed for mock-based testing. Implementations should be
+/Users/sac/clnrm/crates/clnrm-core/src/formatting/formatter.rs:62: Found Oracle Gap phrase 'mock' -> /// independently testable using mock test suites.
+/Users/sac/clnrm/crates/clnrm-core/src/environment/sigma.rs:389: Found Oracle Gap phrase 'placeholder' -> hash: ContentHash::from_string("placeholder"),
+/Users/sac/clnrm/crates/clnrm-core/src/environment/compiler.rs:557: Found Oracle Gap phrase 'placeholder' -> digest: format!("sha256:placeholder-{}", service_id), // Populated at runtime
+/Users/sac/clnrm/crates/clnrm-core/src/environment/compiler.rs:567: Found Oracle Gap phrase 'placeholder' -> id: ContentHash::from_string("placeholder"), // Will be computed after full creation
+/Users/sac/clnrm/crates/clnrm-core/src/environment/store.rs:130: Found Oracle Gap phrase 'placeholder' -> hash: ContentHash::from_string("placeholder"),
+/Users/sac/clnrm/crates/clnrm-core/src/watch/mod.rs:8: Found Oracle Gap phrase 'mock' -> //! - `FileWatcher` trait: Abstract file watching interface (testable via mocks)
+/Users/sac/clnrm/crates/clnrm-core/src/watch/mod.rs:15: Found Oracle Gap phrase 'mock' -> //! This module follows Chicago School (mockist) TDD:
+/Users/sac/clnrm/crates/clnrm-core/src/watch/mod.rs:17: Found Oracle Gap phrase 'mock' -> //! - Mocks define contracts between components
+/Users/sac/clnrm/crates/clnrm-core/src/watch/watcher.rs:9: Found Oracle Gap phrase 'mock' -> //! - `MockFileWatcher` in tests verifies interactions
+/Users/sac/clnrm/crates/clnrm-core/src/watch/watcher.rs:186: Found Oracle Gap phrase 'mock' -> /// This trait allows mocking file watching behavior in tests,
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:14: Found Oracle Gap phrase 'placeholder' -> // Placeholder spans module - will be replaced by weaver generation
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:18: Found Oracle Gap phrase 'placeholder' -> // Placeholder - will be generated from schemas
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:59: Found Oracle Gap phrase 'placeholder' -> // Placeholder metrics module - will be replaced by weaver generation
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:64: Found Oracle Gap phrase 'placeholder' -> // Placeholder - will be generated from schemas
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:108: Found Oracle Gap phrase 'placeholder' -> // Placeholder mocks module - will be replaced by weaver generation
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:108: Found Oracle Gap phrase 'mock' -> // Placeholder mocks module - will be replaced by weaver generation
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:110: Found Oracle Gap phrase 'mock' -> pub mod mocks {
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:111: Found Oracle Gap phrase 'mock' -> use mockall::automock;
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:113: Found Oracle Gap phrase 'mock' -> #[automock]
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:121: Found Oracle Gap phrase 'mock' -> #[automock]
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/generated/mod.rs:127: Found Oracle Gap phrase 'placeholder' -> // Placeholder events module - will be replaced by weaver generation
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/live_check/orchestrator.rs:1056: Found Oracle Gap phrase 'mock' -> // Create a mock completed state
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/semantic_conventions/gvisor.rs:433: Found Oracle Gap phrase 'placeholder' -> // This is a placeholder for the actual implementation
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/test_execution.rs:21: Found Oracle Gap phrase 'placeholder' -> //! 4. **No fake data**: Attributes come from actual test execution, not placeholders
+/Users/sac/clnrm/crates/clnrm-core/src/telemetry/metrics_export.rs:228: Found Oracle Gap phrase 'placeholder' -> // For now, return 1.0 as placeholder
+/Users/sac/clnrm/crates/clnrm-core/src/service/oci.rs:62: Found Oracle Gap phrase 'TODO' -> // TODO: Implement actual OCI image pulling
+/Users/sac/clnrm/crates/clnrm-core/src/service/oci.rs:69: Found Oracle Gap phrase 'placeholder' -> warn!("OCI image pulling not yet implemented - creating placeholder");
+/Users/sac/clnrm/crates/clnrm-core/src/service/oci.rs:71: Found Oracle Gap phrase 'placeholder' -> // Create placeholder directory structure
+/Users/sac/clnrm/crates/clnrm-core/src/service/oci.rs:109: Found Oracle Gap phrase 'TODO' -> // TODO: Implement actual bundle creation
+/Users/sac/clnrm/crates/clnrm-core/src/service/oci.rs:115: Found Oracle Gap phrase 'placeholder' -> warn!("OCI bundle creation not yet implemented - creating placeholder");
+/Users/sac/clnrm/crates/clnrm-core/src/service/health.rs:320: Found Oracle Gap phrase 'TODO' -> // TODO: Implement container exec via runsc
+/Users/sac/clnrm/crates/clnrm-core/src/service/health.rs:328: Found Oracle Gap phrase 'TODO' -> // TODO: Implement gRPC health check protocol
+/Users/sac/clnrm/crates/clnrm-core/src/service/registry.rs:225: Found Oracle Gap phrase 'TODO' -> let container_ip = "127.0.0.1"; // TODO: Get actual container IP
+/Users/sac/clnrm/crates/clnrm-core/src/service/backend.rs:242: Found Oracle Gap phrase 'TODO' -> // TODO: Implement OCI bundle creation and runsc execution
+/Users/sac/clnrm/crates/clnrm-core/src/service/backend.rs:243: Found Oracle Gap phrase 'placeholder' -> // For now, return a placeholder result
+/Users/sac/clnrm/crates/clnrm-core/src/service/backend.rs:244: Found Oracle Gap phrase 'placeholder' -> warn!("gVisor backend is not fully implemented yet - returning placeholder result");
+/Users/sac/clnrm/crates/clnrm-core/src/service/backend.rs:248: Found Oracle Gap phrase 'placeholder' -> stdout: "gVisor backend placeholder".to_string(),
+/Users/sac/clnrm/crates/clnrm-core/src/service/logs.rs:147: Found Oracle Gap phrase 'TODO' -> // TODO: Implement OTEL log export
+/Users/sac/clnrm/crates/clnrm-core/src/chaos/orchestrator.rs:152: Found Oracle Gap phrase 'placeholder' -> // For now, map to memory exhaustion as a placeholder
+/Users/sac/clnrm/crates/clnrm-core/src/services/readiness.rs:203: Found Oracle Gap phrase 'placeholder' -> // CRITICAL: Placeholder implementation
+/Users/sac/clnrm/crates/clnrm-core/src/validation/otel/validator.rs:437: Found Oracle Gap phrase 'mock' -> /// Note: Full end-to-end validation with mock collectors would require
+/Users/sac/clnrm/crates/clnrm-cli/src/doctor.rs:133: Found Oracle Gap phrase 'TODO' -> let mut migration_todos = 0;
+/Users/sac/clnrm/crates/clnrm-cli/src/doctor.rs:147: Found Oracle Gap phrase 'TODO' -> if (line.contains("TODO:") || line.contains("TODO ")) &&
+/Users/sac/clnrm/crates/clnrm-cli/src/doctor.rs:149: Found Oracle Gap phrase 'TODO' -> migration_todos += 1;
+/Users/sac/clnrm/crates/clnrm-cli/src/doctor.rs:178: Found Oracle Gap phrase 'TODO' -> if migration_todos > 0 {
+/Users/sac/clnrm/crates/clnrm-cli/src/doctor.rs:182: Found Oracle Gap phrase 'TODO' -> &format!("Found {} pending migration TODOs. System is incomplete.", migration_todos),
+/Users/sac/clnrm/crates/clnrm-cli/src/doctor.rs:183: Found Oracle Gap phrase 'TODO' -> "Manual: Implement the missing logic defined in the TODOs.",

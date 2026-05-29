@@ -58,6 +58,7 @@ impl NistAttackVector for DataExfiltrationVector {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn gall_nist_adversarial_engine_orchestration() {
     // ARRANGE: Initialize a properly configured CleanroomEnvironment
     let env = CleanroomEnvironment::new().await.expect("Failed to create CleanroomEnvironment");
@@ -100,6 +101,7 @@ async fn gall_nist_adversarial_engine_orchestration() {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn gall_nist_engine_empty_execution_completeness() {
     // ARRANGE
     let env = CleanroomEnvironment::new().await.expect("Failed to create env");
