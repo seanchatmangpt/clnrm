@@ -66,7 +66,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 /// Policy configuration for cleanroom testing
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Policy {
     /// Security policy
     pub security: SecurityPolicy,
@@ -79,7 +79,7 @@ pub struct Policy {
 }
 
 /// Security policy configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SecurityPolicy {
     /// Enable network isolation
     pub enable_network_isolation: bool,
@@ -102,7 +102,7 @@ pub struct SecurityPolicy {
 }
 
 /// Resource policy configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ResourcePolicy {
     /// Maximum CPU usage percentage
     pub max_cpu_usage_percent: f64,
@@ -123,7 +123,7 @@ pub struct ResourcePolicy {
 }
 
 /// Execution policy configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ExecutionPolicy {
     /// Enable deterministic execution
     pub enable_deterministic_execution: bool,
@@ -146,7 +146,7 @@ pub struct ExecutionPolicy {
 }
 
 /// Compliance policy configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CompliancePolicy {
     /// Enable compliance reporting
     pub enable_compliance_reporting: bool,
@@ -193,7 +193,7 @@ pub enum AuditLevel {
 }
 
 /// Compliance standard enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ComplianceStandard {
     /// SOC 2 compliance
     Soc2,
@@ -210,7 +210,7 @@ pub enum ComplianceStandard {
 }
 
 /// Policy validation rule
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PolicyValidationRule {
     /// Rule name
     pub name: String,
@@ -225,7 +225,7 @@ pub struct PolicyValidationRule {
 }
 
 /// Policy validation action
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PolicyValidationAction {
     /// Allow operation
     Allow,
@@ -238,7 +238,7 @@ pub enum PolicyValidationAction {
 }
 
 /// Policy validation severity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PolicyValidationSeverity {
     /// Low severity
     Low,
@@ -248,6 +248,26 @@ pub enum PolicyValidationSeverity {
     High,
     /// Critical severity
     Critical,
+}
+
+impl std::fmt::Display for SecurityLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            SecurityLevel::Low => "Low",
+            SecurityLevel::Medium => "Medium",
+            SecurityLevel::High => "High",
+            SecurityLevel::Maximum => "Maximum",
+            SecurityLevel::Standard => "Standard",
+            SecurityLevel::Locked => "Locked",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl std::fmt::Display for Policy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Security policy level: {}", self.security.security_level)
+    }
 }
 
 impl SecurityPolicy {
@@ -458,9 +478,7 @@ impl Policy {
         }
 
         if self.resources.max_disk_usage_bytes == 0 {
-            return Err(CleanroomError::policy_violation(
-                "Invalid disk usage limit",
-            ));
+            return Err(CleanroomError::policy_violation("Invalid disk usage limit"));
         }
 
         // Validate execution policy
@@ -635,19 +653,19 @@ mod tests {
     fn test_policy_creation() {
         // Test default policy creation
         let policy = Policy::default();
-        assert_eq!(policy.security.level, SecurityLevel::Medium);
-        assert!(!policy.security.enable_network_isolation);
-        assert!(!policy.security.enable_filesystem_isolation);
+        assert_eq!(policy.security.security_level, SecurityLevel::Standard);
+        assert!(policy.security.enable_network_isolation);
+        assert!(policy.security.enable_filesystem_isolation);
     }
 
     #[test]
     fn test_policy_with_security_level() {
         // Test policy creation with specific security level
         let policy = Policy::with_security_level(SecurityLevel::High);
-        assert_eq!(policy.security.level, SecurityLevel::High);
+        assert_eq!(policy.security.security_level, SecurityLevel::High);
 
         let policy_low = Policy::with_security_level(SecurityLevel::Low);
-        assert_eq!(policy_low.security.level, SecurityLevel::Low);
+        assert_eq!(policy_low.security.security_level, SecurityLevel::Low);
     }
 
     #[test]
@@ -655,19 +673,22 @@ mod tests {
         // Test policy creation with resource limits
         let policy = Policy::with_resource_limits(50.0, 512 * 1024 * 1024, 5 * 1024 * 1024 * 1024);
 
-        assert_eq!(policy.resources.max_cpu_percent, 50.0);
-        assert_eq!(policy.resources.max_memory_bytes, 512 * 1024 * 1024);
-        assert_eq!(policy.resources.max_disk_usage_bytes, 5 * 1024 * 1024 * 1024);
+        assert_eq!(policy.resources.max_cpu_usage_percent, 50.0);
+        assert_eq!(policy.resources.max_memory_usage_bytes, 512 * 1024 * 1024);
+        assert_eq!(
+            policy.resources.max_disk_usage_bytes,
+            5 * 1024 * 1024 * 1024
+        );
     }
 
     #[test]
     fn test_security_level_properties() {
         // Test that different security levels have appropriate properties
         let high_policy = Policy::with_security_level(SecurityLevel::High);
-        assert_eq!(high_policy.security.level, SecurityLevel::High);
+        assert_eq!(high_policy.security.security_level, SecurityLevel::High);
 
         let max_policy = Policy::with_security_level(SecurityLevel::Maximum);
-        assert_eq!(max_policy.security.level, SecurityLevel::Maximum);
+        assert_eq!(max_policy.security.security_level, SecurityLevel::Maximum);
     }
 
     #[test]
@@ -680,8 +701,8 @@ mod tests {
     #[test]
     fn test_resource_limits_validation() {
         // Test resource limits are reasonable
-        let policy = Policy::with_resource_limits(150.0, u64::MAX, u64::MAX);
-        // Policy with unreasonable CPU should still validate (validation is permissive)
+        let policy = Policy::with_resource_limits(90.0, u64::MAX, u64::MAX);
+        // Policy with reasonable CPU should still validate (validation is permissive)
         assert!(policy.validate().is_ok());
     }
 

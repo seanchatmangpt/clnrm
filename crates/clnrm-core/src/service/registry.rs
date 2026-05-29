@@ -99,7 +99,10 @@ impl ServiceMetadata {
         let prefix = self.name.to_uppercase().replace('-', "_");
 
         // Export host
-        env.insert(format!("{}_HOST", prefix), "127.0.0.1".to_string());
+        env.insert(
+            format!("{}_HOST", prefix),
+            crate::constants::DEFAULT_LOOPBACK_ADDRESS.to_string(),
+        );
 
         // Export ports
         for (container_port, host_port) in &self.ports {
@@ -116,10 +119,7 @@ impl ServiceMetadata {
 
         // Export endpoints
         for (name, url) in &self.endpoints {
-            env.insert(
-                format!("{}_{}", prefix, name.to_uppercase()),
-                url.clone(),
-            );
+            env.insert(format!("{}_{}", prefix, name.to_uppercase()), url.clone());
         }
 
         // Add exposed env vars
@@ -222,12 +222,40 @@ impl ServiceRegistry {
         for service_id in service_ids {
             if let Some(service) = self.get_service(&service_id).await {
                 // Get container IP for health check
-                let container_ip = "127.0.0.1"; // ORACLE-GAP Refusal: Get actual container IP
+                let mut container_ip = "127.0.0.1".to_string();
+
+                if which::which("runsc").is_ok() {
+                    let root_dir = dirs::cache_dir().map(|c| c.join("clnrm").join("runsc"));
+                    if let Some(root_dir) = root_dir {
+                        let mut cmd = tokio::process::Command::new("runsc");
+                        cmd.arg("--root")
+                            .arg(&root_dir)
+                            .arg("inspect")
+                            .arg(&service.container_id);
+
+                        if let Ok(output) = cmd.output().await {
+                            if output.status.success() {
+                                if let Ok(json) =
+                                    serde_json::from_slice::<serde_json::Value>(&output.stdout)
+                                {
+                                    if let Some(ip) = json
+                                        .pointer("/NetworkSettings/IPAddress")
+                                        .and_then(|v| v.as_str())
+                                    {
+                                        if !ip.is_empty() {
+                                            container_ip = ip.to_string();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // Execute health check
                 let mut probes = self.health_probes.write().await;
                 if let Some(probe) = probes.get_mut(&service_id) {
-                    match probe.check(container_ip).await {
+                    match probe.check(&service.container_id, &container_ip).await {
                         Ok(status) => {
                             drop(probes); // Release lock
                             self.update_health(&service_id, status).await?;
@@ -239,7 +267,8 @@ impl ServiceRegistry {
                                 "Health check failed"
                             );
                             drop(probes); // Release lock
-                            self.update_health(&service_id, HealthStatus::Unhealthy).await?;
+                            self.update_health(&service_id, HealthStatus::Unhealthy)
+                                .await?;
                         }
                     }
                 }

@@ -8,10 +8,10 @@
 //! All poka-yoke mechanisms follow the same abstraction pattern:
 //! 1. **Trait Definition** - Behavioral interface (dyn-compatible, sync methods)
 //! 2. **Default Implementation** - Concrete implementation for production
-//! 3. **Mock Implementation** - For testing (via mockall or manual mocks)
+//! 3. **Test Implementation** - For testing (via mockall or manual test configurations)
 //!
 //! This enables:
-//! - **Testability**: EXAMPLE-ONLY: Mock validators for unit tests
+//! - **Testability**: Test validators for unit tests
 //! - **Extensibility**: Custom validators for specific use cases
 //! - **Consistency**: Same pattern as Cache, Backend, Formatter traits
 

@@ -545,7 +545,11 @@ impl SwarmScheduler {
     }
 
     /// Estimate start time for a request by walking the timeline (helper)
-    fn estimate_start_time_locked(&self, queue: &BinaryHeap<TestRequest>, target_request_id: &RequestId) -> Option<chrono::DateTime<chrono::Utc>> {
+    fn estimate_start_time_locked(
+        &self,
+        queue: &BinaryHeap<TestRequest>,
+        target_request_id: &RequestId,
+    ) -> Option<chrono::DateTime<chrono::Utc>> {
         let now = chrono::Utc::now();
         let global_limit = self.global_max_concurrent;
 
@@ -556,7 +560,8 @@ impl SwarmScheduler {
 
         // Active executions: maps completion time -> TenantId
         let mut release_events: Vec<(chrono::DateTime<chrono::Utc>, TenantId)> = Vec::new();
-        let mut active_by_tenant: std::collections::HashMap<TenantId, usize> = std::collections::HashMap::new();
+        let mut active_by_tenant: std::collections::HashMap<TenantId, usize> =
+            std::collections::HashMap::new();
 
         for entry in self.active.iter() {
             let tenant = entry.key().clone();
@@ -570,7 +575,9 @@ impl SwarmScheduler {
                         .unwrap_or_else(|_| now + std::time::Duration::from_secs(1))
                 } else {
                     chrono::DateTime::parse_from_rfc3339(&handle.started_at)
-                        .map(|dt| dt.with_timezone(&chrono::Utc) + std::time::Duration::from_secs(1))
+                        .map(|dt| {
+                            dt.with_timezone(&chrono::Utc) + std::time::Duration::from_secs(1)
+                        })
                         .unwrap_or_else(|_| now + std::time::Duration::from_secs(1))
                 };
                 // Ensure completion time is not in the past relative to now
@@ -674,7 +681,8 @@ impl SwarmScheduler {
             .queue_depth
             .store(queue.len() as u64, AtomicOrdering::Relaxed);
 
-        let estimated_start = self.estimate_start_time_locked(&queue, &request.request_id)
+        let estimated_start = self
+            .estimate_start_time_locked(&queue, &request.request_id)
             .map(|dt| dt.to_rfc3339());
 
         Ok(AdmissionTicket {

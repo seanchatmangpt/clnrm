@@ -224,7 +224,7 @@ async fn pull_single_image(image: &str) -> Result<()> {
 
 /// Pull a single OCI image using OciImageLoader
 pub async fn pull_oci_image(image_ref: &str) -> Result<crate::backend::oci::OciImage> {
-    use crate::backend::oci::{OciImageLoader, ImageSource};
+    use crate::backend::oci::{ImageSource, OciImageLoader};
 
     // Parse image reference
     let source = if Path::new(image_ref).exists() {
@@ -265,4 +265,3 @@ pub async fn pull_oci_image(image_ref: &str) -> Result<crate::backend::oci::OciI
     let loader = OciImageLoader::new()?;
     loader.load_image(source).await
 }
-

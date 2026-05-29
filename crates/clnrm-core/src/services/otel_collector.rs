@@ -1,4 +1,3 @@
-
 use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::Result;
 
@@ -14,10 +13,16 @@ impl OtelCollectorPlugin {
 }
 
 impl ServicePlugin for OtelCollectorPlugin {
-    fn name(&self) -> &str { &self.name }
+    fn name(&self) -> &str {
+        &self.name
+    }
     fn start(&self) -> Result<crate::cleanroom::ServiceHandle> {
         Ok(ServiceHandle::new(&self.name))
     }
-    fn stop(&self, _handle: ServiceHandle) -> Result<()> { Ok(()) }
-    fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus { HealthStatus::Healthy }
+    fn stop(&self, _handle: ServiceHandle) -> Result<()> {
+        Ok(())
+    }
+    fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
+        HealthStatus::Healthy
+    }
 }

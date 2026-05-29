@@ -5,12 +5,14 @@
 use crate::error::{CleanroomError, Result};
 use crate::service::definition::ImageRef;
 use std::path::PathBuf;
-use tracing::{info, warn};
+use tracing::info;
 
 /// OCI image manager
 pub struct OciImageManager {
     /// Cache directory for OCI images
     cache_dir: PathBuf,
+    /// Real OCI image loader backend
+    image_loader: crate::backend::OciImageLoader,
 }
 
 impl OciImageManager {
@@ -21,7 +23,12 @@ impl OciImageManager {
             CleanroomError::container_error(format!("Failed to create OCI cache directory: {}", e))
         })?;
 
-        Ok(Self { cache_dir })
+        let image_loader = crate::backend::OciImageLoader::new()?;
+
+        Ok(Self {
+            cache_dir,
+            image_loader,
+        })
     }
 
     /// Create with custom cache directory
@@ -30,18 +37,15 @@ impl OciImageManager {
             CleanroomError::container_error(format!("Failed to create OCI cache directory: {}", e))
         })?;
 
-        Ok(Self { cache_dir })
+        let image_loader = crate::backend::OciImageLoader::new()?;
+
+        Ok(Self {
+            cache_dir,
+            image_loader,
+        })
     }
 
     /// Pull OCI image
-    ///
-    /// # Arguments
-    ///
-    /// * `image` - Image reference to pull
-    ///
-    /// # Returns
-    ///
-    /// Path to pulled image directory
     pub async fn pull_image(&self, image: &ImageRef) -> Result<PathBuf> {
         let image_str = image.to_string();
         info!("Pulling OCI image: {}", image_str);
@@ -59,18 +63,30 @@ impl OciImageManager {
             return Ok(image_dir);
         }
 
-        // ORACLE-GAP Refusal: Implement actual OCI image pulling
-        // This would involve:
-        // 1. Fetching image manifest from registry
-        // 2. Downloading image layers
-        // 3. Extracting layers to create rootfs
-        // 4. Generating OCI config
+        let registry = image
+            .registry
+            .clone()
+            .unwrap_or_else(|| "registry-1.docker.io".to_string());
+        let source = crate::backend::ImageSource::Registry {
+            registry,
+            repository: image.repository.clone(),
+            tag: image.tag.clone(),
+        };
 
-        warn!("OCI image pulling not yet implemented - creating EXAMPLE-ONLY: placeholder");
+        // Real image pull
+        let oci_image = self.image_loader.load_image(source).await?;
 
-        // Create EXAMPLE-ONLY: placeholder directory structure
         std::fs::create_dir_all(&image_dir).map_err(|e| {
             CleanroomError::container_error(format!("Failed to create image directory: {}", e))
+        })?;
+
+        // Write configuration json
+        let config_path = image_dir.join("config.json");
+        let config_str = serde_json::to_string_pretty(&oci_image.config).map_err(|e| {
+            CleanroomError::container_error(format!("Failed to serialize OCI config: {}", e))
+        })?;
+        std::fs::write(config_path, config_str).map_err(|e| {
+            CleanroomError::container_error(format!("Failed to write OCI config file: {}", e))
         })?;
 
         std::fs::create_dir_all(image_dir.join("rootfs")).map_err(|e| {
@@ -81,15 +97,6 @@ impl OciImageManager {
     }
 
     /// Create OCI bundle for container
-    ///
-    /// # Arguments
-    ///
-    /// * `image` - Image reference
-    /// * `bundle_dir` - Directory to create bundle in
-    ///
-    /// # Returns
-    ///
-    /// Path to created bundle
     pub async fn create_bundle(&self, image: &ImageRef, bundle_dir: PathBuf) -> Result<PathBuf> {
         info!("Creating OCI bundle for image: {}", image.to_string());
 
@@ -106,13 +113,17 @@ impl OciImageManager {
             CleanroomError::container_error(format!("Failed to create rootfs directory: {}", e))
         })?;
 
-        // ORACLE-GAP Refusal: Implement actual bundle creation
-        // This would involve:
-        // 1. Copying/linking rootfs from image
-        // 2. Generating config.json
-        // 3. Setting up mounts and network
-
-        warn!("OCI bundle creation not yet implemented - creating EXAMPLE-ONLY: placeholder");
+        // Copy config from image directory to bundle directory
+        let config_src = image_dir.join("config.json");
+        let config_dest = bundle_dir.join("config.json");
+        if config_src.exists() {
+            std::fs::copy(&config_src, &config_dest).map_err(|e| {
+                CleanroomError::container_error(format!(
+                    "Failed to copy config.json to bundle: {}",
+                    e
+                ))
+            })?;
+        }
 
         Ok(bundle_dir)
     }

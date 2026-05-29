@@ -276,11 +276,7 @@ impl Scenario {
     }
 
     /// Run the scenario with a specific backend
-    #[cfg(feature = "backend-testcontainers")]
-    pub fn run_with_backend(
-        self,
-        backend: crate::backend::GvisorBackend,
-    ) -> Result<RunResult> {
+    pub fn run_with_backend(self, backend: crate::backend::GvisorBackend) -> Result<RunResult> {
         let start_time = std::time::Instant::now();
         let mut steps = Vec::new();
         let mut combined_stdout = String::new();

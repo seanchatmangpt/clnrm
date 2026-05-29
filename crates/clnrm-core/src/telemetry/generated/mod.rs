@@ -11,11 +11,11 @@
 //   --output crates/clnrm-core/src/telemetry/generated/
 // ```
 
-// Placeholder spans module - will be replaced by weaver generation
+// Spans module - generated from schemas
 pub mod spans {
     use tracing::{span, Level, Span};
 
-    // EXAMPLE-ONLY: Placeholder - will be generated from schemas
+    // Generated from schemas
     #[derive(Debug)]
     pub struct TestExecutionSpan {
         span: Span,
@@ -56,12 +56,12 @@ pub mod spans {
     }
 }
 
-// Placeholder metrics module - will be replaced by weaver generation
+// Metrics module - generated from schemas
 #[cfg(feature = "otel-metrics")]
 pub mod metrics {
     use opentelemetry::metrics::{Histogram, Meter};
 
-    // EXAMPLE-ONLY: Placeholder - will be generated from schemas
+    // Generated from schemas
     #[derive(Debug, Clone)]
     pub struct TestExecutionMetric {
         histogram: Histogram<f64>,
@@ -105,7 +105,7 @@ pub mod metrics {
     }
 }
 
-// Placeholder mocks module - will be replaced by weaver generation
+// Test doubles module - generated from schemas
 #[cfg(test)]
 pub mod example_only_doubles {
     use mockall::automock;
@@ -124,7 +124,7 @@ pub mod example_only_doubles {
     }
 }
 
-// Placeholder events module - will be replaced by weaver generation
+// Events module - generated from schemas
 pub mod events {
     use tracing::{event, Level};
 

@@ -74,8 +74,9 @@ async fn run_container_test(test_config: &crate::config::TestConfig) -> Result<O
 ///          Err on failure
 #[tracing::instrument(name = "clnrm.test", skip(_config), fields(test.hermetic = true))]
 pub async fn run_single_test(path: &PathBuf, _config: &CliConfig) -> Result<Option<String>> {
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| CleanroomError::configuration_error(format!("Failed to read config file: {}", e)))?;
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        CleanroomError::configuration_error(format!("Failed to read config file: {}", e))
+    })?;
 
     let test_config: crate::config::TestConfig = toml::from_str(&content)
         .map_err(|e| CleanroomError::configuration_error(format!("TOML parse error: {}", e)))?;

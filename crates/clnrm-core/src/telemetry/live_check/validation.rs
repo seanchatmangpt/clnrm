@@ -69,7 +69,11 @@ impl ConformanceValidator {
             violations: result.0,
             coverage: result.1,
             passed: result.2,
-            duration_ms: if self.config.max_validation_time_ms == 0 { 1 } else { duration_ms }, // Ensure > 0 for time budget tests
+            duration_ms: if self.config.max_validation_time_ms == 0 {
+                1
+            } else {
+                duration_ms
+            }, // Ensure > 0 for time budget tests
             within_time_budget: within_budget,
         }
     }

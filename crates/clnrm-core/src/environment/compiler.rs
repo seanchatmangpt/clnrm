@@ -554,7 +554,10 @@ impl EnvironmentCompiler {
                 service_id.clone(),
                 ImageDigest {
                     image: format!("{}:{}", service_def.image, service_def.tag),
-                    digest: format!("sha256:{}", hex::encode(sha2::Sha256::digest(service_id.as_bytes()))), // Derived at runtime
+                    digest: format!(
+                        "sha256:{}",
+                        hex::encode(sha2::Sha256::digest(service_id.as_bytes()))
+                    ), // Derived at runtime
                     platform: Some("linux/amd64".to_string()),
                 },
             );

@@ -62,7 +62,9 @@ impl StopConfig {
     /// Validate configuration
     pub fn validate(&self) -> Result<()> {
         if self.phase1_timeout == 0 {
-            return Err(CleanroomError::configuration_error("phase1_timeout must be > 0"));
+            return Err(CleanroomError::configuration_error(
+                "phase1_timeout must be > 0",
+            ));
         }
 
         if self.phase2_timeout < self.phase1_timeout {
@@ -381,9 +383,12 @@ impl StopCoordinator {
     /// Flush OTLP buffers
     async fn flush_otlp_buffers(&self) -> Result<()> {
         // OTEL SDK flush happens when the guard is dropped
-        // For now, we just ensure a small delay to allow in-flight exports
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        debug!("✅ OTLP buffers flushed");
+        // v1.4.0: Use a more robust wait with polling of export statistics if possible
+        // For now, we use a controlled wait that could be signaled in the future
+        let flush_timeout = Duration::from_millis(500);
+        debug!("⌛ Waiting for OTLP buffers to flush ({:?})", flush_timeout);
+        tokio::time::sleep(flush_timeout).await;
+        debug!("✅ OTLP buffers flush wait complete");
         Ok(())
     }
 
@@ -398,31 +403,47 @@ impl StopCoordinator {
             .output_dir
             .join("validation_report.json");
 
-        // Poll for report file with timeout
+        // Poll for report file with timeout and exponential backoff
         let start = std::time::Instant::now();
+        let mut delay = Duration::from_millis(50);
+        let max_delay = Duration::from_millis(500);
+
         loop {
             if report_path.exists() {
-                // Wait a bit for file to be fully written
-                tokio::time::sleep(Duration::from_millis(100)).await;
-
-                let report_json = tokio::fs::read_to_string(&report_path).await?;
-                let report: ValidationReport = serde_json::from_str(&report_json)?;
-
-                let elapsed = start.elapsed();
-                info!("✅ Validation report collected ({}ms)", elapsed.as_millis());
-
-                return Ok(report);
+                // Instead of a fixed magic sleep, we try to read and parse the file.
+                // If it fails because it's being written, we'll retry with backoff.
+                match tokio::fs::read_to_string(&report_path).await {
+                    Ok(report_json) => {
+                        match serde_json::from_str::<ValidationReport>(&report_json) {
+                            Ok(report) => {
+                                let elapsed = start.elapsed();
+                                info!("✅ Validation report collected ({}ms)", elapsed.as_millis());
+                                return Ok(report);
+                            }
+                            Err(e) => {
+                                debug!(
+                                    "Report file exists but is not yet valid JSON: {}. Retrying...",
+                                    e
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug!("Failed to read existing report file: {}. Retrying...", e);
+                    }
+                }
             }
 
             if start.elapsed() > timeout {
                 warn!(
-                    "⚠️  Validation report not found within timeout ({}s)",
+                    "⚠️  Validation report not found or invalid within timeout ({}s)",
                     timeout.as_secs()
                 );
                 return Ok(ValidationReport::default());
             }
 
-            tokio::time::sleep(Duration::from_millis(50)).await;
+            tokio::time::sleep(delay).await;
+            delay = std::cmp::min(delay * 2, max_delay);
         }
     }
 

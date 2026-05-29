@@ -35,8 +35,7 @@ use crate::error::{CleanroomError, Result};
 use once_cell::sync::Lazy;
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
-use std::io::{self, Write as IoWrite};
-use std::net::TcpListener;
+use std::io::Write as IoWrite;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Instant;
@@ -94,7 +93,7 @@ impl PortAllocator {
     ///
     /// - Primary: 4317-4327 (11 ports, OTLP standard)
     /// - Fallback: 5317-5327 (11 ports)
-    /// - Extended: 6317-6337 (21 ports)
+    /// - Extended: 6317-7337 (1021 ports)
     ///
     /// # Errors
     ///
@@ -112,7 +111,7 @@ impl PortAllocator {
         Ok(Self {
             primary_range: PortRange::new(4317, 4327),
             fallback_range: PortRange::new(5317, 5327),
-            extended_range: PortRange::new(6317, 6337),
+            extended_range: PortRange::new(6317, 7337),
             lock_dir,
         })
     }
@@ -316,7 +315,6 @@ impl PortAllocator {
                         Ok(Some(PortLock {
                             port,
                             _lock_file: file,
-                            lock_file_path,
                         }))
                     } else {
                         tracing::warn!(
@@ -364,7 +362,6 @@ impl PortAllocator {
                 return Ok(Some(PortLock {
                     port,
                     _lock_file: file,
-                    lock_file_path,
                 }));
             } else {
                 tracing::debug!("Port {} not available (Windows)", port);
@@ -382,16 +379,18 @@ impl PortAllocator {
     /// * `Ok(false)` - Port is in use
     /// * `Err` - I/O error during check
     async fn is_port_available(port: u16) -> Result<bool> {
-        use socket2::{Socket, Domain, Type, Protocol};
+        use socket2::{Domain, Protocol, Socket, Type};
         use std::net::SocketAddr;
 
         let check_bind = |addr_str: &str| -> Result<bool> {
-            let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP))
-                .map_err(|e| CleanroomError::internal_error(format!("Failed to create socket: {}", e)))?;
+            let socket =
+                Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP)).map_err(|e| {
+                    CleanroomError::internal_error(format!("Failed to create socket: {}", e))
+                })?;
             let _ = socket.set_reuse_address(true);
-            let address: SocketAddr = format!("{}:{}", addr_str, port)
-                .parse()
-                .map_err(|e| CleanroomError::internal_error(format!("Failed to parse address: {}", e)))?;
+            let address: SocketAddr = format!("{}:{}", addr_str, port).parse().map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to parse address: {}", e))
+            })?;
             match socket.bind(&address.into()) {
                 Ok(_) => Ok(true),
                 Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => Ok(false),
@@ -448,8 +447,6 @@ pub struct PortLock {
     port: u16,
     /// Lock file handle (held until drop)
     _lock_file: File,
-    /// Lock file path (for cleanup)
-    lock_file_path: PathBuf,
 }
 
 impl PortLock {

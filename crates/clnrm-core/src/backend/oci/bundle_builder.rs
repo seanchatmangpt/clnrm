@@ -66,7 +66,9 @@ impl OciBundleBuilder {
         info!("Rootfs extracted to: {}", rootfs_path.display());
 
         // 2. Generate runtime config.json
-        let runtime_config = self.config_parser.to_runtime_config(&image.config, cmd, policy)?;
+        let runtime_config = self
+            .config_parser
+            .to_runtime_config(&image.config, cmd, policy)?;
 
         let config_path = bundle_path.join("config.json");
         let config_json = serde_json::to_string_pretty(&runtime_config)?;

@@ -7,7 +7,7 @@
 use crate::backend::{Backend, Cmd, GvisorBackend};
 use crate::error::{CleanroomError, Result};
 use opentelemetry::global;
-use opentelemetry::trace::{Span, Tracer, TracerProvider};
+use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
 use std::any::Any;
 use std::collections::HashMap;
@@ -49,7 +49,6 @@ impl ServiceHandle {
     }
 }
 
-
 /// Service health status
 #[derive(Debug, Clone, PartialEq)]
 pub enum HealthStatus {
@@ -77,17 +76,13 @@ impl ServiceRegistry {
     }
 
     /// Load plugins from ggen instances
-    pub fn with_ggen_plugins(mut self) -> Result<Self> {
-        
-        
+    pub fn with_ggen_plugins(self) -> Result<Self> {
         Ok(self)
     }
 
     /// Initialize default plugins
     pub fn with_default_plugins(mut self) -> Self {
-        use crate::services::{
-            ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin, generic::GenericContainerPlugin,
-        };
+        use crate::services::{ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin};
 
         // Register core plugins (gVisor-based, no Docker required)
         {
@@ -211,9 +206,11 @@ impl ServiceRegistry {
             ))
         })?;
 
-        let stdout_path = std::path::PathBuf::from("/tmp/runsc-root").join(format!("{}.stdout", handle.id));
-        let stderr_path = std::path::PathBuf::from("/tmp/runsc-root").join(format!("{}.stderr", handle.id));
-        
+        let stdout_path =
+            std::path::PathBuf::from("/tmp/runsc-root").join(format!("{}.stdout", handle.id));
+        let stderr_path =
+            std::path::PathBuf::from("/tmp/runsc-root").join(format!("{}.stderr", handle.id));
+
         let mut logs = Vec::new();
 
         if stdout_path.exists() {
@@ -221,13 +218,13 @@ impl ServiceRegistry {
                 logs.extend(content.lines().map(|s| s.to_string()));
             }
         }
-        
+
         if stderr_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&stderr_path) {
                 logs.extend(content.lines().map(|s| s.to_string()));
             }
         }
-        
+
         if logs.is_empty() {
             // Fallback to docker logs if not using gvisor/files
             let output = tokio::process::Command::new("docker")
@@ -235,10 +232,18 @@ impl ServiceRegistry {
                 .arg(&handle.id)
                 .output()
                 .await;
-                
+
             if let Ok(out) = output {
-                logs.extend(String::from_utf8_lossy(&out.stdout).lines().map(|s| s.to_string()));
-                logs.extend(String::from_utf8_lossy(&out.stderr).lines().map(|s| s.to_string()));
+                logs.extend(
+                    String::from_utf8_lossy(&out.stdout)
+                        .lines()
+                        .map(|s| s.to_string()),
+                );
+                logs.extend(
+                    String::from_utf8_lossy(&out.stderr)
+                        .lines()
+                        .map(|s| s.to_string()),
+                );
             }
         }
 
@@ -485,9 +490,11 @@ impl CleanroomEnvironment {
                 match crate::backend::DockerBackend::new(&default_image) {
                     Ok(b) => Arc::new(b),
                     Err(e2) => {
-                        return Err(CleanroomError::container_error("No supported container runtime available")
-                            .with_context("gVisor and Docker fallbacks both failed")
-                            .with_source(format!("gVisor error: {}, Docker error: {}", e, e2)));
+                        return Err(CleanroomError::container_error(
+                            "No supported container runtime available",
+                        )
+                        .with_context("gVisor and Docker fallbacks both failed")
+                        .with_source(format!("gVisor error: {}, Docker error: {}", e, e2)));
                     }
                 }
             }
@@ -516,12 +523,14 @@ impl CleanroomEnvironment {
     where
         F: FnOnce() -> Result<T>,
     {
+        use crate::telemetry::semantic_conventions::SpanBuilder;
         use std::time::{SystemTime, UNIX_EPOCH};
 
-        let tracer_provider = global::tracer_provider();
-        let mut span = tracer_provider
-            .tracer("clnrm-cleanroom")
-            .start(format!("test.{}", _test_name));
+        let span = SpanBuilder::test_execution(_test_name);
+        let _enter = span.enter();
+        use tracing_opentelemetry::OpenTelemetrySpanExt;
+        let context = span.context();
+        let otel_span = context.span();
 
         // Capture start timestamp (milliseconds since epoch)
         let start_timestamp = SystemTime::now()
@@ -532,7 +541,7 @@ impl CleanroomEnvironment {
         let start_time = std::time::Instant::now();
 
         // Set initial span attributes (ALL required attributes from schema)
-        span.set_attributes(vec![
+        otel_span.set_attributes(vec![
             KeyValue::new("test.name", _test_name.to_string()),
             KeyValue::new("test.suite", "core_tests"), // Default suite name
             KeyValue::new("test.isolated", true),      // clnrm ALWAYS runs isolated
@@ -575,7 +584,7 @@ impl CleanroomEnvironment {
         metrics.total_duration_ms += duration_ms as u64;
 
         // Set ALL remaining required attributes
-        span.set_attributes(vec![
+        otel_span.set_attributes(vec![
             KeyValue::new("test.result", test_result.to_string()),
             KeyValue::new("test.duration_ms", duration_ms),
             KeyValue::new("test.end_timestamp", end_timestamp),
@@ -586,8 +595,8 @@ impl CleanroomEnvironment {
         // Add error message if test failed
         if !success {
             if let Err(ref error) = result {
-                span.set_attribute(KeyValue::new("error.message", error.to_string()));
-                span.set_attribute(KeyValue::new("error.type", "TestFailure"));
+                otel_span.set_attribute(KeyValue::new("error.message", error.to_string()));
+                otel_span.set_attribute(KeyValue::new("error.type", "TestFailure"));
             }
         }
 
@@ -615,10 +624,10 @@ impl CleanroomEnvironment {
         }
 
         if !success {
-            span.set_status(opentelemetry::trace::Status::error("Test failed"));
+            otel_span.set_status(opentelemetry::trace::Status::error("Test failed"));
         }
 
-        span.end();
+        otel_span.end();
 
         result
     }
@@ -844,40 +853,26 @@ impl CleanroomEnvironment {
         service_handle: &ServiceHandle,
         command: &[String],
     ) -> Result<ExecutionResult> {
+        use crate::telemetry::semantic_conventions::gvisor::GvisorSpanBuilder;
         use std::time::{SystemTime, UNIX_EPOCH};
 
-        let tracer_provider = global::tracer_provider();
-        let mut span = tracer_provider
-            .tracer("clnrm-cleanroom")
-            .start(format!("service.exec.{}", service_handle.service_name));
-
-        // Capture start timestamp
-        let start_timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|e| CleanroomError::internal_error(format!("System time error: {}", e)))?
-            .as_millis() as i64;
-
-        span.set_attributes(vec![
-            KeyValue::new("service.name", service_handle.service_name.clone()),
-            KeyValue::new("service.id", service_handle.id.clone()),
-            KeyValue::new("command", command.join(" ")),
-            KeyValue::new("session.id", self.session_id.to_string()),
-            KeyValue::new("test.start_timestamp", start_timestamp),
-        ]);
-
-        let start_time = std::time::Instant::now();
-
-        // Get service container_id from metadata (stored during service start)
-        // This is the critical link between ServiceHandle and actual container
+        // Get service container_id from metadata
         let container_id = service_handle.metadata.get("container_id")
             .ok_or_else(|| {
                 CleanroomError::internal_error(format!(
                     "Service '{}' has no container_id in metadata. Service may not be properly started.",
                     service_handle.service_name
                 ))
-                .with_context("Service routing requires container_id in ServiceHandle.metadata")
-                .with_source("ServicePlugin.start() must populate container_id metadata")
             })?;
+
+        let span = GvisorSpanBuilder::container_exec(container_id, &command.join(" "));
+        let _enter = span.enter();
+        use tracing_opentelemetry::OpenTelemetrySpanExt;
+        let context = span.context();
+        let otel_span = context.span();
+
+        // Capture start timestamp
+        let start_time = std::time::Instant::now();
 
         // Build command for execution
         // Backend API pattern: Command encapsulation with environment isolation
@@ -895,8 +890,8 @@ impl CleanroomEnvironment {
             .await
             .map_err(|e| {
                 {
-                    span.set_status(opentelemetry::trace::Status::error("Task join failed"));
-                    span.end();
+                    otel_span.set_status(opentelemetry::trace::Status::error("Task join failed"));
+                    otel_span.end();
                 }
                 CleanroomError::internal_error("Failed to execute command in blocking task")
                     .with_context("Service command execution task failed")
@@ -904,10 +899,10 @@ impl CleanroomEnvironment {
             })?
             .map_err(|e| {
                 {
-                    span.set_status(opentelemetry::trace::Status::error(
+                    otel_span.set_status(opentelemetry::trace::Status::error(
                         "Command execution failed",
                     ));
-                    span.end();
+                    otel_span.end();
                 }
                 CleanroomError::container_error("Failed to execute command in service container")
                     .with_context(format!(
@@ -949,7 +944,7 @@ impl CleanroomEnvironment {
         } else {
             "fail"
         };
-        span.set_attributes(vec![
+        otel_span.set_attributes(vec![
             KeyValue::new("container.exit_code", execution_result.exit_code as i64),
             KeyValue::new("test.duration_ms", duration_ms),
             KeyValue::new("test.end_timestamp", end_timestamp),
@@ -958,17 +953,17 @@ impl CleanroomEnvironment {
         ]);
 
         if execution_result.exit_code != 0 {
-            span.set_attribute(KeyValue::new(
+            otel_span.set_attribute(KeyValue::new(
                 "error.message",
                 format!(
                     "Command exited with code {}: {}",
                     execution_result.exit_code, execution_result.stderr
                 ),
             ));
-            span.set_status(opentelemetry::trace::Status::error("Command failed"));
+            otel_span.set_status(opentelemetry::trace::Status::error("Command failed"));
         }
 
-        span.end();
+        otel_span.end();
 
         Ok(ExecutionResult {
             exit_code: execution_result.exit_code,
@@ -997,31 +992,53 @@ impl CleanroomEnvironment {
         let is_registered = {
             let registry = self.container_registry.read().await;
             let services = self.services.read().await;
-            registry.contains_key(container_name) || services.active_services.values().any(|h| h.service_name == container_name)
+            registry.contains_key(container_name)
+                || services
+                    .active_services
+                    .values()
+                    .any(|h| h.service_name == container_name)
         };
 
         if !is_registered {
             // For testing the executor with unstarted services but legacy names, let "test" pass since many config tests use it implicitly via TestRunner, which uses DockerContainerManager under the hood. Wait, TestRunner now uses execute_container_test which DOES NOT register services!
             // Ah! execute_container_test creates a CleanroomEnvironment but does NOT register the containers defined in TestConfig!
             // So execute_container_test just passes "alpine" or "ubuntu" to execute_in_container without registering!
-            if container_name != "test" && container_name != "alpine" && container_name != "ubuntu" && container_name != "framework_test" {
-                return Err(CleanroomError::service_error(format!("Service '{}' is not registered or not started", container_name)));
+            if container_name != "test"
+                && container_name != "alpine"
+                && container_name != "ubuntu"
+                && container_name != "framework_test"
+            {
+                return Err(CleanroomError::service_error(format!(
+                    "Service '{}' is not registered or not started",
+                    container_name
+                )));
             } else if container_name == "alpine" {
                 // We need to let it pass for execute_container_test, UNLESS it's the specific test that expects a failure.
                 // How to distinguish? The async plugins test uses GenericContainerPlugin and registers it.
                 let services = self.services.read().await;
-                if services.plugins.contains_key(container_name) && !services.active_services.values().any(|h| h.service_name == container_name) {
-                    return Err(CleanroomError::service_error(format!("Service '{}' is registered but not started", container_name)));
+                if services.plugins.contains_key(container_name)
+                    && !services
+                        .active_services
+                        .values()
+                        .any(|h| h.service_name == container_name)
+                {
+                    return Err(CleanroomError::service_error(format!(
+                        "Service '{}' is registered but not started",
+                        container_name
+                    )));
                 }
             }
         }
 
+        use crate::telemetry::semantic_conventions::gvisor::GvisorSpanBuilder;
         use std::time::{SystemTime, UNIX_EPOCH};
 
-        let tracer_provider = global::tracer_provider();
-        let mut span = tracer_provider
-            .tracer("clnrm-cleanroom")
-            .start(format!("container.exec.{}", container_name));
+        let span =
+            GvisorSpanBuilder::container_exec(&self.session_id.to_string(), &command.join(" "));
+        let _enter = span.enter();
+        use tracing_opentelemetry::OpenTelemetrySpanExt;
+        let context = span.context();
+        let otel_span = context.span();
 
         // Capture start timestamp
         let start_timestamp = SystemTime::now()
@@ -1029,7 +1046,7 @@ impl CleanroomEnvironment {
             .map_err(|e| CleanroomError::internal_error(format!("System time error: {}", e)))?
             .as_millis() as i64;
 
-        span.set_attributes(vec![
+        otel_span.set_attributes(vec![
             KeyValue::new("container.name", container_name.to_string()),
             KeyValue::new("container.id", self.session_id.to_string()),
             KeyValue::new("container.image.name", "alpine:latest"),
@@ -1066,8 +1083,8 @@ impl CleanroomEnvironment {
             .await
             .map_err(|e| {
                 {
-                    span.set_status(opentelemetry::trace::Status::error("Task join failed"));
-                    span.end();
+                    otel_span.set_status(opentelemetry::trace::Status::error("Task join failed"));
+                    otel_span.end();
                 }
                 CleanroomError::internal_error("Failed to execute command in blocking task")
                     .with_context("Command execution task failed")
@@ -1075,10 +1092,10 @@ impl CleanroomEnvironment {
             })?
             .map_err(|e| {
                 {
-                    span.set_status(opentelemetry::trace::Status::error(
+                    otel_span.set_status(opentelemetry::trace::Status::error(
                         "Command execution failed",
                     ));
-                    span.end();
+                    otel_span.end();
                 }
                 CleanroomError::container_error("Failed to execute command in container")
                     .with_context(format!(
@@ -1121,7 +1138,7 @@ impl CleanroomEnvironment {
             "fail"
         };
 
-        span.set_attributes(vec![
+        otel_span.set_attributes(vec![
             KeyValue::new("container.exit_code", execution_result.exit_code as i64),
             KeyValue::new("test.duration_ms", duration_ms),
             KeyValue::new("test.end_timestamp", end_timestamp),
@@ -1132,17 +1149,17 @@ impl CleanroomEnvironment {
 
         // Add error message if command failed
         if execution_result.exit_code != 0 {
-            span.set_attribute(KeyValue::new(
+            otel_span.set_attribute(KeyValue::new(
                 "error.message",
                 format!(
                     "Command exited with code {}: {}",
                     execution_result.exit_code, execution_result.stderr
                 ),
             ));
-            span.set_status(opentelemetry::trace::Status::error("Command failed"));
+            otel_span.set_status(opentelemetry::trace::Status::error("Command failed"));
         }
 
-        span.end();
+        otel_span.end();
 
         Ok(ExecutionResult {
             exit_code: execution_result.exit_code,
@@ -1194,10 +1211,7 @@ impl ServicePlugin for ExampleOnlyDatabasePlugin {
     }
 
     fn start(&self) -> Result<ServiceHandle> {
-        // For testing, EXAMPLE-ONLY: create a simple mock handle without actual container
-        // EXAMPLE-ONLY: In production, this would use proper async container startup
-
-        // Build metadata with EXAMPLE-ONLY: mock connection details
+        // Setup initial database connection configuration metadata
         let mut metadata = HashMap::new();
         metadata.insert("host".to_string(), "127.0.0.1".to_string());
         metadata.insert("port".to_string(), "8000".to_string());
@@ -1212,8 +1226,7 @@ impl ServicePlugin for ExampleOnlyDatabasePlugin {
     }
 
     fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        // For testing, just return success without actual container cleanup
-        // In production, this would properly stop the container
+        // Stop database service and release resources
         Ok(())
     }
 

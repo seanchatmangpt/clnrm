@@ -3,7 +3,7 @@
 //! Provides pre-configured templates that can be extended and customized.
 
 use crate::error::Result;
-use crate::service::definition::{ImageRef, ResourceSpec, ServiceDefinition, VolumeMount};
+use crate::service::definition::{ImageRef, ResourceSpec, ServiceDefinition};
 use crate::service::health::{HealthCheck, HttpScheme, ReadinessProbe};
 use crate::service::network::{PortMapping, Protocol};
 use std::collections::HashMap;
@@ -216,10 +216,7 @@ impl ServiceTemplates {
             }],
             volumes: vec![],
             health_check: Some(HealthCheck::Exec {
-                command: vec![
-                    "redis-cli".to_string(),
-                    "ping".to_string(),
-                ],
+                command: vec!["redis-cli".to_string(), "ping".to_string()],
                 interval: "5s".to_string(),
                 timeout: "3s".to_string(),
                 retries: 3,

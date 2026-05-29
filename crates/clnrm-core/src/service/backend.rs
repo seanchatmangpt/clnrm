@@ -5,11 +5,10 @@
 use crate::backend::{Backend, Cmd, RunResult};
 use crate::error::{CleanroomError, Result};
 use crate::policy::Policy;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::{Duration, Instant};
-use tracing::{info, warn};
+use tracing::info;
 
 /// gVisor platform type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,11 +33,15 @@ impl GvisorPlatform {
 
     /// Detect best available platform
     pub fn detect() -> Self {
-        // Check if /dev/kvm exists and is accessible
-        if std::path::Path::new("/dev/kvm").exists() {
-            if let Ok(metadata) = std::fs::metadata("/dev/kvm") {
-                if metadata.permissions().mode() & 0o666 != 0 {
-                    return Self::Kvm;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            // Check if /dev/kvm exists and is accessible
+            if std::path::Path::new("/dev/kvm").exists() {
+                if let Ok(metadata) = std::fs::metadata("/dev/kvm") {
+                    if metadata.permissions().mode() & 0o666 != 0 {
+                        return Self::Kvm;
+                    }
                 }
             }
         }
@@ -94,10 +97,6 @@ impl Default for ResourceLimits {
 /// gVisor backend for container execution
 #[derive(Debug, Clone)]
 pub struct GvisorBackend {
-    /// Path to runsc binary
-    runtime_path: PathBuf,
-    /// Root directory for container state
-    root_dir: PathBuf,
     /// Platform configuration
     platform: GvisorPlatform,
     /// Network mode
@@ -139,7 +138,7 @@ impl GvisorBackend {
         };
 
         // Find runsc binary
-        let runtime_path = Self::find_runsc()?;
+        let _runtime_path = Self::find_runsc()?;
 
         // Create root directory for container state
         let root_dir = std::env::temp_dir().join("clnrm-gvisor");
@@ -148,8 +147,6 @@ impl GvisorBackend {
         })?;
 
         Ok(Self {
-            runtime_path,
-            root_dir,
             platform: GvisorPlatform::detect(),
             network_mode: NetworkMode::Sandbox,
             resource_limits: ResourceLimits::default(),
@@ -229,31 +226,17 @@ impl GvisorBackend {
 
     /// Execute command in gVisor container
     fn execute_in_container(&self, cmd: &Cmd) -> Result<RunResult> {
-        let start_time = Instant::now();
-
         info!(
             "Starting gVisor container with image {}:{}",
             self.image_name, self.image_tag
         );
 
-        // Generate unique container ID
-        let container_id = format!("clnrm-{}", uuid::Uuid::new_v4());
+        let image_ref = format!("{}:{}", self.image_name, self.image_tag);
+        let backend = crate::backend::GvisorBackend::new(&image_ref)?
+            .with_timeout(self.timeout)
+            .with_policy(self.policy.clone());
 
-        // ORACLE-GAP Refusal: Implement OCI bundle creation and runsc execution
-        // For now, return a EXAMPLE-ONLY: placeholder result
-        warn!("gVisor backend is not fully implemented yet - returning EXAMPLE-ONLY: placeholder result");
-
-        Ok(RunResult {
-            exit_code: 0,
-            stdout: "gVisor backend EXAMPLE-ONLY: placeholder".to_string(),
-            stderr: String::new(),
-            duration_ms: start_time.elapsed().as_millis() as u64,
-            steps: Vec::new(),
-            redacted_env: Vec::new(),
-            backend: "gvisor".to_string(),
-            concurrent: false,
-            step_order: Vec::new(),
-        })
+        backend.run_cmd(cmd.clone())
     }
 }
 

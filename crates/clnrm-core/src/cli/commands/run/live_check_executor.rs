@@ -55,32 +55,32 @@ use std::path::PathBuf;
 ///
 /// # Returns
 /// * `Err(CleanroomError::ConfigError)` explaining the workaround
+use crate::cli::types::CliConfig;
+
 pub async fn execute_with_live_check(
-    _config: &TestConfig,
-    _paths: &[PathBuf],
-    _parallel: bool,
-    _jobs: Option<usize>,
+    config: &TestConfig,
+    paths: &[PathBuf],
+    parallel: bool,
+    jobs: Option<usize>,
 ) -> Result<()> {
-    Err(CleanroomError::configuration_error(
-        "Live-check CLI integration is not yet complete (deferred to v1.3.1).\n\
-         \n\
-         The underlying LiveCheckOrchestrator infrastructure is production-ready.\n\
-         Use LiveCheckOrchestrator directly from Rust code:\n\
-         \n\
-         ```rust\n\
-         use clnrm_core::telemetry::live_check::orchestrator::LiveCheckOrchestrator;\n\
-         use clnrm_core::config::WeaverConfig;\n\
-         \n\
-         let config = WeaverConfig::default();\n\
-         let orchestrator = LiveCheckOrchestrator::new(config)?;\n\
-         let orchestrator = orchestrator.start_weaver().await?;\n\
-         // ... run your tests ...\n\
-         let completed = orchestrator.stop_weaver().await?;\n\
-         println!(\"{}\", completed.summary());\n\
-         ```\n\
-         \n\
-         See docs/architecture/v1.3.0/ for complete API usage examples.",
-    ))
+    let weaver_config = config.weaver.as_ref().ok_or_else(|| {
+        CleanroomError::configuration_error("Weaver configuration missing in TestConfig.")
+    })?;
+
+    if !weaver_config.enabled {
+        return Err(CleanroomError::configuration_error(
+            "Weaver validation is disabled in configuration.",
+        ));
+    }
+
+    let mut cli_config = CliConfig::default();
+    cli_config.parallel = parallel;
+    if let Some(j) = jobs {
+        cli_config.jobs = j;
+    }
+    cli_config.validate = true; // Force validation mode
+
+    crate::cli::commands::run::run_tests_with_shard(paths, &cli_config, None).await
 }
 
 #[cfg(test)]
@@ -116,11 +116,11 @@ mod tests {
             weaver: Some(WeaverConfig::default()),
             performance: None,
             chaos: None,
+            containers: None,
         }
     }
 
     #[test]
-    #[ignore = "CLI integration deferred to v1.3.1 - function is currently an explicit refusal"]
     fn test_config_validation_missing_weaver_config() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         // Create config with no weaver config
@@ -145,6 +145,7 @@ mod tests {
             weaver: None, // No weaver config
             performance: None,
             chaos: None,
+            containers: None,
         };
         let paths = vec![PathBuf::from("tests/")];
 
@@ -152,11 +153,14 @@ mod tests {
 
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("not yet complete"));
+        assert!(
+            err_msg.contains("Weaver configuration missing"),
+            "Expected Weaver configuration missing error, got: {}",
+            err_msg
+        );
     }
 
     #[test]
-    #[ignore = "CLI integration deferred to v1.3.1 - function is currently an explicit refusal"]
     fn test_config_validation_disabled_live_check() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut config = create_test_config();
@@ -167,6 +171,10 @@ mod tests {
 
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("not yet complete"));
+        assert!(
+            err_msg.contains("Weaver validation is disabled"),
+            "Expected disabled Weaver validation error, got: {}",
+            err_msg
+        );
     }
 }

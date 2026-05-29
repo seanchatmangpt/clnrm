@@ -265,10 +265,10 @@ mod tests {
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();
 
         // Test that span builders create valid spans
-        let span = clnrm_core::telemetry::semantic_conventions::SpanBuilder::test_execution("test_1");
+        let span = SpanBuilder::test_execution("test_1");
         assert_eq!(span.metadata().map(|m| m.name()), Some("test.execute"));
 
-        let span = clnrm_core::telemetry::semantic_conventions::SpanBuilder::container_start("alpine:latest", "abc123");
+        let span = SpanBuilder::container_start("alpine:latest", "abc123");
         assert_eq!(span.metadata().map(|m| m.name()), Some("container.start"));
     }
 

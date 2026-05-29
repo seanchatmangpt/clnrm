@@ -9,9 +9,9 @@ use std::path::PathBuf;
 
 // Module structure for backends
 pub mod capabilities;
+pub mod docker; // v3.0: Seamless Colima/Docker backend fallback
 pub mod engine; // v1.7.0: Backend-agnostic execution engine (Phase 7)
 pub mod extensions;
-pub mod docker; // v3.0: Seamless Colima/Docker backend fallback
 pub mod gvisor; // v2.0.0: gVisor backend with OCI image loading
 pub mod multi_pool; // v1.6.0: Multi-image container pooling
 pub mod oci; // v2.0.0: OCI image loading and management
@@ -24,12 +24,12 @@ pub use capabilities::{
     CapabilityRegistryStatistics, CapabilityRequirement, FeatureType, RequirementType,
     StandardCapabilities,
 };
+pub use docker::DockerBackend;
 pub use engine::{
     BackendSelector, BackendType, ContainerConfig, ContainerEngine, EnvironmentHandle,
     ExecutionEngine, Output, ResourceUsage, WasiConfig, WasiEngine,
 };
 pub use extensions::{BackendExt, EnhancedBackend, ExecutionMode, ResourceLimits};
-pub use docker::DockerBackend;
 pub use gvisor::GvisorBackend;
 pub use multi_pool::{MultiImagePoolManager, MultiPoolStats};
 pub use oci::{
@@ -182,9 +182,7 @@ impl AutoBackend {
         match name {
             _ => Err(crate::error::CleanroomError::new(
                 crate::error::ErrorKind::ConfigurationError,
-                format!(
-                    "{}", name
-                ),
+                format!("{}", name),
             )),
         }
     }

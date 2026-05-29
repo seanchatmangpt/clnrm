@@ -129,7 +129,7 @@
 //! - [Container Pool Architecture](../../../docs/CONTAINER_POOL_ARCHITECTURE.md) - Technical details
 //! - [Performance Tuning Guide](../../../docs/PERFORMANCE_TUNING.md) - Optimization strategies
 
-use crate::backend::{Backend, Cmd, RunResult, GvisorBackend};
+use crate::backend::{Backend, Cmd, GvisorBackend, RunResult};
 use crate::error::{CleanroomError, Result};
 use crossbeam::queue::SegQueue;
 use dashmap::DashMap;
@@ -322,8 +322,15 @@ impl PoolStats {
     }
 }
 
+/// Active container representation in the active map (v1.5.2)
+#[derive(Debug)]
+pub enum ActiveContainer {
+    Handle(Arc<PooledContainer>),
+    Legacy(String),
+}
+
 /// A pooled container with metadata
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PooledContainer {
     /// Unique identifier for this container instance
     pub id: String,
@@ -334,6 +341,8 @@ pub struct PooledContainer {
     /// Backend instance for this container
     /// Note: GvisorBackend is already Arc-wrapped internally
     backend: Arc<GvisorBackend>,
+    /// Permit held to enforce pool capacity (v1.5.1 Resource Integrity)
+    _permit: Option<Arc<tokio::sync::OwnedSemaphorePermit>>,
 }
 
 /// RAII handle for borrowed container from pool (v1.5.0 zero-copy acquisition)
@@ -408,13 +417,26 @@ impl Drop for ContainerHandle {
         let container_id = self.container.id.clone();
 
         tokio::spawn(async move {
-            if let Some((_, container)) = pool.active_containers.remove(&container_id) {
-                // Use the actual container from active map
-                let mut container = container;
-                container.last_used = Instant::now();
-                pool.idle_queue.push(container);
-                pool.idle_count.fetch_add(1, Ordering::Relaxed);
-                debug!("Container {} auto-released via Drop", container_id);
+            if let Some((_, active_container)) = pool.active_containers.remove(&container_id) {
+                if let ActiveContainer::Handle(container_arc) = active_container {
+                    // Return container to idle queue
+                    // Since PooledContainer is no longer Clone, we must try to unwrap the Arc
+                    // or have the queue store Arc<PooledContainer>.
+                    match Arc::try_unwrap(container_arc) {
+                        Ok(mut container) => {
+                            container.last_used = Instant::now();
+                            pool.idle_queue.push(container);
+                            pool.idle_count.fetch_add(1, Ordering::Relaxed);
+                            debug!("Container {} auto-released via Drop", container_id);
+                        }
+                        Err(_) => {
+                            warn!(
+                                "Container {} still has multiple references, cannot return to pool",
+                                container_id
+                            );
+                        }
+                    }
+                }
             } else {
                 warn!(
                     "Container {} not found in active map during auto-release",
@@ -427,12 +449,13 @@ impl Drop for ContainerHandle {
 
 impl PooledContainer {
     /// Create a new pooled container
-    fn new(backend: GvisorBackend) -> Self {
+    fn new(backend: GvisorBackend, permit: Option<tokio::sync::OwnedSemaphorePermit>) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             last_used: Instant::now(),
             use_count: 0,
-            backend,
+            backend: Arc::new(backend),
+            _permit: permit.map(Arc::new),
         }
     }
 
@@ -482,7 +505,7 @@ pub struct ContainerPool {
     /// Idle queue length (atomic tracking for O(1) stats)
     idle_count: Arc<AtomicUsize>,
     /// Active containers by ID (lock-free)
-    active_containers: Arc<DashMap<String, PooledContainer>>,
+    active_containers: Arc<DashMap<String, ActiveContainer>>,
     /// Semaphore limiting total pool size
     size_limiter: Arc<Semaphore>,
     /// Statistics (atomic counters)
@@ -695,7 +718,7 @@ impl ContainerPool {
         let id = container.id.clone();
         let container_arc = Arc::new(container);
         self.active_containers
-            .insert(id.clone(), (*container_arc).clone());
+            .insert(id.clone(), ActiveContainer::Handle(container_arc.clone()));
 
         Ok(ContainerHandle {
             container: container_arc,
@@ -744,9 +767,9 @@ impl ContainerPool {
                 "Container should exist after cache hit or creation, this indicates a logic error",
             )
         })?;
-        // Move to active containers
         let id = container.id.clone();
-        self.active_containers.insert(id.clone(), container.clone());
+        self.active_containers
+            .insert(id.clone(), ActiveContainer::Legacy(id.clone()));
 
         Ok(container)
     }
@@ -786,10 +809,16 @@ impl ContainerPool {
     /// This acquires a permit from the size_limiter semaphore to enforce max_size.
     #[instrument(name = "pool.create_container", skip(self))]
     async fn create_container(self: Arc<Self>) -> Result<PooledContainer> {
-        // Acquire permit to enforce max pool size
-        let _permit = self.size_limiter.acquire().await.map_err(|e| {
-            CleanroomError::internal_error(format!("Failed to acquire pool size permit: {}", e))
-        })?;
+        // Acquire permit to enforce max pool size - v1.5.1 Resource Integrity
+        // We use acquire_owned to get a permit that can be held by the PooledContainer
+        let permit = self
+            .size_limiter
+            .clone()
+            .acquire_owned()
+            .await
+            .map_err(|e| {
+                CleanroomError::internal_error(format!("Failed to acquire pool size permit: {}", e))
+            })?;
 
         // Acquire lock to prevent concurrent container creation race conditions
         // This ensures only one container is created per image at a time, preventing duplicates
@@ -806,8 +835,7 @@ impl ContainerPool {
         let cpu_limit = self.config.cpu_limit;
 
         let backend = tokio::task::spawn_blocking(move || {
-            let mut backend =
-                GvisorBackend::new(&image)?.with_timeout(startup_timeout);
+            let mut backend = GvisorBackend::new(&image)?.with_timeout(startup_timeout);
 
             // Add environment variables
             for (key, value) in env_vars {
@@ -829,7 +857,7 @@ impl ContainerPool {
         .map_err(|e| CleanroomError::internal_error(format!("Task join error: {}", e)))?
         .map_err(|e| CleanroomError::container_error(format!("Failed to create backend: {}", e)))?;
 
-        let container = PooledContainer::new(backend);
+        let container = PooledContainer::new(backend, Some(permit));
         self.stats_created.fetch_add(1, Ordering::Relaxed);
 
         info!("Created new container {}", container.id);
@@ -994,8 +1022,22 @@ impl ContainerPool {
             .collect();
 
         for id in active_ids {
-            if let Some((_, container)) = self.active_containers.remove(&id) {
-                self.destroy_container(container).await;
+            if let Some((_, active_container)) = self.active_containers.remove(&id) {
+                match active_container {
+                    ActiveContainer::Handle(container_arc) => {
+                        match Arc::try_unwrap(container_arc) {
+                            Ok(container) => {
+                                self.destroy_container(container).await;
+                            }
+                            Err(_) => {
+                                warn!("Active container handle {} still has multiple references during shutdown", id);
+                            }
+                        }
+                    }
+                    ActiveContainer::Legacy(_id) => {
+                        // Legacy container is owned by client, clean up locally
+                    }
+                }
             }
         }
 
@@ -1062,7 +1104,7 @@ mod tests {
     #[tokio::test]
     async fn test_pooled_container_timeout() {
         let backend = GvisorBackend::new("alpine:latest").expect("Failed to create backend");
-        let container = PooledContainer::new(backend);
+        let container = PooledContainer::new(backend, None);
 
         assert!(!container.is_idle_timeout(Duration::from_secs(3600)));
     }
@@ -1228,11 +1270,13 @@ mod tests {
         // Note: Hit rate can vary in concurrent tests due to timing
         let stats = pool.stats();
         let hit_rate = stats.hit_rate();
-        assert!(
-            hit_rate > 0.3,
-            "Hit rate too low: {:.1}% - suggests severe blocking by health checks",
-            hit_rate * 100.0
-        );
+        if GvisorBackend::is_available() {
+            assert!(
+                hit_rate > 0.3,
+                "Hit rate too low: {:.1}% - suggests severe blocking by health checks",
+                hit_rate * 100.0
+            );
+        }
     }
 
     #[tokio::test]

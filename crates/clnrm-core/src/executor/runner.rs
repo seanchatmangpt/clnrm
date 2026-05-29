@@ -9,6 +9,7 @@ use crate::executor::container_manager::{ContainerHandle, ContainerManager, Exec
 use regex::Regex;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use tracing::debug;
 
 /// Result of a single step execution
 #[derive(Debug, Clone)]
@@ -263,6 +264,7 @@ impl<M: ContainerManager> TestRunner<M> {
         let mut last_result: Option<ExecResult> = None;
         let mut attempt = 0;
         let start = Instant::now();
+        let mut current_delay = retry_delay;
 
         // Retry loop
         while attempt < max_attempts {
@@ -304,7 +306,14 @@ impl<M: ContainerManager> TestRunner<M> {
 
             // Wait before retry (unless last attempt)
             if attempt < max_attempts {
-                tokio::time::sleep(retry_delay).await;
+                debug!(
+                    "Step '{}' failed, retrying in {:?} (attempt {}/{})",
+                    step.name, current_delay, attempt, max_attempts
+                );
+                tokio::time::sleep(current_delay).await;
+
+                // Exponential backoff: double the delay for next attempt, up to a reasonable max
+                current_delay = std::cmp::min(current_delay * 2, Duration::from_secs(10));
             }
         }
 

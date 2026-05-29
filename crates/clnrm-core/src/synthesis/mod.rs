@@ -134,3 +134,4 @@ pub use coverage::{CapabilityGap, CoverageAnalyzer, HermeticityGap, OntologyGap}
 pub use synthesizer::{
     AdversarialCondition, ScenarioSynthesizer, SynthesisConfig, SynthesisVariant,
 };
+pub mod adversarial;

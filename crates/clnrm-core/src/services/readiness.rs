@@ -7,12 +7,16 @@
 use crate::error::{CleanroomError, Result};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
+use url::Url;
 
 /// Default timeout for waiting for spans (30 seconds)
 pub const DEFAULT_SPAN_WAIT_TIMEOUT_SECS: u64 = 30;
 
 /// Poll interval for checking span appearance (500ms)
 const SPAN_POLL_INTERVAL_MS: u64 = 500;
+
+/// OTLP Health Check Port (standard)
+const OTLP_HEALTH_CHECK_PORT: u16 = 13133;
 
 /// Configuration for span-based readiness checks
 #[derive(Debug, Clone)]
@@ -200,21 +204,86 @@ async fn check_span_in_otlp_http(span_name: &str, endpoint: &str) -> Result<bool
 ///
 /// Queries the collector via gRPC to check for span existence.
 async fn check_span_in_otlp_grpc(span_name: &str, endpoint: &str) -> Result<bool> {
-    // Note: A true gRPC trace query requires tonic protobuf definitions.
-    // For now, we fallback to querying the internal span storage if it's running locally,
-    // or querying the HTTP port if the collector exposes both.
-    // We will use the native telemetry span storage since all validation runs through it.
-    let spans = crate::telemetry::span_storage::get_collected_spans();
-    let exists = spans.iter().any(|span| span.name == span_name);
-    
-    if exists {
-        tracing::debug!("Found span {} in local gRPC/validation storage", span_name);
-        Ok(true)
-    } else {
-        tracing::debug!(
-            endpoint = %endpoint,
-            "Span not yet received via gRPC stream"
-        );
-        Ok(false)
+    // Robust health check query to ensure collector is available
+    if !check_otlp_health(endpoint).await? {
+        tracing::debug!(endpoint = %endpoint, "OTLP collector not healthy via gRPC/HTTP");
+        return Ok(false);
     }
+
+    // Since a true gRPC trace query requires complex protobuf definitions (tonic),
+    // we use a robust fallback: query the collector's HTTP query API if available,
+    // which is standard for most production collectors (e.g. Jaeger, OTEL Collector with query extension).
+    // We explicitly avoid falling back to internal local storage to ensure remote compatibility.
+    let http_endpoint = match convert_grpc_to_http_endpoint(endpoint) {
+        Ok(ep) => ep,
+        Err(_) => return Ok(false),
+    };
+
+    check_span_in_otlp_http(span_name, &http_endpoint).await
+}
+
+/// Check OTLP collector health via gRPC or HTTP fallback
+async fn check_otlp_health(endpoint: &str) -> Result<bool> {
+    // 1. Try gRPC connection health check
+    if let Ok(true) = check_grpc_health(endpoint).await {
+        return Ok(true);
+    }
+
+    // 2. Try HTTP health endpoint fallback (standard port 13133)
+    if let Ok(true) = check_http_health(endpoint).await {
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+/// Check gRPC endpoint health
+async fn check_grpc_health(endpoint: &str) -> Result<bool> {
+    let channel = tonic::transport::Endpoint::from_shared(endpoint.to_string())
+        .map_err(|e| CleanroomError::network_error(format!("Invalid gRPC endpoint: {}", e)))?
+        .connect_timeout(Duration::from_secs(1))
+        .connect()
+        .await;
+
+    match channel {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false),
+    }
+}
+
+/// Check HTTP health endpoint (standard OTLP collector health port)
+async fn check_http_health(endpoint: &str) -> Result<bool> {
+    let mut url = Url::parse(endpoint)
+        .map_err(|e| CleanroomError::network_error(format!("Invalid endpoint URL: {}", e)))?;
+
+    // Fallback to standard health port 13133 if connection on primary port fails
+    url.set_port(Some(OTLP_HEALTH_CHECK_PORT))
+        .map_err(|_| CleanroomError::network_error("Failed to set health check port"))?;
+    url.set_path("/");
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(1))
+        .build()
+        .map_err(|e| {
+            CleanroomError::network_error("Failed to create HTTP client").with_source(e.to_string())
+        })?;
+
+    match client.get(url).send().await {
+        Ok(resp) => Ok(resp.status().is_success()),
+        Err(_) => Ok(false),
+    }
+}
+
+/// Convert gRPC endpoint to probable HTTP endpoint
+fn convert_grpc_to_http_endpoint(endpoint: &str) -> Result<String> {
+    let mut url = Url::parse(endpoint)
+        .map_err(|e| CleanroomError::network_error(format!("Invalid endpoint URL: {}", e)))?;
+
+    // Typically gRPC is on 4317, HTTP on 4318
+    if url.port() == Some(4317) {
+        url.set_port(Some(4318))
+            .map_err(|_| CleanroomError::network_error("Failed to set HTTP port"))?;
+    }
+
+    Ok(url.to_string())
 }

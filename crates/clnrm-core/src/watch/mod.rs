@@ -5,16 +5,16 @@
 //!
 //! # Architecture
 //!
-//! - `FileWatcher` trait: Abstract file watching interface (EXAMPLE-ONLY: testable via mocks)
+//! - `FileWatcher` trait: Abstract file watching interface (testable via test doubles)
 //! - `NotifyWatcher`: Production implementation using `notify` crate
 //! - `WatchConfig`: Configuration for watch behavior
 //! - `debouncer`: Time-based event batching to prevent excessive runs
 //!
 //! # Chicago TDD Approach
 //!
-//! This module follows Chicago School (mockist) TDD:
+//! This module follows Chicago School TDD:
 //! - Tests verify object interactions and collaborations
-//! - EXAMPLE-ONLY: Mocks define contracts between components
+//! - Test doubles define contracts between components
 //! - Focus on behavior verification over state testing
 //!
 //! # Core Team Compliance

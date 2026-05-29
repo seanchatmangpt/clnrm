@@ -283,7 +283,7 @@ mod tests {
             history: None,
         };
 
-        let runtime_config = parser.to_runtime_config(&image_config, None).unwrap();
+        let runtime_config = parser.to_runtime_config(&image_config, None, None).unwrap();
 
         assert_eq!(runtime_config.oci_version, "1.0.2");
         assert_eq!(runtime_config.process.user, "1000:1000");

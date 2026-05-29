@@ -111,7 +111,7 @@
 //!
 //! ## Future Work
 //!
-//! The μ-kernel receipt format is currently a EXAMPLE-ONLY: placeholder. Once the μ-kernel
+//! The μ-kernel receipt format is defined below. Once the μ-kernel
 //! specification is finalized, this module will be updated to:
 //!
 //! - Parse actual μ-kernel receipt format

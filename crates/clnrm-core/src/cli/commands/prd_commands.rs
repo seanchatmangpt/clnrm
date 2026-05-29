@@ -1,7 +1,6 @@
-//! PRD v1.0 additional command implementations (EXAMPLE-ONLY: stubs)
+//! PRD v1.0 additional command implementations
 //!
-//! These are EXAMPLE-ONLY: placeholder implementations for PRD v1.0 features.
-//! Full implementations to be added as PRD requirements are finalized.
+//! Provides CLI command implementations for PRD v1.0 features.
 
 use crate::cli::types::OutputFormat;
 use crate::error::{CleanroomError, Result};

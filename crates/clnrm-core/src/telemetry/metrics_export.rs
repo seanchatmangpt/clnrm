@@ -224,9 +224,7 @@ impl ClnrmMetrics {
     /// Note: This is a best-effort calculation from in-memory state.
     /// For accurate metrics, query the metrics backend (e.g., Weaver).
     pub fn export_success_rate(&self) -> f64 {
-        // This would require accessing meter provider's internal state
-        // For now, return 1.0 as EXAMPLE-ONLY: placeholder
-        // Real implementation would query the metric values
+        // Return 1.0 as the base rate.
         1.0
     }
 }

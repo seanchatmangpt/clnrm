@@ -3,6 +3,7 @@
 //! This module provides comprehensive backend capabilities management,
 //! including capability discovery, validation, and feature detection.
 
+use crate::capabilities::effects::EffectSet;
 use crate::capabilities::scenario::CapabilityId;
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
@@ -33,6 +34,8 @@ pub struct BackendCapability {
     pub requirements: Vec<CapabilityRequirement>,
     /// Capability features
     pub features: Vec<CapabilityFeature>,
+    /// Allowed effects
+    pub allowed_effects: EffectSet,
     /// Capability metadata
     pub metadata: HashMap<String, String>,
 }
@@ -498,6 +501,7 @@ impl StandardCapabilities {
                     parameters: HashMap::new(),
                     default_value: Some("full".to_string()),
                 }],
+                allowed_effects: EffectSet::new(),
                 metadata: HashMap::new(),
             },
             BackendCapability {
@@ -516,6 +520,7 @@ impl StandardCapabilities {
                     parameters: HashMap::new(),
                     default_value: Some("random".to_string()),
                 }],
+                allowed_effects: EffectSet::new(),
                 metadata: HashMap::new(),
             },
         ]
@@ -537,6 +542,7 @@ impl StandardCapabilities {
                     parameters: HashMap::new(),
                     default_value: Some("100.0".to_string()),
                 }],
+                allowed_effects: EffectSet::new(),
                 metadata: HashMap::new(),
             },
             BackendCapability {
@@ -552,6 +558,7 @@ impl StandardCapabilities {
                     parameters: HashMap::new(),
                     default_value: Some("1073741824".to_string()), // 1GB
                 }],
+                allowed_effects: EffectSet::new(),
                 metadata: HashMap::new(),
             },
         ]
@@ -576,6 +583,7 @@ impl StandardCapabilities {
                 parameters: HashMap::new(),
                 default_value: Some("full".to_string()),
             }],
+            allowed_effects: EffectSet::new(),
             metadata: HashMap::new(),
         }]
     }

@@ -320,11 +320,11 @@ impl GvisorSpanBuilder {
 
 /// Helper functions for recording gvisor-specific span events
 pub mod events {
-    use opentelemetry::trace::Span;
+    use opentelemetry::trace::SpanRef;
     use opentelemetry::KeyValue;
 
     /// Record sandbox.created event
-    pub fn record_sandbox_created<S: Span>(span: &mut S, sandbox_id: &str, bundle_path: &str) {
+    pub fn record_sandbox_created(span: &SpanRef<'_>, sandbox_id: &str, bundle_path: &str) {
         span.add_event(
             "sandbox.created",
             vec![
@@ -335,7 +335,7 @@ pub mod events {
     }
 
     /// Record sandbox.started event
-    pub fn record_sandbox_started<S: Span>(span: &mut S, pid: u32, network_mode: &str) {
+    pub fn record_sandbox_started(span: &SpanRef<'_>, pid: u32, network_mode: &str) {
         span.add_event(
             "sandbox.started",
             vec![
@@ -346,7 +346,7 @@ pub mod events {
     }
 
     /// Record exec.completed event
-    pub fn record_exec_completed<S: Span>(span: &mut S, exit_code: i32, duration_ms: f64) {
+    pub fn record_exec_completed(span: &SpanRef<'_>, exit_code: i32, duration_ms: f64) {
         span.add_event(
             "exec.completed",
             vec![
@@ -357,8 +357,8 @@ pub mod events {
     }
 
     /// Record isolation.verified event
-    pub fn record_isolation_verified<S: Span>(
-        span: &mut S,
+    pub fn record_isolation_verified(
+        span: &SpanRef<'_>,
         verified: bool,
         isolation_type: &str,
         method: &str,
@@ -374,8 +374,8 @@ pub mod events {
     }
 
     /// Record resource usage snapshot event
-    pub fn record_resource_snapshot<S: Span>(
-        span: &mut S,
+    pub fn record_resource_snapshot(
+        span: &SpanRef<'_>,
         memory_bytes: u64,
         cpu_time_ns: u64,
         pid_count: u32,
@@ -391,7 +391,7 @@ pub mod events {
     }
 
     /// Record syscall blocked event (debug mode)
-    pub fn record_syscall_blocked<S: Span>(span: &mut S, syscall_name: &str) {
+    pub fn record_syscall_blocked(span: &SpanRef<'_>, syscall_name: &str) {
         span.add_event(
             "syscall.blocked",
             vec![KeyValue::new("syscall.name", syscall_name.to_string())],
@@ -430,7 +430,6 @@ pub mod metrics {
             .build();
 
         // Note: Gauge observation requires callback registration
-        // This is a EXAMPLE-ONLY: placeholder for the actual implementation
         let _ = (sandbox_id, bytes, gauge);
     }
 
@@ -444,10 +443,7 @@ pub mod metrics {
 
         counter.add(
             cpu_time_ns,
-            &[KeyValue::new(
-                "gvisor.sandbox.id",
-                sandbox_id.to_string(),
-            )],
+            &[KeyValue::new("gvisor.sandbox.id", sandbox_id.to_string())],
         );
     }
 
@@ -459,7 +455,10 @@ pub mod metrics {
             .with_description("Number of syscalls blocked by gvisor seccomp")
             .build();
 
-        counter.add(1, &[KeyValue::new("syscall.name", syscall_name.to_string())]);
+        counter.add(
+            1,
+            &[KeyValue::new("syscall.name", syscall_name.to_string())],
+        );
     }
 
     /// Record I/O operations

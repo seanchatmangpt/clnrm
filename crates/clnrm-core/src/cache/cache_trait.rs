@@ -106,7 +106,10 @@ mod tests {
         }
 
         fn update(&self, file_path: &Path, _rendered_content: &str) -> Result<()> {
-            self.update_calls.lock().unwrap().push(file_path.to_path_buf());
+            self.update_calls
+                .lock()
+                .unwrap()
+                .push(file_path.to_path_buf());
             Ok(())
         }
 
@@ -142,7 +145,10 @@ mod tests {
 
         assert_eq!(stats.total_files, 10);
         assert!(stats.cache_path.is_some());
-        assert_eq!(stats.cache_path.as_ref().unwrap(), &PathBuf::from("/tmp/test"));
+        assert_eq!(
+            stats.cache_path.as_ref().unwrap(),
+            &PathBuf::from("/tmp/test")
+        );
     }
 
     #[test]

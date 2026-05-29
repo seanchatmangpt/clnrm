@@ -12,6 +12,7 @@
 //! - `deserializers` - Custom serde deserializers
 //! - `validation` - FMEA poka-yoke validation (fail-fast error checking)
 
+pub mod adversarial;
 pub mod deserializers;
 pub mod loader;
 pub mod otel;
@@ -24,8 +25,8 @@ pub mod weaver;
 // Re-export commonly used types for backward compatibility
 pub use types::{
     ArtifactsConfig, ChaosConfigSection, ChaosExperiment, DeterminismConfig, LimitsConfig,
-    MetaConfig, PerformanceTestConfig, PolicyConfig, ReportConfig, ScenarioConfig, StepConfig,
-    TestConfig, TestMetadata, TestMetadataSection, TimeoutConfig,
+    MetaConfig, PerformanceTestConfig, PolicyConfig, ReportConfig, ScenarioConfig, StepAssertion,
+    StepConfig, TestConfig, TestMetadata, TestMetadataSection, TimeoutConfig,
 };
 
 pub use services::{HealthCheckConfig, ServiceConfig, VolumeConfig};

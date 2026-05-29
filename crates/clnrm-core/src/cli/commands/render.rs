@@ -29,8 +29,9 @@ pub fn render_template_with_vars(
     show_vars: bool,
 ) -> Result<()> {
     // Parse variable map from JSON
-    let user_vars: HashMap<String, serde_json::Value> = serde_json::from_str(map)
-        .map_err(|e| CleanroomError::configuration_error(format!("Invalid variable map JSON: {}", e)))?;
+    let user_vars: HashMap<String, serde_json::Value> = serde_json::from_str(map).map_err(|e| {
+        CleanroomError::configuration_error(format!("Invalid variable map JSON: {}", e))
+    })?;
 
     // Load template file
     let template_content = std::fs::read_to_string(template)

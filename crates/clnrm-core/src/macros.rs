@@ -244,11 +244,15 @@ impl ServicePlugin for DatabaseServicePlugin {
     }
 
     fn start(&self) -> Result<ServiceHandle> {
-        Err(crate::error::CleanroomError::not_implemented("Database lifecycle via macro is not yet supported in the gVisor backend"))
+        Err(crate::error::CleanroomError::not_implemented(
+            "Database lifecycle via macro is not yet supported in the gVisor backend",
+        ))
     }
 
     fn stop(&self, _handle: ServiceHandle) -> Result<()> {
-        Err(crate::error::CleanroomError::not_implemented("Database lifecycle via macro is not yet supported"))
+        Err(crate::error::CleanroomError::not_implemented(
+            "Database lifecycle via macro is not yet supported",
+        ))
     }
 
     fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
@@ -390,20 +394,28 @@ impl ServicePlugin for WebServerServicePlugin {
 ///
 /// Set up a database service with the specified image
 pub async fn with_database(_image: &str) -> Result<()> {
-    Err(crate::error::CleanroomError::not_implemented("Database lifecycle via declarative helper is not yet supported in the gVisor backend"))
+    Err(crate::error::CleanroomError::not_implemented(
+        "Database lifecycle via declarative helper is not yet supported in the gVisor backend",
+    ))
 }
 
 /// Set up a cache service with the specified image
 pub async fn with_cache(_image: &str) -> Result<()> {
-    Err(crate::error::CleanroomError::not_implemented("Cache lifecycle via declarative helper is not yet supported"))
+    Err(crate::error::CleanroomError::not_implemented(
+        "Cache lifecycle via declarative helper is not yet supported",
+    ))
 }
 
 /// Set up a message queue service with the specified image
 pub async fn with_message_queue(_image: &str) -> Result<()> {
-    Err(crate::error::CleanroomError::not_implemented("Message queue lifecycle via declarative helper is not yet supported"))
+    Err(crate::error::CleanroomError::not_implemented(
+        "Message queue lifecycle via declarative helper is not yet supported",
+    ))
 }
 
 /// Set up a web server service with the specified image
 pub async fn with_web_server(_image: &str) -> Result<()> {
-    Err(crate::error::CleanroomError::not_implemented("Web server lifecycle via declarative helper is not yet supported"))
+    Err(crate::error::CleanroomError::not_implemented(
+        "Web server lifecycle via declarative helper is not yet supported",
+    ))
 }

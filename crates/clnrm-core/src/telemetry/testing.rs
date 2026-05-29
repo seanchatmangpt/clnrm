@@ -55,30 +55,40 @@ impl TestTracerProvider {
 
     /// Get all captured spans
     pub fn get_spans(&self) -> Vec<SpanData> {
-        // For now, return empty vector - real implementation would convert
-        // from OpenTelemetry SDK SpanData to our SpanData
-        Vec::new()
+        let sdk_spans = self.exporter.get_finished_spans().unwrap_or_default();
+        crate::validation::SpanValidator::from_span_data(&sdk_spans)
+            .map(|v| v.spans)
+            .unwrap_or_default()
     }
 
     /// Find spans by name
-    pub fn find_spans_by_name(&self, _name: &str) -> Vec<SpanData> {
-        // For now, return empty vector - real implementation would convert
-        // from OpenTelemetry SDK SpanData to our SpanData
-        Vec::new()
+    pub fn find_spans_by_name(&self, name: &str) -> Vec<SpanData> {
+        self.get_spans()
+            .into_iter()
+            .filter(|s| s.name == name)
+            .collect()
     }
 
     /// Find spans by trace ID
-    pub fn find_spans_by_trace_id(&self, _trace_id: &str) -> Vec<SpanData> {
-        // For now, return empty vector - real implementation would convert
-        // from OpenTelemetry SDK SpanData to our SpanData
-        Vec::new()
+    pub fn find_spans_by_trace_id(&self, trace_id: &str) -> Vec<SpanData> {
+        self.get_spans()
+            .into_iter()
+            .filter(|s| s.trace_id == trace_id)
+            .collect()
     }
 
     /// Find spans by attribute
-    pub fn find_spans_by_attribute(&self, _key: &str, _value: &str) -> Vec<SpanData> {
-        // For now, return empty vector - real implementation would convert
-        // from OpenTelemetry SDK SpanData to our SpanData
-        Vec::new()
+    pub fn find_spans_by_attribute(&self, key: &str, value: &str) -> Vec<SpanData> {
+        self.get_spans()
+            .into_iter()
+            .filter(|s| {
+                s.attributes
+                    .get(key)
+                    .and_then(|v| v.as_str())
+                    .map(|v| v == value)
+                    .unwrap_or(false)
+            })
+            .collect()
     }
 
     /// Clear all captured spans

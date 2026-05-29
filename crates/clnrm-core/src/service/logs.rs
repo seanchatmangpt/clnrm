@@ -6,7 +6,6 @@ use crate::error::{CleanroomError, Result};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::info;
 
 /// Log format
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,8 +90,9 @@ impl LogCollector {
         logs.push(entry.clone());
 
         // Trim buffer if exceeded
-        if logs.len() > self.buffer_size {
-            logs.drain(0..logs.len() - self.buffer_size);
+        let len = logs.len();
+        if len > self.buffer_size {
+            logs.drain(0..len - self.buffer_size);
         }
 
         // Write to destination
@@ -145,7 +145,7 @@ impl LogCollector {
     /// Write log entry to OTEL collector
     async fn write_to_otel(&self, endpoint: &str, entry: &LogEntry) -> Result<()> {
         let client = reqwest::Client::new();
-        
+
         let log_payload = serde_json::json!({
             "resourceLogs": [{
                 "resource": {
@@ -157,20 +157,25 @@ impl LogCollector {
                 "scopeLogs": [{
                     "scope": { "name": "clnrm.logs" },
                     "logRecords": [{
-                        "timeUnixNano": entry.timestamp.timestamp_nanos_opt().unwrap_or(0) * 1_000_000,
+                        "timeUnixNano": entry.timestamp.duration_since(std::time::SystemTime::UNIX_EPOCH)
+                            .map(|d| d.as_nanos() as u64)
+                            .unwrap_or(0),
                         "severityText": "INFO",
-                        "body": { "stringValue": entry.message }
+                        "body": { "stringValue": entry.message.clone() }
                     }]
                 }]
             }]
         });
 
-        client.post(endpoint)
+        client
+            .post(endpoint)
             .header("Content-Type", "application/json")
             .json(&log_payload)
             .send()
             .await
-            .map_err(|e| CleanroomError::execution_error(format!("Failed to export log to OTEL: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::execution_error(format!("Failed to export log to OTEL: {}", e))
+            })?;
 
         Ok(())
     }
@@ -190,19 +195,17 @@ impl LogCollector {
                     entry.message
                 )
             }
-            LogFormat::Json => {
-                serde_json::json!({
-                    "timestamp": chrono::DateTime::<chrono::Utc>::from(entry.timestamp).to_rfc3339(),
-                    "level": entry.level,
-                    "message": entry.message,
-                    "source": match entry.source {
-                        LogSource::Stdout => "stdout",
-                        LogSource::Stderr => "stderr",
-                    },
-                    "container_id": entry.container_id,
-                })
-                .to_string()
-            }
+            LogFormat::Json => serde_json::json!({
+                "timestamp": chrono::DateTime::<chrono::Utc>::from(entry.timestamp).to_rfc3339(),
+                "level": entry.level,
+                "message": entry.message,
+                "source": match entry.source {
+                    LogSource::Stdout => "stdout",
+                    LogSource::Stderr => "stderr",
+                },
+                "container_id": entry.container_id,
+            })
+            .to_string(),
             LogFormat::Structured => {
                 format!(
                     "timestamp={} level={} source={} container_id={} message={}",

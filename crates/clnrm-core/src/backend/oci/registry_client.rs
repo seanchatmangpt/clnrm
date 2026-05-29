@@ -1,6 +1,8 @@
 //! Docker Registry API v2 client for pulling images
 
-use super::{OciImage, OciImageConfig, OciLayer, OciManifest, OciDescriptor, OciContainerConfig, OciRootfs};
+use super::{
+    OciContainerConfig, OciDescriptor, OciImage, OciImageConfig, OciLayer, OciManifest, OciRootfs,
+};
 use crate::error::{CleanroomError, Result};
 use chrono::{DateTime, Duration, Utc};
 use dashmap::DashMap;
@@ -45,7 +47,9 @@ impl RegistryClient {
         let http_client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| CleanroomError::report_error(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| {
+                CleanroomError::report_error(format!("Failed to create HTTP client: {}", e))
+            })?;
 
         Ok(Self {
             http_client,
@@ -191,9 +195,7 @@ impl RegistryClient {
             .get(&auth_url)
             .send()
             .await
-            .map_err(|e| {
-                CleanroomError::report_error(format!("Failed to get auth token: {}", e))
-            })?
+            .map_err(|e| CleanroomError::report_error(format!("Failed to get auth token: {}", e)))?
             .json()
             .await
             .map_err(|e| {

@@ -113,10 +113,18 @@ impl CoverageAnalyzer {
                     // Calculate coverage value (higher = more important to test)
                     let coverage_value = self.calculate_capability_gap_value(&combination);
 
+                    // Infer expected effects from the capability combination
+                    let mut expected_effects = EffectSet::new();
+                    for cap_id in &combination {
+                        if let Some(cap) = self._capabilities.get_capability(&cap_id.0) {
+                            expected_effects.extend(&cap.allowed_effects);
+                        }
+                    }
+
                     // Create gap
                     gaps.push(CapabilityGap {
                         capability_combination: combination,
-                        expected_effects: EffectSet::new(), // Inferred from capabilities
+                        expected_effects,
                         reason,
                         coverage_value,
                     });

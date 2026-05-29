@@ -195,7 +195,11 @@ impl ImageCache {
 
         if let Some(ref_to_remove) = lru_ref {
             if let Some(entry) = index.entries.remove(&ref_to_remove) {
-                info!("Evicting cached image: {} ({} MB)", ref_to_remove, entry.total_size / 1024 / 1024);
+                info!(
+                    "Evicting cached image: {} ({} MB)",
+                    ref_to_remove,
+                    entry.total_size / 1024 / 1024
+                );
 
                 // Remove layer files
                 for layer in &entry.layers {

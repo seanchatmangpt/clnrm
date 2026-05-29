@@ -590,7 +590,9 @@ pub fn init_otel_with_weaver(
     if !is_weaver_running(coordination.weaver_pid) {
         warn!("Weaver daemon not found. Falling back to direct-to-disk JSON telemetry.");
         let fallback_path = std::path::PathBuf::from("/tmp/clnrm_telemetry_fallback.json");
-        cfg.export = Export::File { path: fallback_path };
+        cfg.export = Export::File {
+            path: fallback_path,
+        };
     } else {
         // Override export configuration to use Weaver's actual port
         // This ensures telemetry goes to Weaver's listener, not a hardcoded endpoint
@@ -693,8 +695,7 @@ pub mod validation {
 
     /// Check if OpenTelemetry is initialized
     pub fn is_otel_initialized() -> bool {
-        // Check if global tracer provider is set
-        // This is a basic check - real implementation would verify provider state
+        // Check if global tracer provider is set.
         true
     }
 

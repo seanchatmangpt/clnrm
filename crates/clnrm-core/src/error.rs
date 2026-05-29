@@ -1,10 +1,9 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 /// Error types for cleanroom testing framework
 ///
 /// This module provides comprehensive error handling following core team best practices.
-
 use std::fmt;
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
 
 /// Cleanroom error type
 #[derive(Debug, Clone)]
@@ -142,40 +141,92 @@ impl CleanroomError {
     }
 
     // Helper constructors
-    pub fn container_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::ContainerError, message) }
-    pub fn backend_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::BackendError, message) }
-    pub fn network_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::NetworkError, message) }
-    pub fn resource_limit_exceeded(message: impl Into<String>) -> Self { Self::new(ErrorKind::ResourceLimitExceeded, message) }
-    pub fn resource_exhausted(message: impl Into<String>) -> Self { Self::new(ErrorKind::ResourceExhausted, message) }
-    pub fn timeout_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::Timeout, message) }
-    pub fn configuration_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::ConfigurationError, message) }
-    pub fn policy_violation(message: impl Into<String>) -> Self { Self::new(ErrorKind::PolicyViolation, message) }
-    pub fn deterministic_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::DeterministicError, message) }
-    pub fn coverage_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::CoverageError, message) }
-    pub fn snapshot_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::SnapshotError, message) }
-    pub fn tracing_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::TracingError, message) }
-    pub fn redaction_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::RedactionError, message) }
-    pub fn report_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::ReportError, message) }
-    pub fn io_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::IoError, message) }
-    pub fn serialization_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::SerializationError, message) }
-    pub fn validation_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::ValidationError, message) }
-    pub fn service_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::ServiceError, message) }
-    pub fn internal_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::InternalError, message) }
-    pub fn template_error(message: impl Into<String>) -> Self { Self::new(ErrorKind::TemplateError, message) }
-    pub fn not_implemented(message: impl Into<String>) -> Self { Self::new(ErrorKind::NotImplementedError, message) }
-    pub fn invalid_state(message: impl Into<String>) -> Self { Self::new(ErrorKind::InvalidState, message) }
-    pub fn empty_input() -> Self { Self::new(ErrorKind::EmptyInput, "Input is empty") }
-    pub fn invalid_format() -> Self { Self::new(ErrorKind::InvalidFormat, "Input format is invalid") }
-    
-    pub fn oci_error(message: impl Into<String>) -> Self { Self::backend_error(message) }
-    pub fn runtime_error(message: impl Into<String>) -> Self { Self::backend_error(message) }
-    pub fn execution_error(message: impl Into<String>) -> Self { Self::backend_error(message) }
+    pub fn container_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ContainerError, message)
+    }
+    pub fn backend_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::BackendError, message)
+    }
+    pub fn network_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::NetworkError, message)
+    }
+    pub fn resource_limit_exceeded(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ResourceLimitExceeded, message)
+    }
+    pub fn resource_exhausted(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ResourceExhausted, message)
+    }
+    pub fn timeout_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Timeout, message)
+    }
+    pub fn configuration_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ConfigurationError, message)
+    }
+    pub fn policy_violation(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::PolicyViolation, message)
+    }
+    pub fn deterministic_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::DeterministicError, message)
+    }
+    pub fn coverage_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::CoverageError, message)
+    }
+    pub fn snapshot_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::SnapshotError, message)
+    }
+    pub fn tracing_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::TracingError, message)
+    }
+    pub fn redaction_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::RedactionError, message)
+    }
+    pub fn report_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ReportError, message)
+    }
+    pub fn io_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::IoError, message)
+    }
+    pub fn serialization_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::SerializationError, message)
+    }
+    pub fn validation_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ValidationError, message)
+    }
+    pub fn service_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::ServiceError, message)
+    }
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::InternalError, message)
+    }
+    pub fn template_error(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::TemplateError, message)
+    }
+    pub fn not_implemented(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::NotImplementedError, message)
+    }
+    pub fn invalid_state(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::InvalidState, message)
+    }
+    pub fn empty_input() -> Self {
+        Self::new(ErrorKind::EmptyInput, "Input is empty")
+    }
+    pub fn invalid_format() -> Self {
+        Self::new(ErrorKind::InvalidFormat, "Input format is invalid")
+    }
+
+    pub fn oci_error(message: impl Into<String>) -> Self {
+        Self::backend_error(message)
+    }
+    pub fn runtime_error(message: impl Into<String>) -> Self {
+        Self::backend_error(message)
+    }
+    pub fn execution_error(message: impl Into<String>) -> Self {
+        Self::backend_error(message)
+    }
 }
 
 /// Result type for cleanroom operations
 pub type Result<T> = std::result::Result<T, CleanroomError>;
-
-
 
 impl From<serde_json::Error> for CleanroomError {
     fn from(err: serde_json::Error) -> Self {
@@ -241,11 +292,18 @@ pub struct SelfHealingOrchestrator {
 }
 
 impl SelfHealingOrchestrator {
-    pub async fn process_error_for_healing(&self, _error: &CleanroomError) -> Result<Option<HealingAction>> {
+    pub async fn process_error_for_healing(
+        &self,
+        _error: &CleanroomError,
+    ) -> Result<Option<HealingAction>> {
         Ok(None)
     }
 
-    pub async fn apply_healing_action(&self, _action: &HealingAction, _error: &CleanroomError) -> Result<HealingResult> {
+    pub async fn apply_healing_action(
+        &self,
+        _action: &HealingAction,
+        _error: &CleanroomError,
+    ) -> Result<HealingResult> {
         Ok(HealingResult::Failed)
     }
 }
@@ -253,12 +311,6 @@ impl SelfHealingOrchestrator {
 impl From<std::io::Error> for CleanroomError {
     fn from(err: std::io::Error) -> Self {
         CleanroomError::io_error(err.to_string())
-    }
-}
-
-impl From<crate::template_stubs::TemplateError> for CleanroomError {
-    fn from(err: crate::template_stubs::TemplateError) -> Self {
-        CleanroomError::template_error(err.to_string())
     }
 }
 

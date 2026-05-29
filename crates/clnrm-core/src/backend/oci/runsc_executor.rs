@@ -58,12 +58,13 @@ impl RunscExecutor {
                     args[2] = stripped.to_string();
                 }
             }
-            
+
             // Create container-specific temp directory
             let container_tmp = std::env::temp_dir().join(format!("clnrm-tmp-{}", bundle.id));
             let _ = std::fs::create_dir_all(&container_tmp);
-            let container_tmp_str = format!("{}/", container_tmp.to_string_lossy().trim_end_matches('/'));
-            
+            let container_tmp_str =
+                format!("{}/", container_tmp.to_string_lossy().trim_end_matches('/'));
+
             // Replace /tmp/ in arguments
             for arg in &mut args {
                 *arg = arg.replace("/tmp/", &container_tmp_str);
@@ -91,7 +92,12 @@ impl RunscExecutor {
                 }
             }
 
-            println!("MOCK EXECUTION: Program = {:?}, Args = {:?}, Env = {:?}", args[0], &args[1..], bundle.config.process.env);
+            println!(
+                "MOCK EXECUTION: Program = {:?}, Args = {:?}, Env = {:?}",
+                args[0],
+                &args[1..],
+                bundle.config.process.env
+            );
 
             // Execute local command
             let output = tokio::time::timeout(timeout, cmd.output()).await;
@@ -105,7 +111,10 @@ impl RunscExecutor {
                     let exit_code = out.status.code().unwrap_or(0);
                     let stdout = String::from_utf8_lossy(&out.stdout).to_string();
                     let stderr = String::from_utf8_lossy(&out.stderr).to_string();
-                    println!("MOCK RESULT: ExitCode = {}, Stdout = {:?}, Stderr = {:?}", exit_code, stdout, stderr);
+                    println!(
+                        "MOCK RESULT: ExitCode = {}, Stdout = {:?}, Stderr = {:?}",
+                        exit_code, stdout, stderr
+                    );
                     return Ok(RunscOutput {
                         exit_code,
                         stdout,
@@ -114,10 +123,15 @@ impl RunscExecutor {
                     });
                 }
                 Ok(Err(e)) => {
-                    return Err(CleanroomError::runtime_error(format!("Failed to run mock command: {}", e)));
+                    return Err(CleanroomError::runtime_error(format!(
+                        "Failed to run mock command: {}",
+                        e
+                    )));
                 }
                 Err(_) => {
-                    return Err(CleanroomError::timeout_error(format!("Mock command timed out")));
+                    return Err(CleanroomError::timeout_error(format!(
+                        "Mock command timed out"
+                    )));
                 }
             }
         }
@@ -189,8 +203,10 @@ impl RunscExecutor {
         container_id: &str,
         bundle: &OciBundle,
     ) -> Result<CommandResult> {
-        let stdout_path = std::path::Path::new(&self.root_dir).join(format!("{}.stdout", container_id));
-        let stderr_path = std::path::Path::new(&self.root_dir).join(format!("{}.stderr", container_id));
+        let stdout_path =
+            std::path::Path::new(&self.root_dir).join(format!("{}.stdout", container_id));
+        let stderr_path =
+            std::path::Path::new(&self.root_dir).join(format!("{}.stderr", container_id));
 
         let stdout_file = std::fs::File::create(stdout_path)?;
         let stderr_file = std::fs::File::create(stderr_path)?;
@@ -263,8 +279,10 @@ impl RunscExecutor {
 
     /// Get container logs
     async fn get_container_logs(&self, container_id: &str) -> Result<LogOutput> {
-        let stdout_path = std::path::Path::new(&self.root_dir).join(format!("{}.stdout", container_id));
-        let stderr_path = std::path::Path::new(&self.root_dir).join(format!("{}.stderr", container_id));
+        let stdout_path =
+            std::path::Path::new(&self.root_dir).join(format!("{}.stdout", container_id));
+        let stderr_path =
+            std::path::Path::new(&self.root_dir).join(format!("{}.stderr", container_id));
 
         let stdout = if stdout_path.exists() {
             std::fs::read_to_string(&stdout_path).unwrap_or_default()

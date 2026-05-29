@@ -168,12 +168,42 @@ impl<'de> Deserialize<'de> for ValidationReport {
                 statistics: RawWeaverStatistics,
             }
             let raw = RawWeaverReport::deserialize(value).map_err(serde::de::Error::custom)?;
-            let violations = (raw.statistics.advice_level_counts.get("violation").copied().unwrap_or(0)
-                + raw.statistics.advice_level_counts.get("error").copied().unwrap_or(0)) as u32;
-            let improvements = (raw.statistics.advice_level_counts.get("improvement").copied().unwrap_or(0)
-                + raw.statistics.advice_level_counts.get("warning").copied().unwrap_or(0)) as u32;
-            let information = (raw.statistics.advice_level_counts.get("information").copied().unwrap_or(0)
-                + raw.statistics.advice_level_counts.get("info").copied().unwrap_or(0)) as u32;
+            let violations = (raw
+                .statistics
+                .advice_level_counts
+                .get("violation")
+                .copied()
+                .unwrap_or(0)
+                + raw
+                    .statistics
+                    .advice_level_counts
+                    .get("error")
+                    .copied()
+                    .unwrap_or(0)) as u32;
+            let improvements = (raw
+                .statistics
+                .advice_level_counts
+                .get("improvement")
+                .copied()
+                .unwrap_or(0)
+                + raw
+                    .statistics
+                    .advice_level_counts
+                    .get("warning")
+                    .copied()
+                    .unwrap_or(0)) as u32;
+            let information = (raw
+                .statistics
+                .advice_level_counts
+                .get("information")
+                .copied()
+                .unwrap_or(0)
+                + raw
+                    .statistics
+                    .advice_level_counts
+                    .get("info")
+                    .copied()
+                    .unwrap_or(0)) as u32;
             let status = if violations > 0 {
                 ValidationStatus::Failure
             } else {
@@ -598,7 +628,10 @@ impl LiveCheckOrchestrator<WeaverRunning> {
         // If it's already in the target format (having 'status' key), parse directly
         if value.get("status").is_some() {
             return serde_json::from_value(value).map_err(|e| {
-                CleanroomError::internal_error(format!("Failed to parse legacy validation report: {}", e))
+                CleanroomError::internal_error(format!(
+                    "Failed to parse legacy validation report: {}",
+                    e
+                ))
             });
         }
 
@@ -629,16 +662,27 @@ impl LiveCheckOrchestrator<WeaverRunning> {
                     if let Some(all_advice) = obj.get("all_advice").and_then(|a| a.as_array()) {
                         for advice in all_advice {
                             if let Some(advice_obj) = advice.as_object() {
-                                let advice_level = advice_obj.get("advice_level").and_then(|l| l.as_str()).unwrap_or("information");
+                                let advice_level = advice_obj
+                                    .get("advice_level")
+                                    .and_then(|l| l.as_str())
+                                    .unwrap_or("information");
                                 let level = match advice_level.to_lowercase().as_str() {
                                     "violation" => "violation",
                                     "improvement" => "improvement",
                                     _ => "information",
                                 };
 
-                                let message = advice_obj.get("message").and_then(|m| m.as_str()).unwrap_or("").to_string();
-                                let signal_type = advice_obj.get("signal_type").and_then(|t| t.as_str());
-                                let signal_name = advice_obj.get("signal_name").and_then(|n| n.as_str()).map(|s| s.to_string());
+                                let message = advice_obj
+                                    .get("message")
+                                    .and_then(|m| m.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                let signal_type =
+                                    advice_obj.get("signal_type").and_then(|t| t.as_str());
+                                let signal_name = advice_obj
+                                    .get("signal_name")
+                                    .and_then(|n| n.as_str())
+                                    .map(|s| s.to_string());
 
                                 let mut span_name = None;
                                 let mut metric_name = None;

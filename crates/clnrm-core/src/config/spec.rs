@@ -220,19 +220,23 @@ impl ContainerSpec {
         name: String, // This is actually the image name in legacy format
         image: String,
         tag: String,
-        ports: Vec<String>, // Legacy string format
+        ports: Vec<String>,                // Legacy string format
         env_vars: HashMap<String, String>, // Legacy field name
-        volumes: Vec<String>, // Legacy string format
+        volumes: Vec<String>,              // Legacy string format
         depends_on: Vec<String>,
         command: Option<Vec<String>>,
-        args: Option<Vec<String>>, // Legacy field (merge into command)
-        user: Option<String>, // Legacy field (not used in current struct)
+        args: Option<Vec<String>>,   // Legacy field (merge into command)
+        user: Option<String>,        // Legacy field (not used in current struct)
         working_dir: Option<String>, // Legacy field name
         healthcheck: Option<String>, // Legacy field name
         labels: HashMap<String, String>, // Legacy field (not used)
     ) -> Self {
         // Dynamically adapt legacy construction to current struct
-        let full_image = if tag.is_empty() { image } else { format!("{}:{}", image, tag) };
+        let full_image = if tag.is_empty() {
+            image
+        } else {
+            format!("{}:{}", image, tag)
+        };
 
         let mut final_command = command;
         if final_command.is_none() && args.is_some() {

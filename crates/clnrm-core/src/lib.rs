@@ -16,38 +16,39 @@ pub mod chicago_tdd; // v1.5.0: Chicago-TDD-Tools integration framework
 pub mod cleanroom;
 pub mod cli; // CLI types and utilities (commands moved to clnrm-cli)
 pub mod config;
-pub mod template; // Template generation functions
+pub mod constants;
 pub mod coverage;
 pub mod determinism;
 pub mod environment; // v1.7.0: Σ*-aware environment compiler (Phase 2)
 pub mod error;
 pub mod executor; // v2.0: New executor with docker exec support
 pub mod formatting;
-pub mod template_stubs;
 pub mod macros;
 pub mod metrics;
 pub mod otel;
 pub mod phases; // v1.8.0: Phases 8-10 determinism, conformance, & contracts
 pub mod policy;
+pub mod template; // Template generation functions
 pub mod poka_yoke {
     //! Poka-Yoke (Error-Proofing) Mechanisms
     //!
     //! Trait-based abstractions for error-proofing mechanisms that prevent
     //! the highest-priority failure modes identified in the FMEA audit.
-    pub mod traits;
-    pub mod impls;
     pub mod globals;
+    pub mod impls;
+    pub mod traits;
 
     // Re-export for convenience
-    pub use traits::*;
-    pub use impls::*;
     pub use globals::*;
+    pub use impls::*;
+    pub use traits::*;
 }
 pub mod receipts; // v1.7.0: Test receipt infrastructure (Γₜ) (Phase 3)
 pub mod reporting;
 pub mod sbom; // v1.5.0: SBOM generation
 pub mod scenario;
 pub mod scheduler; // v1.7.0: Swarm-scale scheduler & resource governance (Phase 6)
+pub mod service;
 pub mod services;
 pub mod stress_test;
 pub mod synthesis; // v1.7.0: Scenario synthesis engine (Phase 5)
@@ -94,7 +95,8 @@ pub use cleanroom::{
 };
 pub use config::{
     load_cleanroom_config, load_cleanroom_config_from_file, load_config_from_file,
-    parse_toml_config, CleanroomConfig, ContainerConfig, DeterminismConfig, ScenarioConfig, StepConfig, TestConfig,
+    parse_toml_config, CleanroomConfig, ContainerConfig, DeterminismConfig, ScenarioConfig,
+    StepConfig, TestConfig,
 };
 
 // Type safety improvements - newtypes for IDs and counts
@@ -199,7 +201,8 @@ pub mod types {
             Self(s.to_string())
         }
     }
-}pub use determinism::DeterminismEngine;
+}
+pub use determinism::DeterminismEngine;
 pub use formatting::{
     format_test_results, format_toml_content, format_toml_file, needs_formatting, Formatter,
     FormatterType, HumanFormatter, JsonFormatter, JunitFormatter, TapFormatter, TestResult,

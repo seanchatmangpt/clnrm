@@ -138,8 +138,7 @@ impl ContainerPool {
             let backend: Arc<dyn Backend> = Arc::new(crate::backend::mock_backend());
 
             let backend = tokio::task::spawn_blocking(move || {
-                let mut backend =
-                    GvisorBackend::new(image_str)?.with_timeout(startup_timeout);
+                let mut backend = GvisorBackend::new(image_str)?.with_timeout(startup_timeout);
 
                 if let Some(mem_limit) = mem_limit {
                     backend = backend.with_memory_limit(mem_limit);
@@ -225,8 +224,7 @@ impl ContainerPool {
         let backend: Arc<dyn Backend> = Arc::new(crate::backend::mock_backend());
 
         let backend = tokio::task::spawn_blocking(move || {
-            let mut backend =
-                GvisorBackend::new(image_str)?.with_timeout(startup_timeout);
+            let mut backend = GvisorBackend::new(image_str)?.with_timeout(startup_timeout);
 
             if let Some(mem_limit) = mem_limit {
                 backend = backend.with_memory_limit(mem_limit);

@@ -8,6 +8,7 @@ use super::effects::{EffectBudget, EffectSet};
 use crate::backend::capabilities::BackendCapabilityRegistry;
 use crate::error::{CleanroomError, Result};
 use serde::{Deserialize, Serialize};
+use serde_json;
 use std::collections::HashMap;
 
 /// Unique scenario identifier
@@ -223,44 +224,55 @@ impl CapabilityScenario {
         self
     }
 
-    /// Validate that this scenario's capabilities are registered
+    /// Validate that this scenario's capabilities are registered and consistent
     pub fn validate_capabilities(&self, registry: &BackendCapabilityRegistry) -> Result<()> {
-        for cap_id in &self.capabilities {
-            if !registry.has_capability(&cap_id.0) {
-                return Err(CleanroomError::internal_error(format!(
-                    "Capability '{}' required by scenario '{}' is not registered",
-                    cap_id, self.id
-                )));
-            }
-        }
-        Ok(())
+        let cap_names: Vec<String> = self.capabilities.iter().map(|c| c.0.clone()).collect();
+        registry.validate_capability_set(&cap_names).map_err(|e| {
+            CleanroomError::internal_error(format!(
+                "Capability validation failed for scenario '{}': {}",
+                self.id, e
+            ))
+        })
     }
 
     /// Validate that scenario's effects are allowed by its capabilities
     pub fn validate_effects(&self, registry: &BackendCapabilityRegistry) -> Result<()> {
         // For each capability, get its allowed effects
-        let _combined_allowed_effects = EffectSet::new();
+        let mut combined_allowed_effects = EffectSet::new();
 
         for cap_id in &self.capabilities {
             let capability = registry.get_capability(&cap_id.0).ok_or_else(|| {
                 CleanroomError::internal_error(format!("Capability '{}' not found", cap_id))
             })?;
 
-            // Extract allowed effects from capability metadata
-            // EXAMPLE-ONLY: In a full implementation, BackendCapability would have an effects field
-            // For now, we'll assume capabilities define their effects in metadata
+            // Add effects from the dedicated field
+            for effect in capability.allowed_effects.effects() {
+                combined_allowed_effects.add(effect.clone());
+            }
+
+            // Also extract allowed effects from capability metadata if present (legacy/dynamic support)
             if let Some(effects_json) = capability.metadata.get("allowed_effects") {
-                // Parse effects and add to combined set
-                // This is simplified - real implementation would deserialize EffectSet
-                tracing::debug!("Capability {} allows effects: {}", cap_id, effects_json);
+                match serde_json::from_str::<EffectSet>(effects_json) {
+                    Ok(metadata_effects) => {
+                        for effect in metadata_effects.effects() {
+                            combined_allowed_effects.add(effect.clone());
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to parse allowed_effects metadata for capability {}: {}",
+                            cap_id,
+                            e
+                        );
+                    }
+                }
             }
         }
 
         // Validate scenario's effects are a subset of combined allowed effects
-        // NOTE: For now, we skip this check since we need to extend BackendCapability
-        // to include effect definitions. This will be done in the next iteration.
-
-        Ok(())
+        // Strict check: Scenario effects must be mathematically consistent with its declared capabilities
+        self.allowed_effects
+            .validate_against_capability(&combined_allowed_effects)
     }
 
     /// Validate the full scenario
@@ -390,6 +402,7 @@ mod tests {
     use crate::backend::capabilities::{
         BackendCapability, BackendCapabilityRegistry, CapabilityCategory,
     };
+    use crate::capabilities::EffectSet;
 
     fn create_test_registry() -> BackendCapabilityRegistry {
         let mut registry = BackendCapabilityRegistry::new();
@@ -401,6 +414,7 @@ mod tests {
             category: CapabilityCategory::Execution,
             requirements: Vec::new(),
             features: Vec::new(),
+            allowed_effects: EffectSet::new(),
             metadata: HashMap::new(),
         };
 

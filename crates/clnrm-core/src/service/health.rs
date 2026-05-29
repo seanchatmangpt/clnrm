@@ -242,18 +242,16 @@ impl HealthProbe {
     }
 
     /// Execute health check
-    pub async fn check(&mut self, container_ip: &str) -> Result<HealthStatus> {
+    pub async fn check(&mut self, container_id: &str, container_ip: &str) -> Result<HealthStatus> {
         let check_result = match &self.check {
             HealthCheck::Tcp { port, .. } => self.check_tcp(container_ip, *port).await,
             HealthCheck::Http {
-                port,
-                path,
-                scheme,
-                ..
+                port, path, scheme, ..
             } => self.check_http(container_ip, *port, path, scheme).await,
-            HealthCheck::Exec { command, .. } => self.check_exec(command).await,
+            HealthCheck::Exec { command, .. } => self.check_exec(container_id, command).await,
             HealthCheck::Grpc { port, service, .. } => {
-                self.check_grpc(container_ip, *port, service.as_deref()).await
+                self.check_grpc(container_ip, *port, service.as_deref())
+                    .await
             }
         };
 
@@ -316,19 +314,145 @@ impl HealthProbe {
     }
 
     /// Execute command in container
-    async fn check_exec(&self, _command: &[String]) -> Result<bool> {
-        // ORACLE-GAP Refusal: Implement container exec via runsc
-        // This requires executing: runsc exec <container-id> <command>
-        tracing::warn!("Exec health checks not yet implemented for gVisor backend");
-        Ok(true)
+    async fn check_exec(&self, container_id: &str, command: &[String]) -> Result<bool> {
+        let has_runsc = which::which("runsc").is_ok();
+        let timeout = self.check.timeout()?;
+
+        if !has_runsc {
+            // AUTHORITATIVE: Fallback to docker exec if runsc is unavailable (e.g. on Darwin)
+            if which::which("docker").is_ok() {
+                let mut cmd = tokio::process::Command::new("docker");
+                cmd.arg("exec").arg(container_id).args(command);
+
+                match tokio::time::timeout(timeout, cmd.output()).await {
+                    Ok(Ok(output)) => return Ok(output.status.success()),
+                    _ => return Ok(false),
+                }
+            }
+
+            return Err(CleanroomError::execution_error(
+                "Execution check failed: neither runsc nor docker found for command execution",
+            ));
+        } else {
+            // Real runsc container execution
+            let root_dir = dirs::cache_dir()
+                .ok_or_else(|| CleanroomError::runtime_error("Failed to get cache directory"))?
+                .join("clnrm")
+                .join("runsc");
+
+            let mut cmd = tokio::process::Command::new("runsc");
+            cmd.arg("--root")
+                .arg(&root_dir)
+                .arg("exec")
+                .arg(container_id)
+                .args(command);
+
+            match tokio::time::timeout(timeout, cmd.output()).await {
+                Ok(Ok(output)) => {
+                    if output.status.success() {
+                        Ok(true)
+                    } else {
+                        tracing::warn!(
+                            container_id = %container_id,
+                            exit_code = ?output.status.code(),
+                            stderr = %String::from_utf8_lossy(&output.stderr),
+                            "Exec health check failed"
+                        );
+                        Ok(false)
+                    }
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!(error = %e, "Failed to run runsc exec");
+                    Ok(false)
+                }
+                Err(_) => {
+                    tracing::warn!("runsc exec health check timed out");
+                    Ok(false)
+                }
+            }
+        }
     }
 
     /// Check gRPC health endpoint
-    async fn check_grpc(&self, _host: &str, _port: u16, _service: Option<&str>) -> Result<bool> {
-        // ORACLE-GAP Refusal: Implement gRPC health check protocol
-        // https://github.com/grpc/grpc/blob/master/doc/health-checking.md
-        tracing::warn!("gRPC health checks not yet implemented for gVisor backend");
-        Ok(true)
+    async fn check_grpc(&self, host: &str, port: u16, service: Option<&str>) -> Result<bool> {
+        let timeout = self.check.timeout()?;
+
+        let client = reqwest::Client::builder()
+            .timeout(timeout)
+            .http2_prior_knowledge()
+            .build()
+            .map_err(|e| CleanroomError::network_error(format!("gRPC client error: {}", e)))?;
+
+        let url = format!("http://{}:{}/grpc.health.v1.Health/Check", host, port);
+
+        let mut body = vec![0u8; 5]; // gRPC header: 1 byte uncompressed, 4 bytes length
+        if let Some(svc) = service {
+            if !svc.is_empty() {
+                let svc_bytes = svc.as_bytes();
+                let mut payload = vec![0x0a, svc_bytes.len() as u8];
+                payload.extend_from_slice(svc_bytes);
+
+                let len = payload.len() as u32;
+                body[1..5].copy_from_slice(&len.to_be_bytes());
+                body.extend(payload);
+            }
+        }
+
+        match client
+            .post(&url)
+            .header("content-type", "application/grpc")
+            .header("te", "trailers")
+            .body(body)
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if !response.status().is_success() {
+                    return Ok(false);
+                }
+
+                let bytes = response.bytes().await.map_err(|e| {
+                    CleanroomError::network_error(format!("Failed to read response body: {}", e))
+                })?;
+
+                if bytes.len() < 5 {
+                    return Ok(false);
+                }
+
+                let payload_len =
+                    u32::from_be_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]) as usize;
+                if bytes.len() < 5 + payload_len {
+                    return Ok(false);
+                }
+
+                let payload = &bytes[5..5 + payload_len];
+                if payload.is_empty() {
+                    return Ok(false);
+                }
+
+                // Parse protobuf HealthCheckResponse:
+                // Field 1 (status): tag 0x08 (varint)
+                // ServingStatus: 1 = SERVING
+                let mut pos = 0;
+                let mut serving_status = 0;
+
+                while pos < payload.len() {
+                    let tag = payload[pos];
+                    pos += 1;
+                    if tag == 0x08 {
+                        if pos < payload.len() {
+                            serving_status = payload[pos];
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                Ok(serving_status == 1)
+            }
+            Err(_) => Ok(false),
+        }
     }
 
     /// Get current health status

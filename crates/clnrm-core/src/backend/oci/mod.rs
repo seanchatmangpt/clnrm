@@ -172,7 +172,11 @@ pub struct LinuxConfig {
     pub resources: Option<ResourcesConfig>,
     #[serde(rename = "maskedPaths", skip_serializing_if = "Vec::is_empty", default)]
     pub masked_paths: Vec<String>,
-    #[serde(rename = "readonlyPaths", skip_serializing_if = "Vec::is_empty", default)]
+    #[serde(
+        rename = "readonlyPaths",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
     pub readonly_paths: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seccomp: Option<SeccompConfig>,

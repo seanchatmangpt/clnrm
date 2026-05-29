@@ -5,7 +5,6 @@
 use crate::error::{CleanroomError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::Duration;
 
 use super::health::{HealthCheck, ReadinessProbe};
 use super::network::PortMapping;
@@ -66,7 +65,10 @@ impl ImageRef {
             }
             3 => {
                 // registry/org/repo format
-                (Some(parts[0].to_string()), format!("{}/{}", parts[1], parts[2]))
+                (
+                    Some(parts[0].to_string()),
+                    format!("{}/{}", parts[1], parts[2]),
+                )
             }
             _ => {
                 return Err(CleanroomError::validation_error(format!(
@@ -226,7 +228,9 @@ impl ServiceDefinition {
     pub fn validate(&self) -> Result<()> {
         // Validate service name
         if self.name.is_empty() {
-            return Err(CleanroomError::validation_error("Service name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Service name cannot be empty",
+            ));
         }
 
         // Validate image reference
@@ -412,6 +416,9 @@ mod tests {
             memory_limit: Some("2G".to_string()),
             ..Default::default()
         };
-        assert_eq!(spec.memory_limit_bytes().unwrap(), Some(2 * 1024 * 1024 * 1024));
+        assert_eq!(
+            spec.memory_limit_bytes().unwrap(),
+            Some(2 * 1024 * 1024 * 1024)
+        );
     }
 }

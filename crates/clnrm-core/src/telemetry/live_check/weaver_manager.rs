@@ -124,7 +124,9 @@ impl WeaverProcessManager {
         let absolute_registry_path = if self.registry_path.is_relative() {
             self.find_absolute_registry_path()
         } else {
-            self.registry_path.canonicalize().unwrap_or_else(|_| self.registry_path.clone())
+            self.registry_path
+                .canonicalize()
+                .unwrap_or_else(|_| self.registry_path.clone())
         };
 
         // If manifest.yaml does not exist in the registry path, but registry_manifest.yaml does, copy it
@@ -355,7 +357,8 @@ impl WeaverProcessManager {
     /// Wait for process to exit with timeout
     async fn wait_with_timeout(&self, process: &mut Child, timeout: Duration) -> Result<()> {
         let start = Instant::now();
-        let check_interval = Duration::from_millis(100);
+        let mut delay = Duration::from_millis(10);
+        let max_delay = Duration::from_millis(500);
 
         loop {
             match process.try_wait() {
@@ -369,7 +372,8 @@ impl WeaverProcessManager {
                         warn!("Weaver shutdown timed out, force killing");
                         return Self::force_kill_process(process);
                     }
-                    tokio::time::sleep(check_interval).await;
+                    tokio::time::sleep(delay).await;
+                    delay = std::cmp::min(delay * 2, max_delay);
                 }
                 Err(e) => {
                     return Err(CleanroomError::internal_error(format!(
@@ -519,7 +523,7 @@ impl WeaverProcessManager {
     /// Tries 3 tiers:
     /// - Tier 1: 8080-8089
     /// - Tier 2: 9080-9089
-    /// - Tier 3: 10080-10099
+    /// - Tier 3: 10080-11099
     fn find_available_admin_port() -> Result<u16> {
         // Tier 1: Standard admin range
         if let Ok(port) = Self::try_port_range(8080, 8089) {
@@ -534,12 +538,12 @@ impl WeaverProcessManager {
 
         // Tier 3: Extended range
         warn!("Secondary admin range exhausted, trying extended");
-        if let Ok(port) = Self::try_port_range(10080, 10099) {
+        if let Ok(port) = Self::try_port_range(10080, 11099) {
             return Ok(port);
         }
 
         Err(CleanroomError::validation_error(
-            "All admin port ranges exhausted (40 ports). Reduce parallelism.",
+            "All admin port ranges exhausted (1040 ports). Reduce parallelism.",
         ))
     }
 
@@ -597,8 +601,26 @@ impl WeaverProcessManager {
                         }
                     }
 
-                    // Wait for cleanup
-                    thread::sleep(Duration::from_millis(500));
+                    // Wait for cleanup with polling instead of a fixed magic delay
+                    let start = Instant::now();
+                    let timeout = Duration::from_secs(2);
+                    let mut delay = Duration::from_millis(50);
+
+                    while start.elapsed() < timeout {
+                        let check = Command::new("pgrep")
+                            .args(["-f", "weaver registry live-check"])
+                            .output();
+
+                        if let Ok(check_output) = check {
+                            if !check_output.status.success() || check_output.stdout.is_empty() {
+                                debug!("All orphaned Weaver processes cleaned up");
+                                break;
+                            }
+                        }
+
+                        thread::sleep(delay);
+                        delay = std::cmp::min(delay * 2, Duration::from_millis(500));
+                    }
                 }
             }
         }
@@ -648,7 +670,9 @@ impl WeaverProcessManager {
         let absolute_registry_path = if self.registry_path.is_relative() {
             self.find_absolute_registry_path()
         } else {
-            self.registry_path.canonicalize().unwrap_or_else(|_| self.registry_path.clone())
+            self.registry_path
+                .canonicalize()
+                .unwrap_or_else(|_| self.registry_path.clone())
         };
         let manifest_path = absolute_registry_path.join("manifest.yaml");
         let registry_manifest_path = absolute_registry_path.join("registry_manifest.yaml");

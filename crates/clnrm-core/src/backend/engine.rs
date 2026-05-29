@@ -224,23 +224,30 @@ impl ContainerEngine {
     }
 
     fn start_single_container(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
-        Err(CleanroomError::not_implemented("start_single_container migrated to gVisor"))
+        Err(CleanroomError::not_implemented(
+            "start_single_container migrated to gVisor",
+        ))
     }
 
     async fn start_multi_container(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
-        Err(CleanroomError::not_implemented("start_multi_container migrated to gVisor"))
+        Err(CleanroomError::not_implemented(
+            "start_multi_container migrated to gVisor",
+        ))
     }
 }
 
 impl ExecutionEngine for ContainerEngine {
-    fn backend_type(&self) -> BackendType { BackendType::Container }
+    fn backend_type(&self) -> BackendType {
+        BackendType::Container
+    }
 
     fn start(&self, env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
         if env.graph.nodes.len() == 1 {
             self.start_single_container(env)
         } else {
             tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async { self.start_multi_container(env).await })
+                tokio::runtime::Handle::current()
+                    .block_on(async { self.start_multi_container(env).await })
             })
         }
     }
@@ -253,13 +260,25 @@ impl ExecutionEngine for ContainerEngine {
         Ok(())
     }
 
-    fn health_check(&self, _handle: &EnvironmentHandle) -> Result<bool> { Ok(true) }
-    fn telemetry_exporter(&self) -> Arc<dyn OtelExporter> { Arc::new(NoOpExporter) }
+    fn health_check(&self, _handle: &EnvironmentHandle) -> Result<bool> {
+        Ok(true)
+    }
+    fn telemetry_exporter(&self) -> Arc<dyn OtelExporter> {
+        Arc::new(NoOpExporter)
+    }
     fn generate_receipt(&self, _handle: &EnvironmentHandle) -> Result<TestReceipt> {
-        Err(CleanroomError::not_implemented("Receipt generation not implemented"))
+        Err(CleanroomError::not_implemented(
+            "Receipt generation not implemented",
+        ))
     }
     fn get_resource_usage(&self, _handle: &EnvironmentHandle) -> Result<ResourceUsage> {
-        Ok(ResourceUsage { cpu_percent: 0.0, memory_bytes: 0, network_io: (0,0), disk_io: (0,0), uptime_seconds: 0 })
+        Ok(ResourceUsage {
+            cpu_percent: 0.0,
+            memory_bytes: 0,
+            network_io: (0, 0),
+            disk_io: (0, 0),
+            uptime_seconds: 0,
+        })
     }
 }
 
@@ -271,32 +290,66 @@ pub struct WasiConfig {
 
 impl Default for WasiConfig {
     fn default() -> Self {
-        Self { preopen_dirs: vec![], env_vars: HashMap::new(), max_memory: 1 << 30 }
+        Self {
+            preopen_dirs: vec![],
+            env_vars: HashMap::new(),
+            max_memory: 1 << 30,
+        }
     }
 }
 
-pub struct WasiEngine { pub config: WasiConfig }
-impl WasiEngine { pub fn new(config: WasiConfig) -> Self { Self { config } } }
+pub struct WasiEngine {
+    pub config: WasiConfig,
+}
+impl WasiEngine {
+    pub fn new(config: WasiConfig) -> Self {
+        Self { config }
+    }
+}
 
 impl ExecutionEngine for WasiEngine {
-    fn backend_type(&self) -> BackendType { BackendType::Wasi }
-    fn start(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> { Err(CleanroomError::execution_error("WASI not implemented")) }
-    fn exec(&self, _h: &EnvironmentHandle, _c: &[String]) -> Result<Output> { Err(CleanroomError::execution_error("WASI not implemented")) }
-    fn stop(&self, _h: &EnvironmentHandle) -> Result<()> { Ok(()) }
-    fn health_check(&self, _h: &EnvironmentHandle) -> Result<bool> { Ok(true) }
-    fn telemetry_exporter(&self) -> Arc<dyn OtelExporter> { Arc::new(NoOpExporter) }
-    fn generate_receipt(&self, _h: &EnvironmentHandle) -> Result<TestReceipt> { 
-        Err(CleanroomError::internal_error("Receipt generation not implemented"))
+    fn backend_type(&self) -> BackendType {
+        BackendType::Wasi
+    }
+    fn start(&self, _env: &CompiledEnvironment) -> Result<EnvironmentHandle> {
+        Err(CleanroomError::execution_error("WASI not implemented"))
+    }
+    fn exec(&self, _h: &EnvironmentHandle, _c: &[String]) -> Result<Output> {
+        Err(CleanroomError::execution_error("WASI not implemented"))
+    }
+    fn stop(&self, _h: &EnvironmentHandle) -> Result<()> {
+        Ok(())
+    }
+    fn health_check(&self, _h: &EnvironmentHandle) -> Result<bool> {
+        Ok(true)
+    }
+    fn telemetry_exporter(&self) -> Arc<dyn OtelExporter> {
+        Arc::new(NoOpExporter)
+    }
+    fn generate_receipt(&self, _h: &EnvironmentHandle) -> Result<TestReceipt> {
+        Err(CleanroomError::internal_error(
+            "Receipt generation not implemented",
+        ))
     }
     fn get_resource_usage(&self, _h: &EnvironmentHandle) -> Result<ResourceUsage> {
-        Ok(ResourceUsage { cpu_percent: 0.0, memory_bytes: 0, network_io: (0,0), disk_io: (0,0), uptime_seconds: 0 })
+        Ok(ResourceUsage {
+            cpu_percent: 0.0,
+            memory_bytes: 0,
+            network_io: (0, 0),
+            disk_io: (0, 0),
+            uptime_seconds: 0,
+        })
     }
 }
 
 struct NoOpExporter;
 impl OtelExporter for NoOpExporter {
-    fn export(&self, _d: &[u8]) -> Result<()> { Ok(()) }
-    fn flush(&self) -> Result<()> { Ok(()) }
+    fn export(&self, _d: &[u8]) -> Result<()> {
+        Ok(())
+    }
+    fn flush(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 pub struct BackendSelector {
@@ -305,12 +358,25 @@ pub struct BackendSelector {
 }
 
 impl BackendSelector {
-    pub fn new(default: BackendType) -> Self { Self { backends: HashMap::new(), default } }
+    pub fn new(default: BackendType) -> Self {
+        Self {
+            backends: HashMap::new(),
+            default,
+        }
+    }
     pub fn register(&mut self, backend: Box<dyn ExecutionEngine>) {
-        self.backends.insert(backend.backend_type(), Arc::from(backend));
+        self.backends
+            .insert(backend.backend_type(), Arc::from(backend));
     }
     pub fn select(&self, env: &CompiledEnvironment) -> Result<Arc<dyn ExecutionEngine>> {
-        let selected = if env.graph.nodes.len() > 1 { BackendType::Container } else { self.default };
-        self.backends.get(&selected).cloned().ok_or_else(|| CleanroomError::internal_error("No backend"))
+        let selected = if env.graph.nodes.len() > 1 {
+            BackendType::Container
+        } else {
+            self.default
+        };
+        self.backends
+            .get(&selected)
+            .cloned()
+            .ok_or_else(|| CleanroomError::internal_error("No backend"))
     }
 }

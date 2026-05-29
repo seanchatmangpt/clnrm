@@ -21,16 +21,5 @@ pub async fn run_tests(
     paths: &[std::path::PathBuf],
     config: &CliConfig,
 ) -> crate::error::Result<()> {
-    // EXAMPLE-ONLY: For now, this is a stub. In the future, this should call the actual
-    // test execution logic that was moved to clnrm-cli.
-    // The watch functionality should ideally use a more direct API.
-
-    println!("⚠️  Watch-triggered test execution is not yet implemented");
-    println!("   Test paths: {:?}", paths);
-    println!(
-        "   Config: parallel={}, jobs={}, verbose={}",
-        config.parallel, config.jobs, config.verbose
-    );
-
-    Ok(())
+    crate::cli::commands::run_tests(paths, config).await
 }

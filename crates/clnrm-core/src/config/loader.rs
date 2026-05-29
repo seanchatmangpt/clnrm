@@ -111,8 +111,9 @@ fn extract_vars_section(content: &str) -> Result<HashMap<String, serde_json::Val
 /// - But [vars] section defines the variables needed for rendering
 pub fn load_config_from_file(path: &Path) -> Result<TestConfig> {
     // Read file content
-    let content = std::fs::read_to_string(path)
-        .map_err(|e| CleanroomError::configuration_error(format!("Failed to read config file: {}", e)))?;
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        CleanroomError::configuration_error(format!("Failed to read config file: {}", e))
+    })?;
 
     // POKA-YOKE: Validate TOML before parsing (FM-008, RPN: 180)
     // Uses trait-based abstraction for testability and extensibility

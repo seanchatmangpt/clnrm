@@ -347,12 +347,17 @@ impl ChaosEnginePlugin {
 
                 // Create the target directory if it doesn't exist
                 if !target_dir.exists() {
-                    std::fs::create_dir_all(&target_dir)
-                        .map_err(|e| crate::error::CleanroomError::internal_error(format!("Failed to create target directory: {}", e)))?;
+                    std::fs::create_dir_all(&target_dir).map_err(|e| {
+                        crate::error::CleanroomError::internal_error(format!(
+                            "Failed to create target directory: {}",
+                            e
+                        ))
+                    })?;
                 }
 
                 // Generate a unique temp file path
-                let file_path = target_dir.join(format!("clnrm_chaos_disk_fill_{}.tmp", Uuid::new_v4()));
+                let file_path =
+                    target_dir.join(format!("clnrm_chaos_disk_fill_{}.tmp", Uuid::new_v4()));
 
                 // Perform disk fill in a blocking task to avoid stalling tokio executor
                 let file_path_clone = file_path.clone();
@@ -366,9 +371,20 @@ impl ChaosEnginePlugin {
                     }
                     file.sync_all()?;
                     Ok(())
-                }).await
-                .map_err(|e| crate::error::CleanroomError::internal_error(format!("Disk fill task panicked: {}", e)))?
-                .map_err(|e| crate::error::CleanroomError::internal_error(format!("Failed to write disk fill file: {}", e)))?;
+                })
+                .await
+                .map_err(|e| {
+                    crate::error::CleanroomError::internal_error(format!(
+                        "Disk fill task panicked: {}",
+                        e
+                    ))
+                })?
+                .map_err(|e| {
+                    crate::error::CleanroomError::internal_error(format!(
+                        "Failed to write disk fill file: {}",
+                        e
+                    ))
+                })?;
 
                 // Keep it filled for duration_secs
                 tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;

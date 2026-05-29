@@ -371,12 +371,15 @@ impl EmitHandle {
     /// Wait for process to finish (with timeout)
     pub fn wait_with_timeout(&mut self, timeout: Duration) -> Result<()> {
         let start = std::time::Instant::now();
+        let mut delay = Duration::from_millis(10);
+        let max_delay = Duration::from_millis(200);
 
         while start.elapsed() < timeout {
             if !self.is_running() {
                 return Ok(());
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(delay);
+            delay = std::cmp::min(delay * 2, max_delay);
         }
 
         Err(CleanroomError::timeout_error(

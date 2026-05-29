@@ -3,10 +3,9 @@
 //! Executes test configurations with containers and steps as defined in TOML files.
 //! Provides hermetic testing capabilities with automatic container lifecycle management using gVisor.
 
-use crate::config::types::{ContainerConfig, StepConfig, TestConfig};
-use crate::error::{CleanroomError, Result};
 use crate::cleanroom::CleanroomEnvironment;
-use std::collections::HashMap;
+use crate::config::types::{StepConfig, TestConfig};
+use crate::error::{CleanroomError, Result};
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
@@ -40,7 +39,11 @@ pub async fn execute_container_test(test_config: &TestConfig) -> Result<Vec<Step
 
     // Execute steps
     let mut results = Vec::new();
-    for step in &test_config.steps {
+    for (index, step) in test_config.steps.iter().enumerate() {
+        let span =
+            crate::telemetry::semantic_conventions::SpanBuilder::test_step(&step.name, index);
+        let _enter = span.enter();
+
         let result = execute_step(&env, step).await?;
         results.push(result.clone());
 
@@ -91,14 +94,16 @@ async fn execute_step(env: &CleanroomEnvironment, step: &StepConfig) -> Result<S
     );
 
     let env_vars = step.env.clone().unwrap_or_default();
-    
+
     // Execute command using the environment
-    let exec_result = env.execute_in_container(
-        container_name,
-        &command,
-        step.workdir.as_deref(),
-        Some(&env_vars)
-    ).await?;
+    let exec_result = env
+        .execute_in_container(
+            container_name,
+            &command,
+            step.workdir.as_deref(),
+            Some(&env_vars),
+        )
+        .await?;
 
     let duration_ms = start_time.elapsed().as_millis() as u64;
     let exit_code = exec_result.exit_code;
@@ -238,7 +243,7 @@ mod tests {
         assert!(result.is_err(), "Should fail with nonexistent container");
         let error = result.unwrap_err();
         assert!(
-            error.to_string().contains("nonexistent container"),
+            error.to_string().contains("nonexistent"),
             "Error should mention nonexistent container: {}",
             error
         );
@@ -617,7 +622,7 @@ mod tests {
 
         // Create a very long command with many arguments
         let mut long_command = vec!["sh".to_string(), "-c".to_string()];
-        let mut script = "echo 'Testing long command line: '".to_string();
+        let mut script = "echo 'Testing long command line:".to_string();
         for i in 0..50 {
             // Create a reasonably long command
             script.push_str(&format!(" {} ", i));

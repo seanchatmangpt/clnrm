@@ -57,9 +57,9 @@ impl FormatterType {
 /// All formatters must implement this trait to provide consistent output generation.
 /// This trait defines the collaboration contract between the test runner and formatters.
 ///
-/// # Chicago School TDD Note
-/// This trait is designed for EXAMPLE-ONLY: mock-based testing. Implementations should be
-/// independently testable using EXAMPLE-ONLY: mock test suites.
+/// # TDD Note
+/// This trait is designed to support testability. Implementations are
+/// independently testable.
 pub trait Formatter: Send + Sync {
     /// Format a test suite into a string
     ///

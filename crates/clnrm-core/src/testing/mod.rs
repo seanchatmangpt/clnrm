@@ -10,13 +10,13 @@ use crate::error::{CleanroomError, Result};
 macro_rules! assert_ok {
     ($result:expr) => {
         match $result {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => panic!("Expected Ok, got Err: {:?}", e),
         }
     };
     ($result:expr, $msg:expr) => {
         match $result {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => panic!("{}: {:?}", $msg, e),
         }
     };
@@ -27,13 +27,13 @@ macro_rules! assert_err {
     ($result:expr) => {
         match $result {
             Ok(v) => panic!("Expected Err, got Ok: {:?}", v),
-            Err(_) => {},
+            Err(_) => {}
         }
     };
     ($result:expr, $msg:expr) => {
         match $result {
             Ok(v) => panic!("{}: Expected Err, got Ok: {:?}", $msg, v),
-            Err(_) => {},
+            Err(_) => {}
         }
     };
 }
@@ -244,13 +244,43 @@ fn run_framework_suite(
         tests.push(run_test("Error Handling", test_error_handling).await);
 
         // Expert Pattern Tests - 80/20 rule application
-        tests.push(run_test("Error Path Testing Pattern", test_error_path_testing_pattern).await);
-        tests.push(run_test("Boundary Condition Testing Pattern", test_boundary_condition_testing_pattern).await);
-        tests.push(run_test("Resource Cleanup Testing Pattern", test_resource_cleanup_testing_pattern).await);
-        tests.push(run_test("Concurrency Testing Pattern", test_concurrency_testing_pattern).await);
+        tests.push(
+            run_test(
+                "Error Path Testing Pattern",
+                test_error_path_testing_pattern,
+            )
+            .await,
+        );
+        tests.push(
+            run_test(
+                "Boundary Condition Testing Pattern",
+                test_boundary_condition_testing_pattern,
+            )
+            .await,
+        );
+        tests.push(
+            run_test(
+                "Resource Cleanup Testing Pattern",
+                test_resource_cleanup_testing_pattern,
+            )
+            .await,
+        );
+        tests.push(
+            run_test(
+                "Concurrency Testing Pattern",
+                test_concurrency_testing_pattern,
+            )
+            .await,
+        );
 
         // TRIZ Solutions - Systematic innovation patterns
-        tests.push(run_test("TRIZ Principles Integration", test_triz_principles_integration).await);
+        tests.push(
+            run_test(
+                "TRIZ Principles Integration",
+                test_triz_principles_integration,
+            )
+            .await,
+        );
 
         let passed = tests.iter().all(|t| t.passed);
         Ok(SuiteResult {
@@ -729,10 +759,7 @@ async fn test_plugin_system() -> Result<()> {
         return Err(
             CleanroomError::validation_error("Expected 1 active service")
                 .with_context("Plugin system test health check failed")
-                .with_source(format!(
-                    "Expected 1 service, found {}",
-                    health_status.len()
-                )),
+                .with_source(format!("Expected 1 service, found {}", health_status.len())),
         );
     }
 
@@ -1344,7 +1371,8 @@ async fn test_error_path_testing_pattern() -> Result<()> {
         let result = crate::config::parse_toml_config(input);
         if result.is_ok() {
             return Err(CleanroomError::validation_error(format!(
-                "Should fail for input: {} ({})", input, description
+                "Should fail for input: {} ({})",
+                input, description
             )));
         }
 
@@ -1375,7 +1403,9 @@ async fn test_error_path_testing_pattern() -> Result<()> {
 
     let result = validator.validate_file(&invalid_path);
     if result.is_ok() {
-        return Err(CleanroomError::validation_error("Should fail for invalid file"));
+        return Err(CleanroomError::validation_error(
+            "Should fail for invalid file",
+        ));
     }
 
     // Verify validator can still be used after error
@@ -1399,7 +1429,9 @@ async fn test_error_path_testing_pattern() -> Result<()> {
 
     let result = validator.validate_file(&valid_path);
     if result.is_err() {
-        return Err(CleanroomError::validation_error("Validator should recover from previous error"));
+        return Err(CleanroomError::validation_error(
+            "Validator should recover from previous error",
+        ));
     }
 
     Ok(())
@@ -1409,7 +1441,9 @@ async fn test_boundary_condition_testing_pattern() -> Result<()> {
     // Test 2.1: Empty collection boundary - test with empty test results
     let empty_results: Vec<TestResult> = vec![];
     if !empty_results.is_empty() {
-        return Err(CleanroomError::validation_error("Empty collection should have length 0"));
+        return Err(CleanroomError::validation_error(
+            "Empty collection should have length 0",
+        ));
     }
 
     // Test 2.2: Single item boundary
@@ -1420,7 +1454,9 @@ async fn test_boundary_condition_testing_pattern() -> Result<()> {
         error: None,
     }];
     if single_result.len() != 1 {
-        return Err(CleanroomError::validation_error("Single item collection should have length 1"));
+        return Err(CleanroomError::validation_error(
+            "Single item collection should have length 1",
+        ));
     }
 
     // Test 2.3: Maximum reasonable size (avoid OOM in tests)
@@ -1437,7 +1473,8 @@ async fn test_boundary_condition_testing_pattern() -> Result<()> {
     if large_results.len() != max_size {
         return Err(CleanroomError::validation_error(format!(
             "Large collection should have length {}, got {}",
-            max_size, large_results.len()
+            max_size,
+            large_results.len()
         )));
     }
 
@@ -1450,7 +1487,9 @@ async fn test_boundary_condition_testing_pattern() -> Result<()> {
     };
 
     if zero_duration_result.duration_ms != 0 {
-        return Err(CleanroomError::validation_error("Zero duration should be preserved"));
+        return Err(CleanroomError::validation_error(
+            "Zero duration should be preserved",
+        ));
     }
 
     // Test 2.5: Maximum duration boundary
@@ -1462,7 +1501,9 @@ async fn test_boundary_condition_testing_pattern() -> Result<()> {
     };
 
     if max_duration_result.duration_ms != u64::MAX {
-        return Err(CleanroomError::validation_error("Max duration should be preserved"));
+        return Err(CleanroomError::validation_error(
+            "Max duration should be preserved",
+        ));
     }
 
     Ok(())
@@ -1491,7 +1532,9 @@ async fn test_resource_cleanup_testing_pattern() -> Result<()> {
         // Resource should be cleaned up here
     }
     if CLEANUP_COUNT.load(Ordering::SeqCst) != 1 {
-        return Err(CleanroomError::validation_error("Resource should be dropped in normal path"));
+        return Err(CleanroomError::validation_error(
+            "Resource should be dropped in normal path",
+        ));
     }
 
     // Test 3.2: Error path cleanup
@@ -1506,7 +1549,9 @@ async fn test_resource_cleanup_testing_pattern() -> Result<()> {
         return Err(CleanroomError::validation_error("Should return error"));
     }
     if CLEANUP_COUNT.load(Ordering::SeqCst) != 1 {
-        return Err(CleanroomError::validation_error("Resource should drop even in error path"));
+        return Err(CleanroomError::validation_error(
+            "Resource should drop even in error path",
+        ));
     }
 
     // Test 3.3: Panic safety
@@ -1521,7 +1566,9 @@ async fn test_resource_cleanup_testing_pattern() -> Result<()> {
         return Err(CleanroomError::validation_error("Should catch panic"));
     }
     if CLEANUP_COUNT.load(Ordering::SeqCst) != 1 {
-        return Err(CleanroomError::validation_error("Resource should drop even on panic"));
+        return Err(CleanroomError::validation_error(
+            "Resource should drop even on panic",
+        ));
     }
 
     Ok(())
@@ -1549,13 +1596,16 @@ async fn test_concurrency_testing_pattern() -> Result<()> {
 
     // Wait for all threads
     for handle in handles {
-        handle.join().map_err(|_| CleanroomError::internal_error("Thread join failed"))?;
+        handle
+            .join()
+            .map_err(|_| CleanroomError::internal_error("Thread join failed"))?;
     }
 
     let final_value = shared_counter.lock().unwrap();
     if *final_value != 1000 {
         return Err(CleanroomError::validation_error(format!(
-            "All increments should be applied atomically, got {}", final_value
+            "All increments should be applied atomically, got {}",
+            final_value
         )));
     }
 
@@ -1585,7 +1635,10 @@ async fn test_triz_principles_integration() -> Result<()> {
 
     // Verify error has both context and source
     assert!(error.message.contains("test error"));
-    assert!(error.context.iter().any(|c| c.contains("TRIZ integration test context")));
+    assert!(error
+        .context
+        .iter()
+        .any(|c| c.contains("TRIZ integration test context")));
     assert!(error.source.is_some());
 
     // TRIZ Principle 15 (Dynamics): Demonstrate ResourceExhausted error variant
@@ -1603,7 +1656,10 @@ async fn test_triz_principles_integration() -> Result<()> {
         .with_source("config_loader.rs");
 
     assert!(intermediate_error.message.contains("File operation failed"));
-    assert!(intermediate_error.context.iter().any(|c| c.contains("reading configuration file")));
+    assert!(intermediate_error
+        .context
+        .iter()
+        .any(|c| c.contains("reading configuration file")));
 
     // TRIZ Principle 25 (Self-Service): Demonstrate self-service resource management
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1625,7 +1681,11 @@ async fn test_triz_principles_integration() -> Result<()> {
         // Services automatically clean up when scope ends
     }
 
-    assert_eq!(SERVICE_COUNT.load(Ordering::SeqCst), 3, "All services should self-clean");
+    assert_eq!(
+        SERVICE_COUNT.load(Ordering::SeqCst),
+        3,
+        "All services should self-clean"
+    );
 
     // TRIZ Principle 22 (Convert Harm to Benefit): Demonstrate error context enhancement
     // Errors become learning opportunities by providing better context and suggestions
@@ -1634,8 +1694,14 @@ async fn test_triz_principles_integration() -> Result<()> {
         .with_context("Check syntax at line 42")
         .with_source("parser.rs");
 
-    assert!(enhanced_error.context.is_some(), "Should have multiple context levels");
-    assert!(enhanced_error.source.is_some(), "Should have source information");
+    assert!(
+        enhanced_error.context.is_some(),
+        "Should have multiple context levels"
+    );
+    assert!(
+        enhanced_error.source.is_some(),
+        "Should have source information"
+    );
 
     // TRIZ Principle 35 (Parameter Changes): Demonstrate dynamic parameter adaptation
     // The error handling system adapts its behavior based on error patterns

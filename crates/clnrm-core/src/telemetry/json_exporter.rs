@@ -45,7 +45,11 @@ impl SpanExporter for NdjsonFileExporter {
             {
                 Ok(f) => f,
                 Err(e) => {
-                    eprintln!("Failed to open telemetry fallback file {}: {}", path.display(), e);
+                    eprintln!(
+                        "Failed to open telemetry fallback file {}: {}",
+                        path.display(),
+                        e
+                    );
                     return Ok(());
                 }
             };

@@ -115,25 +115,30 @@ impl PortAllocator {
         }
 
         // Allocate based on strategy
-        let port = match &mut self.strategy {
-            AllocationStrategy::Sequential { next } => {
-                self.allocate_sequential(service_name, next)?
-            }
-            AllocationStrategy::Random { .. } => self.allocate_random(service_name)?,
-            AllocationStrategy::Predefined { .. } => {
-                return Err(CleanroomError::configuration_error(format!(
-                    "No predefined port mapping for service '{}'",
-                    service_name
-                )))
-            }
+        let is_sequential = matches!(self.strategy, AllocationStrategy::Sequential { .. });
+        let is_random = matches!(self.strategy, AllocationStrategy::Random { .. });
+
+        let port = if is_sequential {
+            self.allocate_sequential(service_name)?
+        } else if is_random {
+            self.allocate_random(service_name)?
+        } else {
+            return Err(CleanroomError::configuration_error(format!(
+                "No predefined port mapping for service '{}'",
+                service_name
+            )));
         };
 
         Ok(port)
     }
 
     /// Allocate port sequentially
-    fn allocate_sequential(&mut self, service_name: &str, next: &mut u16) -> Result<u16> {
-        let start = *next;
+    fn allocate_sequential(&mut self, service_name: &str) -> Result<u16> {
+        let mut next = match &self.strategy {
+            AllocationStrategy::Sequential { next } => *next,
+            _ => return Err(CleanroomError::configuration_error("Not sequential")),
+        };
+        let start = next;
         let mut attempts = 0;
         let max_attempts = (self.port_range.end - self.port_range.start) as usize;
 
@@ -144,24 +149,27 @@ impl PortAllocator {
                 ));
             }
 
-            let port = *next;
+            let port = next;
 
             // Wrap around if we exceed range
-            *next += 1;
-            if *next >= self.port_range.end {
-                *next = self.port_range.start;
+            next += 1;
+            if next >= self.port_range.end {
+                next = self.port_range.start;
             }
 
             // Check if port is available
             if !self.allocated.contains(&port) && self.is_port_available(port)? {
                 self.mark_allocated(service_name, port);
+                if let AllocationStrategy::Sequential { next: ref_next } = &mut self.strategy {
+                    *ref_next = next;
+                }
                 return Ok(port);
             }
 
             attempts += 1;
 
             // Detect infinite loop
-            if *next == start && attempts > 0 {
+            if next == start && attempts > 0 {
                 return Err(CleanroomError::resource_exhausted(
                     "Port range exhausted (wrapped around)",
                 ));
@@ -171,30 +179,32 @@ impl PortAllocator {
 
     /// Allocate port randomly
     fn allocate_random(&mut self, service_name: &str) -> Result<u16> {
-        let mut attempts = 0;
         let max_attempts = 100;
 
-        let rng = self.rng.as_mut().ok_or_else(|| {
+        let mut rng = self.rng.take().ok_or_else(|| {
             CleanroomError::internal_error("RNG not initialized for random allocation")
         })?;
 
-        loop {
-            if attempts >= max_attempts {
-                return Err(CleanroomError::resource_exhausted(
-                    "Failed to allocate port after 100 attempts (random allocation)",
-                ));
-            }
+        let mut port_allocated = None;
 
+        for _ in 0..max_attempts {
             let port = rng.gen_range(self.port_range.clone());
 
             // Check if port is available
             if !self.allocated.contains(&port) && self.is_port_available(port)? {
                 self.mark_allocated(service_name, port);
-                return Ok(port);
+                port_allocated = Some(port);
+                break;
             }
-
-            attempts += 1;
         }
+
+        self.rng = Some(rng);
+
+        port_allocated.ok_or_else(|| {
+            CleanroomError::resource_exhausted(
+                "Failed to allocate port after 100 attempts (random allocation)",
+            )
+        })
     }
 
     /// Check if port is available (not in use by system)

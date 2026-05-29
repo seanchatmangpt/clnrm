@@ -399,17 +399,22 @@ impl DockerContainerManager {
         timeout: Duration,
     ) -> Result<()> {
         let start = Instant::now();
-        let check_interval = Duration::from_millis(500);
+        let initial_delay = Duration::from_millis(100);
+        let max_delay = Duration::from_secs(2);
+        let mut current_delay = initial_delay;
 
         // Parse healthcheck command
         let cmd: Vec<String> = healthcheck.split_whitespace().map(String::from).collect();
 
         while start.elapsed() < timeout {
-            let result = self.exec(handle, &cmd, &HashMap::new())?;
-            if result.exit_code == 0 {
-                return Ok(());
+            match self.exec(handle, &cmd, &HashMap::new()) {
+                Ok(result) if result.exit_code == 0 => return Ok(()),
+                _ => {
+                    // Exponential backoff
+                    std::thread::sleep(current_delay);
+                    current_delay = std::cmp::min(current_delay * 2, max_delay);
+                }
             }
-            std::thread::sleep(check_interval);
         }
 
         Err(CleanroomError::container_error(format!(

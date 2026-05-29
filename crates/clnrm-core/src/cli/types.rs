@@ -935,44 +935,53 @@ impl Commands {
                 };
                 let paths_ref = paths.as_deref().unwrap_or(&[]);
                 if parallel {
-                    commands::run_tests_parallel(
-                        paths_ref,
-                        &config,
-                    ).await
+                    commands::run_tests_parallel(paths_ref, &config).await
                 } else {
-                    commands::run_tests_sequential(
-                        paths_ref,
-                        &config,
-                    ).await
+                    commands::run_tests_sequential(paths_ref, &config).await
                 }
             }
-            Commands::Init { force, config } => {
-                commands::init_project(force, config)
-            }
-            Commands::Template { template, name, output: _ } => {
-                commands::generate_from_template(&template, name.as_deref())
-            }
+            Commands::Init { force, config } => commands::init_project(force, config),
+            Commands::Template {
+                template,
+                name,
+                output: _,
+            } => commands::generate_from_template(&template, name.as_deref()),
             Commands::Validate { files } => {
                 for f in &files {
                     commands::validate_config(f)?;
                 }
                 Ok(())
             }
-            Commands::Plugins => {
-                commands::list_plugins()
-            }
-            Commands::Services { command } => {
-                match command {
-                    ServiceCommands::Status => commands::show_service_status().await,
-                    ServiceCommands::Logs { service, lines } => commands::show_service_logs(&service, lines).await,
-                    ServiceCommands::Restart { service } => commands::restart_service(&service).await,
-                    #[cfg(feature = "ai")]
-                    ServiceCommands::AiManage { auto_scale, predict_load, optimize_resources, horizon_minutes, service } => {
-                        commands::ai_manage(auto_scale, predict_load, optimize_resources, horizon_minutes, service.as_deref()).await
-                    }
+            Commands::Plugins => commands::list_plugins(),
+            Commands::Services { command } => match command {
+                ServiceCommands::Status => commands::show_service_status().await,
+                ServiceCommands::Logs { service, lines } => {
+                    commands::show_service_logs(&service, lines).await
                 }
-            }
-            Commands::Report { input, output, format } => {
+                ServiceCommands::Restart { service } => commands::restart_service(&service).await,
+                #[cfg(feature = "ai")]
+                ServiceCommands::AiManage {
+                    auto_scale,
+                    predict_load,
+                    optimize_resources,
+                    horizon_minutes,
+                    service,
+                } => {
+                    commands::ai_manage(
+                        auto_scale,
+                        predict_load,
+                        optimize_resources,
+                        horizon_minutes,
+                        service.as_deref(),
+                    )
+                    .await
+                }
+            },
+            Commands::Report {
+                input,
+                output,
+                format,
+            } => {
                 let format_str = match format {
                     ReportFormat::Html => "html",
                     ReportFormat::Markdown => "markdown",
@@ -981,13 +990,20 @@ impl Commands {
                 };
                 commands::generate_report(input.as_ref(), output.as_ref(), format_str).await
             }
-            Commands::SelfTest { suite, report, otel_exporter, otel_endpoint } => {
-                commands::run_self_tests(suite, report, otel_exporter, otel_endpoint).await
-            }
-            Commands::Health { verbose: _ } => {
-                commands::system_health_check(verbose).await
-            }
-            Commands::Dev { paths, debounce_ms, clear, only, timebox } => {
+            Commands::SelfTest {
+                suite,
+                report,
+                otel_exporter,
+                otel_endpoint,
+            } => commands::run_self_tests(suite, report, otel_exporter, otel_endpoint).await,
+            Commands::Health { verbose: _ } => commands::system_health_check(verbose).await,
+            Commands::Dev {
+                paths,
+                debounce_ms,
+                clear,
+                only,
+                timebox,
+            } => {
                 commands::run_dev_mode_with_filters(
                     paths,
                     debounce_ms,
@@ -995,16 +1011,23 @@ impl Commands {
                     only,
                     timebox,
                     cli_config,
-                ).await
+                )
+                .await
             }
             Commands::DryRun { files, verbose } => {
                 let files_ref: Vec<&Path> = files.iter().map(|p| p.as_path()).collect();
                 commands::dry_run_validate(files_ref, verbose).map(|_| ())
             }
-            Commands::Fmt { files, check, verify } => {
-                commands::format_files(&files, check, verify)
-            }
-            Commands::Lint { files, format, deny_warnings } => {
+            Commands::Fmt {
+                files,
+                check,
+                verify,
+            } => commands::format_files(&files, check, verify),
+            Commands::Lint {
+                files,
+                format,
+                deny_warnings,
+            } => {
                 let files_ref: Vec<&Path> = files.iter().map(|p| p.as_path()).collect();
                 let format_str = match format {
                     LintFormat::Human => "human",
@@ -1013,7 +1036,12 @@ impl Commands {
                 };
                 commands::lint_files(files_ref, format_str, deny_warnings)
             }
-            Commands::Diff { baseline, current, format, only_changes } => {
+            Commands::Diff {
+                baseline,
+                current,
+                format,
+                only_changes,
+            } => {
                 let format_str = match format {
                     DiffFormat::Tree => "tree",
                     DiffFormat::Json => "json",
@@ -1021,79 +1049,107 @@ impl Commands {
                 };
                 commands::diff_traces(&baseline, &current, format_str, only_changes).map(|_| ())
             }
-            Commands::Record { paths, output } => {
-                commands::run_record(paths, output).await
+            Commands::Record { paths, output } => commands::run_record(paths, output).await,
+            Commands::Pull {
+                paths,
+                parallel,
+                jobs,
+            } => commands::pull_images(paths, parallel, jobs).await,
+            Commands::Graph {
+                trace,
+                format,
+                highlight_missing,
+                filter,
+            } => commands::visualize_graph(&trace, &format, highlight_missing, filter.as_deref()),
+            Commands::Repro {
+                baseline,
+                verify_digest,
+                output,
+            } => {
+                commands::reproduce_baseline(
+                    &baseline,
+                    verify_digest,
+                    output.as_ref().map(|v| v.as_path()),
+                )
+                .await
             }
-            Commands::Pull { paths, parallel, jobs } => {
-                commands::pull_images(paths, parallel, jobs).await
-            }
-            Commands::Graph { trace, format, highlight_missing, filter } => {
-                commands::visualize_graph(&trace, &format, highlight_missing, filter.as_deref())
-            }
-            Commands::Repro { baseline, verify_digest, output } => {
-                commands::reproduce_baseline(&baseline, verify_digest, output.as_ref().map(|v| v.as_path())).await
-            }
-            Commands::RedGreen { paths, expect, verify_red, verify_green } => {
+            Commands::RedGreen {
+                paths,
+                expect,
+                verify_red,
+                verify_green,
+            } => {
                 let v_red = verify_red || matches!(expect, Some(TddState::Red));
                 let v_green = verify_green || matches!(expect, Some(TddState::Green));
                 commands::run_red_green_validation(&paths, v_red, v_green).await
             }
-            Commands::Render { template, map, output, show_vars } => {
+            Commands::Render {
+                template,
+                map,
+                output,
+                show_vars,
+            } => {
                 let map_str = map.join(",");
-                commands::render_template_with_vars(&template, &map_str, output.as_ref().map(|v| v.as_path()), show_vars)
+                commands::render_template_with_vars(
+                    &template,
+                    &map_str,
+                    output.as_ref().map(|v| v.as_path()),
+                    show_vars,
+                )
             }
-            Commands::Spans { trace, grep, format, show_attrs, show_events } => {
-                commands::filter_spans(&trace, grep.as_deref(), &format, show_attrs, show_events)
-            }
-            Commands::Collector { command } => {
-                match command {
-                    CollectorCommands::Up { image, http_port, grpc_port, detach } => {
-                        commands::start_collector(&image, http_port, grpc_port, detach).await
-                    }
-                    CollectorCommands::Down { volumes } => {
-                        commands::stop_collector(volumes).await
-                    }
-                    CollectorCommands::Status => {
-                        commands::show_collector_status().await
-                    }
-                    CollectorCommands::Logs { lines, follow } => {
-                        commands::show_collector_logs(lines, follow).await
-                    }
+            Commands::Spans {
+                trace,
+                grep,
+                format,
+                show_attrs,
+                show_events,
+            } => commands::filter_spans(&trace, grep.as_deref(), &format, show_attrs, show_events),
+            Commands::Collector { command } => match command {
+                CollectorCommands::Up {
+                    image,
+                    http_port,
+                    grpc_port,
+                    detach,
+                } => commands::start_collector(&image, http_port, grpc_port, detach).await,
+                CollectorCommands::Down { volumes } => commands::stop_collector(volumes).await,
+                CollectorCommands::Status => commands::show_collector_status().await,
+                CollectorCommands::Logs { lines, follow } => {
+                    commands::show_collector_logs(lines, follow).await
                 }
-            }
+            },
             Commands::Analyze { test_file, traces } => {
-                commands::analyze_traces(&test_file, traces.as_ref().map(|v| v.as_path())).map(|_| ())
+                commands::analyze_traces(&test_file, traces.as_ref().map(|v| v.as_path()))
+                    .map(|_| ())
             }
-            Commands::LiveCheck { command } => {
-                match command {
-                    LiveCheckCommands::Status => commands::show_status(),
-                    LiveCheckCommands::ValidateRegistry { registry } => commands::validate_registry(&registry),
-                    LiveCheckCommands::TestWeaver => commands::test_weaver(),
-                    LiveCheckCommands::Modes => commands::show_modes(),
-                    LiveCheckCommands::Version => commands::show_version(),
+            Commands::LiveCheck { command } => match command {
+                LiveCheckCommands::Status => commands::show_status(),
+                LiveCheckCommands::ValidateRegistry { registry } => {
+                    commands::validate_registry(&registry)
                 }
-            }
+                LiveCheckCommands::TestWeaver => commands::test_weaver(),
+                LiveCheckCommands::Modes => commands::show_modes(),
+                LiveCheckCommands::Version => commands::show_version(),
+            },
             #[cfg(feature = "ai")]
-            Commands::AiOrchestrate { .. } => {
-                Err(crate::error::CleanroomError::internal_error("AI features are experimental and not fully active"))
-            }
+            Commands::AiOrchestrate { .. } => Err(crate::error::CleanroomError::internal_error(
+                "AI features are experimental and not fully active",
+            )),
             #[cfg(feature = "ai")]
-            Commands::AiPredict { .. } => {
-                Err(crate::error::CleanroomError::internal_error("AI features are experimental and not fully active"))
-            }
+            Commands::AiPredict { .. } => Err(crate::error::CleanroomError::internal_error(
+                "AI features are experimental and not fully active",
+            )),
             #[cfg(feature = "ai")]
-            Commands::AiOptimize { .. } => {
-                Err(crate::error::CleanroomError::internal_error("AI features are experimental and not fully active"))
-            }
+            Commands::AiOptimize { .. } => Err(crate::error::CleanroomError::internal_error(
+                "AI features are experimental and not fully active",
+            )),
             #[cfg(feature = "ai")]
-            Commands::AiReal { .. } => {
-                Err(crate::error::CleanroomError::internal_error("AI features are experimental and not fully active"))
-            }
+            Commands::AiReal { .. } => Err(crate::error::CleanroomError::internal_error(
+                "AI features are experimental and not fully active",
+            )),
             #[cfg(feature = "ai")]
-            Commands::AiMonitor { .. } => {
-                Err(crate::error::CleanroomError::internal_error("AI features are experimental and not fully active"))
-            }
+            Commands::AiMonitor { .. } => Err(crate::error::CleanroomError::internal_error(
+                "AI features are experimental and not fully active",
+            )),
         }
     }
 }
-

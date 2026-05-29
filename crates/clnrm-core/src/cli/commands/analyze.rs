@@ -115,8 +115,9 @@ pub fn analyze_traces(test_file: &Path, traces_file: Option<&Path>) -> Result<An
         ))
     })?;
 
-    let config: TestConfig = toml::from_str(&config_str)
-        .map_err(|e| CleanroomError::configuration_error(format!("Failed to parse test TOML: {}", e)))?;
+    let config: TestConfig = toml::from_str(&config_str).map_err(|e| {
+        CleanroomError::configuration_error(format!("Failed to parse test TOML: {}", e))
+    })?;
 
     // Load OTEL traces from explicit file or artifacts
     let (validator, traces_source) = if let Some(traces_path) = traces_file {

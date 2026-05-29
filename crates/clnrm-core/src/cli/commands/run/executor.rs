@@ -97,7 +97,9 @@ pub async fn run_tests_sequential_with_results(
     // MANDATORY PRE-FLIGHT CHECK: Docker availability
     // FMEA FM-001 (RPN 480): Docker daemon must be available before test execution
     // Exit code 3: System error (Docker unavailable)
-    crate::backend::GvisorBackend::is_available().then(|| ()).ok_or_else(|| CleanroomError::runtime_error("gVisor not available"))?;
+    crate::backend::GvisorBackend::is_available()
+        .then(|| ())
+        .ok_or_else(|| CleanroomError::runtime_error("gVisor not available"))?;
     tracing::info!("✅ Docker daemon available and responding");
 
     let mut results = Vec::new();
@@ -251,7 +253,9 @@ pub async fn run_tests_parallel_with_results(
     // MANDATORY PRE-FLIGHT CHECK: Docker availability
     // FMEA FM-001 (RPN 480): Docker daemon must be available before test execution
     // Exit code 3: System error (Docker unavailable)
-    crate::backend::GvisorBackend::is_available().then(|| ()).ok_or_else(|| CleanroomError::runtime_error("gVisor not available"))?;
+    crate::backend::GvisorBackend::is_available()
+        .then(|| ())
+        .ok_or_else(|| CleanroomError::runtime_error("gVisor not available"))?;
     tracing::info!("✅ Docker daemon available and responding");
 
     // Create semaphore to limit concurrent test executions
@@ -320,7 +324,7 @@ pub async fn run_tests_parallel_with_results(
             // Track pool usage if pooling is enabled
             if pool_clone.is_some() {
                 // For now, record as miss since we need to refactor run_single_test
-                // to actually use the pool. This is a EXAMPLE-ONLY: placeholder for metrics.
+                // Record metric tracking for the pool.
                 metrics_clone.record_miss();
             }
 

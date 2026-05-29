@@ -106,66 +106,165 @@ impl OtelValidator {
             ));
         }
 
-        // For now, implement basic validation without OTel SDK integration
-        // This provides a foundation that can be extended with actual span data
-
-        let mut errors = Vec::new();
-        let mut actual_attributes = HashMap::new();
-
-        // Validate span name is not empty
+        // Validate assertion format first
+        let mut validation_errors = Vec::new();
         if assertion.name.is_empty() {
-            errors.push("Span name cannot be empty".to_string());
+            validation_errors.push("Span name cannot be empty".to_string());
+        }
+        for expected_key in assertion.attributes.keys() {
+            if expected_key.is_empty() {
+                validation_errors.push("Attribute key cannot be empty".to_string());
+            }
+        }
+        if !validation_errors.is_empty() {
+            return Ok(SpanValidationResult {
+                passed: false,
+                span_name: assertion.name.clone(),
+                errors: validation_errors,
+                actual_attributes: HashMap::new(),
+                actual_duration_ms: None,
+            });
         }
 
-        // Validate required attributes
-        for (key, expected_value) in &assertion.attributes {
-            if key.is_empty() {
-                errors.push("Attribute key cannot be empty".to_string());
-                continue;
+        // Implementation with full OTel SDK integration
+        // We find the spans from the validation processor or exporter
+        let spans = if let Some(processor) = &self.validation_processor {
+            processor.find_spans_by_name(&assertion.name)?
+        } else if let Some(exporter) = &self.span_exporter {
+            exporter
+                .get_finished_spans()
+                .map_err(|e| CleanroomError::internal_error(e.to_string()))?
+                .into_iter()
+                .filter(|s| s.name == assertion.name)
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        if spans.is_empty() {
+            if assertion.required {
+                return Ok(SpanValidationResult {
+                    passed: false,
+                    span_name: assertion.name.clone(),
+                    errors: vec![format!(
+                        "Required span '{}' not found in telemetry data",
+                        assertion.name
+                    )],
+                    actual_attributes: HashMap::new(),
+                    actual_duration_ms: None,
+                });
+            } else {
+                return Ok(SpanValidationResult {
+                    passed: true,
+                    span_name: assertion.name.clone(),
+                    errors: Vec::new(),
+                    actual_attributes: HashMap::new(),
+                    actual_duration_ms: None,
+                });
+            }
+        }
+
+        let mut all_errors = Vec::new();
+        let mut best_actual_attributes = HashMap::new();
+        let mut best_duration: Option<f64> = None;
+
+        for span in &spans {
+            let mut errors = Vec::new();
+            let mut actual_attributes = HashMap::new();
+
+            // Validate span attributes against real span data
+            for (expected_key, expected_value) in &assertion.attributes {
+                if expected_key.is_empty() {
+                    errors.push("Attribute key cannot be empty".to_string());
+                    continue;
+                }
+
+                // Proper search across the SpanData attributes
+                let found_attribute = span
+                    .attributes
+                    .iter()
+                    .find(|kv| kv.key.as_str() == expected_key);
+
+                match found_attribute {
+                    Some(kv) => {
+                        let actual_value = kv.value.to_string();
+                        // Strip quotes if it's a string representation
+                        let cleaned_value =
+                            if actual_value.starts_with('"') && actual_value.ends_with('"') {
+                                actual_value[1..actual_value.len() - 1].to_string()
+                            } else {
+                                actual_value
+                            };
+
+                        actual_attributes.insert(expected_key.clone(), cleaned_value.clone());
+
+                        if cleaned_value != *expected_value {
+                            errors.push(format!(
+                                "Attribute '{}' expected '{}' but found '{}'",
+                                expected_key, expected_value, cleaned_value
+                            ));
+                        }
+                    }
+                    None => {
+                        errors.push(format!(
+                            "Required attribute '{}' not found in span '{}'",
+                            expected_key, assertion.name
+                        ));
+                    }
+                }
             }
 
-            // For now, simulate finding the attribute (in real implementation,
-            // this would query the span data from OTel SDK)
-            actual_attributes.insert(key.clone(), expected_value.clone());
-        }
+            // Validate duration constraints if provided
+            let duration_ms = span
+                .end_time
+                .duration_since(span.start_time)
+                .unwrap_or_default()
+                .as_millis() as f64;
 
-        // Validate duration constraints if provided
-        let actual_duration_ms =
-            if assertion.min_duration_ms.is_some() || assertion.max_duration_ms.is_some() {
-                // Simulate a reasonable duration for testing
-                Some(50.0)
-            } else {
-                None
-            };
-
-        if let Some(duration) = actual_duration_ms {
             if let Some(min_duration) = assertion.min_duration_ms {
-                if duration < min_duration {
+                if duration_ms < min_duration {
                     errors.push(format!(
                         "Span duration {}ms is below minimum {}ms",
-                        duration, min_duration
+                        duration_ms, min_duration
                     ));
                 }
             }
 
             if let Some(max_duration) = assertion.max_duration_ms {
-                if duration > max_duration {
+                if duration_ms > max_duration {
                     errors.push(format!(
                         "Span duration {}ms exceeds maximum {}ms",
-                        duration, max_duration
+                        duration_ms, max_duration
                     ));
+                }
+            }
+
+            // If no errors for this span, we found a perfect match
+            if errors.is_empty() {
+                return Ok(SpanValidationResult {
+                    passed: true,
+                    span_name: assertion.name.clone(),
+                    errors: Vec::new(),
+                    actual_attributes,
+                    actual_duration_ms: Some(duration_ms),
+                });
+            } else {
+                // Keep track of the closest match (least errors)
+                if all_errors.is_empty() || errors.len() < all_errors.len() {
+                    all_errors = errors;
+                    best_actual_attributes = actual_attributes;
+                    best_duration = Some(duration_ms);
                 }
             }
         }
 
-        let passed = errors.is_empty();
-
+        // If we get here, no span matched perfectly
         Ok(SpanValidationResult {
-            passed,
+            passed: false,
             span_name: assertion.name.clone(),
-            errors,
-            actual_attributes,
-            actual_duration_ms,
+            errors: all_errors,
+            actual_attributes: best_actual_attributes,
+            actual_duration_ms: best_duration,
         })
     }
 
@@ -184,108 +283,14 @@ impl OtelValidator {
             ));
         }
 
-        let validation_processor = self.validation_processor.as_ref().ok_or_else(|| {
+        let _validation_processor = self.validation_processor.as_ref().ok_or_else(|| {
             CleanroomError::validation_error(
                 "No validation processor configured for real span validation",
             )
         })?;
 
-        // Query real spans from the validation processor
-        let spans = validation_processor.find_spans_by_name(&assertion.name)?;
-
-        if spans.is_empty() && assertion.required {
-            return Ok(SpanValidationResult {
-                passed: false,
-                span_name: assertion.name.clone(),
-                errors: vec![format!(
-                    "Required span '{}' not found in telemetry data",
-                    assertion.name
-                )],
-                actual_attributes: HashMap::new(),
-                actual_duration_ms: None,
-            });
-        }
-
-        let mut all_errors = Vec::new();
-        let mut best_actual_attributes = HashMap::new();
-        let mut best_duration: Option<f64> = None;
-
-        for span in &spans {
-            let mut errors = Vec::new();
-            let mut actual_attributes = HashMap::new();
-
-            // Validate span attributes against real span data
-            for (expected_key, expected_value) in &assertion.attributes {
-                if expected_key.is_empty() {
-                    errors.push("Attribute key cannot be empty".to_string());
-                    continue;
-                }
-
-                // Look for the attribute in the real span data
-                let found_attribute = span
-                    .attributes
-                    .iter()
-                    .find(|kv| kv.key.as_str() == expected_key);
-
-                match found_attribute {
-                    Some(kv) => {
-                        let actual_value = kv.value.as_str();
-                        actual_attributes.insert(expected_key.clone(), actual_value.to_string());
-
-                        if actual_value != *expected_value {
-                            errors.push(format!(
-                                "Attribute '{}' expected '{}' but found '{}'",
-                                expected_key, expected_value, actual_value
-                            ));
-                        }
-                    }
-                    None => {
-                        errors.push(format!(
-                            "Required attribute '{}' not found in span '{}'",
-                            expected_key, assertion.name
-                        ));
-                    }
-                }
-            }
-            
-            // If no errors for this span, we found a perfect match
-            if errors.is_empty() {
-                let duration_ms = span
-                    .end_time
-                    .duration_since(span.start_time)
-                    .unwrap_or_default()
-                    .as_millis() as f64;
-                    
-                return Ok(SpanValidationResult {
-                    passed: true,
-                    span_name: assertion.name.clone(),
-                    errors: Vec::new(),
-                    actual_attributes,
-                    actual_duration_ms: Some(duration_ms),
-                });
-            } else {
-                // Keep track of the closest match (least errors)
-                if all_errors.is_empty() || errors.len() < all_errors.len() {
-                    all_errors = errors;
-                    best_actual_attributes = actual_attributes;
-                    best_duration = Some(
-                        span.end_time
-                            .duration_since(span.start_time)
-                            .unwrap_or_default()
-                            .as_millis() as f64
-                    );
-                }
-            }
-        }
-        
-        // If we get here, no span matched perfectly
-        Ok(SpanValidationResult {
-            passed: false,
-            span_name: assertion.name.clone(),
-            errors: all_errors,
-            actual_attributes: best_actual_attributes,
-            actual_duration_ms: best_duration,
-        })
+        // Call the unified validate_span which now has full OTel SDK integration
+        self.validate_span(assertion)
     }
 
     /// Validate a trace assertion
@@ -416,18 +421,26 @@ impl OtelValidator {
         let host = url.host_str().unwrap_or("localhost");
         let port = url.port_or_known_default().unwrap_or(4317);
         let addr = format!("{}:{}", host, port);
-        
+
         let addrs = std::net::ToSocketAddrs::to_socket_addrs(&addr).map_err(|e| {
             CleanroomError::validation_error(format!("Failed to resolve endpoint {}: {}", addr, e))
         })?;
-        
+
         for socket_addr in addrs {
-            if std::net::TcpStream::connect_timeout(&socket_addr, std::time::Duration::from_millis(500)).is_ok() {
+            if std::net::TcpStream::connect_timeout(
+                &socket_addr,
+                std::time::Duration::from_millis(500),
+            )
+            .is_ok()
+            {
                 return Ok(true);
             }
         }
-        
-        Err(CleanroomError::validation_error(format!("Could not connect to OTLP endpoint {}", addr)))
+
+        Err(CleanroomError::validation_error(format!(
+            "Could not connect to OTLP endpoint {}",
+            addr
+        )))
     }
 
     /// Validate export functionality using real OTLP export testing
@@ -508,28 +521,34 @@ impl OtelValidator {
         }
 
         // Create an exporter pointing to the endpoint and force a flush
-        let runtime = tokio::runtime::Runtime::new().map_err(|e| CleanroomError::internal_error(e.to_string()))?;
-        
+        let runtime = tokio::runtime::Runtime::new()
+            .map_err(|e| CleanroomError::internal_error(e.to_string()))?;
+
         runtime.block_on(async {
             use opentelemetry_otlp::WithExportConfig;
             let exporter = opentelemetry_otlp::SpanExporter::builder()
                 .with_tonic()
                 .with_endpoint(endpoint)
                 .build()
-                .map_err(|e| CleanroomError::validation_error(format!("Failed to build exporter: {}", e)))?;
-                
+                .map_err(|e| {
+                    CleanroomError::validation_error(format!("Failed to build exporter: {}", e))
+                })?;
+
             let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
                 .with_batch_exporter(exporter)
                 .build();
-                
-            use opentelemetry::trace::{TracerProvider, Tracer};
+
+            use opentelemetry::trace::{Tracer, TracerProvider};
             let tracer = provider.tracer("clnrm-validation-tracer");
             tracer.in_span("test-export-span", |_cx| {});
-            
+
             if let Err(e) = provider.force_flush() {
-                return Err(CleanroomError::validation_error(format!("Force flush failed: {}", e)));
+                return Err(CleanroomError::validation_error(format!(
+                    "Force flush failed: {}",
+                    e
+                )));
             }
-            
+
             Ok(true)
         })
     }

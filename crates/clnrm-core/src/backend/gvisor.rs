@@ -6,13 +6,11 @@
 //! - Creating OCI bundles
 //! - Executing containers with gVisor's runsc
 
-use super::oci::{
-    ImageSource, OciBundleBuilder, OciImageLoader,
-    RunscExecutor,
-};
+use super::oci::{ImageSource, OciBundleBuilder, OciImageLoader, RunscExecutor};
 use super::{Backend, Cmd, RunResult};
 use crate::error::{CleanroomError, Result};
 use crate::policy::Policy;
+use opentelemetry::trace::TraceContextExt;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -31,11 +29,19 @@ pub struct GvisorBackend {
 
 impl GvisorBackend {
     /// Create new gVisor backend
-    
-    pub fn with_env(self, _key: &str, _value: &str) -> Self { self }
-    pub fn with_memory_limit(self, _limit: u64) -> Self { self }
-    pub fn with_cpu_limit(self, _limit: f64) -> Self { self }
-    pub fn with_startup_timeout(self, _timeout: std::time::Duration) -> Self { self }
+
+    pub fn with_env(self, _key: &str, _value: &str) -> Self {
+        self
+    }
+    pub fn with_memory_limit(self, _limit: u64) -> Self {
+        self
+    }
+    pub fn with_cpu_limit(self, _limit: f64) -> Self {
+        self
+    }
+    pub fn with_startup_timeout(self, _timeout: std::time::Duration) -> Self {
+        self
+    }
 
     pub fn new(image: impl Into<String>) -> Result<Self> {
         let image_str = image.into();
@@ -136,9 +142,19 @@ impl GvisorBackend {
     /// Execute command asynchronously
     #[instrument(name = "gvisor.run_cmd", skip(self, cmd), fields(image = ?self.image_source, component = "gvisor_backend"))]
     async fn run_cmd_async(&self, cmd: Cmd) -> Result<RunResult> {
+        use crate::telemetry::semantic_conventions::gvisor::{events, GvisorSpanBuilder};
         let start_time = Instant::now();
+        let sandbox_id = uuid::Uuid::new_v4().simple().to_string();
+        let platform = "ptrace"; // Default for gvisor backend
 
-        // 1. Load image
+        // 1. Load image & Create bundle (Container Create)
+        let create_span = GvisorSpanBuilder::container_create(
+            &format!("{:?}", self.image_source),
+            &sandbox_id,
+            platform,
+        );
+        let _create_enter = create_span.enter();
+
         info!("Loading OCI image");
         let image = self
             .image_loader
@@ -159,19 +175,71 @@ impl GvisorBackend {
             .await?;
 
         info!("Bundle created: {}", bundle.path.display());
+        {
+            use tracing_opentelemetry::OpenTelemetrySpanExt;
+            let context = tracing::Span::current().context();
+            let otel_span = context.span();
+            events::record_sandbox_created(
+                &otel_span,
+                &sandbox_id,
+                &bundle.path.display().to_string(),
+            );
+        }
+        drop(_create_enter);
+        drop(create_span);
 
-        // 3. Execute with runsc
+        // 3. Execute with runsc (Start + Exec)
+        let start_span = GvisorSpanBuilder::container_start(&sandbox_id, 0);
+        let _start_enter = start_span.enter();
+        {
+            use tracing_opentelemetry::OpenTelemetrySpanExt;
+            let context = tracing::Span::current().context();
+            let otel_span = context.span();
+            events::record_sandbox_started(&otel_span, 0, "sandbox");
+        }
+
+        let exec_span = GvisorSpanBuilder::container_exec(&sandbox_id, &cmd.args.join(" "));
+        let _exec_enter = exec_span.enter();
+
         info!("Executing with runsc");
         let output = self
             .runsc_executor
             .run_container(&bundle, self.timeout)
             .await?;
 
-        info!("Container execution complete: exit code {}", output.exit_code);
+        info!(
+            "Container execution complete: exit code {}",
+            output.exit_code
+        );
+        {
+            use tracing_opentelemetry::OpenTelemetrySpanExt;
+            let context = tracing::Span::current().context();
+            let otel_span = context.span();
+            events::record_exec_completed(
+                &otel_span,
+                output.exit_code,
+                start_time.elapsed().as_millis() as f64,
+            );
+        }
 
-        // 4. Cleanup bundle
+        drop(_exec_enter);
+        drop(exec_span);
+        drop(_start_enter);
+        drop(start_span);
+
+        // 4. Stop
+        let stop_span = GvisorSpanBuilder::container_stop(&sandbox_id, output.exit_code);
+        let _stop_enter = stop_span.enter();
+        drop(_stop_enter);
+        drop(stop_span);
+
+        // 5. Cleanup bundle (Delete)
+        let delete_span = GvisorSpanBuilder::container_delete(&sandbox_id);
+        let _delete_enter = delete_span.enter();
         info!("Cleaning up bundle");
         let _ = self.bundle_builder.cleanup_bundle(&bundle).await;
+        drop(_delete_enter);
+        drop(delete_span);
 
         let duration_ms = start_time.elapsed().as_millis() as u64;
 
@@ -191,16 +259,18 @@ impl GvisorBackend {
 
 impl Backend for GvisorBackend {
     fn run_cmd(&self, cmd: Cmd) -> Result<RunResult> {
-        // Run async operations in blocking context
-        tokio::task::block_in_place(|| {
-            let handle = tokio::runtime::Handle::try_current().map_err(|_| {
-                CleanroomError::runtime_error(
-                    "No tokio runtime available. gVisor backend requires async runtime.",
-                )
-            })?;
-
-            handle.block_on(async { self.run_cmd_async(cmd).await })
-        })
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => tokio::task::block_in_place(|| {
+                handle.block_on(async { self.run_cmd_async(cmd).await })
+            }),
+            Err(_) => {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|e| CleanroomError::runtime_error(e.to_string()))?;
+                rt.block_on(async { self.run_cmd_async(cmd).await })
+            }
+        }
     }
 
     fn name(&self) -> &str {

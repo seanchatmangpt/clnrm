@@ -253,20 +253,33 @@ impl SpanValidator {
 
     /// Convert OpenTelemetry SpanData to validator SpanData
     fn convert_otel_span(span: &opentelemetry_sdk::trace::SpanData) -> SpanData {
-        // Convert attributes
-        let mut attributes = std::collections::HashMap::new();
-        for kv in &span.attributes {
-            let key = kv.key.to_string();
-            let value = match &kv.value {
+        let convert_value = |val: &opentelemetry::Value| -> serde_json::Value {
+            match val {
                 opentelemetry::Value::Bool(b) => serde_json::json!(b),
                 opentelemetry::Value::I64(i) => serde_json::json!(i),
                 opentelemetry::Value::F64(f) => serde_json::json!(f),
                 opentelemetry::Value::String(s) => serde_json::json!(s.to_string()),
-                _ => serde_json::json!(kv.value.to_string()),
-            };
-            attributes.insert(key, value);
+                opentelemetry::Value::Array(arr) => match arr {
+                    opentelemetry::Array::Bool(v) => serde_json::json!(v),
+                    opentelemetry::Array::I64(v) => serde_json::json!(v),
+                    opentelemetry::Array::F64(v) => serde_json::json!(v),
+                    opentelemetry::Array::String(v) => {
+                        let strings: Vec<String> = v.iter().map(|s| s.to_string()).collect();
+                        serde_json::json!(strings)
+                    }
+                    _ => serde_json::json!(format!("{:?}", arr)),
+                },
+                _ => serde_json::json!(format!("{:?}", val)),
+            }
+        };
+
+        // Convert attributes
+        let mut attributes = std::collections::HashMap::new();
+        for kv in &span.attributes {
+            attributes.insert(kv.key.to_string(), convert_value(&kv.value));
         }
 
+        let resource_attributes = std::collections::HashMap::new();
         // Convert span kind (use opentelemetry::trace::SpanKind from opentelemetry crate)
         let kind = match span.span_kind {
             opentelemetry::trace::SpanKind::Internal => Some(SpanKind::Internal),
@@ -313,7 +326,7 @@ impl SpanValidator {
             end_time_unix_nano,
             kind,
             events,
-            resource_attributes: std::collections::HashMap::new(),
+            resource_attributes,
         }
     }
 

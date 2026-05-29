@@ -205,6 +205,41 @@ pub struct ReceiptSignature {
     pub signed_at: String, // ISO 8601
 }
 
+impl Default for TestReceipt {
+    fn default() -> Self {
+        Self {
+            id: ContentHash::from_string("default"),
+            scenario_id: ScenarioId("default".to_string()),
+            capabilities: Vec::new(),
+            effects: EffectSet::new(),
+            sigma_hash: ContentHash::from_string("default"),
+            image_digests: HashMap::new(),
+            constraints: ConstraintSet::default(),
+            weaver_proof: None,
+            timing_footprint: TimingFootprint {
+                total_duration: Duration::from_secs(0),
+                hot_paths: Vec::new(),
+                warm_paths: Vec::new(),
+                cold_paths: Vec::new(),
+                tau_violations: Vec::new(),
+            },
+            hermeticity_witness: HermeticityWitness {
+                network_isolated: true,
+                external_connections: Vec::new(),
+                filesystem_isolated: true,
+                non_hermetic_paths: Vec::new(),
+                process_isolated: true,
+                deterministic: true,
+                determinism_violations: Vec::new(),
+            },
+            previous_receipt: None,
+            signature: None,
+            timestamp: "1970-01-01T00:00:00Z".to_string(),
+            metadata: HashMap::new(),
+        }
+    }
+}
+
 impl TestReceipt {
     /// Compute receipt ID (SHA-256 hash of receipt content)
     ///

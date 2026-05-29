@@ -3,11 +3,11 @@
 //! Executes tests using the new TestConfig format and gVisor backend.
 //! This bridges the CLI to the unified cleanroom execution pipeline.
 
-use crate::config::load_config_from_file;
-use crate::error::{CleanroomError, Result};
 use crate::cli::commands::run::container_executor::{execute_container_test, StepResult};
+use crate::config::load_config_from_file;
+use crate::error::Result;
 use std::path::Path;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 /// Unified execution result matching the old signature
 pub struct ExecutionResult {
@@ -24,7 +24,11 @@ pub async fn run_test(path: &Path) -> Result<ExecutionResult> {
 
     info!(
         "🚀 Executing unified test: {}",
-        config.test.as_ref().map(|t| t.metadata().name.as_str()).unwrap_or("unnamed")
+        config
+            .test
+            .as_ref()
+            .map(|t| t.metadata().name.as_str())
+            .unwrap_or("unnamed")
     );
 
     // Execute via container executor (which now uses CleanroomEnvironment + gVisor)
@@ -33,7 +37,11 @@ pub async fn run_test(path: &Path) -> Result<ExecutionResult> {
     let passed = step_results.iter().all(|r| r.passed);
     let total_duration: u64 = step_results.iter().map(|r| r.duration_ms).sum();
     let summary = if passed {
-        format!("All {} steps passed in {}ms", step_results.len(), total_duration)
+        format!(
+            "All {} steps passed in {}ms",
+            step_results.len(),
+            total_duration
+        )
     } else {
         format!("Test failed after {}ms", total_duration)
     };

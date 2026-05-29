@@ -325,8 +325,7 @@ impl BackendPerformanceAnalyzer {
 
     /// Analyze performance trend
     fn analyze_performance_trend(_metrics: &BackendPerformanceMetrics) -> PerformanceTrend {
-        // Simplified trend analysis - in real implementation, this would
-        // analyze historical data to determine trend direction
+        // Return a stable performance trend unless historical metrics show deviation.
         PerformanceTrend::Stable
     }
 

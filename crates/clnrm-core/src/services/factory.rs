@@ -79,7 +79,7 @@ impl ServiceFactory {
                     config.plugin
                 );
                 Err(CleanroomError::configuration_error(msg))
-            },
+            }
         }
     }
 

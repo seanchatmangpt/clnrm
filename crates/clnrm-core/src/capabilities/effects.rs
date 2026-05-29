@@ -139,6 +139,13 @@ impl EffectSet {
         self.effects.len()
     }
 
+    /// Extend this effect set with effects from another set
+    pub fn extend(&mut self, other: &EffectSet) {
+        for effect in &other.effects {
+            self.effects.insert(effect.clone());
+        }
+    }
+
     /// Validate that this effect set is allowed by a capability
     pub fn validate_against_capability(&self, capability_effects: &EffectSet) -> Result<()> {
         if !self.is_subset_of(capability_effects) {
