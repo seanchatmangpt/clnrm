@@ -115,6 +115,7 @@ mockall = { workspace = true }
 
 # Chicago TDD testing framework
 chicago-tdd-tools = "1.4.0"
+fake = "5.1.0"
 
 [[bench]]
 name = "hot_reload_critical_path"
