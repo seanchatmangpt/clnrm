@@ -414,7 +414,7 @@ mod tests {
             .unwrap_or(false)
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_custom_database_plugin_lifecycle() -> Result<()> {
         if !is_docker_available() {
             println!("Docker is not available. Skipping integration test.");
@@ -457,7 +457,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_custom_api_plugin_lifecycle() -> Result<()> {
         if !is_docker_available() {
             println!("Docker is not available. Skipping integration test.");
@@ -496,7 +496,7 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_plugin_validation() {
         // Test invalid name
         let result = CustomDatabasePlugin::new("", "testdb");
@@ -511,7 +511,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn test_multi_service_integration() -> Result<()> {
         if !is_docker_available() {
             println!("Docker is not available. Skipping integration test.");
