@@ -126,13 +126,23 @@ mod tests {
         let clearinghouse = EscrowClearinghouse::new(policy);
         let graph = Graph { records: vec![] };
 
-        // Packet with missing or invalid signature details
+        let kp = crate::pqc::lattice::generate_keypair([1u8; 32]);
+        let msg = b"malicious_action";
+        let sig = crate::pqc::lattice::sign(&kp.secret, msg, [2u8; 32]);
+        
+        let signature_hex = format!("z:{}-c:{}", 
+            hex::encode(&sig.z.coeffs.iter().take(32).map(|x| format!("{:04x}", x)).collect::<String>()),
+            hex::encode(&sig.c.coeffs.iter().take(32).map(|x| format!("{:04x}", x)).collect::<String>())
+        );
+        let public_key_hex = hex::encode(&kp.public.t.coeffs.iter().take(32).map(|x| format!("{:04x}", x)).collect::<String>());
+
+        // Packet with invalid signature details (simulate tamper by modifying payload but keeping original signature)
         let packet = PartyPacket {
             sender: "seller_01".to_string(),
-            payload: "malicious_action".to_string(),
+            payload: "tampered_action".to_string(),
             nonce: 42,
-            signature_hex: Some("00".repeat(1024)), // Dummy signature bytes
-            public_key_hex: Some("00".repeat(1024)), // Dummy pubkey bytes
+            signature_hex: Some(signature_hex),
+            public_key_hex: Some(public_key_hex),
         };
 
         let result = clearinghouse.settle(&graph, &[packet], 100, &[]);

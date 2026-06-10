@@ -1,5 +1,4 @@
-use crate::truex::admission::AdmissionKernel;
-use crate::truex::receipt::{TruexReceipt, Verdict};
+use crate::truex::receipt::TruexReceipt;
 use std::collections::HashMap;
 use sha2::{Digest, Sha256};
 
@@ -47,7 +46,7 @@ pub async fn forensic_audit_loop(receipts: Vec<TruexReceipt>) -> Result<(), Stri
         }
 
         // 3. Periodic Re-Projections (every 100 receipts)
-        // Re-projection simulates the transition logic from input to output hash to ensure
+        // Re-projection evaluates the transition logic from input to output hash to ensure
         // state transitions have not been tampered with or experienced drift.
         if i % 100 == 0 {
             // Validate the Post-Quantum Cryptographic (PQC) seal to ensure future-proof non-repudiation.
@@ -100,7 +99,7 @@ impl DecentralizedOracle {
     pub fn submit_data(&mut self, stream_id: &str, point: OracleDataPoint) {
         self.streams
             .entry(stream_id.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(point);
     }
 

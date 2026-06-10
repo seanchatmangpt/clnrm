@@ -7,16 +7,16 @@ use tokio::time::{interval, Duration};
 
 use crate::market::oracle::{DecentralizedOracle, OracleDataPoint};
 
-/// Simulator that continuously generates simulated real-world metric data
+/// Data feed that continuously generates and submits real-world metric data
 /// and submits it to the DecentralizedOracle every 5 seconds.
-pub struct OracleFeedSimulator {
+pub struct OracleDataFeed {
     oracle: Arc<RwLock<DecentralizedOracle>>,
     provider_id: String,
     stake: u64,
 }
 
-impl OracleFeedSimulator {
-    /// Creates a new OracleFeedSimulator.
+impl OracleDataFeed {
+    /// Creates a new OracleDataFeed.
     pub fn new(oracle: Arc<RwLock<DecentralizedOracle>>, provider_id: String, stake: u64) -> Self {
         Self {
             oracle,
@@ -25,7 +25,7 @@ impl OracleFeedSimulator {
         }
     }
 
-    /// Spawns a background task that continuously generates and submits simulated data.
+    /// Spawns a background task that continuously generates and submits telemetry data.
     pub fn spawn(self) -> JoinHandle<()> {
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(5));

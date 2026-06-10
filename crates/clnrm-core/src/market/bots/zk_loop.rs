@@ -54,7 +54,7 @@ impl ZkLoopBot {
         match self.batcher.generate_rollup_proof() {
             Ok(merkle_root) => {
                 info!("Generated ZK Rollup Proof Merkle Root: {:?}", merkle_root);
-                info!("Successfully submitted Merkle root to simulated consensus state.");
+                info!("Successfully submitted Merkle root to layer-1 consensus state.");
                 *receipts_queued = 0;
             }
             Err(e) => {

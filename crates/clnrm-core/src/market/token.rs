@@ -177,7 +177,7 @@ impl NDimensionalToken {
         let account = self
             .accounts
             .entry(operation.to)
-            .or_insert_with(TokenVector::new);
+            .or_default();
         for (dim_id, amount) in operation.vector.components {
             let dim = self
                 .dimensions
@@ -266,7 +266,7 @@ impl NDimensionalToken {
         let to_account = self
             .accounts
             .entry(operation.to)
-            .or_insert_with(TokenVector::new);
+            .or_default();
         for (dim_id, amount) in operation.vector.components {
             to_account.add(dim_id, amount);
         }

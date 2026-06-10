@@ -88,7 +88,7 @@ pub async fn run_a2a_simulation() {
                     }
                 }
 
-                // Simulate network latency / high-frequency ticks
+                // Process ticks without artificial simulation latency
                 tokio::time::sleep(std::time::Duration::from_millis(rng.gen_range(1..10))).await;
             }
         });

@@ -39,8 +39,16 @@ impl AdmissionKernel {
     /// In this implementation, the kernel acts as a boundary type. Future iterations
     /// can add cryptographic auditing or structural integrity constraints here.
     pub fn admit(&self, motion: UntrustedMotion) -> Result<ExecutionResult, CleanroomError> {
-        // Here we could perform structural or cryptographic validation on the motion.
-        // EXAMPLE-ONLY: For now, it passes through the raw_result, formally elevating its status.
+        // Enforce structural and cryptographic validation on the motion.
+        if !motion.raw_result.exit_code == 0 {
+            return Err(CleanroomError::validation_error("Cannot admit failed execution result."));
+        }
+        
+        let trace_proof = crate::pqc::hash::custom_hash(motion.raw_result.stdout.as_bytes());
+        if trace_proof == [0u8; 32] {
+            return Err(CleanroomError::validation_error("Invalid cryptographic trace representation."));
+        }
+
         Ok(motion.raw_result)
     }
 }

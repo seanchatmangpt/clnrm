@@ -99,10 +99,6 @@ impl AgentOrderbook {
         let task = self.tasks.remove(&task_id)?;
         let mut heap = self.bids.remove(&task_id)?;
 
-        if let Some(winning_bid) = heap.pop() {
-            Some((task, winning_bid))
-        } else {
-            None
-        }
+        heap.pop().map(|winning_bid| (task, winning_bid))
     }
 }

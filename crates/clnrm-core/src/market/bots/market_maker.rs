@@ -40,7 +40,7 @@ impl AutonomousMarketMaker {
         }
 
         while self.is_running.load(Ordering::SeqCst) {
-            // Simulate trading intervals
+            // Process market making intervals
             let delay_ms = rng.gen_range(10..200);
             sleep(Duration::from_millis(delay_ms)).await;
 

@@ -105,7 +105,7 @@ impl ZkMarket {
 
         self.bids
             .entry(bid.task_id.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(bid);
 
         Ok(())

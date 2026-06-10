@@ -27,7 +27,7 @@ impl InterDimensionalRouter {
     pub fn add_route(&mut self, from: &str, to: &str, cost: f64, liquidity: f64) {
         self.graph
             .entry(from.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(DimensionEdge {
                 target_dimension: to.to_string(),
                 cost_weight: cost,

@@ -60,8 +60,8 @@ impl ReputationEngine {
     }
 
     pub fn record_interaction(&mut self, source: PeerId, target: PeerId, success: bool) {
-        let targets = self.interactions.entry(source).or_insert_with(HashMap::new);
-        let record = targets.entry(target).or_insert_with(TrustRecord::new);
+        let targets = self.interactions.entry(source).or_default();
+        let record = targets.entry(target).or_default();
         if success {
             record.successful_interactions += 1;
         } else {
