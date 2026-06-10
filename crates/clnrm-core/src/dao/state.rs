@@ -15,8 +15,7 @@ fn common_prefix(a: &[u8], b: &[u8]) -> usize {
     a.iter().zip(b.iter()).take_while(|(x, y)| x == y).count()
 }
 
-#[derive(Clone, Debug)]
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 pub enum Node {
     #[default]
     Empty,
@@ -33,7 +32,6 @@ pub enum Node {
         value: Option<Vec<u8>>,
     },
 }
-
 
 impl Node {
     fn insert(self, path: &[u8], value: &[u8]) -> Self {

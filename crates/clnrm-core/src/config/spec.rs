@@ -226,7 +226,7 @@ impl ContainerSpec {
         depends_on: Vec<String>,
         command: Option<Vec<String>>,
         args: Option<Vec<String>>,   // Legacy field (merge into command)
-        _user: Option<String>,        // Legacy field (not used in current struct)
+        _user: Option<String>,       // Legacy field (not used in current struct)
         working_dir: Option<String>, // Legacy field name
         healthcheck: Option<String>, // Legacy field name
         _labels: HashMap<String, String>, // Legacy field (not used)

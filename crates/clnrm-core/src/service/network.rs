@@ -66,7 +66,6 @@ pub enum NetworkMode {
     Bridge,
 }
 
-
 /// Network configuration for container
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {

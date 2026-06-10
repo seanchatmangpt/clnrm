@@ -1065,14 +1065,7 @@ impl Commands {
                 baseline,
                 verify_digest,
                 output,
-            } => {
-                commands::reproduce_baseline(
-                    &baseline,
-                    verify_digest,
-                    output.as_deref(),
-                )
-                .await
-            }
+            } => commands::reproduce_baseline(&baseline, verify_digest, output.as_deref()).await,
             Commands::RedGreen {
                 paths,
                 expect,
@@ -1118,8 +1111,7 @@ impl Commands {
                 }
             },
             Commands::Analyze { test_file, traces } => {
-                commands::analyze_traces(&test_file, traces.as_deref())
-                    .map(|_| ())
+                commands::analyze_traces(&test_file, traces.as_deref()).map(|_| ())
             }
             Commands::LiveCheck { command } => match command {
                 LiveCheckCommands::Status => commands::show_status(),

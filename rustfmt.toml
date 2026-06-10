@@ -1,7 +1,7 @@
 # Rustfmt configuration for clnrm
 # Exclude files that don't exist to avoid cargo fmt errors
 
-exclude = [
+ignore = [
     "examples/framework-self-testing/hermetic_isolation_test.rs",
     "examples/framework-self-testing/observability_test.rs",
     "examples/framework-self-testing/plugin_system_test.rs",

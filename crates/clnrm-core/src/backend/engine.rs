@@ -163,8 +163,7 @@ pub struct ContainerEngine {
     pub max_memory: u64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum ContainerStrategy {
     Direct,
     Pooled,
@@ -180,7 +179,6 @@ pub struct ContainerConfig {
     pub auto_remove: bool,
     pub adaptive_window: usize,
 }
-
 
 impl Default for ContainerConfig {
     fn default() -> Self {
