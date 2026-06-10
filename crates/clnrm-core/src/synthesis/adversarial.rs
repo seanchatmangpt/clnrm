@@ -14,7 +14,7 @@ impl NistAdversarialSynthesizer {
     pub fn synthesize(sigma: &SigmaBase) -> NistAdversarialEngine {
         let mut engine = NistAdversarialEngine::new();
 
-        for (service_id, _service_def) in &sigma.services {
+        for service_id in sigma.services.keys() {
             engine.add_vector(Arc::new(EscapeVector {
                 target_service: service_id.clone(),
             }));

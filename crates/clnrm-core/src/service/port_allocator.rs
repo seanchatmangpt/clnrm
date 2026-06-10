@@ -221,7 +221,7 @@ impl PortAllocator {
         self.allocated.insert(port);
         self.reservations
             .entry(service_name.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(port);
     }
 

@@ -15,7 +15,7 @@ pub enum EscrowAction {
 }
 
 pub fn escalate_deviation(
-    event: &OCELEvent,
+    _event: &OCELEvent,
     deviation: DeviationType,
 ) -> Result<EscrowAction, String> {
     match deviation {

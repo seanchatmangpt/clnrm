@@ -234,7 +234,7 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
                     return Err(PbftError::DigestMismatch);
                 }
                 let mut prepares = HashMap::new();
-                prepares.insert(p.node_id.clone(), p.clone());
+                prepares.insert(p.node_id, p.clone());
                 Some(PbftState::Prepared {
                     pre_prepare: pre_prepare.clone(),
                     prepares,
@@ -247,7 +247,7 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
                 if pre_prepare.digest != p.digest {
                     return Err(PbftError::DigestMismatch);
                 }
-                prepares.insert(p.node_id.clone(), p.clone());
+                prepares.insert(p.node_id, p.clone());
                 None
             }
             _ => return Err(PbftError::InvalidStateTransition),
@@ -312,13 +312,13 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
         let new_state = match &mut self.state {
             PbftState::Committed {
                 pre_prepare,
-                prepares,
+                prepares: _,
                 commits,
             } => {
                 if pre_prepare.digest != c.digest {
                     return Err(PbftError::DigestMismatch);
                 }
-                commits.insert(c.node_id.clone(), c.clone());
+                commits.insert(c.node_id, c.clone());
                 None
             }
             PbftState::Prepared {
@@ -329,7 +329,7 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
                     return Err(PbftError::DigestMismatch);
                 }
                 let mut commits = HashMap::new();
-                commits.insert(c.node_id.clone(), c.clone());
+                commits.insert(c.node_id, c.clone());
                 Some(PbftState::Committed {
                     pre_prepare: pre_prepare.clone(),
                     prepares: prepares.clone(),

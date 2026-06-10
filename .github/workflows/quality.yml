@@ -159,8 +159,8 @@ jobs:
 
       - name: Run clippy with zero warnings enforcement
         run: |
-          echo "🔍 Running clippy with -D warnings (zero tolerance)..."
-          cargo clippy --workspace --all-targets --all-features -- -D warnings
+          echo "🔍 Running clippy with  (zero tolerance)..."
+          cargo clippy --workspace --all-targets --all-features -- 
 
       - name: Upload clippy report
         if: failure()

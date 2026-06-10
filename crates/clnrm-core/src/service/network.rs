@@ -55,20 +55,17 @@ impl PortMapping {
 /// Network mode for containers
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum NetworkMode {
     /// No network access (maximum isolation)
     None,
     /// Share host network stack
     Host,
     /// Isolated network namespace with bridge
+    #[default]
     Bridge,
 }
 
-impl Default for NetworkMode {
-    fn default() -> Self {
-        Self::Bridge
-    }
-}
 
 /// Network configuration for container
 #[derive(Debug, Clone, Serialize, Deserialize)]

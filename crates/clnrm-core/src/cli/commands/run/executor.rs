@@ -109,7 +109,7 @@ pub async fn run_tests_sequential_with_results(
     // FMEA FM-001 (RPN 480): Docker daemon must be available before test execution
     // Exit code 3: System error (Docker unavailable)
     crate::backend::GvisorBackend::is_available()
-        .then(|| ())
+        .then_some(())
         .ok_or_else(|| CleanroomError::runtime_error("gVisor not available"))?;
     tracing::info!("✅ Docker daemon available and responding");
 
@@ -265,7 +265,7 @@ pub async fn run_tests_parallel_with_results(
     // FMEA FM-001 (RPN 480): Docker daemon must be available before test execution
     // Exit code 3: System error (Docker unavailable)
     crate::backend::GvisorBackend::is_available()
-        .then(|| ())
+        .then_some(())
         .ok_or_else(|| CleanroomError::runtime_error("gVisor not available"))?;
     tracing::info!("✅ Docker daemon available and responding");
 

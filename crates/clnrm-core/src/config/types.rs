@@ -746,7 +746,7 @@ impl StepConfig {
             }
         }
 
-        if self.command.is_empty() && self.exec.as_ref().map_or(true, |v| v.is_empty()) {
+        if self.command.is_empty() && self.exec.as_ref().is_none_or(|v| v.is_empty()) {
             return Err(CleanroomError::validation_error(
                 "Step must have a non-empty 'command' or 'exec' array",
             ));

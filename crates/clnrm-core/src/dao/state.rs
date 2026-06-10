@@ -16,7 +16,9 @@ fn common_prefix(a: &[u8], b: &[u8]) -> usize {
 }
 
 #[derive(Clone, Debug)]
+#[derive(Default)]
 pub enum Node {
+    #[default]
     Empty,
     Leaf {
         path: Vec<u8>,
@@ -32,11 +34,6 @@ pub enum Node {
     },
 }
 
-impl Default for Node {
-    fn default() -> Self {
-        Node::Empty
-    }
-}
 
 impl Node {
     fn insert(self, path: &[u8], value: &[u8]) -> Self {

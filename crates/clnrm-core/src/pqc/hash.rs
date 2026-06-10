@@ -81,7 +81,7 @@ pub fn custom_hash(input: &[u8]) -> Digest {
 
     // If the input length was exactly a multiple of the rate,
     // we need to absorb an extra block containing just the padding.
-    if input.len() % rate_bytes == 0 {
+    if input.len().is_multiple_of(rate_bytes) {
         let mut block = [0u8; 64];
         block[0] = 0x80;
         for i in 0..8 {

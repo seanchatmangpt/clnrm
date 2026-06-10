@@ -149,7 +149,7 @@ impl ImageCache {
             let layer_path = self
                 .cache_dir
                 .join("layers")
-                .join(&layer.digest.replace(':', "_"));
+                .join(layer.digest.replace(':', "_"));
 
             tokio::fs::create_dir_all(layer_path.parent().unwrap()).await?;
             tokio::fs::write(&layer_path, &layer.data).await?;
@@ -169,7 +169,7 @@ impl ImageCache {
         let config_path = self
             .cache_dir
             .join("configs")
-            .join(&config_digest.replace(':', "_"));
+            .join(config_digest.replace(':', "_"));
 
         tokio::fs::create_dir_all(config_path.parent().unwrap()).await?;
         tokio::fs::write(&config_path, &image.config_bytes).await?;
@@ -224,7 +224,7 @@ impl ImageCache {
                 let config_path = self
                     .cache_dir
                     .join("configs")
-                    .join(&entry.config_digest.replace(':', "_"));
+                    .join(entry.config_digest.replace(':', "_"));
                 let _ = tokio::fs::remove_file(&config_path).await;
 
                 // Update total size
@@ -265,7 +265,7 @@ impl ImageCache {
         let config_path = self
             .cache_dir
             .join("configs")
-            .join(&entry.config_digest.replace(':', "_"));
+            .join(entry.config_digest.replace(':', "_"));
         let config_bytes = tokio::fs::read(&config_path).await?;
         let config = serde_json::from_slice(&config_bytes)?;
 
@@ -314,7 +314,7 @@ impl ImageCache {
             let config_path = self
                 .cache_dir
                 .join("configs")
-                .join(&entry.config_digest.replace(':', "_"));
+                .join(entry.config_digest.replace(':', "_"));
             let _ = tokio::fs::remove_file(&config_path).await;
         }
 

@@ -210,16 +210,15 @@ impl ResourceGovernor {
                     ));
                 }
                 Effect::Network { .. } => {}
-                Effect::Storage { mode, paths } => {
+                Effect::Storage { mode, paths }
                     // Check for dangerous storage access
                     if paths.is_empty()
                         && matches!(mode, crate::capabilities::effects::StorageMode::ReadWrite)
-                    {
+                    => {
                         return Err(CleanroomError::internal_error(
                             "Read-write storage access requires specific path restrictions",
                         ));
                     }
-                }
                 _ => {} // Other effects are allowed
             }
         }

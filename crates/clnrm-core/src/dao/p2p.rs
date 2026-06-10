@@ -132,7 +132,7 @@ impl P2pNetwork {
     }
 
     async fn handle_connection(
-        mut stream: TcpStream,
+        stream: TcpStream,
         peer_addr: SocketAddr,
         discovery: NodeDiscovery,
         internal_tx: mpsc::Sender<GossipMessage>,

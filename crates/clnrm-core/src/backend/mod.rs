@@ -180,12 +180,10 @@ impl AutoBackend {
     }
 
     pub fn from_name(name: &str) -> Result<Self> {
-        match name {
-            _ => Err(crate::error::CleanroomError::new(
-                crate::error::ErrorKind::ConfigurationError,
-                format!("{}", name),
-            )),
-        }
+        Err(crate::error::CleanroomError::new(
+            crate::error::ErrorKind::ConfigurationError,
+            name.to_string(),
+        ))
     }
 
     /// Get the resolved backend name
@@ -193,10 +191,8 @@ impl AutoBackend {
         self.inner.name().to_string()
     }
 
-    pub fn is_backend_available(name: &str) -> bool {
-        match name {
-            _ => false,
-        }
+    pub fn is_backend_available(_name: &str) -> bool {
+        false
     }
 }
 

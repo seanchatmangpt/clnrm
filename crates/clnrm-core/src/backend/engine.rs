@@ -164,9 +164,11 @@ pub struct ContainerEngine {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum ContainerStrategy {
     Direct,
     Pooled,
+    #[default]
     Adaptive,
 }
 
@@ -179,11 +181,6 @@ pub struct ContainerConfig {
     pub adaptive_window: usize,
 }
 
-impl Default for ContainerStrategy {
-    fn default() -> Self {
-        ContainerStrategy::Adaptive
-    }
-}
 
 impl Default for ContainerConfig {
     fn default() -> Self {

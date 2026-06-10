@@ -2,7 +2,7 @@
 //!
 //! Manages a pool of pre-allocated containers for efficient stress testing.
 
-use crate::backend::{Backend, GvisorBackend};
+use crate::backend::GvisorBackend;
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};

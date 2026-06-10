@@ -906,12 +906,12 @@ impl Commands {
                 fail_fast,
                 watch,
                 force,
-                shard,
+                shard: _,
                 digest,
-                report_junit,
+                report_junit: _,
                 validate,
-                otel_exporter,
-                otel_endpoint,
+                otel_exporter: _,
+                otel_endpoint: _,
                 live_check: _,
                 validation_mode: _,
                 registry_path: _,
@@ -1069,7 +1069,7 @@ impl Commands {
                 commands::reproduce_baseline(
                     &baseline,
                     verify_digest,
-                    output.as_ref().map(|v| v.as_path()),
+                    output.as_deref(),
                 )
                 .await
             }
@@ -1093,7 +1093,7 @@ impl Commands {
                 commands::render_template_with_vars(
                     &template,
                     &map_str,
-                    output.as_ref().map(|v| v.as_path()),
+                    output.as_deref(),
                     show_vars,
                 )
             }
@@ -1118,7 +1118,7 @@ impl Commands {
                 }
             },
             Commands::Analyze { test_file, traces } => {
-                commands::analyze_traces(&test_file, traces.as_ref().map(|v| v.as_path()))
+                commands::analyze_traces(&test_file, traces.as_deref())
                     .map(|_| ())
             }
             Commands::LiveCheck { command } => match command {

@@ -305,7 +305,7 @@ pub fn save_templates_to_toml() -> Result<String> {
     for (name, template) in &templates.templates {
         toml_content.push_str(&format!("# {} Template\n", name));
         toml_content.push_str(&format!("[template.{}]\n", name));
-        toml_content.push_str(&format!("plugin = \"gvisor_container\"\n"));
+        toml_content.push_str("plugin = \"gvisor_container\"\n");
         toml_content.push_str(&format!("image = \"{}\"\n", template.image.to_string()));
 
         if let Some(ref command) = template.command {
@@ -319,7 +319,7 @@ pub fn save_templates_to_toml() -> Result<String> {
             }
         }
 
-        toml_content.push_str("\n");
+        toml_content.push('\n');
     }
 
     Ok(toml_content)

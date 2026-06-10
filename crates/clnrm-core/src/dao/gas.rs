@@ -122,7 +122,7 @@ impl GasMeter {
 
     /// Refund gas (e.g., if a memory allocation was smaller than expected).
     pub fn refund(&mut self, amount: u64) {
-        self.consumed = self.consumed.checked_sub(amount).unwrap_or(0);
+        self.consumed = self.consumed.saturating_sub(amount);
     }
 }
 

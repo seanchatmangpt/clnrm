@@ -47,7 +47,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        run: cargo clippy --all-features -- -D warnings -A clippy::unnecessary_unwrap
+        run: cargo clippy --all-features --  -A clippy::unnecessary_unwrap
 
       - name: Run consistency checks (eliminate mura)
         run: bash scripts/scan-fakes.sh

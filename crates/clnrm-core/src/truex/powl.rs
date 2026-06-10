@@ -120,7 +120,7 @@ impl PowlWorkflow {
                 for sub_node in nodes {
                     match self.verify_node(sub_node, &trace[consumed..]) {
                         Ok(len) => consumed += len,
-                        Err(mut errs) => {
+                        Err(errs) => {
                             // Adjust diagnostics if needed
                             return Err(errs);
                         }
@@ -165,7 +165,7 @@ impl PowlWorkflow {
                 // Match exit
                 match self.verify_node(exit, &trace[consumed..]) {
                     Ok(len) => Ok(consumed + len),
-                    Err(mut errs) => Err(errs),
+                    Err(errs) => Err(errs),
                 }
             }
             PowlNode::Parallel(nodes) => {

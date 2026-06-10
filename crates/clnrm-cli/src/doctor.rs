@@ -1,4 +1,3 @@
-use anyhow::{anyhow, Result};
 use serde::Serialize;
 use std::path::Path;
 use std::process::Command;

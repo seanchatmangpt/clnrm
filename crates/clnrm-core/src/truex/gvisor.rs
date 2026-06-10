@@ -1,6 +1,6 @@
 use crate::backend::GvisorBackend;
 use crate::error::{CleanroomError, Result};
-use crate::truex::powl::{Diagnostic, PowlNode, PowlWorkflow};
+use crate::truex::powl::{PowlNode, PowlWorkflow};
 
 /// Sandboxed runner for parliamentary and ontology-level process conformance validation.
 pub struct Gvisor;

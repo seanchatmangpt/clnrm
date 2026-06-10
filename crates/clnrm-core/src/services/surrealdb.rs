@@ -11,6 +11,12 @@ pub struct SurrealDbPlugin {
     pub image: String,
 }
 
+impl Default for SurrealDbPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SurrealDbPlugin {
     pub fn new() -> Self {
         Self {

@@ -217,7 +217,7 @@ impl ContainerSpec {
     /// TRIZ Principle 15: Dynamics - Dynamic construction adapter
     /// Allows the struct to adapt to different construction patterns during evolution
     pub fn from_legacy_fields(
-        name: String, // This is actually the image name in legacy format
+        _name: String, // This is actually the image name in legacy format
         image: String,
         tag: String,
         ports: Vec<String>,                // Legacy string format
@@ -226,10 +226,10 @@ impl ContainerSpec {
         depends_on: Vec<String>,
         command: Option<Vec<String>>,
         args: Option<Vec<String>>,   // Legacy field (merge into command)
-        user: Option<String>,        // Legacy field (not used in current struct)
+        _user: Option<String>,        // Legacy field (not used in current struct)
         working_dir: Option<String>, // Legacy field name
         healthcheck: Option<String>, // Legacy field name
-        labels: HashMap<String, String>, // Legacy field (not used)
+        _labels: HashMap<String, String>, // Legacy field (not used)
     ) -> Self {
         // Dynamically adapt legacy construction to current struct
         let full_image = if tag.is_empty() {

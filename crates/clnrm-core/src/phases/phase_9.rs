@@ -447,7 +447,7 @@ impl BackendConformanceHarness {
                         let path = entry.path();
                         if path.is_dir() {
                             find_toml_files(&path, files);
-                        } else if path.extension().map_or(false, |ext| ext == "toml") {
+                        } else if path.extension().is_some_and(|ext| ext == "toml") {
                             files.push(path);
                         }
                     }

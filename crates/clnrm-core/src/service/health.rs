@@ -330,9 +330,9 @@ impl HealthProbe {
                 }
             }
 
-            return Err(CleanroomError::execution_error(
+            Err(CleanroomError::execution_error(
                 "Execution check failed: neither runsc nor docker found for command execution",
-            ));
+            ))
         } else {
             // Real runsc container execution
             let root_dir = dirs::cache_dir()

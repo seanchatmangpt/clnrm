@@ -3,7 +3,6 @@
 mod commands;
 mod doctor;
 
-use clap_noun_verb::Result;
 
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
