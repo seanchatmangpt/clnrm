@@ -290,15 +290,17 @@ pub fn check_weaver_health(registry_path: &PathBuf) -> Result<WeaverHealth> {
     debug!("Checking Weaver health");
 
     // Check 1: Is weaver binary available?
-    let version_output = Command::new("weaver")
-        .arg("--version")
-        .output()
-        .map_err(|e| {
-            CleanroomError::validation_error(format!(
-                "Weaver binary not found: {}. Install with: cargo install weaver-cli",
-                e
-            ))
-        })?;
+    let version_output = match Command::new("weaver").arg("--version").output() {
+        Ok(output) => output,
+        Err(e) => {
+            return Ok(WeaverHealth::Unavailable {
+                reason: format!(
+                    "Weaver binary not found: {}. Install with: cargo install weaver-cli",
+                    e
+                ),
+            });
+        }
+    };
 
     if !version_output.status.success() {
         return Ok(WeaverHealth::Unavailable {
