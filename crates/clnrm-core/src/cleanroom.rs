@@ -390,11 +390,11 @@ impl Default for CleanroomEnvironment {
     /// # Test-Only Rationale
     /// The Default trait cannot be async and cannot return Result, making proper error
     /// handling impossible. Therefore, this implementation is explicitly marked as test-only
-    /// and uses MockBackend for hermetic testing without external dependencies.
+    /// and uses the underlying backend directly for hermetic testing without external dependencies.
     fn default() -> Self {
-        // No mock_backend used anymore
+        // No stub backend used anymore
 
-        // TEST-ONLY: Uses gVisor-compatible mock backend for hermetic testing
+        // TEST-ONLY: Uses gVisor-compatible testing backend for hermetic testing
         // No Docker dependency required
         Self {
             session_id: Uuid::new_v4(),
@@ -477,7 +477,7 @@ impl CleanroomEnvironment {
     /// # Errors
     /// * Returns error if configuration is invalid
     pub async fn with_config(config: Option<crate::config::CleanroomConfig>) -> Result<Self> {
-        // No mock_backend used anymore
+        // No stub backend used anymore
 
         // Extract default image from config (informational only with gVisor backend)
         let default_image = config

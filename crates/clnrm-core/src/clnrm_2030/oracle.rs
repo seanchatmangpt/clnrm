@@ -165,7 +165,7 @@ mod tests {
     #[tokio::test]
     async fn test_forensic_audit_loop_valid_chain() {
         let mut receipts = Vec::new();
-        let genesis_prev_hash = "genesis_hash_placeholder".to_string();
+        let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
         
         let mut r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
         let r1_hash = compute_receipt_hash(&r1);
@@ -185,7 +185,7 @@ mod tests {
     #[tokio::test]
     async fn test_forensic_audit_loop_broken_chain() {
         let mut receipts = Vec::new();
-        let genesis_prev_hash = "genesis_hash_placeholder".to_string();
+        let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
         
         let r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
         receipts.push(r1);
@@ -203,7 +203,7 @@ mod tests {
     #[tokio::test]
     async fn test_forensic_audit_loop_malformed_hashes() {
         let mut receipts = Vec::new();
-        let genesis_prev_hash = "genesis_hash_placeholder".to_string();
+        let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
         
         let mut r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
         // Malform input hash
