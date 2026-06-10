@@ -972,7 +972,7 @@ impl Commands {
                         predict_load,
                         optimize_resources,
                         horizon_minutes,
-                        service.as_deref(),
+                        service,
                     )
                     .await
                 }
