@@ -1,0 +1,22 @@
+[package]
+name = "clnrm-lsp"
+version.workspace = true
+edition.workspace = true
+description = "LSP server providing language intelligence for .clnrm.toml test definitions"
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "clnrm-lsp"
+path = "src/main.rs"
+
+[dependencies]
+lsp-max.workspace = true
+clap-noun-verb = "26.6.2"
+clap-noun-verb-macros = "26.6.2"
+linkme = "0.3"
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true

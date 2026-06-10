@@ -1,0 +1,54 @@
+[project]
+name = "clnrm"
+version = "26.5.28"
+description = "Hermetic integration testing framework — LSP server for .clnrm.toml test definition files"
+
+[ontology]
+source = "/Users/sac/clnrm/ggen-base.ttl"
+
+[inference]
+[[inference.rules]]
+name = "clnrm-identity"
+description = "Identity pass — no inference needed for inline VALUES generation"
+construct = """
+CONSTRUCT { ?s ?p ?o }
+WHERE { ?s ?p ?o }
+"""
+
+[generation]
+output_dir = "/Users/sac/clnrm/crates/clnrm-lsp/src"
+
+[[generation.rules]]
+name = "mcp-server"
+query = { file = "/Users/sac/ggen/crates/ggen-core/queries/mcp/extract-mcp-full.rq" }
+template = { file = "/Users/sac/ggen/templates/mcp-rust.tera" }
+output_file = "/Users/sac/ggen/output/tooling/mcp_server.rs"
+mode = "Overwrite"
+
+[[generation.rules]]
+name = "clnrm-lsp-backend"
+query = { inline = """
+SELECT ?server_name ?diagnostic_source_id
+WHERE {
+  VALUES (?server_name ?diagnostic_source_id) {
+    ("clnrm" "clnrm-lsp")
+  }
+}
+""" }
+template = { file = "/Users/sac/ggen/marketplace/templates/lsp-max/backend.rs.tera" }
+output_file = "/Users/sac/clnrm/crates/clnrm-lsp/src/backend.rs"
+mode = "Overwrite"
+
+[[generation.rules]]
+name = "clnrm-lsp-cli"
+query = { inline = """
+SELECT ?server_name ?diagnostic_source_id
+WHERE {
+  VALUES (?server_name ?diagnostic_source_id) {
+    ("clnrm" "clnrm-lsp")
+  }
+}
+""" }
+template = { file = "/Users/sac/ggen/marketplace/templates/lsp-max/cli.rs.tera" }
+output_file = "/Users/sac/clnrm/crates/clnrm-lsp/src/cli.rs"
+mode = "Overwrite"
