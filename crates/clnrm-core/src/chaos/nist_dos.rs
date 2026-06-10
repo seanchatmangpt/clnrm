@@ -25,10 +25,12 @@ impl NistAttackVector for ResourceExhaustionAttack {
         let cmd_args = vec![
             "sh".to_string(),
             "-c".to_string(),
-            ":(){ :|:& };:".to_string()
+            ":(){ :|:& };:".to_string(),
         ];
 
-        let run_result = env.execute_in_container("ubuntu", &cmd_args, None, None).await;
+        let run_result = env
+            .execute_in_container("ubuntu", &cmd_args, None, None)
+            .await;
 
         match run_result {
             Ok(res) => {

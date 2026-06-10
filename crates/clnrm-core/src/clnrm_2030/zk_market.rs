@@ -82,7 +82,10 @@ impl ZkMarket {
     }
 
     pub fn submit_bid(&mut self, bid: ProverBid) -> Result<(), MarketError> {
-        let task = self.tasks.get(&bid.task_id).ok_or(MarketError::TaskNotFound)?;
+        let task = self
+            .tasks
+            .get(&bid.task_id)
+            .ok_or(MarketError::TaskNotFound)?;
 
         if self.assignments.contains_key(&bid.task_id) {
             return Err(MarketError::TaskAlreadyAssigned);
@@ -100,12 +103,19 @@ impl ZkMarket {
             return Err(MarketError::InsufficientStake);
         }
 
-        self.bids.entry(bid.task_id.clone()).or_insert_with(Vec::new).push(bid);
+        self.bids
+            .entry(bid.task_id.clone())
+            .or_insert_with(Vec::new)
+            .push(bid);
 
         Ok(())
     }
 
-    pub fn resolve_task(&mut self, task_id: &TaskId, current_time_ms: u64) -> Result<TaskAssignment, MarketError> {
+    pub fn resolve_task(
+        &mut self,
+        task_id: &TaskId,
+        current_time_ms: u64,
+    ) -> Result<TaskAssignment, MarketError> {
         let task = self.tasks.get(task_id).ok_or(MarketError::TaskNotFound)?;
 
         if self.assignments.contains_key(task_id) {

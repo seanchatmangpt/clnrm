@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug)]
 pub enum PbftError {
@@ -132,7 +132,12 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
         &self.state
     }
 
-    fn verify_message_signature(&self, node_id: &NodeId, msg: &PbftMessage, signature: &Signature) -> bool {
+    fn verify_message_signature(
+        &self,
+        node_id: &NodeId,
+        msg: &PbftMessage,
+        signature: &Signature,
+    ) -> bool {
         let data = match msg {
             PbftMessage::PrePrepare(pp) => {
                 let mut data = Vec::new();
@@ -180,15 +185,17 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
             return Err(PbftError::SequenceMismatch);
         }
 
-        self.state = PbftState::PrePrepared { pre_prepare: pp.clone() };
+        self.state = PbftState::PrePrepared {
+            pre_prepare: pp.clone(),
+        };
 
         let mut data = Vec::new();
         data.extend_from_slice(&self.view.to_le_bytes());
         data.extend_from_slice(&self.sequence.to_le_bytes());
         data.extend_from_slice(&pp.digest.0);
-        
+
         let signature = self.crypto.sign(&data);
-        
+
         let prepare_msg = Prepare {
             view: self.view,
             sequence: self.sequence,
@@ -213,7 +220,11 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
             return Err(PbftError::SequenceMismatch);
         }
 
-        if !self.verify_message_signature(&p.node_id, &PbftMessage::Prepare(p.clone()), &p.signature) {
+        if !self.verify_message_signature(
+            &p.node_id,
+            &PbftMessage::Prepare(p.clone()),
+            &p.signature,
+        ) {
             return Err(PbftError::InvalidSignature);
         }
 
@@ -229,7 +240,10 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
                     prepares,
                 })
             }
-            PbftState::Prepared { pre_prepare, prepares } => {
+            PbftState::Prepared {
+                pre_prepare,
+                prepares,
+            } => {
                 if pre_prepare.digest != p.digest {
                     return Err(PbftError::DigestMismatch);
                 }
@@ -243,15 +257,19 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
             self.state = state;
         }
 
-        if let PbftState::Prepared { pre_prepare, prepares } = &self.state {
+        if let PbftState::Prepared {
+            pre_prepare,
+            prepares,
+        } = &self.state
+        {
             if prepares.len() >= self.required_votes() {
                 let mut data = Vec::new();
                 data.extend_from_slice(&self.view.to_le_bytes());
                 data.extend_from_slice(&self.sequence.to_le_bytes());
                 data.extend_from_slice(&pre_prepare.digest.0);
-                
+
                 let signature = self.crypto.sign(&data);
-                
+
                 let commit_msg = Commit {
                     view: self.view,
                     sequence: self.sequence,
@@ -259,13 +277,13 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
                     node_id: self.crypto.node_id(),
                     signature,
                 };
-                
+
                 self.state = PbftState::Committed {
                     pre_prepare: pre_prepare.clone(),
                     prepares: prepares.clone(),
                     commits: HashMap::new(),
                 };
-                
+
                 return Ok(Some(PbftMessage::Commit(commit_msg)));
             }
         }
@@ -286,19 +304,27 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
             return Err(PbftError::SequenceMismatch);
         }
 
-        if !self.verify_message_signature(&c.node_id, &PbftMessage::Commit(c.clone()), &c.signature) {
+        if !self.verify_message_signature(&c.node_id, &PbftMessage::Commit(c.clone()), &c.signature)
+        {
             return Err(PbftError::InvalidSignature);
         }
-        
+
         let new_state = match &mut self.state {
-            PbftState::Committed { pre_prepare, prepares, commits } => {
+            PbftState::Committed {
+                pre_prepare,
+                prepares,
+                commits,
+            } => {
                 if pre_prepare.digest != c.digest {
                     return Err(PbftError::DigestMismatch);
                 }
                 commits.insert(c.node_id.clone(), c.clone());
                 None
             }
-            PbftState::Prepared { pre_prepare, prepares } => {
+            PbftState::Prepared {
+                pre_prepare,
+                prepares,
+            } => {
                 if pre_prepare.digest != c.digest {
                     return Err(PbftError::DigestMismatch);
                 }
@@ -317,7 +343,12 @@ impl<C: CryptoProvider> PbftStateMachine<C> {
             self.state = state;
         }
 
-        if let PbftState::Committed { pre_prepare, prepares: _, commits } = &self.state {
+        if let PbftState::Committed {
+            pre_prepare,
+            prepares: _,
+            commits,
+        } = &self.state
+        {
             if commits.len() >= self.required_votes() {
                 let digest = pre_prepare.digest.clone();
                 self.state = PbftState::Executed { digest };

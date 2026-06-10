@@ -77,13 +77,16 @@ fn test_strict_mode_all_present() -> Result<()> {
     let report = create_compliant_report();
     let result = validator.validate(&report);
 
-    assert!(result.passed, "Strict mode should pass with all items present");
-    assert_eq!(result.coverage, 100.0, "Coverage should be 100%");
     assert!(
-        result.violations.is_empty(),
-        "Should have no violations"
+        result.passed,
+        "Strict mode should pass with all items present"
     );
-    assert!(result.within_time_budget, "Should complete within time budget");
+    assert_eq!(result.coverage, 100.0, "Coverage should be 100%");
+    assert!(result.violations.is_empty(), "Should have no violations");
+    assert!(
+        result.within_time_budget,
+        "Should complete within time budget"
+    );
 
     Ok(())
 }
@@ -124,7 +127,10 @@ fn test_strict_mode_missing_optional_attribute() -> Result<()> {
     let result = validator.validate(&report);
 
     // Strict mode should fail on missing optional attributes
-    assert!(!result.passed, "Strict mode should fail on missing optional");
+    assert!(
+        !result.passed,
+        "Strict mode should fail on missing optional"
+    );
     assert!(!result.violations.is_empty(), "Should have violations");
 
     Ok(())
@@ -132,9 +138,20 @@ fn test_strict_mode_missing_optional_attribute() -> Result<()> {
 
 #[test]
 fn test_eighty_twenty_mode_critical_only() -> Result<()> {
-    let config = ValidationConfig::eighty_twenty();
-    let eighty_twenty = EightyTwentyConfig::default();
+    let eighty_twenty = EightyTwentyConfig {
+        critical_spans: vec![
+            "clnrm.test.execute".to_string(),
+            "clnrm.container.start".to_string(),
+        ],
+        required_attributes: vec![
+            "clnrm.version".to_string(),
+            "test.hermetic".to_string(),
+            "container.id".to_string(),
+        ],
+        optional_attributes: vec![],
+    };
 
+    let config = ValidationConfig::eighty_twenty();
     let validator = ConformanceValidator::with_80_20_config(config, eighty_twenty);
 
     let mut report = ConformanceReport::new();
@@ -176,14 +193,8 @@ fn test_eighty_twenty_mode_missing_critical_span() -> Result<()> {
     let report = create_report_missing_critical_span();
     let result = validator.validate(&report);
 
-    assert!(
-        !result.passed,
-        "Should fail when critical span is missing"
-    );
-    assert!(
-        !result.violations.is_empty(),
-        "Should have violations"
-    );
+    assert!(!result.passed, "Should fail when critical span is missing");
+    assert!(!result.violations.is_empty(), "Should have violations");
 
     // Check that it's specifically a critical span violation
     let has_critical_span_violation = result.violations.iter().any(|v| {
@@ -214,10 +225,7 @@ fn test_eighty_twenty_mode_missing_critical_attribute() -> Result<()> {
         !result.passed,
         "Should fail when critical attribute is missing"
     );
-    assert!(
-        !result.violations.is_empty(),
-        "Should have violations"
-    );
+    assert!(!result.violations.is_empty(), "Should have violations");
 
     Ok(())
 }
@@ -279,7 +287,10 @@ fn test_minimal_mode_fast_validation() -> Result<()> {
 
     let result = validator.validate(&report);
 
-    assert!(result.passed, "Minimal mode should pass with critical items");
+    assert!(
+        result.passed,
+        "Minimal mode should pass with critical items"
+    );
     assert_eq!(result.coverage, 100.0, "Coverage should be 100%");
     assert!(
         result.duration_ms < 2000,
@@ -315,7 +326,11 @@ fn test_lenient_mode_optional_attributes_ignored() -> Result<()> {
 fn test_coverage_breakdown() -> Result<()> {
     let config = ValidationConfig::eighty_twenty();
     let eighty_twenty = EightyTwentyConfig {
-        critical_spans: vec!["span1".to_string(), "span2".to_string(), "span3".to_string()],
+        critical_spans: vec![
+            "span1".to_string(),
+            "span2".to_string(),
+            "span3".to_string(),
+        ],
         required_attributes: vec![
             "attr1".to_string(),
             "attr2".to_string(),
@@ -468,7 +483,10 @@ fn test_violation_display_formatting() {
 
     for violation in violations {
         let formatted = format!("{}", violation);
-        assert!(!formatted.is_empty(), "Violation should format to non-empty string");
+        assert!(
+            !formatted.is_empty(),
+            "Violation should format to non-empty string"
+        );
     }
 }
 
@@ -482,7 +500,10 @@ fn test_coverage_with_no_requirements() -> Result<()> {
     let result = validator.validate(&report);
 
     // Empty report should have 100% coverage (0/0 = 100%)
-    assert_eq!(result.coverage, 100.0, "Empty report should have 100% coverage");
+    assert_eq!(
+        result.coverage, 100.0,
+        "Empty report should have 100% coverage"
+    );
     assert!(result.passed, "Empty report should pass");
 
     Ok(())
@@ -493,7 +514,11 @@ fn test_eighty_twenty_default_config() -> Result<()> {
     let config = EightyTwentyConfig::default();
 
     // Verify default configuration matches design spec
-    assert_eq!(config.critical_spans.len(), 5, "Should have 5 critical spans");
+    assert_eq!(
+        config.critical_spans.len(),
+        5,
+        "Should have 5 critical spans"
+    );
     assert_eq!(
         config.required_attributes.len(),
         7,

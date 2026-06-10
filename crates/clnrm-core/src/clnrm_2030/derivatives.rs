@@ -104,16 +104,22 @@ impl DerivativesEngine {
         }
     }
 
-    pub fn settle_future(&mut self, future_id: &str, current_timestamp: u64) -> Result<HashMap<EntityId, i64>, &'static str> {
+    pub fn settle_future(
+        &mut self,
+        future_id: &str,
+        current_timestamp: u64,
+    ) -> Result<HashMap<EntityId, i64>, &'static str> {
         let future = self.futures.get(future_id).ok_or("Future not found")?;
         if current_timestamp < future.expiration_timestamp {
             return Err("Future has not expired yet");
         }
 
-        let spot_price = self.get_spot_price(&future.underlying).ok_or("Spot price not available")?;
+        let spot_price = self
+            .get_spot_price(&future.underlying)
+            .ok_or("Spot price not available")?;
 
         let mut settlement = HashMap::new();
-        
+
         let long_payoff = (spot_price as i64 - future.strike_price as i64) * future.quantity as i64;
         let short_payoff = -long_payoff;
 
@@ -125,16 +131,22 @@ impl DerivativesEngine {
         Ok(settlement)
     }
 
-    pub fn exercise_option(&mut self, option_id: &str, current_timestamp: u64) -> Result<HashMap<EntityId, i64>, &'static str> {
+    pub fn exercise_option(
+        &mut self,
+        option_id: &str,
+        current_timestamp: u64,
+    ) -> Result<HashMap<EntityId, i64>, &'static str> {
         let option = self.options.get(option_id).ok_or("Option not found")?;
         if current_timestamp > option.expiration_timestamp {
             return Err("Option has expired");
         }
 
-        let spot_price = self.get_spot_price(&option.underlying).ok_or("Spot price not available")?;
+        let spot_price = self
+            .get_spot_price(&option.underlying)
+            .ok_or("Spot price not available")?;
 
         let mut settlement = HashMap::new();
-        
+
         let payoff = match option.option_type {
             OptionType::Call => {
                 if spot_price > option.strike_price {

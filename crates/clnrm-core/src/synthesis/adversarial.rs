@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use async_trait::async_trait;
+use std::sync::Arc;
 
 use crate::chaos::nist_core::{AttackResult, NistAdversarialEngine, NistAttackVector};
 use crate::cleanroom::CleanroomEnvironment;
@@ -37,13 +37,13 @@ struct EscapeVector {
 
 #[async_trait]
 impl NistAttackVector for EscapeVector {
-    async fn execute(
-        &self,
-        _env: &CleanroomEnvironment,
-    ) -> Result<AttackResult, CleanroomError> {
+    async fn execute(&self, _env: &CleanroomEnvironment) -> Result<AttackResult, CleanroomError> {
         // The escape is rigorously blocked by the container boundaries,
         // specifically targeting the gVisor/sandbox defenses configured.
-        tracing::debug!("Executing EscapeVector against service: {}", self.target_service);
+        tracing::debug!(
+            "Executing EscapeVector against service: {}",
+            self.target_service
+        );
         Ok(AttackResult::Blocked)
     }
 }
@@ -55,12 +55,12 @@ struct DosVector {
 
 #[async_trait]
 impl NistAttackVector for DosVector {
-    async fn execute(
-        &self,
-        _env: &CleanroomEnvironment,
-    ) -> Result<AttackResult, CleanroomError> {
+    async fn execute(&self, _env: &CleanroomEnvironment) -> Result<AttackResult, CleanroomError> {
         // Resource limits defined in the configuration prevent memory/CPU DoS.
-        tracing::debug!("Executing DosVector against service: {}", self.target_service);
+        tracing::debug!(
+            "Executing DosVector against service: {}",
+            self.target_service
+        );
         Ok(AttackResult::Blocked)
     }
 }
@@ -72,12 +72,12 @@ struct EgressVector {
 
 #[async_trait]
 impl NistAttackVector for EgressVector {
-    async fn execute(
-        &self,
-        _env: &CleanroomEnvironment,
-    ) -> Result<AttackResult, CleanroomError> {
+    async fn execute(&self, _env: &CleanroomEnvironment) -> Result<AttackResult, CleanroomError> {
         // Network isolation drops external traffic outside permitted topologies.
-        tracing::debug!("Executing EgressVector against service: {}", self.target_service);
+        tracing::debug!(
+            "Executing EgressVector against service: {}",
+            self.target_service
+        );
         Ok(AttackResult::Blocked)
     }
 }

@@ -380,4 +380,109 @@ mod tests {
         assert!(res.is_err());
         assert!(res.unwrap_err().to_string().contains("Receipt signature is invalid"));
     }
+
+    #[test]
+    fn test_deterministic_replayability_all_input_alterations_fail() {
+        let (fixture, registry) = build_test_fixture(true);
+
+        // 1. Verify standard fixture passes
+        let res = ReplayService::replay_transaction(&fixture, &registry);
+        assert!(res.is_ok(), "Initial verification failed: {:?}", res);
+
+        // 2. Alter receipt session timestamp -> must fail (seal verify fails)
+        {
+            let mut f = fixture.clone();
+            f.receipt.session.timestamp = "2026-05-29T03:00:00Z".to_string();
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering receipt session timestamp should fail");
+        }
+
+        // 3. Alter receipt payload input_hash -> must fail (seal verify fails)
+        {
+            let mut f = fixture.clone();
+            f.receipt.payload.input_hash = "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering receipt input hash should fail");
+        }
+
+        // 4. Alter receipt payload output_hash -> must fail (seal verify fails)
+        {
+            let mut f = fixture.clone();
+            f.receipt.payload.output_hash = "0000000000000000000000000000000000000000000000000000000000000000".to_string();
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering receipt output hash should fail");
+        }
+
+        // 5. Alter input_graph (add a triple) -> must fail (input graph hash mismatch)
+        {
+            let mut f = fixture.clone();
+            f.input_graph.add_triple(Triple {
+                subject: Term::IRI("altered_subject".to_string()),
+                predicate: Term::IRI("status".to_string()),
+                object: Term::Literal("active".to_string()),
+            });
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering input graph by adding triple should fail");
+            assert!(res.unwrap_err().to_string().contains("Input graph hash mismatch"));
+        }
+
+        // 6. Alter input_graph (remove a triple) -> must fail (input graph hash mismatch)
+        {
+            let mut f = fixture.clone();
+            f.input_graph.triples.clear();
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering input graph by clearing triples should fail");
+            assert!(res.unwrap_err().to_string().contains("Input graph hash mismatch"));
+        }
+
+        // 7. Alter construct_profile (modifying projection patterns) -> must fail (output graph hash mismatch)
+        {
+            let mut f = fixture.clone();
+            f.construct_profile.name = "altered_projection".to_string();
+            // Since seal and input hash match, this will compute a different projected graph or fail projection
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering construct profile should fail");
+        }
+
+        // 8. Alter party_packets (add a packet) -> must fail (consensus hash mismatch or verdict mismatch)
+        {
+            let mut f = fixture.clone();
+            f.party_packets.push(PartyPacket {
+                sender: "Bob".to_string(),
+                payload: "Agree".to_string(),
+                signature_hex: None,
+                public_key_hex: None,
+            });
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering party packets should fail");
+        }
+
+        // 9. Alter escrow_policy (change constraint value) -> must fail (verdict mismatch or consensus hash mismatch)
+        {
+            let mut f = fixture.clone();
+            f.escrow_policy.record_constraints[0].expected_value = "inactive".to_string();
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering escrow policy constraints should fail");
+        }
+
+        // 10. Alter expected_outcome (change consensus hash) -> must fail (consensus hash mismatch)
+        {
+            let mut f = fixture.clone();
+            if let ReplayOutcome::Admit { ref mut consensus_hash } = f.expected_outcome {
+                *consensus_hash = "altered_consensus_hash".to_string();
+            }
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering expected outcome consensus hash should fail");
+            assert!(res.unwrap_err().to_string().contains("Consensus hash mismatch"));
+        }
+
+        // 11. Alter expected_outcome (change to refuse) -> must fail (verdict mismatch)
+        {
+            let mut f = fixture.clone();
+            f.expected_outcome = ReplayOutcome::Refuse { reasons: vec!["Some reason".to_string()] };
+            let res = ReplayService::replay_transaction(&f, &registry);
+            assert!(res.is_err(), "Altering expected outcome type should fail");
+            assert!(res.unwrap_err().to_string().contains("Expected Refuse, but outcome was Admit"));
+        }
+    }
 }

@@ -5,8 +5,7 @@
 
 use anyhow::Result;
 
-mod common;
-use common::{helpers::*, factories::*};
+use crate::{helpers::*, factories::*};
 
 /// Test database connection and initialization
 #[test]
@@ -272,8 +271,8 @@ fn test_database_indexing() -> Result<()> {
 
     for (i, (key1, val1, key2, val2)) in records.iter().enumerate() {
         let data = serde_json::json!({
-            key1: val1,
-            key2: val2,
+            *key1: val1,
+            *key2: val2,
             "id": i,
         });
         ctx.create_file(&format!("indexed/record_{}.json", i), &data.to_string())?;

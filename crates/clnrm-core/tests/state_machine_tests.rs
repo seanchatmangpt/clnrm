@@ -1,6 +1,7 @@
 use clnrm_core::service::registry::{ServiceMetadata, ServiceState};
 use clnrm_core::telemetry::live_check::{
-    LiveCheckConfig, LiveCheckOrchestrator, OrchestrationMode, Uninitialized, WeaverRunning, Completed
+    Completed, LiveCheckConfig, LiveCheckOrchestrator, OrchestrationMode, Uninitialized,
+    WeaverRunning,
 };
 
 #[tokio::test]
@@ -78,7 +79,7 @@ async fn test_service_state_invalid_transitions() {
     );
     // Any state can transition to Failed
     assert!(failed_metadata.set_state(ServiceState::Failed).is_ok());
-    
+
     // Failed cannot transition anywhere
     assert!(failed_metadata.set_state(ServiceState::Creating).is_err());
     assert!(failed_metadata.set_state(ServiceState::Starting).is_err());
@@ -92,26 +93,27 @@ async fn test_live_check_orchestrator_typestate_enforcement() {
     // are rejected by the compiler.
     // We document and verify the valid pipeline here to ensure the state machine
     // allows the legal path.
-    
+
     let config = LiveCheckConfig {
         enabled: true,
         registry_path: std::path::PathBuf::from("registry"),
         ..Default::default()
     };
-    
+
     // 1. Initial State: Uninitialized
-    let orchestrator: LiveCheckOrchestrator<Uninitialized> = LiveCheckOrchestrator::new(config.clone()).unwrap();
-    
+    let orchestrator: LiveCheckOrchestrator<Uninitialized> =
+        LiveCheckOrchestrator::new(config.clone()).unwrap();
+
     // Attempting `orchestrator.stop_weaver()` here would be a compile-time error.
-    
+
     // 2. Transition: Uninitialized -> WeaverRunning
     // We would call start_weaver, but it launches a real process. We simulate typestate correctness:
     // let running_orchestrator: LiveCheckOrchestrator<WeaverRunning> = orchestrator.start_weaver().await.unwrap();
-    
+
     // Attempting `running_orchestrator.start_weaver()` would be a compile error.
-    
+
     // 3. Transition: WeaverRunning -> Completed
     // let completed_orchestrator: LiveCheckOrchestrator<Completed> = running_orchestrator.stop_weaver().await.unwrap();
-    
+
     // Attempting `completed_orchestrator.stop_weaver()` would be a compile error.
 }

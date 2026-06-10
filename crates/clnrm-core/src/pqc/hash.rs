@@ -43,36 +43,42 @@ fn custom_permute(state: &mut [u64; 16]) {
 pub fn custom_hash(input: &[u8]) -> Digest {
     let mut state = [0u64; 16];
     let rate_bytes = 64; // 512 bits = 8 u64s
-    
+
     // Absorb phase
     let mut offset = 0;
     while offset < input.len() {
         let mut block = [0u8; 64];
         let remaining = input.len() - offset;
         let take = remaining.min(rate_bytes);
-        
+
         block[..take].copy_from_slice(&input[offset..offset + take]);
-        
+
         // Pad if it's the last block
         if take < rate_bytes {
             block[take] = 0x80; // simple padding
-            // We'll leave the rest as zeros
+                                // We'll leave the rest as zeros
         }
-        
+
         // XOR block into the rate part of the state
         for i in 0..8 {
             let word_bytes = [
-                block[i * 8], block[i * 8 + 1], block[i * 8 + 2], block[i * 8 + 3],
-                block[i * 8 + 4], block[i * 8 + 5], block[i * 8 + 6], block[i * 8 + 7],
+                block[i * 8],
+                block[i * 8 + 1],
+                block[i * 8 + 2],
+                block[i * 8 + 3],
+                block[i * 8 + 4],
+                block[i * 8 + 5],
+                block[i * 8 + 6],
+                block[i * 8 + 7],
             ];
             state[i] ^= u64::from_le_bytes(word_bytes);
         }
-        
+
         custom_permute(&mut state);
-        
+
         offset += rate_bytes;
     }
-    
+
     // If the input length was exactly a multiple of the rate,
     // we need to absorb an extra block containing just the padding.
     if input.len() % rate_bytes == 0 {
@@ -80,14 +86,20 @@ pub fn custom_hash(input: &[u8]) -> Digest {
         block[0] = 0x80;
         for i in 0..8 {
             let word_bytes = [
-                block[i * 8], block[i * 8 + 1], block[i * 8 + 2], block[i * 8 + 3],
-                block[i * 8 + 4], block[i * 8 + 5], block[i * 8 + 6], block[i * 8 + 7],
+                block[i * 8],
+                block[i * 8 + 1],
+                block[i * 8 + 2],
+                block[i * 8 + 3],
+                block[i * 8 + 4],
+                block[i * 8 + 5],
+                block[i * 8 + 6],
+                block[i * 8 + 7],
             ];
             state[i] ^= u64::from_le_bytes(word_bytes);
         }
         custom_permute(&mut state);
     }
-    
+
     // Squeeze phase
     // We need 32 bytes, which is 4 u64s. Our rate is 8 u64s, so we have enough in the first squeeze.
     let mut out = [0u8; 32];
@@ -95,7 +107,7 @@ pub fn custom_hash(input: &[u8]) -> Digest {
         let bytes = state[i].to_le_bytes();
         out[i * 8..(i + 1) * 8].copy_from_slice(&bytes);
     }
-    
+
     out
 }
 
@@ -107,10 +119,10 @@ mod tests {
     fn test_custom_hash_basic() {
         let input1 = b"hello world";
         let input2 = b"hello worle";
-        
+
         let hash1 = custom_hash(input1);
         let hash2 = custom_hash(input2);
-        
+
         assert_ne!(hash1, hash2);
     }
 
@@ -118,10 +130,10 @@ mod tests {
     fn test_custom_hash_empty() {
         let hash_empty = custom_hash(b"");
         let hash_zero = custom_hash(&[0u8]);
-        
+
         assert_ne!(hash_empty, hash_zero);
     }
-    
+
     #[test]
     fn test_custom_hash_long() {
         let input = [0xABu8; 150];

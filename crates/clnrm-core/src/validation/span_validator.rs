@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 /// OTEL span kind enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SpanKind {
     /// Internal span (default)
@@ -23,6 +23,18 @@ pub enum SpanKind {
     Producer,
     /// Consumer span (message queue consumer)
     Consumer,
+}
+
+fn json_value_as_str(val: &serde_json::Value) -> Option<&str> {
+    if let Some(s) = val.as_str() {
+        return Some(s);
+    }
+    if let Some(obj) = val.as_object() {
+        if let Some(s) = obj.get("stringValue").and_then(|v| v.as_str()) {
+            return Some(s);
+        }
+    }
+    None
 }
 
 impl SpanKind {
@@ -68,6 +80,135 @@ impl SpanKind {
     }
 }
 
+impl<'de> Deserialize<'de> for SpanKind {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct SpanKindVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for SpanKindVisitor {
+            type Value = SpanKind;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a span kind string or integer (1-5)")
+            }
+
+            fn visit_str<E>(self, value: &str) -> std::result::Result<SpanKind, E>
+            where
+                E: serde::de::Error,
+            {
+                SpanKind::parse_kind(value).map_err(serde::de::Error::custom)
+            }
+
+            fn visit_i64<E>(self, value: i64) -> std::result::Result<SpanKind, E>
+            where
+                E: serde::de::Error,
+            {
+                SpanKind::from_otel_int(value as i32).map_err(serde::de::Error::custom)
+            }
+
+            fn visit_u64<E>(self, value: u64) -> std::result::Result<SpanKind, E>
+            where
+                E: serde::de::Error,
+            {
+                SpanKind::from_otel_int(value as i32).map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_any(SpanKindVisitor)
+    }
+}
+
+fn deserialize_option_string_or_u64<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct OptionStringOrU64Visitor;
+
+    impl<'de> serde::de::Visitor<'de> for OptionStringOrU64Visitor {
+        type Value = Option<u64>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("optional string or integer representing u64")
+        }
+
+        fn visit_none<E>(self) -> std::result::Result<Option<u64>, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_some<D>(self, deserializer: D) -> std::result::Result<Option<u64>, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            struct StringOrU64Visitor;
+
+            impl<'de> serde::de::Visitor<'de> for StringOrU64Visitor {
+                type Value = u64;
+
+                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    formatter.write_str("a string or integer representing u64")
+                }
+
+                fn visit_str<E>(self, value: &str) -> std::result::Result<u64, E>
+                where
+                    E: serde::de::Error,
+                {
+                    value.parse::<u64>().map_err(serde::de::Error::custom)
+                }
+
+                fn visit_u64<E>(self, value: u64) -> std::result::Result<u64, E>
+                where
+                    E: serde::de::Error,
+                {
+                    Ok(value)
+                }
+
+                fn visit_i64<E>(self, value: i64) -> std::result::Result<u64, E>
+                where
+                    E: serde::de::Error,
+                {
+                    if value >= 0 {
+                        Ok(value as u64)
+                    } else {
+                        Err(serde::de::Error::custom("negative value for u64"))
+                    }
+                }
+            }
+
+            deserializer.deserialize_any(StringOrU64Visitor).map(Some)
+        }
+    }
+
+    deserializer.deserialize_option(OptionStringOrU64Visitor)
+}
+fn deserialize_events<'de, D>(deserializer: D) -> std::result::Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum EventItem {
+        String(String),
+        Object { name: String },
+    }
+
+    let items: Option<Vec<EventItem>> = Option::deserialize(deserializer)?;
+    Ok(items.map(|vec| {
+        vec.into_iter()
+            .map(|item| match item {
+                EventItem::String(s) => s,
+                EventItem::Object { name } => name,
+            })
+            .collect()
+    }))
+}
+
 /// Represents a single OTEL span from the collector's file exporter
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpanData {
@@ -80,14 +221,19 @@ pub struct SpanData {
     /// Span ID
     pub span_id: String,
     /// Parent span ID (if any)
+    #[serde(default)]
     pub parent_span_id: Option<String>,
     /// Span start time (Unix timestamp in nanoseconds)
+    #[serde(default, deserialize_with = "deserialize_option_string_or_u64")]
     pub start_time_unix_nano: Option<u64>,
     /// Span end time (Unix timestamp in nanoseconds)
+    #[serde(default, deserialize_with = "deserialize_option_string_or_u64")]
     pub end_time_unix_nano: Option<u64>,
     /// Span kind (internal, server, client, producer, consumer)
+    #[serde(default)]
     pub kind: Option<SpanKind>,
     /// Span events (array of event names)
+    #[serde(default, deserialize_with = "deserialize_events")]
     pub events: Option<Vec<String>>,
     /// Resource attributes (shared across all spans in a resource)
     #[serde(default)]
@@ -736,7 +882,7 @@ impl SpanValidator {
             let matches = span
                 .attributes
                 .get(key)
-                .and_then(|v| v.as_str())
+                .and_then(json_value_as_str)
                 .map(|v| v == expected_value)
                 .unwrap_or(false);
 
@@ -744,7 +890,7 @@ impl SpanValidator {
                 let actual = span
                     .attributes
                     .get(key)
-                    .and_then(|v| v.as_str())
+                    .and_then(json_value_as_str)
                     .map(|s| s.to_string());
 
                 if actual.is_none() {
@@ -787,7 +933,7 @@ impl SpanValidator {
         let has_any = any_attrs.iter().any(|(key, expected_value)| {
             span.attributes
                 .get(key)
-                .and_then(|v| v.as_str())
+                .and_then(json_value_as_str)
                 .map(|v| v == expected_value)
                 .unwrap_or(false)
         });
@@ -969,7 +1115,7 @@ impl SpanValidator {
                     // SAFE: unwrap_or with safe default (false) - missing attribute means no match
                     span.attributes
                         .get(attribute_key)
-                        .and_then(|v| v.as_str())
+                        .and_then(json_value_as_str)
                         .map(|v| v == attribute_value)
                         .unwrap_or(false)
                 });
@@ -1058,7 +1204,7 @@ impl SpanValidator {
                         // SAFE: unwrap_or with safe default (false) - missing attribute means no match
                         span.attributes
                             .get(key)
-                            .and_then(|v| v.as_str())
+                            .and_then(json_value_as_str)
                             .map(|v| v == expected_value)
                             .unwrap_or(false)
                     })
@@ -1072,7 +1218,7 @@ impl SpanValidator {
                                 // SAFE: unwrap_or with safe default (false) - missing attribute means no match
                                 span.attributes
                                     .get(*key)
-                                    .and_then(|v| v.as_str())
+                                    .and_then(json_value_as_str)
                                     .map(|v| v == *expected_value)
                                     .unwrap_or(false)
                             })
@@ -1108,7 +1254,7 @@ impl SpanValidator {
                             // SAFE: unwrap_or with safe default (false) - missing attribute means no match
                             span.attributes
                                 .get(key)
-                                .and_then(|v| v.as_str())
+                                .and_then(json_value_as_str)
                                 .map(|v| v == value)
                                 .unwrap_or(false)
                         } else {

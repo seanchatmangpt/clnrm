@@ -45,7 +45,10 @@ impl Node {
                 path: path.to_vec(),
                 value: value.to_vec(),
             },
-            Node::Leaf { path: leaf_path, value: leaf_value } => {
+            Node::Leaf {
+                path: leaf_path,
+                value: leaf_value,
+            } => {
                 let cp = common_prefix(&leaf_path, path);
                 if cp == leaf_path.len() && cp == path.len() {
                     // Update exact match
@@ -54,7 +57,8 @@ impl Node {
                         value: value.to_vec(),
                     }
                 } else {
-                    let mut branch_children: Box<[Option<Node>; 16]> = Box::new(std::array::from_fn(|_| None));
+                    let mut branch_children: Box<[Option<Node>; 16]> =
+                        Box::new(std::array::from_fn(|_| None));
                     let mut branch_value = None;
 
                     if cp == leaf_path.len() {
@@ -94,7 +98,10 @@ impl Node {
                     }
                 }
             }
-            Node::Extension { path: ext_path, child } => {
+            Node::Extension {
+                path: ext_path,
+                child,
+            } => {
                 let cp = common_prefix(&ext_path, path);
                 if cp == ext_path.len() {
                     let new_child = child.insert(&path[cp..], value);
@@ -103,7 +110,8 @@ impl Node {
                         child: Box::new(new_child),
                     }
                 } else {
-                    let mut branch_children: Box<[Option<Node>; 16]> = Box::new(std::array::from_fn(|_| None));
+                    let mut branch_children: Box<[Option<Node>; 16]> =
+                        Box::new(std::array::from_fn(|_| None));
                     let mut branch_value = None;
 
                     let ext_idx = ext_path[cp] as usize;
@@ -143,7 +151,10 @@ impl Node {
                     }
                 }
             }
-            Node::Branch { mut children, value: mut branch_value } => {
+            Node::Branch {
+                mut children,
+                value: mut branch_value,
+            } => {
                 if path.is_empty() {
                     branch_value = Some(value.to_vec());
                 } else {
@@ -151,7 +162,10 @@ impl Node {
                     let child_node = children[idx].take().unwrap_or(Node::Empty);
                     children[idx] = Some(child_node.insert(&path[1..], value));
                 }
-                Node::Branch { children, value: branch_value }
+                Node::Branch {
+                    children,
+                    value: branch_value,
+                }
             }
         }
     }
@@ -159,14 +173,20 @@ impl Node {
     fn get(&self, path: &[u8]) -> Option<Vec<u8>> {
         match self {
             Node::Empty => None,
-            Node::Leaf { path: leaf_path, value } => {
+            Node::Leaf {
+                path: leaf_path,
+                value,
+            } => {
                 if leaf_path == path {
                     Some(value.clone())
                 } else {
                     None
                 }
             }
-            Node::Extension { path: ext_path, child } => {
+            Node::Extension {
+                path: ext_path,
+                child,
+            } => {
                 if path.starts_with(ext_path) {
                     child.get(&path[ext_path.len()..])
                 } else {

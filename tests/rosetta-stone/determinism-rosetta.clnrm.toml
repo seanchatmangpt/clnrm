@@ -120,7 +120,7 @@ name = "test_json_generation_deterministic"
 service = "test_container"
 command = ["sh", "-c", "echo '{\"id\":{{ fake_int_range(min=1, max=1000) }},\"name\":\"{{ fake_name() }}\",\"timestamp\":\"{{ now_rfc3339() }}\"}'"]
 description = "JSON generation should be deterministic with seed and frozen clock"
-expected_output_regex = '^\{"id":[0-9]+,"name":"[^"]+","timestamp":"2025-01-15T12:00:00[^"]*"\}$'
+expected_output_regex = '^\\{"id":[0-9]+,"name":"[^"]+","timestamp":"2025-01-15T12:00:00[^"]*"\\}$'
 
 [[steps]]
 name = "test_determinism_across_steps"

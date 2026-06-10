@@ -37,6 +37,7 @@ fn create_test_pool() -> ContainerPool {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_acquisition_and_release() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();
@@ -70,6 +71,7 @@ async fn test_pool_acquisition_and_release() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_pre_allocation() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();
@@ -99,6 +101,7 @@ async fn test_pool_pre_allocation() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_acquire_from_pre_allocated() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();
@@ -127,6 +130,7 @@ async fn test_pool_acquire_from_pre_allocated() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_max_size_enforcement() -> clnrm_core::Result<()> {
     // Arrange
     let config = ContainerPoolConfig {
@@ -165,6 +169,7 @@ async fn test_pool_max_size_enforcement() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_hit_rate_after_warmup() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();
@@ -209,6 +214,7 @@ async fn test_pool_hit_rate_after_warmup() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_miss_on_first_acquisition() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();
@@ -239,6 +245,7 @@ async fn test_pool_miss_on_first_acquisition() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_concurrent_acquisition() -> clnrm_core::Result<()> {
     // Arrange
     let pool = std::sync::Arc::new(create_test_pool());
@@ -289,6 +296,7 @@ async fn test_pool_concurrent_acquisition() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_stress_100_concurrent_acquisitions() -> clnrm_core::Result<()> {
     // Arrange
     let pool = std::sync::Arc::new(create_test_pool());
@@ -346,6 +354,7 @@ async fn test_pool_stress_100_concurrent_acquisitions() -> clnrm_core::Result<()
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_stats_accuracy() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();
@@ -381,6 +390,7 @@ async fn test_pool_stats_accuracy() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_utilization_calculation() -> clnrm_core::Result<()> {
     // Arrange
     let config = ContainerPoolConfig {
@@ -422,6 +432,7 @@ async fn test_pool_utilization_calculation() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_cleanup_resets_stats() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();
@@ -452,6 +463,7 @@ async fn test_pool_cleanup_resets_stats() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_release_nonexistent_container() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();
@@ -470,6 +482,7 @@ async fn test_pool_release_nonexistent_container() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_pool_multiple_images() -> clnrm_core::Result<()> {
     // Arrange
     let pool = create_test_pool();

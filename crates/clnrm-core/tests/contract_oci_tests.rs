@@ -6,10 +6,10 @@ use tempfile::tempdir;
 
 fn setup_mock_oci_layout(corrupt_index: bool, missing_blob: bool, mismatch_hash: bool) -> PathBuf {
     let dir = tempdir().unwrap().into_path();
-    
+
     // oci-layout
     fs::write(dir.join("oci-layout"), r#"{"imageLayoutVersion": "1.0.0"}"#).unwrap();
-    
+
     if corrupt_index {
         fs::write(dir.join("index.json"), "{ invalid json").unwrap();
     } else {
@@ -29,7 +29,7 @@ fn setup_mock_oci_layout(corrupt_index: bool, missing_blob: bool, mismatch_hash:
     let blobs_dir = dir.join("blobs").join("sha256");
     if !missing_blob {
         fs::create_dir_all(&blobs_dir).unwrap();
-        
+
         let manifest = r#"{
             "schemaVersion": 2,
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
@@ -46,17 +46,33 @@ fn setup_mock_oci_layout(corrupt_index: bool, missing_blob: bool, mismatch_hash:
                 }
             ]
         }"#;
-        fs::write(blobs_dir.join("1111111111111111111111111111111111111111111111111111111111111111"), manifest).unwrap();
+        fs::write(
+            blobs_dir.join("1111111111111111111111111111111111111111111111111111111111111111"),
+            manifest,
+        )
+        .unwrap();
 
         let config = r#"{"architecture": "amd64", "os": "linux", "config": {}, "rootfs": {"type": "layers", "diff_ids": []}}"#;
-        fs::write(blobs_dir.join("2222222222222222222222222222222222222222222222222222222222222222"), config).unwrap();
+        fs::write(
+            blobs_dir.join("2222222222222222222222222222222222222222222222222222222222222222"),
+            config,
+        )
+        .unwrap();
 
         if mismatch_hash {
-            fs::write(blobs_dir.join("3333333333333333333333333333333333333333333333333333333333333333"), "wrong data").unwrap();
+            fs::write(
+                blobs_dir.join("3333333333333333333333333333333333333333333333333333333333333333"),
+                "wrong data",
+            )
+            .unwrap();
         } else {
-            // Need actual sha256 to match the hash 333... wait, if I want to pass, I need a correct hash, 
+            // Need actual sha256 to match the hash 333... wait, if I want to pass, I need a correct hash,
             // but the test is only about failing validation. Let's just use "wrong data".
-            fs::write(blobs_dir.join("3333333333333333333333333333333333333333333333333333333333333333"), "wrong data").unwrap();
+            fs::write(
+                blobs_dir.join("3333333333333333333333333333333333333333333333333333333333333333"),
+                "wrong data",
+            )
+            .unwrap();
         }
     }
 
@@ -72,7 +88,8 @@ async fn test_oci_contract_corrupt_index() {
     let err = result.unwrap_err();
     assert!(
         err.kind == ErrorKind::SerializationError || err.kind == ErrorKind::ValidationError,
-        "Expected validation/serialization error, got {:?}", err.kind
+        "Expected validation/serialization error, got {:?}",
+        err.kind
     );
 }
 
@@ -85,7 +102,8 @@ async fn test_oci_contract_missing_blobs() {
     let err = result.unwrap_err();
     assert!(
         err.kind == ErrorKind::IoError || err.kind == ErrorKind::ValidationError,
-        "Expected IO/validation error, got {:?}", err.kind
+        "Expected IO/validation error, got {:?}",
+        err.kind
     );
 }
 
@@ -97,5 +115,9 @@ async fn test_oci_contract_mismatched_hash() {
     assert!(result.is_err(), "Should fail with mismatched layer hash");
     let err = result.unwrap_err();
     assert_eq!(err.kind, ErrorKind::ValidationError);
-    assert!(err.message.contains("hash mismatch") || err.message.contains("digest mismatch") || err.message.contains("checksum mismatch"));
+    assert!(
+        err.message.contains("hash mismatch")
+            || err.message.contains("digest mismatch")
+            || err.message.contains("checksum mismatch")
+    );
 }

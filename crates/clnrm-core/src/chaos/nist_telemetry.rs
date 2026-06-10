@@ -27,13 +27,16 @@ impl NistAttackVector for TelemetrySpoofingAttack {
         env: &CleanroomEnvironment,
     ) -> Result<AttackResult, crate::error::CleanroomError> {
         let payload = r#"{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"forged-service"}}]},"scopeSpans":[{"spans":[{"name":"fake-green-test-pass","spanId":"0000000000000001","traceId":"00000000000000000000000000000001"}]}]}]}"#;
-        
+
         let command = vec![
             "curl".to_string(),
             "-s".to_string(),
             "-X".to_string(),
             "POST".to_string(),
-            format!("http://host.docker.internal:{}/v1/traces", self.validation_port),
+            format!(
+                "http://host.docker.internal:{}/v1/traces",
+                self.validation_port
+            ),
             "-H".to_string(),
             "Content-Type: application/json".to_string(),
             "-d".to_string(),

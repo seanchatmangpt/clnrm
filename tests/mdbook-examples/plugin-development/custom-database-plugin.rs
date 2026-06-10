@@ -3,17 +3,18 @@
 //! These examples demonstrate the plugin development concepts from the mdbook
 //! and are validated to work with clnrm v1.0.1.
 
-use clnrm_core::cleanroom::{CleanroomEnvironment, HealthStatus, ServiceHandle, ServicePlugin};
+use clnrm_core::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use clnrm_core::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
+use testcontainers::core::IntoContainerPort;
 use testcontainers::runners::AsyncRunner;
-use testcontainers::{GenericImage, ImageExt};
+use testcontainers::{ContainerAsync, GenericImage, ImageExt};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// Custom Database Plugin Example
-/// 
+///
 /// This example demonstrates creating a custom PostgreSQL plugin following
 /// core team standards: no unwrap/expect, proper error handling, dyn compatibility.
 #[derive(Debug)]
@@ -31,11 +32,15 @@ pub struct CustomDatabasePlugin {
 impl CustomDatabasePlugin {
     pub fn new(name: &str, database_name: &str) -> Result<Self> {
         if name.is_empty() {
-            return Err(CleanroomError::validation_error("Plugin name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Plugin name cannot be empty",
+            ));
         }
-        
+
         if database_name.is_empty() {
-            return Err(CleanroomError::validation_error("Database name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Database name cannot be empty",
+            ));
         }
 
         Ok(Self {
@@ -59,9 +64,10 @@ impl CustomDatabasePlugin {
     pub fn get_connection_string(&self) -> Result<String> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                let conn_str = self.connection_string.read().await
-                    .ok_or_else(|| CleanroomError::internal_error("Connection string not available"))?;
-                Ok(conn_str.clone())
+                let conn_str = self.connection_string.read().await;
+                conn_str.as_ref().cloned().ok_or_else(|| {
+                    CleanroomError::internal_error("Connection string not available")
+                })
             })
         })
     }
@@ -76,7 +82,7 @@ impl ServicePlugin for CustomDatabasePlugin {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let _span = tracing::info_span!("postgres_start", plugin = self.name);
-                
+
                 // Create container
                 let image = GenericImage::new(self.image.clone(), self.tag.clone());
                 let mut container_request: testcontainers::core::ContainerRequest<GenericImage> =
@@ -90,10 +96,12 @@ impl ServicePlugin for CustomDatabasePlugin {
                     .with_env_var("POSTGRES_INITDB_ARGS", "--auth-host=scram-sha-256");
 
                 // Start container
-                let container = container_request.start().await
-                    .map_err(|e| CleanroomError::container_error(
-                        format!("Failed to start PostgreSQL container: {}", e)
-                    ))?;
+                let container = container_request.start().await.map_err(|e| {
+                    CleanroomError::container_error(format!(
+                        "Failed to start PostgreSQL container: {}",
+                        e
+                    ))
+                })?;
 
                 let container_id = container.id().to_string();
                 {
@@ -105,15 +113,22 @@ impl ServicePlugin for CustomDatabasePlugin {
                 self.wait_for_postgres_ready(&container).await?;
 
                 // Get connection details
-                let host = container.get_host().await;
-                let port = container.get_host_port_ipv4(5432).await;
-                
+                let host = container.get_host().await.map_err(|e| {
+                    CleanroomError::container_error(format!("Failed to get host: {}", e))
+                })?;
+                let port = container
+                    .get_host_port_ipv4(5432_u16.tcp())
+                    .await
+                    .map_err(|e| {
+                        CleanroomError::container_error(format!("Failed to get port: {}", e))
+                    })?;
+
                 // Create connection string
                 let conn_str = format!(
                     "postgresql://{}:{}@{}:{}/{}",
                     self.username, self.password, host, port, self.database_name
                 );
-                
+
                 {
                     let mut conn_guard = self.connection_string.write().await;
                     *conn_guard = Some(conn_str.clone());
@@ -140,20 +155,19 @@ impl ServicePlugin for CustomDatabasePlugin {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let _span = tracing::info_span!("postgres_stop", plugin = self.name);
-                
-                let container_id = handle.metadata.get("container_id")
-                    .ok_or_else(|| CleanroomError::internal_error(
-                        "Service handle missing container_id"
-                    ))?;
+
+                let container_id = handle.metadata.get("container_id").ok_or_else(|| {
+                    CleanroomError::internal_error("Service handle missing container_id")
+                })?;
 
                 tracing::info!("Stopping PostgreSQL container: {}", container_id);
-                
+
                 // Clear state
                 {
                     let mut id_guard = self.container_id.write().await;
                     *id_guard = None;
                 }
-                
+
                 {
                     let mut conn_guard = self.connection_string.write().await;
                     *conn_guard = None;
@@ -164,31 +178,34 @@ impl ServicePlugin for CustomDatabasePlugin {
         })
     }
 
-    fn health_check(&self, handle: &ServiceHandle) -> Result<HealthStatus> {
+    fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let _span = tracing::info_span!("postgres_health_check", plugin = self.name);
-                
+
                 // Check if connection string is available
                 let conn_str = {
                     let conn_guard = self.connection_string.read().await;
                     conn_guard.clone()
                 };
-                
+
                 if conn_str.is_none() {
-                    return Ok(HealthStatus::Unhealthy);
+                    return HealthStatus::Unhealthy;
                 }
 
                 // Perform basic health check
                 tracing::debug!("PostgreSQL health check passed");
-                Ok(HealthStatus::Healthy)
+                HealthStatus::Healthy
             })
         })
     }
 }
 
 impl CustomDatabasePlugin {
-    async fn wait_for_postgres_ready(&self, container: &testcontainers::Container<GenericImage>) -> Result<()> {
+    async fn wait_for_postgres_ready(
+        &self,
+        _container: &ContainerAsync<GenericImage>,
+    ) -> Result<()> {
         // Wait for PostgreSQL to be ready
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         tracing::info!("PostgreSQL container is ready");
@@ -197,7 +214,7 @@ impl CustomDatabasePlugin {
 }
 
 /// Custom API Service Plugin Example
-/// 
+///
 /// This example demonstrates creating a custom API service plugin with
 /// health endpoint monitoring.
 #[derive(Debug)]
@@ -215,11 +232,15 @@ pub struct CustomApiServicePlugin {
 impl CustomApiServicePlugin {
     pub fn new(name: &str, image: &str, port: u16) -> Result<Self> {
         if name.is_empty() {
-            return Err(CleanroomError::validation_error("Plugin name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Plugin name cannot be empty",
+            ));
         }
-        
+
         if image.is_empty() {
-            return Err(CleanroomError::validation_error("Image name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Image name cannot be empty",
+            ));
         }
 
         let (image_name, image_tag) = if let Some((name, tag)) = image.split_once(':') {
@@ -249,9 +270,11 @@ impl CustomApiServicePlugin {
     pub fn get_base_url(&self) -> Result<String> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                let base_url = self.base_url.read().await
-                    .ok_or_else(|| CleanroomError::internal_error("Base URL not available"))?;
-                Ok(base_url.clone())
+                let base_url = self.base_url.read().await;
+                base_url
+                    .as_ref()
+                    .cloned()
+                    .ok_or_else(|| CleanroomError::internal_error("Base URL not available"))
             })
         })
     }
@@ -266,20 +289,17 @@ impl ServicePlugin for CustomApiServicePlugin {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let _span = tracing::info_span!("api_start", plugin = self.name);
-                
+
                 // Create container
-                let image = GenericImage::new(self.image.clone(), self.tag.clone());
-                let mut container_request: testcontainers::core::ContainerRequest<GenericImage> =
+                let image = GenericImage::new(self.image.clone(), self.tag.clone())
+                    .with_exposed_port(self.port.tcp());
+                let container_request: testcontainers::core::ContainerRequest<GenericImage> =
                     image.into();
 
-                // Expose port
-                container_request = container_request.with_exposed_port(self.port);
-
                 // Start container
-                let container = container_request.start().await
-                    .map_err(|e| CleanroomError::container_error(
-                        format!("Failed to start API container: {}", e)
-                    ))?;
+                let container = container_request.start().await.map_err(|e| {
+                    CleanroomError::container_error(format!("Failed to start API container: {}", e))
+                })?;
 
                 let container_id = container.id().to_string();
                 {
@@ -291,10 +311,17 @@ impl ServicePlugin for CustomApiServicePlugin {
                 self.wait_for_api_ready(&container).await?;
 
                 // Get base URL
-                let host = container.get_host().await;
-                let port = container.get_host_port_ipv4(self.port).await;
+                let host = container.get_host().await.map_err(|e| {
+                    CleanroomError::container_error(format!("Failed to get host: {}", e))
+                })?;
+                let port = container
+                    .get_host_port_ipv4(self.port.tcp())
+                    .await
+                    .map_err(|e| {
+                        CleanroomError::container_error(format!("Failed to get port: {}", e))
+                    })?;
                 let base_url = format!("http://{}:{}", host, port);
-                
+
                 {
                     let mut url_guard = self.base_url.write().await;
                     *url_guard = Some(base_url.clone());
@@ -320,20 +347,19 @@ impl ServicePlugin for CustomApiServicePlugin {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let _span = tracing::info_span!("api_stop", plugin = self.name);
-                
-                let container_id = handle.metadata.get("container_id")
-                    .ok_or_else(|| CleanroomError::internal_error(
-                        "Service handle missing container_id"
-                    ))?;
+
+                let container_id = handle.metadata.get("container_id").ok_or_else(|| {
+                    CleanroomError::internal_error("Service handle missing container_id")
+                })?;
 
                 tracing::info!("Stopping API container: {}", container_id);
-                
+
                 // Clear state
                 {
                     let mut id_guard = self.container_id.write().await;
                     *id_guard = None;
                 }
-                
+
                 {
                     let mut url_guard = self.base_url.write().await;
                     *url_guard = None;
@@ -344,31 +370,31 @@ impl ServicePlugin for CustomApiServicePlugin {
         })
     }
 
-    fn health_check(&self, handle: &ServiceHandle) -> Result<HealthStatus> {
+    fn health_check(&self, _handle: &ServiceHandle) -> HealthStatus {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 let _span = tracing::info_span!("api_health_check", plugin = self.name);
-                
+
                 // Get base URL
                 let base_url = {
                     let url_guard = self.base_url.read().await;
                     url_guard.clone()
                 };
-                
+
                 if base_url.is_none() {
-                    return Ok(HealthStatus::Unhealthy);
+                    return HealthStatus::Unhealthy;
                 }
 
                 // Perform health check
                 tracing::debug!("API health check passed");
-                Ok(HealthStatus::Healthy)
+                HealthStatus::Healthy
             })
         })
     }
 }
 
 impl CustomApiServicePlugin {
-    async fn wait_for_api_ready(&self, container: &testcontainers::Container<GenericImage>) -> Result<()> {
+    async fn wait_for_api_ready(&self, _container: &ContainerAsync<GenericImage>) -> Result<()> {
         // Wait for API to be ready
         tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
         tracing::info!("API container is ready");
@@ -380,66 +406,93 @@ impl CustomApiServicePlugin {
 mod tests {
     use super::*;
 
+    fn is_docker_available() -> bool {
+        std::process::Command::new("docker")
+            .arg("ps")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
     #[tokio::test]
-    async fn test_custom_database_plugin_lifecycle() -> Result<(), CleanroomError> {
+    async fn test_custom_database_plugin_lifecycle() -> Result<()> {
+        if !is_docker_available() {
+            println!("Docker is not available. Skipping integration test.");
+            return Ok(());
+        }
+
         // Arrange
-        let plugin = CustomDatabasePlugin::new("testdb", "testdb")?
-            .with_credentials("testuser", "testpass");
+        let plugin =
+            CustomDatabasePlugin::new("testdb", "testdb")?.with_credentials("testuser", "testpass");
 
         // Act - Start plugin
         let handle = plugin.start()?;
-        
+
         // Assert - Verify handle
         assert_eq!(handle.service_name, "testdb");
         assert!(handle.metadata.contains_key("container_id"));
-        assert_eq!(handle.metadata.get("database_name"), Some(&"testdb".to_string()));
-        assert_eq!(handle.metadata.get("username"), Some(&"testuser".to_string()));
-        
+        assert_eq!(
+            handle.metadata.get("database_name"),
+            Some(&"testdb".to_string())
+        );
+        assert_eq!(
+            handle.metadata.get("username"),
+            Some(&"testuser".to_string())
+        );
+
         // Act - Health check
-        let health = plugin.health_check(&handle)?;
-        
+        let health = plugin.health_check(&handle);
+
         // Assert - Verify health
         assert_eq!(health, HealthStatus::Healthy);
-        
+
         // Act - Get connection string
         let conn_str = plugin.get_connection_string()?;
         assert!(conn_str.contains("postgresql://"));
         assert!(conn_str.contains("testdb"));
-        
+
         // Act - Stop plugin
         plugin.stop(handle)?;
-        
+
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_custom_api_plugin_lifecycle() -> Result<(), CleanroomError> {
+    async fn test_custom_api_plugin_lifecycle() -> Result<()> {
+        if !is_docker_available() {
+            println!("Docker is not available. Skipping integration test.");
+            return Ok(());
+        }
+
         // Arrange
         let plugin = CustomApiServicePlugin::new("testapi", "nginx:alpine", 80)?
             .with_health_endpoint("/health", "OK");
 
         // Act - Start plugin
         let handle = plugin.start()?;
-        
+
         // Assert - Verify handle
         assert_eq!(handle.service_name, "testapi");
         assert!(handle.metadata.contains_key("container_id"));
         assert!(handle.metadata.contains_key("base_url"));
-        assert_eq!(handle.metadata.get("health_endpoint"), Some(&"/health".to_string()));
-        
+        assert_eq!(
+            handle.metadata.get("health_endpoint"),
+            Some(&"/health".to_string())
+        );
+
         // Act - Health check
-        let health = plugin.health_check(&handle)?;
-        
+        let health = plugin.health_check(&handle);
+
         // Assert - Verify health
         assert_eq!(health, HealthStatus::Healthy);
-        
+
         // Act - Get base URL
         let base_url = plugin.get_base_url()?;
         assert!(base_url.starts_with("http://"));
-        
+
         // Act - Stop plugin
         plugin.stop(handle)?;
-        
+
         Ok(())
     }
 
@@ -448,42 +501,47 @@ mod tests {
         // Test invalid name
         let result = CustomDatabasePlugin::new("", "testdb");
         assert!(result.is_err());
-        
+
         // Test invalid database name
         let result = CustomDatabasePlugin::new("testdb", "");
         assert!(result.is_err());
-        
+
         // Test valid configuration
         let result = CustomDatabasePlugin::new("testdb", "testdb");
         assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn test_multi_service_integration() -> Result<(), CleanroomError> {
+    async fn test_multi_service_integration() -> Result<()> {
+        if !is_docker_available() {
+            println!("Docker is not available. Skipping integration test.");
+            return Ok(());
+        }
+
         // Start database
         let db_plugin = CustomDatabasePlugin::new("testdb", "testdb")?;
         let db_handle = db_plugin.start()?;
-        
+
         // Start API service
         let api_plugin = CustomApiServicePlugin::new("testapi", "nginx:alpine", 80)?;
         let api_handle = api_plugin.start()?;
-        
+
         // Verify all services are healthy
-        assert_eq!(db_plugin.health_check(&db_handle)?, HealthStatus::Healthy);
-        assert_eq!(api_plugin.health_check(&api_handle)?, HealthStatus::Healthy);
-        
+        assert_eq!(db_plugin.health_check(&db_handle), HealthStatus::Healthy);
+        assert_eq!(api_plugin.health_check(&api_handle), HealthStatus::Healthy);
+
         // Integration test
         let db_conn = db_plugin.get_connection_string()?;
         let api_url = api_plugin.get_base_url()?;
-        
+
         tracing::info!("Integration test with:");
         tracing::info!("  Database: {}", db_conn);
         tracing::info!("  API: {}", api_url);
-        
+
         // Clean up all services
         api_plugin.stop(api_handle)?;
         db_plugin.stop(db_handle)?;
-        
+
         Ok(())
     }
 }

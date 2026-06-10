@@ -69,7 +69,8 @@ async fn run_test_with_fallback(path: &PathBuf, _config: &CliConfig) -> Result<O
                 for step in result.step_results {
                     if !step.passed {
                         if let Some(reason) = step.assertion_error {
-                            err_msg = format!("{}\n  Step '{}' failed: {}", err_msg, step.name, reason);
+                            err_msg =
+                                format!("{}\n  Step '{}' failed: {}", err_msg, step.name, reason);
                         } else {
                             err_msg = format!("{}\n  Step '{}' failed", err_msg, step.name);
                         }
@@ -333,7 +334,7 @@ pub async fn run_tests_parallel_with_results(
 
             // Track pool usage if pooling is enabled
             if pool_clone.is_some() {
-                // For now, record as miss since we need to refactor run_single_test
+                // EXAMPLE-ONLY: For now, record as miss since we need to refactor run_single_test
                 // Record metric tracking for the pool.
                 metrics_clone.record_miss();
             }
@@ -467,4 +468,3 @@ pub async fn run_tests_parallel(paths: &[PathBuf], config: &CliConfig) -> Result
         Ok(())
     }
 }
-

@@ -1,5 +1,5 @@
-use std::collections::{HashMap, BinaryHeap};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AgentId(pub [u8; 32]);
@@ -31,8 +31,11 @@ pub struct AgentBid {
 // Order bids by lowest price, then highest reputation
 impl Ord for AgentBid {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.price.cmp(&self.price)
-            .then_with(|| self.reputation.partial_cmp(&other.reputation).unwrap_or(Ordering::Equal))
+        other.price.cmp(&self.price).then_with(|| {
+            self.reputation
+                .partial_cmp(&other.reputation)
+                .unwrap_or(Ordering::Equal)
+        })
     }
 }
 
@@ -44,7 +47,9 @@ impl PartialOrd for AgentBid {
 
 impl PartialEq for AgentBid {
     fn eq(&self, other: &Self) -> bool {
-        self.price == other.price && self.reputation == other.reputation && self.bidder == other.bidder
+        self.price == other.price
+            && self.reputation == other.reputation
+            && self.bidder == other.bidder
     }
 }
 impl Eq for AgentBid {}
@@ -76,14 +81,14 @@ impl AgentOrderbook {
 
     pub fn submit_bid(&mut self, task_id: [u8; 32], bid: AgentBid) -> Result<(), &'static str> {
         let task = self.tasks.get(&task_id).ok_or("Task not found")?;
-        
+
         if bid.price > task.max_price {
             return Err("Bid price exceeds max task price");
         }
         if bid.reputation < task.min_reputation {
             return Err("Bidder reputation below task minimum");
         }
-        
+
         if let Some(heap) = self.bids.get_mut(&task_id) {
             heap.push(bid);
         }
@@ -93,7 +98,7 @@ impl AgentOrderbook {
     pub fn match_task(&mut self, task_id: [u8; 32]) -> Option<(AgentTask, AgentBid)> {
         let task = self.tasks.remove(&task_id)?;
         let mut heap = self.bids.remove(&task_id)?;
-        
+
         if let Some(winning_bid) = heap.pop() {
             Some((task, winning_bid))
         } else {

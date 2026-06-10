@@ -1,7 +1,7 @@
-use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng;
-use clnrm_core::config::parse_toml_config;
 use clnrm_core::backend::oci::ConfigParser;
+use clnrm_core::config::parse_toml_config;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 const ITERATIONS: usize = 10_000;
 
@@ -20,7 +20,7 @@ fn fuzz_toml_parser() {
 
         // Feed to the parser and ensure it returns an error gracefully without panicking
         let result = parse_toml_config(&string_data);
-        
+
         // The random garbage is extremely unlikely to be a valid TOML configuration
         // In the extremely rare case it is valid, we don't assert it's an error,
         // but we just ensure it didn't panic.

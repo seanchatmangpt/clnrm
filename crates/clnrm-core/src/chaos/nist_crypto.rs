@@ -21,8 +21,9 @@ impl NistAttackVector for ReceiptForgeryAttack {
         let mut forged_receipt = self.receipt.clone();
 
         // Mutate the internal hash maliciously
-        forged_receipt.id = crate::environment::sigma::ContentHash("malicious_forged_hash".to_string());
-        
+        forged_receipt.id =
+            crate::environment::sigma::ContentHash("malicious_forged_hash".to_string());
+
         // Mutate the signature if present
         if let Some(ref mut sig) = forged_receipt.signature {
             sig.signature = "malicious_forged_signature".to_string();

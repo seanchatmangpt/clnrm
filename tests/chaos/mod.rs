@@ -4,19 +4,9 @@
 //! against various failure scenarios, network issues, resource exhaustion,
 //! and race conditions.
 
-pub mod network_failures;
-pub mod resource_exhaustion;
-pub mod time_manipulation;
-pub mod dependency_failures;
-pub mod process_crashes;
-pub mod filesystem_errors;
-pub mod database_failures;
-pub mod race_conditions;
-pub mod resilience_benchmarks;
-pub mod recovery_validation;
+pub mod resilience_tests;
 
 use clnrm_core::services::chaos_engine::{ChaosConfig, ChaosEnginePlugin, ChaosScenario};
-use clnrm_core::cleanroom::ServicePlugin;
 use clnrm_core::error::Result;
 
 /// Chaos test configuration

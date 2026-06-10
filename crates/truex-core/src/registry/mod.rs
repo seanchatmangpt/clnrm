@@ -783,4 +783,106 @@ mod tests {
         assert!(res.is_err());
         assert!(res.unwrap_err().to_string().contains("is greater than max 150"));
     }
+
+    #[test]
+    fn test_registry_stress_benchmark() {
+        use std::time::Instant;
+
+        println!("\n=== Starting TruexRegistry Stress-Test & Benchmark ===");
+
+        let num_packs = 100;
+        let mut service = RegistryService::new();
+        
+        let mut keygen_durations = Vec::new();
+        let mut signing_durations = Vec::new();
+        let mut ingestion_durations = Vec::new();
+        let mut validation_durations = Vec::new();
+
+        let mut packs = Vec::with_capacity(num_packs);
+
+        // Pre-generate packs & measure keygen / signing latency
+        for i in 0..num_packs {
+            let start_keygen = Instant::now();
+            let mut seed = [0u8; 32];
+            // Unique seed for each pack
+            seed[0..8].copy_from_slice(&(i as u64).to_be_bytes());
+            let (priv_key, pub_key) = wots::generate_keypair(&seed);
+            keygen_durations.push(start_keygen.elapsed());
+
+            let mut pack = create_test_pack();
+            pack.metadata.name = format!("stress-ontology-{}", i);
+            pack.vocabulary.namespace = format!("truex.stress.{}", i);
+
+            // Compute hash & sign
+            let start_signing = Instant::now();
+            pack.metadata.hash = String::new();
+            pack.signature = PqcSignature {
+                public_key: pub_key.iter().map(hex::encode).collect(),
+                signature_blocks: vec![],
+                transition_signature: None,
+            };
+
+            let content_hash = pack.compute_content_hash().unwrap();
+            pack.metadata.hash = content_hash.clone();
+            let hash_bytes = hex::decode(&content_hash).unwrap();
+            let signature_blocks = wots::sign(&priv_key, &hash_bytes);
+            pack.signature.signature_blocks = signature_blocks.iter().map(hex::encode).collect();
+            signing_durations.push(start_signing.elapsed());
+
+            packs.push(pack);
+        }
+
+        // Measure Ingestion Throughput and Latency
+        let start_all_ingest = Instant::now();
+        for pack in &packs {
+            let pack_json = serde_json::to_string(pack).unwrap();
+            let start_ingest = Instant::now();
+            service.ingest(&pack_json).unwrap();
+            ingestion_durations.push(start_ingest.elapsed());
+        }
+        let total_ingest_duration = start_all_ingest.elapsed();
+
+        // Measure Verification & Shape Constraint Validation Latency
+        let valid_instance = json!({
+            "username": "bob_99",
+            "age": 42
+        });
+
+        for i in 0..num_packs {
+            let pack_name = format!("stress-ontology-{}", i);
+            let start_val = Instant::now();
+            service.validate_instance(&pack_name, "UserRecord", &valid_instance).unwrap();
+            validation_durations.push(start_val.elapsed());
+        }
+
+        // Print results to stdout
+        let sum_keygen: f64 = keygen_durations.iter().map(|d| d.as_secs_f64()).sum();
+        let avg_keygen = sum_keygen / (num_packs as f64) * 1000.0; // ms
+
+        let sum_signing: f64 = signing_durations.iter().map(|d| d.as_secs_f64()).sum();
+        let avg_signing = sum_signing / (num_packs as f64) * 1000.0; // ms
+
+        let sum_ingestion: f64 = ingestion_durations.iter().map(|d| d.as_secs_f64()).sum();
+        let avg_ingestion = sum_ingestion / (num_packs as f64) * 1000.0; // ms
+
+        let sum_validation: f64 = validation_durations.iter().map(|d| d.as_secs_f64()).sum();
+        let avg_validation = sum_validation / (num_packs as f64) * 1000.0; // ms
+
+        let throughput = (num_packs as f64) / total_ingest_duration.as_secs_f64();
+
+        println!("--------------------------------------------------");
+        println!("Stress Test Configuration:");
+        println!("  Number of Ontology Packs: {}", num_packs);
+        println!("  PQC algorithm: Winternitz OTS (w=16, L=67)");
+        println!("Performance Metrics:");
+        println!("  Avg WOTS Key Pair Gen Latency:   {:.3} ms", avg_keygen);
+        println!("  Avg WOTS Sign + Hash Latency:    {:.3} ms", avg_signing);
+        println!("  Avg Ingestion + Verify Latency:  {:.3} ms", avg_ingestion);
+        println!("  Avg Shape Validate Latency:      {:.3} ms", avg_validation);
+        println!("  Total Registration Duration:     {:.3} ms", total_ingest_duration.as_secs_f64() * 1000.0);
+        println!("  Ingestion Throughput:            {:.2} packs/sec", throughput);
+        println!("--------------------------------------------------");
+
+        assert_eq!(service.packs.len(), num_packs);
+    }
 }

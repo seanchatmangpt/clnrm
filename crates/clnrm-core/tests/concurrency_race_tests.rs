@@ -19,18 +19,21 @@ async fn test_service_registry_deadlock_prevention() {
     // Spawn 50 writer tasks
     for task_id in 0..num_writer_tasks {
         let registry_clone = registry.clone();
-        
+
         let handle = tokio::spawn(async move {
             for i in 0..iterations {
                 let service_id = format!("service-{}-{}", task_id, i);
-                
+
                 // 1. Register
                 let meta = ServiceMetadata::new(
                     service_id.clone(),
                     format!("name-{}", task_id),
                     format!("container-{}", task_id),
                 );
-                registry_clone.register(meta).await.expect("Failed to register");
+                registry_clone
+                    .register(meta)
+                    .await
+                    .expect("Failed to register");
 
                 // Simulate slight delay to increase interleaving
                 tokio::task::yield_now().await;
@@ -40,9 +43,9 @@ async fn test_service_registry_deadlock_prevention() {
                     .update_state(&service_id, ServiceState::Starting)
                     .await
                     .expect("Failed to update state to Starting");
-                
+
                 tokio::task::yield_now().await;
-                
+
                 registry_clone
                     .update_state(&service_id, ServiceState::Running)
                     .await
@@ -63,23 +66,23 @@ async fn test_service_registry_deadlock_prevention() {
                     .expect("Failed to unregister");
             }
         });
-        
+
         handles.push(handle);
     }
 
     // Spawn reader tasks (constantly reading check_all_health())
     for _ in 0..num_reader_tasks {
         let registry_clone = registry.clone();
-        
+
         let handle = tokio::spawn(async move {
             for _ in 0..iterations {
-                // check_all_health does quite a bit of work, reading from the lock and potentially 
+                // check_all_health does quite a bit of work, reading from the lock and potentially
                 // spawning runsc processes if any service is present.
                 let _ = registry_clone.check_all_health().await;
                 tokio::task::yield_now().await;
             }
         });
-        
+
         handles.push(handle);
     }
 
@@ -90,10 +93,7 @@ async fn test_service_registry_deadlock_prevention() {
         }
     };
 
-    let result = tokio::time::timeout(
-        Duration::from_secs(60),
-        join_all_tasks
-    ).await;
+    let result = tokio::time::timeout(Duration::from_secs(60), join_all_tasks).await;
 
     assert!(
         result.is_ok(),

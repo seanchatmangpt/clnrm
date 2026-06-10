@@ -1,2 +1,2 @@
-pub mod lattice;
 pub mod hash;
+pub mod lattice;

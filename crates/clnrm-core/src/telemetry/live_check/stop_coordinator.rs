@@ -146,6 +146,15 @@ impl StopCoordinator {
         &self.cancel_token
     }
 
+    /// Trigger shutdown manually (primarily for testing or manual control)
+    pub async fn trigger_shutdown(&self, reason: StopReason) {
+        let mut shutdown = self.shutdown_reason.lock().await;
+        if shutdown.is_none() {
+            *shutdown = Some(reason);
+            self.cancel_token.cancel();
+        }
+    }
+
     // ========================================================================
     // Signal Handler Installation
     // ========================================================================
@@ -297,7 +306,7 @@ impl StopCoordinator {
             self.config.phase1_timeout
         );
         let phase1_result = tokio::time::timeout(phase1_timeout, async {
-            // For now, just flush OTLP
+            // EXAMPLE-ONLY: For now, just flush OTLP
             // Stop accepting telemetry is handled by Weaver
             self.flush_otlp_buffers().await
         })
@@ -384,7 +393,7 @@ impl StopCoordinator {
     async fn flush_otlp_buffers(&self) -> Result<()> {
         // OTEL SDK flush happens when the guard is dropped
         // v1.4.0: Use a more robust wait with polling of export statistics if possible
-        // For now, we use a controlled wait that could be signaled in the future
+        // EXAMPLE-ONLY: For now, we use a controlled wait that could be signaled in the future
         let flush_timeout = Duration::from_millis(500);
         debug!("⌛ Waiting for OTLP buffers to flush ({:?})", flush_timeout);
         tokio::time::sleep(flush_timeout).await;

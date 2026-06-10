@@ -3,11 +3,11 @@
 [Introduction](introduction.md)
 
 # Migration Guide
-- [v2.0.0 Migration Guide](../docs/V2_0_0_MIGRATION_GUIDE.md)
+- [v2.0.0 Migration Guide](docs/V2_0_0_MIGRATION_GUIDE.md)
 
 # Architecture
-- [v2.0.0 Architecture](../docs/V2_0_0_ARCHITECTURE.md)
-- [Configuration Reference](../docs/V2_0_0_CONFIG_REFERENCE.md)
+- [v2.0.0 Architecture](docs/V2_0_0_ARCHITECTURE.md)
+- [Configuration Reference](docs/V2_0_0_CONFIG_REFERENCE.md)
 
 # Plugin Development
 - [Overview](plugin-development/README.md)

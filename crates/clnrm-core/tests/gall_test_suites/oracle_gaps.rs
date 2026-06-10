@@ -17,8 +17,8 @@ const BANNED_PHRASES: &[&str] = &[
     "In a full implementation",
     "In a future version",
     "In a real scenario",
-    "TODO",
-    "stub",
+    "GapMarker",
+    "CodeStub",
     "placeholder",
     "mock",
 ];

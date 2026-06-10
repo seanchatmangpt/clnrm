@@ -1,11 +1,11 @@
-use criterion::{criterion_group, criterion_main, Criterion, BatchSize};
 use clnrm_core::validation::otel::ValidationSpanProcessor;
-use opentelemetry_sdk::trace::{SpanData, SpanEvents, SpanLinks, SpanProcessor};
-use opentelemetry::trace::{SpanContext, SpanId, TraceId, TraceFlags, TraceState, Status};
+use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
+use opentelemetry::trace::{SpanContext, SpanId, Status, TraceFlags, TraceId, TraceState};
 use opentelemetry::InstrumentationScope;
-use std::time::SystemTime;
+use opentelemetry_sdk::trace::{SpanData, SpanEvents, SpanLinks, SpanProcessor};
 use std::sync::Arc;
 use std::thread;
+use std::time::SystemTime;
 
 fn create_mock_span_data(name: &str) -> SpanData {
     let trace_id = TraceId::from_bytes([1; 16]);
@@ -41,7 +41,7 @@ fn bench_validation_span_processor(c: &mut Criterion) {
     let mut group = c.benchmark_group("validation_span_processor");
     // Set a reasonable sample size for this heavy benchmark
     group.sample_size(10);
-    
+
     group.bench_function("process_100k_spans_concurrently", |b| {
         b.iter_batched(
             || {
@@ -77,7 +77,7 @@ fn bench_validation_span_processor(c: &mut Criterion) {
             BatchSize::LargeInput,
         );
     });
-    
+
     group.finish();
 }
 

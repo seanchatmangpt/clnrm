@@ -555,7 +555,9 @@ impl CoverageBreakdown {
 
         tracing::info!(
             "\nCritical Spans: {:.1}% ({}/{})",
-            self.critical_spans_coverage, self.critical_spans_present, self.critical_spans_total
+            self.critical_spans_coverage,
+            self.critical_spans_present,
+            self.critical_spans_total
         );
 
         tracing::info!(

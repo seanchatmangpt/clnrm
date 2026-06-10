@@ -26,7 +26,7 @@ pub struct NistAdversarialConfig {
     /// Maximum time in seconds to allow an adversarial test to run.
     #[serde(default = "default_test_timeout")]
     pub test_timeout_seconds: u32,
-    
+
     /// Maximum allowed memory usage in MB for adversarial tests.
     #[serde(default = "default_max_memory_mb")]
     pub max_memory_mb: u32,

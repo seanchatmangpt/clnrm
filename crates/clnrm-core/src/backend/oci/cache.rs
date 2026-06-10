@@ -241,7 +241,7 @@ impl ImageCache {
         let mut layers = Vec::new();
         for layer_entry in &entry.layers {
             let data = tokio::fs::read(&layer_entry.path).await?;
-            
+
             if let Some(expected_hex) = layer_entry.digest.strip_prefix("sha256:") {
                 let actual_digest = sha2::Sha256::digest(&data);
                 let actual_hex = hex::encode(actual_digest);

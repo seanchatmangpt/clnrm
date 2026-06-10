@@ -102,7 +102,7 @@ macro_rules! skip_if_no_docker {
             println!("  1. Start Docker Desktop or Docker daemon");
             println!("  2. Run: docker ps (to verify Docker is working)");
             println!("  3. Re-run the tests");
-            return;
+            return Ok(());
         }
     };
 }

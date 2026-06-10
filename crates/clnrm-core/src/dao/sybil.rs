@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use rand::{Rng, SeedableRng};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fmt;
 
 /// Errors that can occur within the Sybil resistance mechanism.
@@ -97,7 +97,10 @@ impl SybilRegistry {
 
     /// Checks if a validator has been completely slashed.
     pub fn is_slashed(&self, id: &ValidatorId) -> bool {
-        self.validators.get(id).map(|v| v.is_slashed).unwrap_or(false)
+        self.validators
+            .get(id)
+            .map(|v| v.is_slashed)
+            .unwrap_or(false)
     }
 
     /// Slashes a specific amount from a validator's stake due to malicious behavior.
@@ -161,7 +164,9 @@ impl SybilRegistry {
 
         let mut current: u64 = 0;
 
-        let mut sorted_validators: Vec<_> = self.validators.values()
+        let mut sorted_validators: Vec<_> = self
+            .validators
+            .values()
             .filter(|v| !v.is_slashed && v.stake > 0)
             .collect();
 

@@ -328,6 +328,10 @@ impl TomlPokaYoke {
                     continue;
                 }
 
+                if ch == '#' && !in_string {
+                    break;
+                }
+
                 if ch == '\\' {
                     escape_next = true;
                     continue;

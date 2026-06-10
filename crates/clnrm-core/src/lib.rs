@@ -56,6 +56,7 @@ pub mod stress_test;
 pub mod synthesis; // v1.7.0: Scenario synthesis engine (Phase 5)
 pub mod telemetry;
 pub mod timing; // v1.7.0: μ-Kernel timing & τ validation (Phase 4)
+pub mod truex;
 pub mod utils;
 pub mod validation;
 pub mod watch;
@@ -252,4 +253,3 @@ pub struct RunResult {
     pub output: String,
     pub error: Option<String>,
 }
-pub mod clnrm_2030;

@@ -11,7 +11,7 @@ description="Attack vector: Fake clnrm logs without real execution"
 [[scenario]]
 name="fake_logs"
 service="red"
-run="sh -lc 'echo \"🚀 Executing test: test_1\"; echo \"✅ test_1 - PASS (123ms)\"; echo \"Test Results: 1 passed, 0 failed\"; exit 0'"
+run="bash tests/red_team/attack_scripts/attack_vectors.sh logs"
 artifacts.collect=["spans:default"]
 
 [service.red]

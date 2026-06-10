@@ -1189,7 +1189,7 @@ mod tests {
         let pool = ContainerPool::new(config)
             .await
             .expect("Failed to create pool");
-        
+
         // JIT: Initial pool should be empty
         assert_eq!(pool.stats().created, 0);
 

@@ -10,10 +10,19 @@
 //! Provides strict type barriers to ensure only the actuator can instantiate
 //! an `AdmittedConsequence`.
 
+use crate::truex::ocel::OCELEvent;
+use crate::truex::ontology::OntologyLaw;
 use std::marker::PhantomData;
 
+/// Verifies conformance against an ontology law.
+pub fn verify_conformance(event: &OCELEvent, law: &OntologyLaw) -> bool {
+    law.transitions
+        .iter()
+        .any(|t| t.select_condition == event.activity)
+}
+
 /// The validated ontology input (`O*`)
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ValidatedOntology {
     law_id: String,
     state_field: u8,
@@ -21,7 +30,6 @@ pub struct ValidatedOntology {
 }
 
 impl ValidatedOntology {
-    /// Creates a new `ValidatedOntology`.
     pub fn new(law_id: String, state_field: u8, event_condition: String) -> Self {
         Self {
             law_id,
@@ -30,17 +38,14 @@ impl ValidatedOntology {
         }
     }
 
-    /// The law identifier.
     pub fn law_id(&self) -> &str {
         &self.law_id
     }
 
-    /// The current state field of the finite state machine.
     pub fn state_field(&self) -> u8 {
         self.state_field
     }
 
-    /// The external event condition triggered.
     pub fn event_condition(&self) -> &str {
         &self.event_condition
     }
@@ -53,22 +58,15 @@ pub struct GenerativeConstitution {
 }
 
 impl GenerativeConstitution {
-    /// Instantiates a new generative constitution from a cryptographic receipt.
     pub fn new(receipt: [u8; 32]) -> Self {
         Self { receipt }
     }
 
-    /// Returns the underlying cryptographic receipt.
     pub fn receipt(&self) -> &[u8; 32] {
         &self.receipt
     }
 }
 
-/// The result of the invariant projection `A = μ(O*)`.
-///
-/// Strict type barrier: The internal `_seal` field is private, and no public constructor exists.
-/// Sensing surfaces (LSP/MCP/A2A) physically cannot instantiate this type directly,
-/// ensuring that all agent behavior is properly admitted by the kernel.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdmittedConsequence {
     ontology: ValidatedOntology,
@@ -76,13 +74,11 @@ pub struct AdmittedConsequence {
 }
 
 impl AdmittedConsequence {
-    /// Returns the underlying validated ontology.
     pub fn ontology(&self) -> &ValidatedOntology {
         &self.ontology
     }
 }
 
-/// Errors that can occur during the admission process.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdmissionError {
     EmptyLawId,
@@ -102,21 +98,15 @@ impl std::fmt::Display for AdmissionError {
 
 impl std::error::Error for AdmissionError {}
 
-/// The `AdmissionKernel` (`μ`).
-///
-/// Applies the projection mapping `μ(O*)` under the constraints of `R`.
 pub struct AdmissionKernel {
     constitution: GenerativeConstitution,
 }
 
 impl AdmissionKernel {
-    /// Initializes a new admission kernel bound to the specific constitution `R`.
     pub fn new(constitution: GenerativeConstitution) -> Self {
         Self { constitution }
     }
 
-    /// Evaluates if the `ValidatedOntology` satisfies the constitution `R`.
-    /// This is the core logical check `R ⊢ O*`.
     pub fn evaluate(&self, ontology: &ValidatedOntology) -> Result<(), AdmissionError> {
         if ontology.law_id.is_empty() {
             return Err(AdmissionError::EmptyLawId);
@@ -124,35 +114,29 @@ impl AdmissionKernel {
         if ontology.event_condition.is_empty() {
             return Err(AdmissionError::EmptyEventCondition);
         }
-        
+
         let all_zeros = [0u8; 32];
         if self.constitution.receipt == all_zeros {
             return Err(AdmissionError::InvalidReceipt);
         }
-        
+
         Ok(())
     }
 }
 
-/// The `GgenSyncActuator`.
-///
-/// The sole authority capable of returning an `AdmittedConsequence`.
-/// Enforces the invariant `R ⊢ A = μ(O*)`.
 pub struct GgenSyncActuator {
     mu: AdmissionKernel,
 }
 
 impl GgenSyncActuator {
-    /// Instantiates a new actuator wrapped around the admission kernel.
     pub fn new(mu: AdmissionKernel) -> Self {
         Self { mu }
     }
 
-    /// Projects the validated ontology into an admitted consequence if `R ⊢ O*` holds.
-    ///
-    /// Returns `AdmittedConsequence` exclusively. This is the only function that can
-    /// construct an `AdmittedConsequence`, ensuring the type barrier is respected.
-    pub fn actuate(&self, ontology: ValidatedOntology) -> Result<AdmittedConsequence, AdmissionError> {
+    pub fn actuate(
+        &self,
+        ontology: ValidatedOntology,
+    ) -> Result<AdmittedConsequence, AdmissionError> {
         self.mu.evaluate(&ontology)?;
 
         Ok(AdmittedConsequence {

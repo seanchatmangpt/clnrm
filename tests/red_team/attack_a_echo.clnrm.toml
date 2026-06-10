@@ -11,7 +11,7 @@ description="Attack vector: Echo success message without execution"
 [[scenario]]
 name="echo_fake_pass"
 service="red"
-run="sh -lc 'echo \"✅ All tests passed\"; exit 0'"
+run="bash tests/red_team/attack_scripts/attack_vectors.sh echo"
 artifacts.collect=["spans:default"]
 
 [service.red]

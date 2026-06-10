@@ -1,10 +1,11 @@
 //! Schema Validation for Contract Testing
 //!
-//! Provides JSON Schema validation for contract testing using jsonschema crate.
+//! Provides JSON Schema validation for contract testing using standard serde_json and regex.
 
 use serde_json::Value;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use regex::Regex;
 
 /// Contract validation error types
 #[derive(Debug, Clone)]
@@ -40,8 +41,25 @@ pub struct SchemaValidator {
 impl SchemaValidator {
     /// Create a new schema validator
     pub fn new(schema_dir: &str) -> Self {
+        let mut resolved_path = PathBuf::from(schema_dir);
+        
+        if !resolved_path.exists() {
+            if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+                let manifest_path = Path::new(&manifest_dir);
+                let candidate = manifest_path.join("../../").join(schema_dir);
+                if candidate.exists() {
+                    resolved_path = candidate;
+                } else {
+                    let candidate2 = manifest_path.join(schema_dir);
+                    if candidate2.exists() {
+                        resolved_path = candidate2;
+                    }
+                }
+            }
+        }
+
         Self {
-            schema_dir: schema_dir.to_string(),
+            schema_dir: resolved_path.to_string_lossy().to_string(),
         }
     }
 
@@ -62,39 +80,21 @@ impl SchemaValidator {
             .map_err(|e| ContractValidationError::InvalidSchema(e.to_string()))
     }
 
-    /// Validate data against schema (basic validation without jsonschema crate)
-    /// In production, this should use jsonschema crate for full JSON Schema validation
+    /// Validate data against schema
     pub fn validate<T: serde::Serialize>(
         &self,
         schema_name: &str,
         data: &T,
     ) -> Result<(), ContractValidationError> {
         // Load schema
-        let _schema = self.load_schema(schema_name)?;
+        let schema = self.load_schema(schema_name)?;
 
         // Serialize data to JSON
         let data_value = serde_json::to_value(data)
             .map_err(|e| ContractValidationError::SerializationError(e.to_string()))?;
 
-        // Basic validation: check that data is an object if schema expects it
-        // This is a simplified validation - in production use jsonschema crate
-        if !data_value.is_object() && !data_value.is_array() {
-            return Err(ContractValidationError::ValidationFailed(vec![
-                "Data must be an object or array".to_string()
-            ]));
-        }
-
-        // For production, use jsonschema crate:
-        // let compiled_schema = jsonschema::JSONSchema::compile(&schema)
-        //     .map_err(|e| ContractValidationError::InvalidSchema(e.to_string()))?;
-        //
-        // let result = compiled_schema.validate(&data_value);
-        // if let Err(errors) = result {
-        //     let error_messages: Vec<String> = errors.map(|e| e.to_string()).collect();
-        //     return Err(ContractValidationError::ValidationFailed(error_messages));
-        // }
-
-        Ok(())
+        Self::validate_internal(&data_value, &schema, &schema)
+            .map_err(ContractValidationError::ValidationFailed)
     }
 
     /// Validate raw JSON value against schema
@@ -104,20 +104,180 @@ impl SchemaValidator {
         value: &Value,
     ) -> Result<(), ContractValidationError> {
         // Load schema
-        let _schema = self.load_schema(schema_name)?;
+        let schema = self.load_schema(schema_name)?;
 
-        // Basic validation
-        if !value.is_object() && !value.is_array() {
-            return Err(ContractValidationError::ValidationFailed(vec![
-                "Value must be an object or array".to_string()
-            ]));
-        }
-
-        Ok(())
+        Self::validate_internal(value, &schema, &schema)
+            .map_err(ContractValidationError::ValidationFailed)
     }
 
     /// Get schema directory
     pub fn schema_dir(&self) -> &str {
         &self.schema_dir
+    }
+
+    /// Internal validation logic
+    fn validate_internal(
+        value: &Value,
+        schema: &Value,
+        root_schema: &Value,
+    ) -> Result<(), Vec<String>> {
+        // 1. Handle $ref
+        if let Some(ref_str) = schema.get("$ref").and_then(|v| v.as_str()) {
+            if ref_str.starts_with("#/definitions/") {
+                let def_name = &ref_str["#/definitions/".len()..];
+                if let Some(def_schema) = root_schema.get("definitions").and_then(|d| d.get(def_name)) {
+                    return Self::validate_internal(value, def_schema, root_schema);
+                } else {
+                    return Err(vec![format!("Definition not found: {}", def_name)]);
+                }
+            }
+        }
+
+        // 2. Handle oneOf
+        if let Some(one_of) = schema.get("oneOf").and_then(|v| v.as_array()) {
+            let mut matched = 0;
+            let mut last_errors = Vec::new();
+            for sub_schema in one_of {
+                match Self::validate_internal(value, sub_schema, root_schema) {
+                    Ok(_) => matched += 1,
+                    Err(errs) => last_errors = errs,
+                }
+            }
+            if matched == 1 {
+                return Ok(());
+            } else if matched > 1 {
+                return Err(vec!["Multiple schemas in oneOf matched".to_string()]);
+            } else {
+                return Err(vec![format!("No schemas in oneOf matched. Last error: {:?}", last_errors)]);
+            }
+        }
+
+        // 3. Handle type
+        if let Some(type_val) = schema.get("type") {
+            let mut type_matches = false;
+            let mut expected_types = Vec::new();
+            if let Some(type_str) = type_val.as_str() {
+                expected_types.push(type_str);
+            } else if let Some(type_arr) = type_val.as_array() {
+                for t in type_arr {
+                    if let Some(t_str) = t.as_str() {
+                        expected_types.push(t_str);
+                    }
+                }
+            }
+            for t in &expected_types {
+                match *t {
+                    "object" => if value.is_object() { type_matches = true; },
+                    "array" => if value.is_array() { type_matches = true; },
+                    "string" => if value.is_string() { type_matches = true; },
+                    "integer" => if value.is_i64() || value.is_u64() || (value.is_f64() && value.as_f64().unwrap().fract() == 0.0) { type_matches = true; },
+                    "number" => if value.is_number() { type_matches = true; },
+                    "boolean" => if value.is_boolean() { type_matches = true; },
+                    "null" => if value.is_null() { type_matches = true; },
+                    _ => {}
+                }
+            }
+            if !type_matches {
+                return Err(vec![format!("Type mismatch: expected {:?}, got value {:?}", type_val, value)]);
+            }
+        }
+
+        let mut errors = Vec::new();
+
+        // 4. Handle object properties and required
+        if value.is_object() {
+            if let Some(required) = schema.get("required").and_then(|v| v.as_array()) {
+                for req in required {
+                    if let Some(req_str) = req.as_str() {
+                        if !value.get(req_str).is_some() {
+                            errors.push(format!("Missing required property: {}", req_str));
+                        }
+                    }
+                }
+            }
+            if let Some(properties) = schema.get("properties").and_then(|v| v.as_object()) {
+                for (prop_name, prop_schema) in properties {
+                    if let Some(prop_val) = value.get(prop_name) {
+                        if let Err(errs) = Self::validate_internal(prop_val, prop_schema, root_schema) {
+                            for e in errs {
+                                errors.push(format!("{}.{}", prop_name, e));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Handle array items
+        if value.is_array() {
+            let arr = value.as_array().unwrap();
+            if let Some(items_schema) = schema.get("items") {
+                for (idx, item) in arr.iter().enumerate() {
+                    if let Err(errs) = Self::validate_internal(item, items_schema, root_schema) {
+                        for e in errs {
+                            errors.push(format!("{}[{}]", e, idx));
+                        }
+                    }
+                }
+            }
+            if let Some(min_items) = schema.get("minItems").and_then(|v| v.as_u64()) {
+                if (arr.len() as u64) < min_items {
+                    errors.push(format!("Array has fewer than {} items (actual: {})", min_items, arr.len()));
+                }
+            }
+            if let Some(max_items) = schema.get("maxItems").and_then(|v| v.as_u64()) {
+                if (arr.len() as u64) > max_items {
+                    errors.push(format!("Array has more than {} items (actual: {})", max_items, arr.len()));
+                }
+            }
+        }
+
+        // 6. Handle string patterns & min/max length
+        if let Some(s) = value.as_str() {
+            if let Some(pattern) = schema.get("pattern").and_then(|v| v.as_str()) {
+                if let Ok(re) = Regex::new(pattern) {
+                    if !re.is_match(s) {
+                        errors.push(format!("String '{}' does not match pattern '{}'", s, pattern));
+                    }
+                }
+            }
+            if let Some(min_len) = schema.get("minLength").and_then(|v| v.as_u64()) {
+                if (s.len() as u64) < min_len {
+                    errors.push(format!("String '{}' is shorter than {} chars", s, min_len));
+                }
+            }
+            if let Some(max_len) = schema.get("maxLength").and_then(|v| v.as_u64()) {
+                if (s.len() as u64) > max_len {
+                    errors.push(format!("String '{}' is longer than {} chars", s, max_len));
+                }
+            }
+        }
+
+        // 7. Handle enum values
+        if let Some(enum_vals) = schema.get("enum").and_then(|v| v.as_array()) {
+            if !enum_vals.contains(value) {
+                errors.push(format!("Value {:?} is not in enum {:?}", value, enum_vals));
+            }
+        }
+
+        // 8. Handle minimum and maximum values
+        if let Some(num) = value.as_i64().or_else(|| value.as_f64().map(|f| f as i64)) {
+            if let Some(min_val) = schema.get("minimum").and_then(|v| v.as_i64()) {
+                if num < min_val {
+                    errors.push(format!("Value {} is less than minimum {}", num, min_val));
+                }
+            }
+            if let Some(max_val) = schema.get("maximum").and_then(|v| v.as_i64()) {
+                if num > max_val {
+                    errors.push(format!("Value {} is greater than maximum {}", num, max_val));
+                }
+            }
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }

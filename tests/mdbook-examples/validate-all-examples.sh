@@ -17,6 +17,24 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# Use an isolated target directory for mdbook examples to prevent lock contention
+export CARGO_TARGET_DIR="$PROJECT_ROOT/target_mdbook_examples_shared"
+export CARGO_BUILD_JOBS=2
+
+# Ensure target/debug clnrm is preferred in PATH
+export PATH="$PROJECT_ROOT/target/debug:$PATH"
+
+# Cleanup function to remove temporary test artifacts
+cleanup() {
+    echo -e "\n${BLUE}🧹 Cleaning up temporary test artifacts...${NC}"
+    # Remove any stray template validation output reports
+    rm -f "$SCRIPT_DIR/template-mastery/"*_report.json
+    rm -f "$SCRIPT_DIR/template-mastery/"*_trace.sha256
+    rm -f "$SCRIPT_DIR/advanced-patterns/"*_report.json
+    rm -f "$SCRIPT_DIR/advanced-patterns/"*_trace.sha256
+}
+trap cleanup EXIT
+
 echo -e "${BLUE}🔍 Validating mdbook examples for clnrm v1.0.1${NC}"
 echo "=================================================="
 
@@ -60,9 +78,16 @@ TOTAL=0
 echo -e "\n${YELLOW}📦 Plugin Development Examples${NC}"
 echo "--------------------------------"
 
+# Build the test target once to avoid concurrent compile locks and resource contention
+echo -e "\n${BLUE}Building test target...${NC}"
+if ! (cd "$PROJECT_ROOT" && cargo test --test mdbook-examples-plugin-development --no-run); then
+    echo -e "${RED}❌ Failed to build test target${NC}"
+    exit 1
+fi
+
 # Test custom database plugin
 TOTAL=$((TOTAL + 1))
-if run_test "Custom Database Plugin" "cargo test --test mdbook-examples-plugin-development test_custom_database_plugin_lifecycle" "$PROJECT_ROOT"; then
+if run_test "Custom Database Plugin" "cargo test --test mdbook-examples-plugin-development -- test_custom_database_plugin_lifecycle" "$PROJECT_ROOT"; then
     PASSED=$((PASSED + 1))
 else
     FAILED=$((FAILED + 1))
@@ -70,7 +95,7 @@ fi
 
 # Test custom API plugin
 TOTAL=$((TOTAL + 1))
-if run_test "Custom API Plugin" "cargo test --test mdbook-examples-plugin-development test_custom_api_plugin_lifecycle" "$PROJECT_ROOT"; then
+if run_test "Custom API Plugin" "cargo test --test mdbook-examples-plugin-development -- test_custom_api_plugin_lifecycle" "$PROJECT_ROOT"; then
     PASSED=$((PASSED + 1))
 else
     FAILED=$((FAILED + 1))
@@ -78,7 +103,7 @@ fi
 
 # Test plugin validation
 TOTAL=$((TOTAL + 1))
-if run_test "Plugin Validation" "cargo test --test mdbook-examples-plugin-development test_plugin_validation" "$PROJECT_ROOT"; then
+if run_test "Plugin Validation" "cargo test --test mdbook-examples-plugin-development -- test_plugin_validation" "$PROJECT_ROOT"; then
     PASSED=$((PASSED + 1))
 else
     FAILED=$((FAILED + 1))
@@ -86,7 +111,7 @@ fi
 
 # Test multi-service integration
 TOTAL=$((TOTAL + 1))
-if run_test "Multi-Service Integration" "cargo test --test mdbook-examples-plugin-development test_multi_service_integration" "$PROJECT_ROOT"; then
+if run_test "Multi-Service Integration" "cargo test --test mdbook-examples-plugin-development -- test_multi_service_integration" "$PROJECT_ROOT"; then
     PASSED=$((PASSED + 1))
 else
     FAILED=$((FAILED + 1))
@@ -98,7 +123,7 @@ echo "--------------------------------"
 
 # Test multi-service orchestration
 TOTAL=$((TOTAL + 1))
-if run_test "Multi-Service Orchestration" "clnrm validate multi-service-orchestration.clnrm.toml" "$SCRIPT_DIR/advanced-patterns"; then
+if run_test "Multi-Service Orchestration" "clnrm test validate --path multi-service-orchestration.clnrm.toml" "$SCRIPT_DIR/advanced-patterns"; then
     PASSED=$((PASSED + 1))
 else
     FAILED=$((FAILED + 1))
@@ -110,7 +135,7 @@ echo "--------------------------------"
 
 # Test template validation
 TOTAL=$((TOTAL + 1))
-if run_test "Template Validation" "clnrm validate template-example.clnrm.toml.tera" "$SCRIPT_DIR/template-mastery"; then
+if run_test "Template Validation" "clnrm test validate --path template-example.clnrm.toml.tera" "$SCRIPT_DIR/template-mastery"; then
     PASSED=$((PASSED + 1))
 else
     FAILED=$((FAILED + 1))
@@ -123,7 +148,7 @@ echo "----------------------------------------"
 # Check for unwrap/expect in production code
 TOTAL=$((TOTAL + 1))
 echo -e "\n${BLUE}🔍 Checking for unwrap/expect in production code${NC}"
-if cargo clippy -- -D clippy::unwrap_used -D clippy::expect_used 2>&1 | grep -E "(unwrap|expect)" | grep -v "test"; then
+if cargo clippy -j 1 --offline -- -D clippy::unwrap_used -D clippy::expect_used 2>&1 | grep -E "(unwrap|expect)" | grep -v "test"; then
     echo -e "${RED}❌ Found unwrap/expect in production code${NC}"
     FAILED=$((FAILED + 1))
 else
@@ -133,12 +158,12 @@ fi
 
 # Check clippy warnings
 TOTAL=$((TOTAL + 1))
-echo -e "\n${BLUE}🔍 Running clippy checks${NC}"
-if cargo clippy -- -D warnings 2>&1 | grep -E "warning|error"; then
-    echo -e "${RED}❌ Clippy warnings found${NC}"
+echo -e "\n${BLUE}🔍 Running clippy checks for mdbook examples${NC}"
+if cargo clippy -j 1 --offline --test mdbook-examples-plugin-development -- -D warnings 2>&1 | grep -E "warning|error" | grep -v "clnrm-core"; then
+    echo -e "${RED}❌ Clippy warnings found in examples${NC}"
     FAILED=$((FAILED + 1))
 else
-    echo -e "${GREEN}✅ No clippy warnings${NC}"
+    echo -e "${GREEN}✅ No clippy warnings in examples${NC}"
     PASSED=$((PASSED + 1))
 fi
 

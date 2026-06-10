@@ -62,14 +62,12 @@ impl ValueVectorPricingEngine {
 
     /// Calculates the dynamic price of a ConsequenceListing based on the PRD's N-dimensional vector.
     /// It combines the inherent pricing properties of the listing with the dynamic metrics from the vector.
-    pub fn calculate_price(
-        &self,
-        listing: &ConsequenceListing,
-        vector: &PricingVector,
-    ) -> f64 {
+    pub fn calculate_price(&self, listing: &ConsequenceListing, vector: &PricingVector) -> f64 {
         // We incorporate both the vector's dimensions and the listing's existing intrinsic values.
         let effective_ontology = vector.ontology_fit.max(listing.pricing.ontology_fit);
-        let effective_receipt = vector.receipt_strength.max(listing.pricing.receipt_strength as f64);
+        let effective_receipt = vector
+            .receipt_strength
+            .max(listing.pricing.receipt_strength as f64);
 
         let ontology_value = effective_ontology * self.ontology_weight;
         let procedure_value = vector.procedure_completeness * self.procedure_weight;

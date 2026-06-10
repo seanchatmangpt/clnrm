@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// Cleanroom error type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CleanroomError {
     /// Error kind
     pub kind: ErrorKind,

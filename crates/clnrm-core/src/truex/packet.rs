@@ -19,11 +19,11 @@ impl ConsequencePacket {
     pub fn new(payload: &[u8], sk: &PrivateKey, seed: [u8; 32]) -> Self {
         // Seal the payload using our custom post-quantum hash
         let object_event_hash = custom_hash(payload);
-        
+
         // Sign the hash (or the payload, but signing the hash is standard and fits)
         // using our custom post-quantum lattice signature scheme
         let pqc_signature = sign(sk, &object_event_hash, seed);
-        
+
         Self {
             object_event_hash,
             pqc_signature,
@@ -36,13 +36,13 @@ impl ConsequencePacket {
     pub fn verify(&self, pk: &PublicKey) -> bool {
         // First, verify the payload matches the expected hash
         let computed_hash = custom_hash(&self.payload);
-        
+
         // Secure comparison (though standard `!=` is constant-time enough for slices in some contexts,
         // we'll just use simple equality for the array)
         if computed_hash != self.object_event_hash {
             return false;
         }
-        
+
         // Verify the lattice-based signature
         verify(pk, &self.object_event_hash, &self.pqc_signature)
     }
@@ -71,10 +71,16 @@ mod tests {
         // Verify tampering is detected
         let mut tampered_packet = packet.clone();
         tampered_packet.payload[0] ^= 1; // Alter payload
-        assert!(!tampered_packet.verify(&kp.public), "Tampered payload should fail verification");
-        
+        assert!(
+            !tampered_packet.verify(&kp.public),
+            "Tampered payload should fail verification"
+        );
+
         let mut tampered_hash_packet = packet.clone();
         tampered_hash_packet.object_event_hash[0] ^= 1; // Alter hash
-        assert!(!tampered_hash_packet.verify(&kp.public), "Tampered hash should fail verification");
+        assert!(
+            !tampered_hash_packet.verify(&kp.public),
+            "Tampered hash should fail verification"
+        );
     }
 }

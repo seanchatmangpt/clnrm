@@ -9,6 +9,7 @@ use clnrm_core::backend::{ContainerPool, PoolConfig};
 use std::time::{Duration, Instant};
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_lock_free_queue_performance() {
     let config = PoolConfig {
         max_size: 100,
@@ -58,6 +59,7 @@ async fn test_lock_free_queue_performance() {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_lock_free_concurrent_acquire_release() {
     let config = PoolConfig {
         max_size: 50,

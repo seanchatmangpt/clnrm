@@ -56,7 +56,7 @@ impl Drop for TestContainerResource {
         self.cleanup_count.fetch_add(1, Ordering::SeqCst);
         if self.fail_cleanup {
             // Simulate cleanup failure (can't actually panic in drop safely)
-            etracing::info!("TestContainerResource {} cleanup failed", self.id);
+            tracing::info!("TestContainerResource {} cleanup failed", self.id);
         }
     }
 }

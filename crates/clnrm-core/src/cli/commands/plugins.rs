@@ -47,8 +47,12 @@ pub fn list_plugins() -> Result<()> {
     tracing::info!("  # Plugins are automatically discovered and loaded");
     tracing::info!("\n🚀 LLM Proxy Testing:");
     tracing::info!("  # Test Ollama: endpoint=http://localhost:11434, model=qwen3-coder:30b");
-    tracing::info!("  # Test vLLM: endpoint=http://localhost:8000, model=microsoft/DialoGPT-medium");
-    tracing::info!("  # Test TGI: endpoint=http://localhost:8080, model_id=microsoft/DialoGPT-medium");
+    tracing::info!(
+        "  # Test vLLM: endpoint=http://localhost:8000, model=microsoft/DialoGPT-medium"
+    );
+    tracing::info!(
+        "  # Test TGI: endpoint=http://localhost:8080, model_id=microsoft/DialoGPT-medium"
+    );
 
     // Count plugins for telemetry
     let builtin_plugins = 6; // generic_container, surreal_db, network_tools, ollama, vllm, tgi

@@ -1,9 +1,29 @@
+use crate::truex::ocel::OCELEvent;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use chrono::Utc;
 
-/// Represents a missing closure in the Truex Escrow Admission system.
+pub enum DeviationType {
+    ConformanceViolation,
+    OntologyMismatch,
+}
+
+pub enum EscrowAction {
+    SlashStake,
+    Halt,
+}
+
+pub fn escalate_deviation(
+    event: &OCELEvent,
+    deviation: DeviationType,
+) -> Result<EscrowAction, String> {
+    match deviation {
+        DeviationType::ConformanceViolation => Ok(EscrowAction::SlashStake),
+        DeviationType::OntologyMismatch => Ok(EscrowAction::Halt),
+    }
+}
+// ... existing DurableRefusal ...
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MissingClosure {
     pub law_id: String,
@@ -55,7 +75,7 @@ impl DurableRefusal {
             generating_fixture,
             signature: None,
         };
-        
+
         refusal.seal();
         refusal
     }
@@ -71,7 +91,7 @@ impl DurableRefusal {
         hasher.update(self.missing_closure.law_id.as_bytes());
         hasher.update(b"|");
         hasher.update(self.failed_rule.rule_id.as_bytes());
-        
+
         // Include fixture hash to ensure the exact payload that caused failure is tied to the signature
         let fixture_str = serde_json::to_string(&self.generating_fixture).unwrap_or_default();
         hasher.update(b"|");

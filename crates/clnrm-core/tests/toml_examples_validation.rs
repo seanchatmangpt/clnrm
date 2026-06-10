@@ -688,3 +688,14 @@ fn test_summary_all_examples() {
 
     assert!(results.is_success(), "Some TOML examples failed to parse");
 }
+
+#[test]
+fn test_mdbook_template_example() {
+    let root = project_root();
+    let file = root.join("tests/mdbook-examples/template-mastery/template-example.clnrm.toml.tera");
+    let result = load_config_from_file(&file);
+    if let Err(e) = &result {
+        println!("Error rendering template-example: {:?}", e);
+    }
+    assert!(result.is_ok());
+}

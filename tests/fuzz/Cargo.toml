@@ -4,6 +4,8 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
+[workspace]
+
 [package.metadata]
 cargo-fuzz = true
 
@@ -17,6 +19,7 @@ tokio = { version = "1.40", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "1.1.0"
+regex = "1"
 
 [[bin]]
 name = "fuzz_toml_parser"
@@ -52,3 +55,7 @@ path = "fuzz_targets/fuzz_regex_patterns.rs"
 test = false
 doc = false
 bench = false
+
+[[test]]
+name = "crash_reproduction_tests"
+path = "crash_reproduction_tests.rs"

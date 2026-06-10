@@ -2,8 +2,8 @@
 //!
 //! Validates that exported telemetry can be validated by Weaver
 
-use std::process::Command;
 use serde_json::Value;
+use std::process::Command;
 
 #[tokio::test]
 #[ignore] // Requires Docker and Weaver installation
@@ -154,8 +154,8 @@ fn run_weaver_validation() -> WeaverValidationResult {
     let report_content = std::fs::read_to_string("validation_report.json")
         .expect("Failed to read validation report");
 
-    let report: Value = serde_json::from_str(&report_content)
-        .expect("Failed to parse validation report");
+    let report: Value =
+        serde_json::from_str(&report_content).expect("Failed to parse validation report");
 
     WeaverValidationResult {
         violations: report["live_check_result"]["violations"]

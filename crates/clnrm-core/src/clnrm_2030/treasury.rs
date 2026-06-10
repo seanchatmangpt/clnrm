@@ -22,7 +22,7 @@ impl PidController {
         self.integral += error * dt;
         let derivative = (error - self.prev_error) / dt;
         self.prev_error = error;
-        
+
         (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
     }
 }
@@ -48,11 +48,11 @@ impl AlgorithmicTreasury {
 
     pub fn tick(&mut self, actual_inflation: f64, dt: f64) {
         let inflation_error = self.target_inflation - actual_inflation;
-        
+
         // If inflation is too high (negative error), emission decreases
         let emission_adjustment = self.emission_pid.update(inflation_error, dt);
         self.current_emission_rate = (self.current_emission_rate + emission_adjustment).max(0.0);
-        
+
         // If inflation is too high, base fee increases (burning more tokens)
         let fee_error = actual_inflation - self.target_inflation;
         let fee_adjustment = self.fee_pid.update(fee_error, dt);

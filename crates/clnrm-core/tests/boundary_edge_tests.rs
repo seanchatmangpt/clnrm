@@ -29,14 +29,14 @@ fn test_resource_limits_boundary_max_cpu_usage() {
 
 #[test]
 fn test_span_validator_array_boundaries() {
+    use opentelemetry::trace::{SpanContext, SpanId, SpanKind, TraceFlags, TraceId, TraceState};
     use opentelemetry_sdk::trace::SpanData as OtelSpanData;
-    use opentelemetry::trace::{SpanContext, SpanId, TraceId, TraceFlags, TraceState, SpanKind};
     use std::time::SystemTime;
 
     // Exactly 0 spans
     let validator = SpanValidator::from_span_data(&[]).unwrap();
     assert_eq!(validator.all_spans().len(), 0, "Should handle 0 spans");
-    
+
     let max_spans = 10_000;
     let mut spans = Vec::with_capacity(max_spans);
     for _ in 0..max_spans {
@@ -62,7 +62,11 @@ fn test_span_validator_array_boundaries() {
             instrumentation_scope: opentelemetry::InstrumentationScope::builder("test").build(),
         });
     }
-    
+
     let large_validator = SpanValidator::from_span_data(&spans).unwrap();
-    assert_eq!(large_validator.all_spans().len(), max_spans, "Should handle MAX span insertions");
+    assert_eq!(
+        large_validator.all_spans().len(),
+        max_spans,
+        "Should handle MAX span insertions"
+    );
 }

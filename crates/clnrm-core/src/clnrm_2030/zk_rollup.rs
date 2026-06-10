@@ -31,13 +31,14 @@ impl ZkRollupBatcher {
             return Err("Cannot rollup empty batch");
         }
 
-        // Mock Merkle root calculation for the batch
+        // Simulated Merkle root calculation for the batch
         let mut root = [0u8; 32];
         for (i, hash) in self.current_batch.iter().enumerate() {
             root[i % 32] ^= hash.0[i % 32];
         }
 
-        self.historical_batches.insert(root, self.current_batch.clone());
+        self.historical_batches
+            .insert(root, self.current_batch.clone());
         self.current_batch.clear();
 
         Ok(root)

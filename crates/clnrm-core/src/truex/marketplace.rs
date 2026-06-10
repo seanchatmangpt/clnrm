@@ -31,10 +31,10 @@ impl ValueVectorPricing {
 
     /// Calculates an aggregate score representing the price or value of the consequence.
     pub fn calculate_aggregate_value(&self) -> f64 {
-        // A simplistic placeholder weighting for the n-dimensional model
-        self.ontology_fit * 100.0 
-            + self.counterparty_trust_reduction * 50.0 
-            + (self.receipt_strength as f64) * 10.0 
+        // A simplistic fallback weighting for the n-dimensional model
+        self.ontology_fit * 100.0
+            + self.counterparty_trust_reduction * 50.0
+            + (self.receipt_strength as f64) * 10.0
             - (self.latency_ms as f64) * 0.1
     }
 }

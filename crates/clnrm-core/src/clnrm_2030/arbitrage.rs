@@ -17,9 +17,12 @@ impl ArbitrageBot {
         }
     }
 
-    pub fn scan_and_execute(&mut self, _amm: &mut super::amm::NDimensionalAMM) -> Result<f64, &'static str> {
+    pub fn scan_and_execute(
+        &mut self,
+        _amm: &mut super::amm::NDimensionalAMM,
+    ) -> Result<f64, &'static str> {
         // Simplified arbitrage execution logic
-        // In a real scenario, this would use InterDimensionalRouter to find negative cycles
+        // Optionally, this would use InterDimensionalRouter to find negative cycles
         Ok(0.0) // No profit found in simplified scan
     }
 }

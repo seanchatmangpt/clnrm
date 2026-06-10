@@ -28,21 +28,7 @@
 
 [test.metadata]
 name = "readme_documentation_validation_rosetta"
-description = """
-Comprehensive validation of Rosetta Stone README.md documentation.
-
-This test validates:
-1. All referenced test files exist
-2. TOML examples are syntactically valid
-3. Command patterns work as documented
-4. Documentation claims are accurate
-
-Validation Strategy:
-- Use Alpine containers for lightweight file system operations
-- Parse TOML snippets to verify syntax
-- Execute command patterns to verify workflows
-- Count and verify documented metrics
-"""
+description = "Comprehensive validation of Rosetta Stone README.md documentation."
 tags = ["rosetta-stone", "documentation", "validation", "meta-test"]
 version = "1.0.0"
 timeout = "180s"
@@ -171,7 +157,7 @@ expected_output_contains = "TOML syntax valid"
 name = "validate_toml_metadata_section"
 description = "Verify test.metadata section TOML syntax"
 service = "toml_parser"
-command = ["sh", "-c", "cat > /tmp/test.toml << 'EOF' && echo 'TOML syntax valid'\n[test.metadata]\nname = \"example_rosetta_test\"\ndescription = \"Example test\"\ntags = [\"rosetta-stone\", \"validation\"]\nversion = \"1.0.0\"\ntimeout = "300s"\nEOF"]
+command = ["sh", "-c", "cat > /tmp/test.toml << 'EOF' && echo 'TOML syntax valid'\n[test.metadata]\nname = \"example_rosetta_test\"\ndescription = \"Example test\"\ntags = [\"rosetta-stone\", \"validation\"]\nversion = \"1.0.0\"\ntimeout = \"300s\"\nEOF"]
 expected_exit_code = 0
 expected_output_contains = "TOML syntax valid"
 

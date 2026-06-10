@@ -1,5 +1,5 @@
 //! A math-complete Post-Quantum Lattice-based signature scheme from scratch.
-//! This implements a "miniature Dilithium" (Fiat-Shamir with Aborts) over 
+//! This implements a "miniature Dilithium" (Fiat-Shamir with Aborts) over
 //! the polynomial ring Z_q[X] / (X^N + 1).
 
 pub const N: usize = 64;
@@ -133,8 +133,8 @@ impl Sha256 {
     fn new() -> Self {
         Self {
             state: [
-                0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-                0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+                0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
+                0x5be0cd19,
             ],
             data: [0; 64],
             len: 0,
@@ -146,14 +146,19 @@ impl Sha256 {
         let mut m = [0u32; 64];
         for i in 0..16 {
             m[i] = u32::from_be_bytes([
-                self.data[i * 4], self.data[i * 4 + 1],
-                self.data[i * 4 + 2], self.data[i * 4 + 3]
+                self.data[i * 4],
+                self.data[i * 4 + 1],
+                self.data[i * 4 + 2],
+                self.data[i * 4 + 3],
             ]);
         }
         for i in 16..64 {
             let s0 = m[i - 15].rotate_right(7) ^ m[i - 15].rotate_right(18) ^ (m[i - 15] >> 3);
             let s1 = m[i - 2].rotate_right(17) ^ m[i - 2].rotate_right(19) ^ (m[i - 2] >> 10);
-            m[i] = m[i - 16].wrapping_add(s0).wrapping_add(m[i - 7]).wrapping_add(s1);
+            m[i] = m[i - 16]
+                .wrapping_add(s0)
+                .wrapping_add(m[i - 7])
+                .wrapping_add(s1);
         }
 
         let mut a = self.state[0];
@@ -168,7 +173,11 @@ impl Sha256 {
         for i in 0..64 {
             let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e & f) ^ (!e & g);
-            let temp1 = h.wrapping_add(s1).wrapping_add(ch).wrapping_add(SHA256_K[i]).wrapping_add(m[i]);
+            let temp1 = h
+                .wrapping_add(s1)
+                .wrapping_add(ch)
+                .wrapping_add(SHA256_K[i])
+                .wrapping_add(m[i]);
             let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let maj = (a & b) ^ (a & c) ^ (b & c);
             let temp2 = s0.wrapping_add(maj);
@@ -210,11 +219,17 @@ impl Sha256 {
         self.data[i] = 0x80;
         self.len += 1;
         if self.len > 56 {
-            while self.len < 64 { self.data[self.len] = 0; self.len += 1; }
+            while self.len < 64 {
+                self.data[self.len] = 0;
+                self.len += 1;
+            }
             self.transform();
             self.len = 0;
         }
-        while self.len < 56 { self.data[self.len] = 0; self.len += 1; }
+        while self.len < 56 {
+            self.data[self.len] = 0;
+            self.len += 1;
+        }
         self.bitlen += (i as u64) * 8;
         self.data[56..64].copy_from_slice(&self.bitlen.to_be_bytes());
         self.transform();
@@ -319,8 +334,15 @@ pub fn generate_keypair(seed: [u8; 32]) -> KeyPair {
     let t = as1.add(&s2);
 
     KeyPair {
-        public: PublicKey { a: a.clone(), t: t.clone() },
-        secret: PrivateKey { pub_key: PublicKey { a, t }, s1, s2 },
+        public: PublicKey {
+            a: a.clone(),
+            t: t.clone(),
+        },
+        secret: PrivateKey {
+            pub_key: PublicKey { a, t },
+            s1,
+            s2,
+        },
     }
 }
 
@@ -356,23 +378,23 @@ pub fn sign(sk: &PrivateKey, msg: &[u8], seed: [u8; 32]) -> Signature {
         let y = prng.next_poly_bounded(GAMMA);
         let w = sk.pub_key.a.mul(&y);
         let w1 = w.high_bits();
-        
+
         let c = hash_to_challenge(&w1, msg);
         let cs1 = c.mul(&sk.s1);
         let z = y.add(&cs1);
-        
+
         if z.norm_infty() > GAMMA - TAU as i64 {
             continue;
         }
-        
+
         let az = sk.pub_key.a.mul(&z);
         let tc = sk.pub_key.t.mul(&c);
         let w_prime = az.sub(&tc);
-        
+
         if w_prime.high_bits() != w1 {
             continue;
         }
-        
+
         return Signature { z, c };
     }
 }
@@ -385,14 +407,14 @@ pub fn verify(pk: &PublicKey, msg: &[u8], sig: &Signature) -> bool {
     if !sig.c.is_valid_challenge() {
         return false;
     }
-    
+
     let az = pk.a.mul(&sig.z);
     let tc = pk.t.mul(&sig.c);
     let w_prime = az.sub(&tc);
-    
+
     let w1 = w_prime.high_bits();
     let expected_c = hash_to_challenge(&w1, msg);
-    
+
     sig.c == expected_c
 }
 
@@ -404,17 +426,20 @@ mod tests {
     fn test_lattice_signature() {
         let seed = [1u8; 32];
         let kp = generate_keypair(seed);
-        
+
         let msg = b"Hello, post-quantum world!";
         let sig_seed = [2u8; 32];
-        
+
         let sig = sign(&kp.secret, msg, sig_seed);
         let ok = verify(&kp.public, msg, &sig);
         assert!(ok, "Signature verification failed");
-        
+
         // Test malleability/failure
         let mut bad_sig = sig.clone();
         bad_sig.z.coeffs[0] = reduce(bad_sig.z.coeffs[0] + 1);
-        assert!(!verify(&kp.public, msg, &bad_sig), "Tampered signature should fail");
+        assert!(
+            !verify(&kp.public, msg, &bad_sig),
+            "Tampered signature should fail"
+        );
     }
 }

@@ -271,7 +271,7 @@ impl RandomDataGenerator {
         use rand::distributions::Alphanumeric;
         use rand::Rng;
 
-        self.rng
+        (&mut self.rng)
             .sample_iter(&Alphanumeric)
             .take(length)
             .map(char::from)

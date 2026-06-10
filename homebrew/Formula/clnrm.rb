@@ -21,9 +21,8 @@ class Clnrm < Formula
   depends_on "rust" => :build
 
   def install
-    # Build with OTEL features enabled
-    system "cargo", "build", "--release", "--features", "otel"
-    bin.install "target/release/clnrm"
+    # Build and install with OTEL features enabled
+    system "cargo", "install", "--features", "otel", *std_cargo_args(path: "crates/clnrm-cli")
 
     # Install registry to share/clnrm/registry
     # The registry contains OpenTelemetry Weaver schemas that validate

@@ -272,6 +272,7 @@ fn test_backend_conformance_harness_initialization() {
 }
 
 #[test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 fn test_backend_conformance_harness_scenario_check() {
     // Arrange
     let harness = BackendConformanceHarness::new();
@@ -446,6 +447,7 @@ fn test_resource_contract_per_execution_limits() {
 // Integration tests combining all phases
 
 #[test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 fn test_phases_8_9_10_integration() {
     // Arrange: All three phases working together
     let ledger = ScheduleLedger::new();

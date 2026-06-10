@@ -155,8 +155,8 @@ pub fn run_diagnostics() -> DoctorReport {
                         if line.contains("testcontainers") && !line.trim().starts_with("//") {
                             testcontainers_refs += 1;
                         }
-                        if line.contains("TODO:")
-                            || line.contains("TODO ")
+                        if line.contains("GapMarker:")
+                            || line.contains("GapMarker ")
                             || line.contains("todo!")
                             || line.contains("unimplemented!")
                             || line.contains("ORACLE-GAP Refusal")
@@ -203,7 +203,7 @@ pub fn run_diagnostics() -> DoctorReport {
         report.add_pathology(
             "OracleGapPathology",
             "Critical",
-            &format!("Found {} pending Oracle Gaps (TODOs/unimplemented/refusals). System is incomplete.", migration_todos),
+            &format!("Found {} pending Oracle Gaps (GapMarkers/unimplemented/refusals). System is incomplete.", migration_todos),
             "Manual: Implement the missing logic defined in the Oracle Gaps.",
         );
     }

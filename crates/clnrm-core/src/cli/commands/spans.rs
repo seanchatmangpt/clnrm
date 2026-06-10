@@ -454,7 +454,10 @@ fn output_table(spans: &[&OtelSpan], show_attrs: bool, show_events: bool) -> Res
     // Print header
     tracing::info!(
         "{:<40} {:<20} {:<12} {:<10}",
-        "SPAN NAME", "SERVICE", "DURATION", "STATUS"
+        "SPAN NAME",
+        "SERVICE",
+        "DURATION",
+        "STATUS"
     );
     tracing::info!("{}", "-".repeat(84));
 

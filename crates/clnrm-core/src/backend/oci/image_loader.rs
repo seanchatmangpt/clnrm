@@ -101,17 +101,112 @@ impl LocalImageStore {
     }
 
     /// Load image from local OCI directory
-    pub async fn load_from_path(&self, _path: PathBuf) -> Result<OciImage> {
-        Err(CleanroomError::not_implemented(
-            "OCI-GALL-1 Refusal: Local OCI directory loading not yet implemented",
-        ))
+    pub async fn load_from_path(&self, path: PathBuf) -> Result<OciImage> {
+        use serde::Deserialize;
+
+        // 1. Read index.json
+        let index_path = path.join("index.json");
+        let index_content = std::fs::read_to_string(&index_path)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to read index.json: {}", e)))?;
+
+        // Deserializing index.json
+        #[derive(Deserialize)]
+        struct OciIndex {
+            manifests: Vec<crate::backend::oci::OciDescriptor>,
+        }
+
+        let index: OciIndex = serde_json::from_str(&index_content).map_err(|e| {
+            CleanroomError::serialization_error(format!("Failed to parse index.json: {}", e))
+        })?;
+
+        let manifest_desc = index.manifests.first().ok_or_else(|| {
+            CleanroomError::validation_error("index.json does not contain any manifests")
+        })?;
+
+        // 2. Read manifest from blobs/sha256/<hash>
+        let manifest_hash = manifest_desc
+            .digest
+            .strip_prefix("sha256:")
+            .ok_or_else(|| {
+                CleanroomError::validation_error("Unsupported digest format in index")
+            })?;
+
+        let blobs_dir = path.join("blobs").join("sha256");
+        let manifest_path = blobs_dir.join(manifest_hash);
+        let manifest_content = std::fs::read(&manifest_path).map_err(|e| {
+            CleanroomError::io_error(format!("Failed to read manifest file: {}", e))
+        })?;
+
+        let manifest: crate::backend::oci::OciManifest = serde_json::from_slice(&manifest_content)
+            .map_err(|e| {
+                CleanroomError::serialization_error(format!("Failed to parse manifest: {}", e))
+            })?;
+
+        // 3. Read config from blobs/sha256/<hash>
+        let config_hash = manifest
+            .config
+            .digest
+            .strip_prefix("sha256:")
+            .ok_or_else(|| CleanroomError::validation_error("Unsupported config digest format"))?;
+        let config_path = blobs_dir.join(config_hash);
+        let config_content = std::fs::read(&config_path)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to read config file: {}", e)))?;
+
+        let config: crate::backend::oci::OciImageConfig = serde_json::from_slice(&config_content)
+            .map_err(|e| {
+            CleanroomError::serialization_error(format!("Failed to parse config: {}", e))
+        })?;
+
+        // 4. Read and verify layers
+        let mut layers = Vec::new();
+        for layer_desc in &manifest.layers {
+            let layer_hash = layer_desc.digest.strip_prefix("sha256:").ok_or_else(|| {
+                CleanroomError::validation_error("Unsupported layer digest format")
+            })?;
+            let layer_path = blobs_dir.join(layer_hash);
+            let layer_content = std::fs::read(&layer_path).map_err(|e| {
+                CleanroomError::io_error(format!("Failed to read layer file: {}", e))
+            })?;
+
+            // Verify checksum/hash
+            use sha2::{Digest, Sha256};
+            let mut hasher = Sha256::new();
+            hasher.update(&layer_content);
+            let computed_hash = hex::encode(hasher.finalize());
+            if computed_hash != layer_hash {
+                return Err(CleanroomError::validation_error(format!(
+                    "layer digest mismatch: expected sha256:{}, got sha256:{}",
+                    layer_hash, computed_hash
+                )));
+            }
+
+            layers.push(crate::backend::oci::OciLayer {
+                digest: layer_desc.digest.clone(),
+                media_type: layer_desc.media_type.clone(),
+                size: layer_desc.size,
+                data: layer_content,
+            });
+        }
+
+        Ok(OciImage {
+            manifest,
+            config,
+            layers,
+            config_bytes: config_content,
+        })
     }
 
     /// Load image from tarball
-    pub async fn load_from_tarball(&self, _data: &[u8]) -> Result<OciImage> {
-        Err(CleanroomError::not_implemented(
-            "OCI-GALL-1 Refusal: Tarball extraction not yet implemented",
-        ))
+    pub async fn load_from_tarball(&self, data: &[u8]) -> Result<OciImage> {
+        let unique_dir = self.temp_dir.join(uuid::Uuid::new_v4().to_string());
+        std::fs::create_dir_all(&unique_dir)?;
+
+        let mut archive = tar::Archive::new(data);
+        archive
+            .unpack(&unique_dir)
+            .map_err(|e| CleanroomError::io_error(format!("Failed to unpack tarball: {}", e)))?;
+
+        self.load_from_path(unique_dir).await
     }
 }
 

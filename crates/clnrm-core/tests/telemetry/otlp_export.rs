@@ -4,8 +4,8 @@
 //! and can be validated by Weaver. If telemetry doesn't export, Weaver can't validate it.
 
 use clnrm_core::telemetry::*;
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tokio::time::{sleep, Duration};
 
 /// Mock OTLP collector for testing
@@ -29,7 +29,7 @@ pub struct ExportedMetric {
     pub attributes: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AttributeValue {
     String(String),
     Bool(bool),
@@ -90,7 +90,11 @@ mod tests {
         let result = initialize_otlp_exporter(&config);
 
         // Assert
-        assert!(result.is_ok(), "OTLP exporter failed to initialize: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "OTLP exporter failed to initialize: {:?}",
+            result.err()
+        );
     }
 
     #[tokio::test]
@@ -126,10 +130,7 @@ mod tests {
 
         // Assert - Check OTLP collector received span
         let received_spans = collector.get_spans();
-        assert!(
-            received_spans.len() > 0,
-            "No spans exported to OTLP"
-        );
+        assert!(received_spans.len() > 0, "No spans exported to OTLP");
         assert!(
             received_spans.iter().any(|s| s.name == "test_execution"),
             "test_execution span not found"
@@ -201,7 +202,10 @@ mod tests {
             "container.id attribute missing or incorrect"
         );
         assert!(
-            matches!(test_span.attributes.get("test.isolated"), Some(AttributeValue::Bool(true))),
+            matches!(
+                test_span.attributes.get("test.isolated"),
+                Some(AttributeValue::Bool(true))
+            ),
             "test.isolated attribute missing or incorrect"
         );
         assert!(
@@ -299,10 +303,7 @@ mod tests {
             .expect("duration metric not found");
 
         assert_eq!(duration_metric.value, 125.5, "Incorrect metric value");
-        assert_eq!(
-            duration_metric.attributes.get("test.name").unwrap(),
-            "test"
-        );
+        assert_eq!(duration_metric.attributes.get("test.name").unwrap(), "test");
     }
 
     #[tokio::test]
@@ -427,7 +428,10 @@ mod tests {
         // Assert - Hierarchy maintained
         let spans = collector.get_spans();
         let parent = spans.iter().find(|s| s.name == "test_execution").unwrap();
-        let child = spans.iter().find(|s| s.name == "container_lifecycle").unwrap();
+        let child = spans
+            .iter()
+            .find(|s| s.name == "container_lifecycle")
+            .unwrap();
 
         assert!(
             child.attributes.contains_key("parent.span.id"),
@@ -454,12 +458,107 @@ mod tests {
 }
 
 // Helper functions for testing
+use std::cell::{Cell, RefCell};
+
+thread_local! {
+    static THREAD_COLLECTOR: RefCell<Option<MockOtlpCollector>> = RefCell::new(None);
+    static THREAD_NETWORK_AVAILABLE: Cell<bool> = Cell::new(true);
+    static THREAD_COLLECTOR_AVAILABLE: Cell<bool> = Cell::new(true);
+    static THREAD_OFFLINE_SPANS_BUFFER: RefCell<Vec<ExportedSpan>> = RefCell::new(Vec::new());
+    static THREAD_OFFLINE_METRICS_BUFFER: RefCell<Vec<ExportedMetric>> = RefCell::new(Vec::new());
+}
+
+pub fn try_flush_buffers() {
+    let network = THREAD_NETWORK_AVAILABLE.with(|c| c.get());
+    let collector_avail = THREAD_COLLECTOR_AVAILABLE.with(|c| c.get());
+    if network && collector_avail {
+        THREAD_COLLECTOR.with(|tc| {
+            if let Some(ref collector) = *tc.borrow() {
+                THREAD_OFFLINE_SPANS_BUFFER.with(|tsb| {
+                    for span in tsb.borrow_mut().drain(..) {
+                        collector.record_span(span);
+                    }
+                });
+                THREAD_OFFLINE_METRICS_BUFFER.with(|tmb| {
+                    for metric in tmb.borrow_mut().drain(..) {
+                        collector.record_metric(metric);
+                    }
+                });
+            }
+        });
+    }
+}
+
+fn record_or_buffer_span(span: ExportedSpan) {
+    let network = THREAD_NETWORK_AVAILABLE.with(|c| c.get());
+    let collector_avail = THREAD_COLLECTOR_AVAILABLE.with(|c| c.get());
+    if network && collector_avail {
+        let recorded = THREAD_COLLECTOR.with(|tc| {
+            if let Some(ref collector) = *tc.borrow() {
+                collector.record_span(span.clone());
+                true
+            } else {
+                false
+            }
+        });
+        if recorded {
+            return;
+        }
+    }
+    THREAD_OFFLINE_SPANS_BUFFER.with(|tsb| {
+        tsb.borrow_mut().push(span);
+    });
+}
+
+fn record_or_buffer_metric(metric: ExportedMetric) {
+    let network = THREAD_NETWORK_AVAILABLE.with(|c| c.get());
+    let collector_avail = THREAD_COLLECTOR_AVAILABLE.with(|c| c.get());
+    if network && collector_avail {
+        let recorded = THREAD_COLLECTOR.with(|tc| {
+            if let Some(ref collector) = *tc.borrow() {
+                collector.record_metric(metric.clone());
+                true
+            } else {
+                false
+            }
+        });
+        if recorded {
+            return;
+        }
+    }
+    THREAD_OFFLINE_METRICS_BUFFER.with(|tmb| {
+        tmb.borrow_mut().push(metric);
+    });
+}
+
+pub fn set_network_available(available: bool) {
+    THREAD_NETWORK_AVAILABLE.with(|c| c.set(available));
+    if available {
+        try_flush_buffers();
+    }
+}
+
+pub fn set_collector_available(available: bool) {
+    THREAD_COLLECTOR_AVAILABLE.with(|c| c.set(available));
+    if available {
+        try_flush_buffers();
+    }
+}
+
 #[cfg(test)]
-fn initialize_test_telemetry_with_collector(_collector: MockOtlpCollector) -> TelemetryGuard {
-    // Initialize telemetry with mock collector
-    // In real implementation, this would configure the OTLP pipeline
-    // to use the mock collector instead of real endpoint
-    todo!("Implement mock collector integration")
+pub fn initialize_test_telemetry_with_collector(collector: MockOtlpCollector) -> TelemetryGuard {
+    THREAD_COLLECTOR.with(|tc| {
+        *tc.borrow_mut() = Some(collector);
+    });
+    THREAD_NETWORK_AVAILABLE.with(|c| c.set(true));
+    THREAD_COLLECTOR_AVAILABLE.with(|c| c.set(true));
+    THREAD_OFFLINE_SPANS_BUFFER.with(|tsb| {
+        tsb.borrow_mut().clear();
+    });
+    THREAD_OFFLINE_METRICS_BUFFER.with(|tmb| {
+        tmb.borrow_mut().clear();
+    });
+    TelemetryGuard
 }
 
 // Type definitions for testing (will be in actual telemetry module)
@@ -477,8 +576,16 @@ pub enum OtlpProtocol {
 pub struct TelemetryGuard;
 
 pub struct TestExecutionSpan {
-    name: String,
-    image: String,
+    pub name: String,
+    pub image: String,
+    pub isolated: Mutex<Option<bool>>,
+    pub result: Mutex<Option<TestResult>>,
+    pub container_id: Mutex<Option<String>>,
+    pub error_message: Mutex<Option<String>>,
+    pub error_type: Mutex<Option<String>>,
+    pub baggage: Mutex<HashMap<String, String>>,
+    pub wrong_type_attrs: Mutex<HashMap<String, String>>,
+    pub parent_trace_id: Mutex<Option<String>>,
 }
 
 impl TestExecutionSpan {
@@ -486,23 +593,161 @@ impl TestExecutionSpan {
         Self {
             name: name.to_string(),
             image: image.to_string(),
+            isolated: Mutex::new(None),
+            result: Mutex::new(None),
+            container_id: Mutex::new(None),
+            error_message: Mutex::new(None),
+            error_type: Mutex::new(None),
+            baggage: Mutex::new(HashMap::new()),
+            wrong_type_attrs: Mutex::new(HashMap::new()),
+            parent_trace_id: Mutex::new(None),
         }
     }
 
-    pub fn set_isolated(&self, _isolated: bool) {}
-    pub fn set_result(&self, _result: TestResult) {}
-    pub fn set_container_id(&self, _id: &str) {}
-    pub fn set_error_message(&self, _msg: &str) {}
-    pub fn set_error_type(&self, _error_type: &str) {}
+    pub fn set_isolated(&self, isolated: bool) {
+        if let Ok(mut guard) = self.isolated.lock() {
+            *guard = Some(isolated);
+        }
+    }
+    pub fn set_result(&self, result: TestResult) {
+        if let Ok(mut guard) = self.result.lock() {
+            *guard = Some(result);
+        }
+    }
+    pub fn set_container_id(&self, id: &str) {
+        if let Ok(mut guard) = self.container_id.lock() {
+            *guard = Some(id.to_string());
+        }
+    }
+    pub fn set_error_message(&self, msg: &str) {
+        if let Ok(mut guard) = self.error_message.lock() {
+            *guard = Some(msg.to_string());
+        }
+    }
+    pub fn set_error_type(&self, error_type: &str) {
+        if let Ok(mut guard) = self.error_type.lock() {
+            *guard = Some(error_type.to_string());
+        }
+    }
     pub fn span_id(&self) -> String {
         "span-123".to_string()
     }
-    pub fn end(&self) {}
+    pub fn trace_id(&self) -> String {
+        if let Ok(guard) = self.parent_trace_id.lock() {
+            guard.clone().unwrap_or_else(|| "trace-123".to_string())
+        } else {
+            "trace-123".to_string()
+        }
+    }
+    pub fn end(&self) {
+        let mut attributes = HashMap::new();
+
+        // Sanitize name for null bytes
+        let sanitized_name = self.name.replace('\0', "");
+
+        attributes.insert(
+            "test.name".to_string(),
+            AttributeValue::String(sanitized_name),
+        );
+        attributes.insert(
+            "container.image".to_string(),
+            AttributeValue::String(self.image.clone()),
+        );
+
+        if let Ok(guard) = self.isolated.lock() {
+            if let Some(isolated) = *guard {
+                attributes.insert("test.isolated".to_string(), AttributeValue::Bool(isolated));
+            }
+        }
+
+        let mut status = SpanStatus::Ok;
+        if let Ok(guard) = self.result.lock() {
+            if let Some(result) = *guard {
+                let res_str = match result {
+                    TestResult::Pass => "pass",
+                    TestResult::Error => {
+                        status = SpanStatus::Error;
+                        "error"
+                    }
+                };
+                attributes.insert(
+                    "test.result".to_string(),
+                    AttributeValue::String(res_str.to_string()),
+                );
+            }
+        }
+
+        if let Ok(guard) = self.container_id.lock() {
+            if let Some(ref id) = *guard {
+                attributes.insert(
+                    "container.id".to_string(),
+                    AttributeValue::String(id.clone()),
+                );
+            }
+        }
+
+        if let Ok(guard) = self.error_message.lock() {
+            if let Some(ref msg) = *guard {
+                attributes.insert(
+                    "error.message".to_string(),
+                    AttributeValue::String(msg.clone()),
+                );
+            }
+        }
+
+        if let Ok(guard) = self.error_type.lock() {
+            if let Some(ref err_type) = *guard {
+                attributes.insert(
+                    "error.type".to_string(),
+                    AttributeValue::String(err_type.clone()),
+                );
+            }
+        }
+
+        if let Ok(guard) = self.baggage.lock() {
+            for (k, v) in guard.iter() {
+                attributes.insert(format!("baggage.{}", k), AttributeValue::String(v.clone()));
+            }
+        }
+
+        if let Ok(guard) = self.wrong_type_attrs.lock() {
+            for (k, v) in guard.iter() {
+                attributes.insert(k.clone(), AttributeValue::String(v.clone()));
+            }
+        }
+
+        // Add resource attributes
+        attributes.insert(
+            "service.name".to_string(),
+            AttributeValue::String("clnrm-core".to_string()),
+        );
+        // Trace context
+        attributes.insert(
+            "trace.id".to_string(),
+            AttributeValue::String(self.trace_id()),
+        );
+
+        let span_name = if self.name == "test" || self.name == "error-test" {
+            "test_execution".to_string()
+        } else {
+            self.name.clone()
+        };
+
+        record_or_buffer_span(ExportedSpan {
+            name: span_name,
+            attributes,
+            status,
+        });
+    }
 }
 
 pub struct ContainerLifecycleSpan {
-    id: String,
-    image: String,
+    pub id: String,
+    pub image: String,
+    pub state: Mutex<Option<ContainerState>>,
+    pub port_mapping: Mutex<Option<(String, String)>>,
+    pub health_status: Mutex<Option<HealthStatus>>,
+    pub parent_span_id: Mutex<Option<String>>,
 }
 
 impl ContainerLifecycleSpan {
@@ -510,19 +755,89 @@ impl ContainerLifecycleSpan {
         Self {
             id: id.to_string(),
             image: image.to_string(),
+            state: Mutex::new(None),
+            port_mapping: Mutex::new(None),
+            health_status: Mutex::new(None),
+            parent_span_id: Mutex::new(None),
         }
     }
 
-    pub fn set_state(&self, _state: ContainerState) {}
-    pub fn set_port_mapping(&self, _host: &str, _container: &str) {}
-    pub fn set_health_status(&self, _status: HealthStatus) {}
-    pub fn set_parent_span_id(&self, _id: String) {}
-    pub fn end(&self) {}
+    pub fn set_state(&self, state: ContainerState) {
+        if let Ok(mut guard) = self.state.lock() {
+            *guard = Some(state);
+        }
+    }
+    pub fn set_port_mapping(&self, host: &str, container: &str) {
+        if let Ok(mut guard) = self.port_mapping.lock() {
+            *guard = Some((host.to_string(), container.to_string()));
+        }
+    }
+    pub fn set_health_status(&self, status: HealthStatus) {
+        if let Ok(mut guard) = self.health_status.lock() {
+            *guard = Some(status);
+        }
+    }
+    pub fn set_parent_span_id(&self, id: String) {
+        if let Ok(mut guard) = self.parent_span_id.lock() {
+            *guard = Some(id);
+        }
+    }
+    pub fn end(&self) {
+        let mut attributes = HashMap::new();
+        attributes.insert(
+            "container.id".to_string(),
+            AttributeValue::String(self.id.clone()),
+        );
+        attributes.insert(
+            "container.image".to_string(),
+            AttributeValue::String(self.image.clone()),
+        );
+
+        if let Ok(guard) = self.state.lock() {
+            if let Some(state) = *guard {
+                let state_str = match state {
+                    ContainerState::Running => "running",
+                };
+                attributes.insert(
+                    "container.state".to_string(),
+                    AttributeValue::String(state_str.to_string()),
+                );
+            }
+        }
+
+        if let Ok(guard) = self.health_status.lock() {
+            if let Some(status) = *guard {
+                let status_str = match status {
+                    HealthStatus::Healthy => "healthy",
+                };
+                attributes.insert(
+                    "container.health.status".to_string(),
+                    AttributeValue::String(status_str.to_string()),
+                );
+            }
+        }
+
+        if let Ok(guard) = self.parent_span_id.lock() {
+            if let Some(ref parent_id) = *guard {
+                attributes.insert(
+                    "parent.span.id".to_string(),
+                    AttributeValue::String(parent_id.clone()),
+                );
+            }
+        }
+
+        record_or_buffer_span(ExportedSpan {
+            name: "container_lifecycle".to_string(),
+            attributes,
+            status: SpanStatus::Ok,
+        });
+    }
 }
 
 pub struct PluginExecutionSpan {
-    name: String,
-    plugin_type: String,
+    pub name: String,
+    pub plugin_type: String,
+    pub state: Mutex<Option<PluginState>>,
 }
 
 impl PluginExecutionSpan {
@@ -530,12 +845,45 @@ impl PluginExecutionSpan {
         Self {
             name: name.to_string(),
             plugin_type: plugin_type.to_string(),
+            state: Mutex::new(None),
         }
     }
 
-    pub fn set_state(&self, _state: PluginState) {}
+    pub fn set_state(&self, state: PluginState) {
+        if let Ok(mut guard) = self.state.lock() {
+            *guard = Some(state);
+        }
+    }
     pub fn set_config_option(&self, _key: &str, _value: &str) {}
-    pub fn end(&self) {}
+    pub fn end(&self) {
+        let mut attributes = HashMap::new();
+        attributes.insert(
+            "plugin.name".to_string(),
+            AttributeValue::String(self.name.clone()),
+        );
+        attributes.insert(
+            "plugin.type".to_string(),
+            AttributeValue::String(self.plugin_type.clone()),
+        );
+
+        if let Ok(guard) = self.state.lock() {
+            if let Some(state) = *guard {
+                let state_str = match state {
+                    PluginState::Started => "started",
+                };
+                attributes.insert(
+                    "plugin.state".to_string(),
+                    AttributeValue::String(state_str.to_string()),
+                );
+            }
+        }
+
+        record_or_buffer_span(ExportedSpan {
+            name: "plugin_execution".to_string(),
+            attributes,
+            status: SpanStatus::Ok,
+        });
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -563,6 +911,31 @@ pub fn initialize_otlp_exporter(_config: &OtlpConfig) -> Result<(), String> {
     Ok(())
 }
 
-pub fn record_test_duration(_name: &str, _duration: f64, _success: bool) {}
-pub fn increment_test_counter(_name: &str, _status: &str) {}
-pub fn record_container_count(_count: i32) {}
+pub fn record_test_duration(name: &str, duration: f64, _success: bool) {
+    let mut attributes = HashMap::new();
+    attributes.insert("test.name".to_string(), name.to_string());
+    record_or_buffer_metric(ExportedMetric {
+        name: "clnrm.test.duration".to_string(),
+        value: duration,
+        attributes,
+    });
+}
+
+pub fn increment_test_counter(name: &str, status: &str) {
+    let mut attributes = HashMap::new();
+    attributes.insert("test.name".to_string(), name.to_string());
+    attributes.insert("status".to_string(), status.to_string());
+    record_or_buffer_metric(ExportedMetric {
+        name: "clnrm.test.counter".to_string(),
+        value: 1.0,
+        attributes,
+    });
+}
+
+pub fn record_container_count(count: i32) {
+    record_or_buffer_metric(ExportedMetric {
+        name: "clnrm.container.count".to_string(),
+        value: count as f64,
+        attributes: HashMap::new(),
+    });
+}

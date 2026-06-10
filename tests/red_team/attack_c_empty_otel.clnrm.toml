@@ -11,7 +11,7 @@ description="Attack vector: Set OTEL vars but emit no spans"
 [[scenario]]
 name="empty_otel_config"
 service="red"
-run="sh -lc 'export OTEL_EXPORTER_OTLP_ENDPOINT=http://nowhere:4318; export OTEL_TRACES_EXPORTER=otlp; echo \"OTEL configured\"; echo \"Tests complete\"; exit 0'"
+run="bash tests/red_team/attack_scripts/attack_vectors.sh empty_otel"
 artifacts.collect=["spans:default"]
 
 [service.red]

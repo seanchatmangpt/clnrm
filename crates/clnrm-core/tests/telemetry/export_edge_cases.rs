@@ -62,10 +62,7 @@ mod tests {
         // Assert - Either rejected or sanitized
         let spans = collector.get_spans();
         if let Some(span) = spans.first() {
-            assert!(
-                !span.name.contains('\0'),
-                "Null bytes should be sanitized"
-            );
+            assert!(!span.name.contains('\0'), "Null bytes should be sanitized");
         }
     }
 
@@ -111,10 +108,7 @@ mod tests {
 
         // Assert - All spans exported (or dropped gracefully)
         let spans = collector.get_spans();
-        assert!(
-            spans.len() > 0,
-            "Some spans should be exported"
-        );
+        assert!(spans.len() > 0, "Some spans should be exported");
         // Note: May not be all 1000 if buffer has limits
     }
 
@@ -141,10 +135,7 @@ mod tests {
 
         // Assert - Spans queued and sent when available
         let spans = collector.get_spans();
-        assert!(
-            spans.len() >= 1,
-            "At least span2 should be exported"
-        );
+        assert!(spans.len() >= 1, "At least span2 should be exported");
     }
 
     #[tokio::test]
@@ -177,10 +168,7 @@ mod tests {
             .map(|i| {
                 tokio::spawn(async move {
                     for j in 0..10 {
-                        let span = TestExecutionSpan::new(
-                            &format!("test-{}-{}", i, j),
-                            "alpine"
-                        );
+                        let span = TestExecutionSpan::new(&format!("test-{}-{}", i, j), "alpine");
                         span.set_result(TestResult::Pass);
                         span.end();
                     }
@@ -189,14 +177,12 @@ mod tests {
             .collect();
 
         // Should complete without deadlock
-        let timeout = tokio::time::timeout(
-            Duration::from_secs(10),
-            async {
-                for handle in handles {
-                    handle.await.unwrap();
-                }
+        let timeout = tokio::time::timeout(Duration::from_secs(10), async {
+            for handle in handles {
+                handle.await.unwrap();
             }
-        ).await;
+        })
+        .await;
 
         // Assert - No deadlock
         assert!(timeout.is_ok(), "Export should not deadlock");
@@ -263,8 +249,8 @@ mod tests {
 
         // Check for required resource attributes
         assert!(
-            span.attributes.contains_key("service.name") ||
-            span.attributes.contains_key("telemetry.sdk.name"),
+            span.attributes.contains_key("service.name")
+                || span.attributes.contains_key("telemetry.sdk.name"),
             "Resource attributes should be present"
         );
     }
@@ -280,12 +266,8 @@ mod tests {
         let trace_id = parent_span.trace_id();
         let parent_span_id = parent_span.span_id();
 
-        let child_span = TestExecutionSpan::new_with_parent(
-            "child",
-            "alpine",
-            &trace_id,
-            &parent_span_id
-        );
+        let child_span =
+            TestExecutionSpan::new_with_parent("child", "alpine", &trace_id, &parent_span_id);
         child_span.end();
         parent_span.end();
 
@@ -330,34 +312,40 @@ mod tests {
 
 // Test helper functions
 fn simulate_network_failure() {
-    // Simulate network interruption
+    set_network_available(false);
 }
 
 fn restore_network() {
-    // Restore network
+    set_network_available(true);
 }
 
 fn stop_collector_temporarily() {
-    // Stop collector
+    set_collector_available(false);
 }
 
 fn start_collector_again() {
-    // Restart collector
+    set_collector_available(true);
 }
 
 // Extended span type for testing
 impl TestExecutionSpan {
-    pub fn trace_id(&self) -> String {
-        "trace-123".to_string()
+    pub fn new_with_parent(_name: &str, _image: &str, _trace_id: &str, _parent_id: &str) -> Self {
+        let span = Self::new(_name, _image);
+        if let Ok(mut guard) = span.parent_trace_id.lock() {
+            *guard = Some(_trace_id.to_string());
+        }
+        span
     }
 
-    pub fn new_with_parent(_name: &str, _image: &str, _trace_id: &str, _parent_id: &str) -> Self {
-        Self {
-            name: _name.to_string(),
-            image: _image.to_string(),
+    pub fn set_baggage(&self, key: &str, value: &str) {
+        if let Ok(mut guard) = self.baggage.lock() {
+            guard.insert(key.to_string(), value.to_string());
         }
     }
 
-    pub fn set_baggage(&self, _key: &str, _value: &str) {}
-    pub fn set_attribute_with_wrong_type(&self, _key: &str, _value: &str) {}
+    pub fn set_attribute_with_wrong_type(&self, key: &str, value: &str) {
+        if let Ok(mut guard) = self.wrong_type_attrs.lock() {
+            guard.insert(key.to_string(), value.to_string());
+        }
+    }
 }

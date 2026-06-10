@@ -23,6 +23,38 @@ use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 use tokio::time::sleep;
 
+fn find_absolute_registry_path(relative_path: &str) -> std::path::PathBuf {
+    if let Ok(cwd) = std::env::current_dir() {
+        let mut current = cwd;
+        loop {
+            let target = current.join(relative_path);
+            if target.exists() {
+                if let Ok(canonical) = target.canonicalize() {
+                    return canonical;
+                }
+                return target;
+            }
+            if let Some(parent) = current.parent() {
+                current = parent.to_path_buf();
+            } else {
+                break;
+            }
+        }
+    }
+    std::path::PathBuf::from(relative_path)
+}
+
+fn setup_registry_manifest(registry_path: &std::path::Path) -> Option<std::path::PathBuf> {
+    let manifest_path = registry_path.join("manifest.yaml");
+    let registry_manifest_path = registry_path.join("registry_manifest.yaml");
+    if !manifest_path.exists() && registry_manifest_path.exists() {
+        if std::fs::copy(&registry_manifest_path, &manifest_path).is_ok() {
+            return Some(manifest_path);
+        }
+    }
+    None
+}
+
 /// Weaver live-check process manager
 struct WeaverProcess {
     child: Child,
@@ -34,6 +66,9 @@ struct WeaverProcess {
 impl WeaverProcess {
     /// Start Weaver live-check listener
     async fn start(registry_dir: &str, grpc_port: u16, admin_port: u16) -> Result<Self, String> {
+        let absolute_registry_path = find_absolute_registry_path(registry_dir);
+        let _ = setup_registry_manifest(&absolute_registry_path);
+
         let output_dir = format!("target/weaver_validation_{}", std::process::id());
 
         // Create output directory
@@ -46,7 +81,7 @@ impl WeaverProcess {
                 "registry",
                 "live-check",
                 "--registry",
-                registry_dir,
+                &absolute_registry_path.display().to_string(),
                 "--otlp-grpc-port",
                 &grpc_port.to_string(),
                 "--admin-port",
@@ -122,8 +157,7 @@ impl WeaverProcess {
         let report_data = std::fs::read_to_string(&report_path)
             .map_err(|e| format!("Failed to read report: {}", e))?;
 
-        serde_json::from_str(&report_data)
-            .map_err(|e| format!("Failed to parse report: {}", e))
+        serde_json::from_str(&report_data).map_err(|e| format!("Failed to parse report: {}", e))
     }
 
     /// Get OTLP gRPC endpoint URL
@@ -325,10 +359,7 @@ async fn test_weaver_live_check_cli_commands() {
         .expect("Failed to get report");
 
     // For CLI commands, we expect some telemetry even if minimal
-    assert!(
-        report.sample_count() > 0,
-        "No telemetry from CLI commands"
-    );
+    assert!(report.sample_count() > 0, "No telemetry from CLI commands");
 }
 
 #[tokio::test]
@@ -378,9 +409,17 @@ async fn test_weaver_coverage_threshold() {
 
 #[test]
 fn test_weaver_registry_check() {
+    let absolute_registry = find_absolute_registry_path("registry");
+    let _ = setup_registry_manifest(&absolute_registry);
+
     // Verify schemas are valid
     let output = Command::new("weaver")
-        .args(["registry", "check", "-r", "registry/"])
+        .args([
+            "registry",
+            "check",
+            "-r",
+            &absolute_registry.display().to_string(),
+        ])
         .output()
         .expect("Failed to run weaver registry check");
 
@@ -398,19 +437,24 @@ fn test_weaver_registry_check() {
 #[tokio::test]
 #[ignore]
 async fn test_full_weaver_validation_pipeline() {
+    let absolute_registry = find_absolute_registry_path("registry");
+    let _ = setup_registry_manifest(&absolute_registry);
+
     // Step 1: Schema validation
     let schema_check = Command::new("weaver")
-        .args(["registry", "check", "-r", "registry/"])
+        .args([
+            "registry",
+            "check",
+            "-r",
+            &absolute_registry.display().to_string(),
+        ])
         .output()
         .expect("Failed to run schema check");
 
-    assert!(
-        schema_check.status.success(),
-        "Schema validation failed"
-    );
+    assert!(schema_check.status.success(), "Schema validation failed");
 
     // Step 2: Live-check validation
-    let weaver = WeaverProcess::start("registry/", 6321, 6324)
+    let weaver = WeaverProcess::start("registry", 6321, 6324)
         .await
         .expect("Failed to start Weaver");
 
@@ -471,10 +515,7 @@ async fn test_full_weaver_validation_pipeline() {
     println!("Advisories: {}", report.statistics.total_advisories);
     println!("================================\n");
 
-    assert!(
-        report.sample_count() > 0,
-        "CRITICAL: No telemetry emitted"
-    );
+    assert!(report.sample_count() > 0, "CRITICAL: No telemetry emitted");
     assert_eq!(report.violation_count(), 0, "Violations detected");
     assert!(
         report.coverage() >= 0.20,
@@ -482,3 +523,9 @@ async fn test_full_weaver_validation_pipeline() {
         report.coverage() * 100.0
     );
 }
+
+// Consolidated sub-modules
+// mod weaver_config_tests;
+// mod weaver_innovations;
+// mod weaver_manager_tests;
+// mod weaver_phase_1_2_validation;

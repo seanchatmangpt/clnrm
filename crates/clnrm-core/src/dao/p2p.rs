@@ -201,7 +201,9 @@ impl P2pNetwork {
     }
 
     pub async fn broadcast(&self, message: GossipMessage) {
-        self.discovery.record_message_seen(&message.message_id).await;
+        self.discovery
+            .record_message_seen(&message.message_id)
+            .await;
 
         let peers = self.discovery.active_peers.read().await;
         for peer in peers.values() {

@@ -81,7 +81,8 @@ pub async fn reproduce_baseline(
 
     tracing::info!(
         "   Version: {}, Timestamp: {}",
-        baseline_record.version, baseline_record.timestamp
+        baseline_record.version,
+        baseline_record.timestamp
     );
     let digest_preview = if baseline_record.digest.len() > 16 {
         &baseline_record.digest[..16]

@@ -821,7 +821,7 @@ mod tests {
 
         // Adaptive algorithm now optimizes for low utilization by reducing batch size
         // With 450 spans and low throughput, algorithm adapts down to smaller batches
-        etracing::info!("Actual batch_size: {}", config.batch_size);
+        tracing::info!("Actual batch_size: {}", config.batch_size);
         assert!(
             config.batch_size > 0 && config.batch_size <= 512,
             "Expected batch_size in (0, 512], got {}",

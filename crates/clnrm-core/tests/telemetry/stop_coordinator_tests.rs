@@ -11,7 +11,9 @@
 use std::time::Duration;
 use tokio::time::timeout;
 
-use clnrm_core::telemetry::live_check::{StopConfig, StopCoordinator, StopReason, ValidationStatus, ValidationReport};
+use clnrm_core::telemetry::live_check::{
+    StopConfig, StopCoordinator, StopReason, ValidationReport, ValidationStatus,
+};
 
 // ============================================================================
 // Configuration Tests
@@ -66,7 +68,10 @@ fn test_stop_reason_display() {
     assert_eq!(StopReason::Sighup.to_string(), "SIGHUP");
     assert_eq!(StopReason::Sigterm.to_string(), "SIGTERM");
     assert_eq!(StopReason::HttpStop.to_string(), "HTTP /stop");
-    assert_eq!(StopReason::InactivityTimeout.to_string(), "Inactivity timeout");
+    assert_eq!(
+        StopReason::InactivityTimeout.to_string(),
+        "Inactivity timeout"
+    );
 }
 
 #[test]
@@ -205,7 +210,7 @@ async fn test_exit_code_sigint() {
     let coordinator = StopCoordinator::new(config).expect("Failed to create coordinator");
 
     // Simulate SIGINT
-    *coordinator.shutdown_reason.lock().await = Some(StopReason::Sigint);
+    coordinator.trigger_shutdown(StopReason::Sigint).await;
 
     let report = ValidationReport {
         status: ValidationStatus::Success,
@@ -222,7 +227,7 @@ async fn test_exit_code_sighup() {
     let coordinator = StopCoordinator::new(config).expect("Failed to create coordinator");
 
     // Simulate SIGHUP
-    *coordinator.shutdown_reason.lock().await = Some(StopReason::Sighup);
+    coordinator.trigger_shutdown(StopReason::Sighup).await;
 
     let report = ValidationReport {
         status: ValidationStatus::Success,
@@ -239,7 +244,7 @@ async fn test_exit_code_sigterm() {
     let coordinator = StopCoordinator::new(config).expect("Failed to create coordinator");
 
     // Simulate SIGTERM
-    *coordinator.shutdown_reason.lock().await = Some(StopReason::Sigterm);
+    coordinator.trigger_shutdown(StopReason::Sigterm).await;
 
     let report = ValidationReport {
         status: ValidationStatus::Success,
@@ -256,7 +261,9 @@ async fn test_exit_code_validation_success() {
     let coordinator = StopCoordinator::new(config).expect("Failed to create coordinator");
 
     // Simulate inactivity timeout
-    *coordinator.shutdown_reason.lock().await = Some(StopReason::InactivityTimeout);
+    coordinator
+        .trigger_shutdown(StopReason::InactivityTimeout)
+        .await;
 
     let report = ValidationReport {
         status: ValidationStatus::Success,
@@ -273,7 +280,9 @@ async fn test_exit_code_validation_failure() {
     let coordinator = StopCoordinator::new(config).expect("Failed to create coordinator");
 
     // Simulate inactivity timeout
-    *coordinator.shutdown_reason.lock().await = Some(StopReason::InactivityTimeout);
+    coordinator
+        .trigger_shutdown(StopReason::InactivityTimeout)
+        .await;
 
     let report = ValidationReport {
         status: ValidationStatus::Failure,
@@ -302,7 +311,10 @@ async fn test_inactivity_timeout_disabled() {
 
     // Should never timeout (test with short timeout)
     let result = timeout(Duration::from_millis(100), coordinator.run_until_stop()).await;
-    assert!(result.is_err(), "Should timeout because inactivity timeout is disabled");
+    assert!(
+        result.is_err(),
+        "Should timeout because inactivity timeout is disabled"
+    );
 }
 
 #[tokio::test]

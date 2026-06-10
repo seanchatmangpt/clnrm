@@ -2,8 +2,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 
-use crate::clnrm_2030::treasury::AlgorithmicTreasury;
 use crate::clnrm_2030::oracle::DecentralizedOracle;
+use crate::clnrm_2030::treasury::AlgorithmicTreasury;
 
 pub struct TreasuryLoop {
     treasury: Arc<RwLock<AlgorithmicTreasury>>,
@@ -29,10 +29,10 @@ impl TreasuryLoop {
 
     pub async fn run(&self) {
         let mut tick_interval = interval(Duration::from_secs(self.interval_seconds));
-        
+
         loop {
             tick_interval.tick().await;
-            
+
             let oracle_read = self.oracle.read().await;
             let actual_inflation = match oracle_read.aggregate(&self.inflation_stream_id) {
                 Some(rate) => rate,
@@ -41,7 +41,7 @@ impl TreasuryLoop {
                     continue;
                 }
             };
-            
+
             // Release read lock before writing to treasury to avoid potential deadlocks
             drop(oracle_read);
 

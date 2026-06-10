@@ -250,7 +250,10 @@ pub fn display_test_results(results: &FrameworkTestResults) {
 
                 tracing::info!(
                     "Suite: {} ({} tests)... {} ({}ms)",
-                    current_suite, total_suite, status, duration
+                    current_suite,
+                    total_suite,
+                    status,
+                    duration
                 );
 
                 // Show failed tests details
@@ -281,7 +284,9 @@ pub fn display_test_results(results: &FrameworkTestResults) {
     tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     tracing::info!(
         "Total: {} tests, {} passed, {} failed",
-        results.total_tests, results.passed_tests, results.failed_tests
+        results.total_tests,
+        results.passed_tests,
+        results.failed_tests
     );
 
     let overall_status = if results.failed_tests == 0 {

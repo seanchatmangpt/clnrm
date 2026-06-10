@@ -178,9 +178,7 @@ impl ServiceConfig {
         if let Some(ref ports) = self.ports {
             for port in ports {
                 if *port == 0 {
-                    return Err(CleanroomError::validation_error(
-                        "Service port cannot be 0",
-                    ));
+                    return Err(CleanroomError::validation_error("Service port cannot be 0"));
                 }
             }
         }
@@ -196,9 +194,9 @@ impl ServiceConfig {
 
         // Validate health check if present
         if let Some(ref health_check) = self.health_check {
-            health_check.validate().map_err(|e| {
-                CleanroomError::validation_error(format!("Health check: {}", e))
-            })?;
+            health_check
+                .validate()
+                .map_err(|e| CleanroomError::validation_error(format!("Health check: {}", e)))?;
         }
 
         // Validate wait_for_span_timeout_secs

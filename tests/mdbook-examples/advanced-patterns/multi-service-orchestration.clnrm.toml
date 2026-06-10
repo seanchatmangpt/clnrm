@@ -16,15 +16,10 @@ ports = [80]
 env_vars = { "NGINX_HOST" = "localhost", "NGINX_PORT" = "80" }
 
 [services.database]
-env_vars = { 
-    "POSTGRES_DB" = "testdb",
-"POSTGRES_USER" = "testuser", 
-}
-
 type = "generic_container"
 image = "postgres:15-alpine"
 ports = [5432]
-"POSTGRES_PASSWORD" = "testpass"
+env_vars = { "POSTGRES_DB" = "testdb", "POSTGRES_USER" = "testuser", "POSTGRES_PASSWORD" = "testpass" }
 [services.cache]
 type = "generic_container"
 image = "redis:7-alpine"

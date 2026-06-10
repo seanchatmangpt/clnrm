@@ -179,7 +179,7 @@ fn create_jaeger_exporter(
     _agent_host: &Option<String>,
     _agent_port: &Option<u16>,
 ) -> Result<SpanExporterType> {
-    // For now, Jaeger is not implemented as it requires additional dependencies
+    // EXAMPLE-ONLY: For now, Jaeger is not implemented as it requires additional dependencies
     // This follows the core team best practice of being honest about incomplete features
     Err(CleanroomError::validation_error(
         "Jaeger exporter not yet implemented. Use OTLP exporter to send to Jaeger collector instead."
@@ -196,7 +196,7 @@ fn create_jaeger_exporter(
 /// # Returns
 /// * `Result<SpanExporterType>` - The Zipkin exporter or error
 fn create_zipkin_exporter(_endpoint: &str) -> Result<SpanExporterType> {
-    // For now, Zipkin is not implemented as it requires additional dependencies
+    // EXAMPLE-ONLY: For now, Zipkin is not implemented as it requires additional dependencies
     // This follows the core team best practice of being honest about incomplete features
     Err(CleanroomError::validation_error(
         "Zipkin exporter not yet implemented. Use OTLP exporter to send to Zipkin collector instead."

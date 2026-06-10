@@ -2,7 +2,7 @@
 //!
 //! Manages a pool of pre-allocated containers for efficient stress testing.
 
-use crate::backend::GvisorBackend;
+use crate::backend::{Backend, GvisorBackend};
 use crate::error::{CleanroomError, Result};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -65,7 +65,7 @@ impl PooledContainer {
         Self {
             image,
             id,
-            backend,
+            backend: Arc::new(backend),
             in_use: false,
         }
     }
@@ -133,12 +133,13 @@ impl ContainerPool {
                 break;
             }
 
-            // gVisor-based container creation (no Docker dependency)
-            // For now, use MockBackend as placeholder until gVisor integration is complete
-            let backend: Arc<dyn Backend> = Arc::new(crate::backend::mock_backend());
+            let image_str = image.to_string();
+            let startup_timeout = self.config.startup_timeout;
+            let mem_limit = self.config.memory_limit;
+            let cpu_limit = self.config.cpu_limit;
 
             let backend = tokio::task::spawn_blocking(move || {
-                let mut backend = GvisorBackend::new(image_str)?.with_timeout(startup_timeout);
+                let mut backend = GvisorBackend::new(&image_str)?.with_timeout(startup_timeout);
 
                 if let Some(mem_limit) = mem_limit {
                     backend = backend.with_memory_limit(mem_limit);
@@ -219,12 +220,13 @@ impl ContainerPool {
             .unwrap_err());
         }
 
-        // gVisor-based container creation (no Docker dependency)
-        // For now, use MockBackend as placeholder until gVisor integration is complete
-        let backend: Arc<dyn Backend> = Arc::new(crate::backend::mock_backend());
+        let image_str = image.to_string();
+        let startup_timeout = self.config.startup_timeout;
+        let mem_limit = self.config.memory_limit;
+        let cpu_limit = self.config.cpu_limit;
 
         let backend = tokio::task::spawn_blocking(move || {
-            let mut backend = GvisorBackend::new(image_str)?.with_timeout(startup_timeout);
+            let mut backend = GvisorBackend::new(&image_str)?.with_timeout(startup_timeout);
 
             if let Some(mem_limit) = mem_limit {
                 backend = backend.with_memory_limit(mem_limit);

@@ -24,12 +24,21 @@ impl SettlementEngine {
         }
     }
 
-    pub fn lock_funds(&mut self, transaction_id: &str, buyer_id: &str, amount: f64, timestamp: u64) {
-        self.locked_funds.insert(transaction_id.to_string(), EscrowLock {
-            buyer_id: buyer_id.to_string(),
-            amount,
-            locked_at: timestamp,
-        });
+    pub fn lock_funds(
+        &mut self,
+        transaction_id: &str,
+        buyer_id: &str,
+        amount: f64,
+        timestamp: u64,
+    ) {
+        self.locked_funds.insert(
+            transaction_id.to_string(),
+            EscrowLock {
+                buyer_id: buyer_id.to_string(),
+                amount,
+                locked_at: timestamp,
+            },
+        );
     }
 
     pub fn execute_settlement(&mut self, transaction_id: &str) -> Result<f64, &'static str> {

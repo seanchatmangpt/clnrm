@@ -1423,9 +1423,11 @@ async fn test_error_path_testing_pattern() -> Result<()> {
     command = ["echo", "test"]
     "#;
 
-    tokio::fs::write(&valid_path, valid_content).await.map_err(|e| {
-        CleanroomError::internal_error("Failed to write valid file").with_source(e.to_string())
-    })?;
+    tokio::fs::write(&valid_path, valid_content)
+        .await
+        .map_err(|e| {
+            CleanroomError::internal_error("Failed to write valid file").with_source(e.to_string())
+        })?;
 
     let result = validator.validate_file(&valid_path);
     if result.is_err() {

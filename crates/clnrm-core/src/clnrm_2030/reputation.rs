@@ -98,7 +98,7 @@ impl ReputationEngine {
 
         // Build the local trust matrix C
         let mut c_matrix = vec![vec![0.0; num_peers]; num_peers];
-        
+
         for (i, source_peer) in peers.iter().enumerate() {
             if let Some(targets) = self.interactions.get(source_peer) {
                 let mut sum_scores = 0.0;
@@ -108,7 +108,7 @@ impl ReputationEngine {
                     c_matrix[i][j] = score;
                     sum_scores += score;
                 }
-                
+
                 // Normalize the row
                 if sum_scores > 0.0 {
                     for j in 0..num_peers {
@@ -146,7 +146,7 @@ impl ReputationEngine {
         // Power iteration
         for _ in 0..self.max_iterations {
             let mut next_t = vec![0.0; num_peers];
-            
+
             // t_{k+1} = (1 - alpha) * C^T * t_k + alpha * P
             for i in 0..num_peers {
                 let mut sum = 0.0;
@@ -210,7 +210,7 @@ mod tests {
         // A trusts B
         engine.record_interaction(peer_a.clone(), peer_b.clone(), true);
         engine.record_interaction(peer_a.clone(), peer_b.clone(), true);
-        
+
         // B trusts C
         engine.record_interaction(peer_b.clone(), peer_c.clone(), true);
 
@@ -218,11 +218,11 @@ mod tests {
         engine.record_interaction(peer_c.clone(), peer_a.clone(), false);
 
         let reputation = engine.compute_reputation();
-        
+
         assert!(reputation.contains_key(&peer_a));
         assert!(reputation.contains_key(&peer_b));
         assert!(reputation.contains_key(&peer_c));
-        
+
         // Output something or just assert sum is 1.0
         let sum: f64 = reputation.values().sum();
         assert!((sum - 1.0).abs() < 1e-5);

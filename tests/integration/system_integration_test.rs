@@ -6,27 +6,7 @@
 use anyhow::Result;
 use std::time::Duration;
 
-mod common;
-use common::{helpers::*, factories::*, fixtures::*};
-
-// Docker availability check
-fn docker_available() -> bool {
-    use std::process::Command;
-    Command::new("docker")
-        .args(&["ps"])
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
-}
-
-macro_rules! skip_if_no_docker {
-    () => {
-        if !docker_available() {
-            println!("Docker not available, skipping test");
-            return Ok(());
-        }
-    };
-}
+use crate::{helpers::*, factories::*, fixtures::*, skip_if_no_docker};
 
 /// Test full test execution pipeline
 #[test]

@@ -35,7 +35,11 @@ impl GasOp {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GasError {
     /// Raised when the requested gas exceeds the available gas.
-    OutOfGas { limit: u64, requested: u64, available: u64 },
+    OutOfGas {
+        limit: u64,
+        requested: u64,
+        available: u64,
+    },
     /// Raised when an arithmetic overflow occurs during gas calculation.
     MathOverflow,
 }
@@ -43,7 +47,11 @@ pub enum GasError {
 impl fmt::Display for GasError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GasError::OutOfGas { limit, requested, available } => {
+            GasError::OutOfGas {
+                limit,
+                requested,
+                available,
+            } => {
                 write!(
                     f,
                     "Out of gas: limit was {}, requested {}, but only {} available",
@@ -79,7 +87,10 @@ impl GasMeter {
 
     /// Consumes a raw amount of gas.
     pub fn consume_raw(&mut self, cost: u64) -> Result<(), GasError> {
-        let new_consumed = self.consumed.checked_add(cost).ok_or(GasError::MathOverflow)?;
+        let new_consumed = self
+            .consumed
+            .checked_add(cost)
+            .ok_or(GasError::MathOverflow)?;
 
         if new_consumed > self.limit {
             let available = self.limit.saturating_sub(self.consumed);
@@ -122,11 +133,11 @@ mod tests {
     #[test]
     fn test_gas_consumption() {
         let mut meter = GasMeter::new(1000);
-        
+
         assert_eq!(meter.remaining(), 1000);
         assert!(meter.consume(GasOp::Step).is_ok());
         assert_eq!(meter.consumed(), 1);
-        
+
         assert!(meter.consume(GasOp::StorageWrite).is_ok());
         assert_eq!(meter.consumed(), 501);
         assert_eq!(meter.remaining(), 499);
@@ -135,10 +146,15 @@ mod tests {
     #[test]
     fn test_out_of_gas() {
         let mut meter = GasMeter::new(50);
-        
+
         let result = meter.consume(GasOp::StorageRead);
         assert!(result.is_err());
-        if let Err(GasError::OutOfGas { limit, requested, available }) = result {
+        if let Err(GasError::OutOfGas {
+            limit,
+            requested,
+            available,
+        }) = result
+        {
             assert_eq!(limit, 50);
             assert_eq!(requested, 100);
             assert_eq!(available, 50);
@@ -151,27 +167,34 @@ mod tests {
     fn test_math_overflow() {
         let mut meter = GasMeter::new(u64::MAX);
         meter.consumed = u64::MAX - 10;
-        
+
         let result = meter.consume_raw(20);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), GasError::OutOfGas { limit: u64::MAX, requested: 20, available: 10 });
-        
+        assert_eq!(
+            result.unwrap_err(),
+            GasError::OutOfGas {
+                limit: u64::MAX,
+                requested: 20,
+                available: 10
+            }
+        );
+
         let mut meter2 = GasMeter::new(u64::MAX);
         meter2.consumed = u64::MAX;
         let result2 = meter2.consume_raw(1);
         assert!(result2.is_err());
         assert_eq!(result2.unwrap_err(), GasError::MathOverflow);
     }
-    
+
     #[test]
     fn test_refund() {
         let mut meter = GasMeter::new(100);
         meter.consume_raw(50).unwrap();
         assert_eq!(meter.consumed(), 50);
-        
+
         meter.refund(20);
         assert_eq!(meter.consumed(), 30);
-        
+
         meter.refund(100);
         assert_eq!(meter.consumed(), 0);
     }

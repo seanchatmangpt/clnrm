@@ -117,12 +117,14 @@ impl OciImageManager {
         let config_src = image_dir.join("config.json");
         let config_dest = bundle_dir.join("config.json");
         if config_src.exists() {
-            tokio::fs::copy(&config_src, &config_dest).await.map_err(|e| {
-                CleanroomError::container_error(format!(
-                    "Failed to copy config.json to bundle: {}",
-                    e
-                ))
-            })?;
+            tokio::fs::copy(&config_src, &config_dest)
+                .await
+                .map_err(|e| {
+                    CleanroomError::container_error(format!(
+                        "Failed to copy config.json to bundle: {}",
+                        e
+                    ))
+                })?;
         }
 
         Ok(bundle_dir)

@@ -27,7 +27,7 @@
      kind = "server"
      attrs.all = { "http.method" = "GET", "http.status_code" = "200" }
 ============================================================================ #}
-{% macro span(name, kind, attrs={}) -%}
+{% macro span(name, kind, attrs="") -%}
 [[expect.span]]
 name = "{{ name }}"
 kind = "{{ kind }}"

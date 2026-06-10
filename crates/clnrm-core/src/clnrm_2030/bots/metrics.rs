@@ -1,6 +1,6 @@
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use std::time::Duration;
+use tokio::sync::RwLock;
 use tracing::info;
 
 #[derive(Debug, Default)]
@@ -22,7 +22,7 @@ impl MetricsBot {
 
     pub async fn run(self) {
         let mut interval = tokio::time::interval(Duration::from_secs(5));
-        
+
         loop {
             interval.tick().await;
             let mut dash = self.dashboard.write().await;
@@ -31,10 +31,10 @@ impl MetricsBot {
             dash.volume_24h += 45_000.0;
             dash.active_agents += 12;
             dash.cumulative_burn += 300.0;
-            
-            info!("🔥 CLNRM-2030 Dashboard | TVL: ${:.2}M | 24H Vol: ${:.2}M | Active Agents: {} | Burned: {} TAC", 
-                  dash.tvl_usd / 1_000_000.0, 
-                  dash.volume_24h / 1_000_000.0, 
+
+            info!("🔥 CLNRM-2030 Dashboard | TVL: ${:.2}M | 24H Vol: ${:.2}M | Active Agents: {} | Burned: {} TAC",
+                  dash.tvl_usd / 1_000_000.0,
+                  dash.volume_24h / 1_000_000.0,
                   dash.active_agents,
                   dash.cumulative_burn);
         }

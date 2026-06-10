@@ -305,7 +305,7 @@ mod tests {
                 assert_eq!(image.config.os, "linux");
             }
             Err(e) => {
-                etracing::info!("Failed to pull alpine: {}", e);
+                tracing::info!("Failed to pull alpine: {}", e);
                 // Don't fail test if network is unavailable
             }
         }

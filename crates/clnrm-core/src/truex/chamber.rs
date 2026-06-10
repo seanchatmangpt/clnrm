@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::error::CleanroomError;
 use crate::cleanroom::{CleanroomEnvironment, ExecutionResult};
+use crate::error::CleanroomError;
 
 /// A motion originating from an untrusted chamber.
 ///
@@ -40,7 +40,7 @@ impl AdmissionKernel {
     /// can add cryptographic auditing or structural integrity constraints here.
     pub fn admit(&self, motion: UntrustedMotion) -> Result<ExecutionResult, CleanroomError> {
         // Here we could perform structural or cryptographic validation on the motion.
-        // For now, it passes through the raw_result, formally elevating its status.
+        // EXAMPLE-ONLY: For now, it passes through the raw_result, formally elevating its status.
         Ok(motion.raw_result)
     }
 }
@@ -73,7 +73,7 @@ impl<'a> UntrustedChamber<'a> {
             .env
             .execute_in_container(container_name, command, workdir, env_vars)
             .await?;
-        
+
         Ok(UntrustedMotion::new(result))
     }
 
@@ -85,20 +85,8 @@ impl<'a> UntrustedChamber<'a> {
         service_handle: &crate::cleanroom::ServiceHandle,
         command: &[String],
     ) -> Result<UntrustedMotion, CleanroomError> {
-        let result = self
-            .env
-            .execute_in_service(service_handle, command)
-            .await?;
+        let result = self.env.execute_in_service(service_handle, command).await?;
 
         Ok(UntrustedMotion::new(result))
     }
-
-    /// Execute a test logic closure in the untrusted environment.
-    ///
-    /// The output must be carefully handled, but since this closure might execute
-    /// logic that returns anything, we map it into an `UntrustedMotion` if it returns
-    /// an `ExecutionResult`.
-    /// 
-    /// Note: Providing an `execute_in_container` method is the most direct application
-    /// of the wrapper.
 }

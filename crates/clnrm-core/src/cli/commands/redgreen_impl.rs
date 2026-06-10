@@ -309,7 +309,8 @@ pub async fn run_red_green_validation(
         } else {
             tracing::info!(
                 "❌ TDD validation FAILED: expected {:?}, got {:?}",
-                expected, actual_state
+                expected,
+                actual_state
             );
             error!(
                 "TDD validation failed: expected {:?}, got {:?}",

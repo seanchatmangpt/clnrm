@@ -1,8 +1,8 @@
-use crate::clnrm_2030::a2a::{AgentOrderbook, AgentTask, AgentBid, TaskType, AgentId};
+use crate::clnrm_2030::a2a::{AgentBid, AgentId, AgentOrderbook, AgentTask, TaskType};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use rand::{Rng, SeedableRng};
-use rand::rngs::StdRng;
 
 pub async fn run_a2a_simulation() {
     let orderbook = Arc::new(RwLock::new(AgentOrderbook::new()));
@@ -46,7 +46,7 @@ pub async fn run_a2a_simulation() {
                         let mut ob = ob_clone.write().await;
                         ob.post_task(task);
                     }
-                    
+
                     {
                         let mut t_ids = task_ids_clone.write().await;
                         t_ids.push(task_id);
@@ -57,7 +57,7 @@ pub async fn run_a2a_simulation() {
                     if !t_ids.is_empty() {
                         let idx = rng.gen_range(0..t_ids.len());
                         let target_task_id = t_ids[idx];
-                        
+
                         let bid = AgentBid {
                             bidder: agent_id.clone(),
                             price: rng.gen_range(50..950), // Competitive bidding
@@ -87,7 +87,7 @@ pub async fn run_a2a_simulation() {
                         let _ = ob.match_task(id);
                     }
                 }
-                
+
                 // Simulate network latency / high-frequency ticks
                 tokio::time::sleep(std::time::Duration::from_millis(rng.gen_range(1..10))).await;
             }

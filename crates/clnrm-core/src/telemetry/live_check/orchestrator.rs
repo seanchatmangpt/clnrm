@@ -656,7 +656,10 @@ impl LiveCheckOrchestrator<WeaverRunning> {
             sample_count = s_arr.len() as u32;
 
             // Helper to recursively extract advice from any Value (dictionary or list)
-            fn extract_advice(v: &serde_json::Value, details: &mut Vec<ValidationDetail>) -> Result<()> {
+            fn extract_advice(
+                v: &serde_json::Value,
+                details: &mut Vec<ValidationDetail>,
+            ) -> Result<()> {
                 if let Some(obj) = v.as_object() {
                     // Check if this object contains advice list
                     if let Some(all_advice) = obj.get("all_advice").and_then(|a| a.as_array()) {
@@ -670,7 +673,11 @@ impl LiveCheckOrchestrator<WeaverRunning> {
                                     "violation" => "violation",
                                     "improvement" => "improvement",
                                     "information" => "information",
-                                    unknown => return Err(crate::error::CleanroomError::validation_error(format!("Unknown advice level: {}", unknown))),
+                                    unknown => {
+                                        return Err(crate::error::CleanroomError::validation_error(
+                                            format!("Unknown advice level: {}", unknown),
+                                        ))
+                                    }
                                 };
 
                                 let message = advice_obj
@@ -716,7 +723,7 @@ impl LiveCheckOrchestrator<WeaverRunning> {
                         extract_advice(val, details)?;
                     }
                 }
-                
+
                 Ok(())
             }
 
@@ -731,7 +738,12 @@ impl LiveCheckOrchestrator<WeaverRunning> {
                 "violation" => violations += 1,
                 "improvement" => improvements += 1,
                 "information" => information += 1,
-                unknown => return Err(crate::error::CleanroomError::validation_error(format!("Unknown advice level: {}", unknown))),
+                unknown => {
+                    return Err(crate::error::CleanroomError::validation_error(format!(
+                        "Unknown advice level: {}",
+                        unknown
+                    )))
+                }
             }
         }
 
@@ -1073,7 +1085,7 @@ pub async fn run_with_graceful_fallback(
             info!("Live-check enabled, using Weaver validation");
 
             // For full integration, caller would run tests here
-            // For now, just stop and return report
+            // EXAMPLE-ONLY: For now, just stop and return report
             let completed = (*running).stop_weaver().await?;
 
             Ok(GracefulFallbackResult {

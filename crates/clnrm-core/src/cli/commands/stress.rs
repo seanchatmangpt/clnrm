@@ -126,10 +126,8 @@ pub async fn run_stress_test(
 /// Load stress test configuration from file
 pub fn load_stress_config(path: &PathBuf) -> Result<StressTestConfig> {
     let contents = std::fs::read_to_string(path)?;
-    let config: StressTestConfig = toml::from_str(&contents).map_err(|e| {
-        crate::error::CleanroomError::validation_error(format!("Failed to parse TOML: {}", e))
-    })?;
-    Ok(config)
+    let profile = std::env::var("CLNRM_STRESS_PROFILE").ok();
+    StressTestConfig::load_profile_from_toml(&contents, profile.as_deref())
 }
 
 /// Generate example stress test configuration
@@ -191,8 +189,8 @@ mod tests {
         let example = generate_stress_config_example();
         let parsed = toml::from_str::<StressTestConfig>(&example);
         if let Err(e) = &parsed {
-            etracing::info!("Parse error: {}", e);
-            etracing::info!("Config:\n{}", example);
+            tracing::info!("Parse error: {}", e);
+            tracing::info!("Config:\n{}", example);
         }
         assert!(parsed.is_ok(), "Failed to parse config: {:?}", parsed.err());
     }

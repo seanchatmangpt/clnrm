@@ -754,13 +754,15 @@ async fn run_tests_impl_with_report(
     if let Some(junit_path) = report_junit {
         info!("📄 Generating JUnit XML report: {}", junit_path.display());
         let junit_xml = generate_junit_xml(&cli_results)?;
-        tokio::fs::write(junit_path, &junit_xml).await.map_err(|e| {
-            CleanroomError::io_error(format!(
-                "Failed to write JUnit report to {}: {}",
-                junit_path.display(),
-                e
-            ))
-        })?;
+        tokio::fs::write(junit_path, &junit_xml)
+            .await
+            .map_err(|e| {
+                CleanroomError::io_error(format!(
+                    "Failed to write JUnit report to {}: {}",
+                    junit_path.display(),
+                    e
+                ))
+            })?;
         info!("✅ JUnit XML report written to {}", junit_path.display());
     }
 
@@ -908,7 +910,9 @@ async fn run_tests_impl_with_report(
                 }
             }
 
-            tracing::info!("\n💡 Tip: Fix violations to ensure tests are not producing false positives.");
+            tracing::info!(
+                "\n💡 Tip: Fix violations to ensure tests are not producing false positives."
+            );
             tracing::info!("See validation_output/validation_report.json for full details.\n");
 
             return Err(CleanroomError::validation_error(format!(

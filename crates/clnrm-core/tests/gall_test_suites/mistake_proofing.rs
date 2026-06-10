@@ -24,9 +24,15 @@ wait_for_span_timeout_secs = 0  # Should be refused
 
     let config = parse_toml_config(invalid_toml).expect("Should parse TOML");
     let result = config.validate();
-    
-    assert!(result.is_err(), "System should refuse zero timeout for wait_for_span_timeout_secs");
-    assert!(result.unwrap_err().to_string().contains("wait_for_span_timeout_secs must be greater than 0"));
+
+    assert!(
+        result.is_err(),
+        "System should refuse zero timeout for wait_for_span_timeout_secs"
+    );
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("wait_for_span_timeout_secs must be greater than 0"));
 }
 
 #[test]
@@ -44,7 +50,7 @@ workdir = "" # Empty workdir should be refused
 
     let config = parse_toml_config(invalid_toml).expect("Should parse TOML");
     let result = config.validate();
-    
+
     assert!(result.is_err(), "System should refuse empty IDs in steps");
 }
 
@@ -69,10 +75,16 @@ timeout = 0 # Zero timeout
 
     let config = parse_toml_config(invalid_toml).expect("Should parse TOML");
     let result = config.validate();
-    
-    assert!(result.is_err(), "System should refuse invalid health check configurations");
+
+    assert!(
+        result.is_err(),
+        "System should refuse invalid health check configurations"
+    );
     let err_msg = result.unwrap_err().to_string();
-    assert!(err_msg.contains("Health check command cannot be empty") || err_msg.contains("Health check interval must be greater than 0"));
+    assert!(
+        err_msg.contains("Health check command cannot be empty")
+            || err_msg.contains("Health check interval must be greater than 0")
+    );
 }
 
 #[test]
@@ -93,7 +105,10 @@ ports = [0, 80] # Port 0 should be refused
 
     let config = parse_toml_config(invalid_toml).expect("Should parse TOML");
     let result = config.validate();
-    
+
     assert!(result.is_err(), "System should refuse port 0 in services");
-    assert!(result.unwrap_err().to_string().contains("Service port cannot be 0"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Service port cannot be 0"));
 }

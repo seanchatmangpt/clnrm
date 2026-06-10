@@ -243,4 +243,42 @@ impl StressTestConfig {
     pub fn total_permutations(&self) -> usize {
         self.containers.len() * self.test_count
     }
+
+    /// Load a specific profile from a consolidated TOML file or fall back to a flat structure.
+    pub fn load_profile_from_toml(contents: &str, profile_name: Option<&str>) -> Result<Self> {
+        let value: toml::Value = toml::from_str(contents).map_err(|e| {
+            CleanroomError::validation_error(format!("Failed to parse TOML structure: {}", e))
+        })?;
+
+        let target_value = if let Some(p_name) = profile_name {
+            value.get(p_name).cloned().ok_or_else(|| {
+                CleanroomError::validation_error(format!(
+                    "Profile '{}' not found in config",
+                    p_name
+                ))
+            })?
+        } else if value.get("containers").is_some() {
+            value
+        } else if let Some(basic_val) = value.get("basic") {
+            basic_val.clone()
+        } else if let Some(table) = value.as_table() {
+            if let Some((first_key, first_val)) = table.iter().next() {
+                tracing::info!(
+                    "No profile specified, defaulting to first profile found: {}",
+                    first_key
+                );
+                first_val.clone()
+            } else {
+                return Err(CleanroomError::validation_error("Empty TOML configuration"));
+            }
+        } else {
+            value
+        };
+
+        let config: StressTestConfig = target_value.try_into().map_err(|e| {
+            CleanroomError::validation_error(format!("Failed to deserialize profile: {}", e))
+        })?;
+
+        Ok(config)
+    }
 }

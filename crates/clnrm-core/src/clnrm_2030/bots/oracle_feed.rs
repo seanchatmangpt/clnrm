@@ -1,13 +1,13 @@
+use rand::Rng;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
-use tokio::time::{interval, Duration};
-use rand::Rng;
 use tokio::task::JoinHandle;
+use tokio::time::{interval, Duration};
 
 use crate::clnrm_2030::oracle::{DecentralizedOracle, OracleDataPoint};
 
-/// Simulator that continuously generates mock real-world metric data
+/// Simulator that continuously generates simulated real-world metric data
 /// and submits it to the DecentralizedOracle every 5 seconds.
 pub struct OracleFeedSimulator {
     oracle: Arc<RwLock<DecentralizedOracle>>,
@@ -25,7 +25,7 @@ impl OracleFeedSimulator {
         }
     }
 
-    /// Spawns a background task that continuously generates and submits mock data.
+    /// Spawns a background task that continuously generates and submits simulated data.
     pub fn spawn(self) -> JoinHandle<()> {
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(5));
@@ -42,7 +42,7 @@ impl OracleFeedSimulator {
                     (
                         rng.gen_range(10.0..95.0),
                         rng.gen_range(100.0..120.0),
-                        rng.gen_range(50.0..500.0)
+                        rng.gen_range(50.0..500.0),
                     )
                 };
 

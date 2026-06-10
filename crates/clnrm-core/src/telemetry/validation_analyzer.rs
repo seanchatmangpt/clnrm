@@ -150,7 +150,9 @@ impl ValidationAnalysis {
             for violation in &self.violations {
                 tracing::info!(
                     "  - [{}] {}: {}",
-                    violation.signal_type, violation.signal_name, violation.message
+                    violation.signal_type,
+                    violation.signal_name,
+                    violation.message
                 );
             }
         }
@@ -160,7 +162,9 @@ impl ValidationAnalysis {
             for improvement in &self.improvements {
                 tracing::info!(
                     "  - [{}] {}: {}",
-                    improvement.signal_type, improvement.signal_name, improvement.message
+                    improvement.signal_type,
+                    improvement.signal_name,
+                    improvement.message
                 );
             }
         }

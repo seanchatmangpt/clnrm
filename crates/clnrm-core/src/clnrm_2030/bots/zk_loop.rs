@@ -1,9 +1,9 @@
-use std::time::Duration;
-use tokio::time::interval;
-use tokio::sync::mpsc::Receiver;
-use crate::truex::receipt::TruexReceipt;
 use crate::clnrm_2030::zk_rollup::ZkRollupBatcher;
-use tracing::{info, error};
+use crate::truex::receipt::TruexReceipt;
+use std::time::Duration;
+use tokio::sync::mpsc::Receiver;
+use tokio::time::interval;
+use tracing::{error, info};
 
 pub struct ZkLoopBot {
     batcher: ZkRollupBatcher,
@@ -36,14 +36,14 @@ impl ZkLoopBot {
                     let receipt_hash_bytes = receipt.output_hash.as_bytes();
                     let len = std::cmp::min(32, receipt_hash_bytes.len());
                     hash[..len].copy_from_slice(&receipt_hash_bytes[..len]);
-                    
+
                     self.batcher.add_receipt_to_batch(hash);
                     receipts_queued += 1;
 
                     if receipts_queued >= 1000 {
                         info!("1000 receipts queued, triggering batch rollup.");
                         self.process_batch(&mut receipts_queued).await;
-                        timer.reset(); 
+                        timer.reset();
                     }
                 }
             }

@@ -173,7 +173,10 @@ pub async fn system_health_check(verbose: bool) -> Result<()> {
 
     tracing::info!(
         "  {} Overall Health: {}% ({}/{})",
-        status_emoji, health_percentage, health_score, total_checks
+        status_emoji,
+        health_percentage,
+        health_score,
+        total_checks
     );
     tracing::info!("  📊 Status: {}", get_health_status(health_percentage));
 

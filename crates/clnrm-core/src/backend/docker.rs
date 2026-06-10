@@ -51,12 +51,18 @@ impl Backend for DockerBackend {
 
         // Apply policy resource limits
         if cmd.policy.resources.max_memory_usage_bytes > 0 {
-            docker_cmd.arg(format!("--memory={}b", cmd.policy.resources.max_memory_usage_bytes));
+            docker_cmd.arg(format!(
+                "--memory={}b",
+                cmd.policy.resources.max_memory_usage_bytes
+            ));
         }
-        
+
         if cmd.policy.resources.max_cpu_usage_percent > 0.0 {
             // max_cpu_usage_percent of 100.0 means 1 CPU core
-            docker_cmd.arg(format!("--cpus={}", cmd.policy.resources.max_cpu_usage_percent / 100.0));
+            docker_cmd.arg(format!(
+                "--cpus={}",
+                cmd.policy.resources.max_cpu_usage_percent / 100.0
+            ));
         }
 
         // Add working directory

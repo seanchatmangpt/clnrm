@@ -51,7 +51,7 @@ fuzz_target!(|data: &[u8]| {
         };
 
         // Create error with various message formats
-        let mut error = CleanroomError::new(kind, &fuzz_error.message);
+        let mut error = CleanroomError::new(kind.clone(), &fuzz_error.message);
 
         // Test error chaining
         if let Some(context) = &fuzz_error.context {

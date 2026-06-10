@@ -16,7 +16,7 @@ path = "src/bin/run_stress_test.rs"
 [lib]
 name = "clnrm_core"
 path = "src/lib.rs"
-test = false
+test = true
 
 [dependencies]
 # Core dependencies
@@ -118,6 +118,16 @@ mockall = { workspace = true }
 
 # Chicago TDD testing framework
 fake = "5.1.0"
+testcontainers = { workspace = true }
+tera = "1.20"
+
+[[test]]
+name = "mdbook-examples-plugin-development"
+path = "../../tests/mdbook-examples/plugin-development/custom-database-plugin.rs"
+
+[[test]]
+name = "telemetry"
+path = "tests/telemetry/mod.rs"
 
 [[bench]]
 name = "hot_reload_critical_path"
@@ -229,6 +239,10 @@ path = "examples/observability/otel_graph_validation.rs"
 [[example]]
 name = "mura_measure"
 path = "examples/mura_measure.rs"
+
+[[test]]
+name = "weaver_live_check_validation"
+path = "../../tests/weaver/live_check_validation.rs"
 
 [features]
 default = ["backend-gvisor"]

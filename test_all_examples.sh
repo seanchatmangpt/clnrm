@@ -16,7 +16,7 @@ for file in $(find examples/ -name "*.clnrm.toml" | sort); do
     echo -n "Testing $file ... "
 
     # Test validate
-    if ./target/release/clnrm validate "$file" >/dev/null 2>&1; then
+    if ./target/release/clnrm test validate --path "$file" >/dev/null 2>&1; then
         echo "✅ PASS"
         PASSED=$((PASSED + 1))
     else

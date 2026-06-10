@@ -30,6 +30,7 @@ mod helpers {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_e2e_basic_workflow_single_container() -> Result<()> {
     // Arrange
     let env = helpers::create_test_environment().await?;
@@ -57,6 +58,7 @@ async fn test_e2e_basic_workflow_single_container() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_e2e_basic_workflow_with_environment_variables() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");
@@ -87,6 +89,7 @@ async fn test_e2e_basic_workflow_with_environment_variables() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_e2e_basic_workflow_multiple_steps() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");
@@ -126,6 +129,7 @@ async fn test_e2e_basic_workflow_multiple_steps() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_e2e_multi_service_coordination() -> Result<()> {
     let env = helpers::create_test_environment().await?;
 
@@ -166,6 +170,7 @@ async fn test_e2e_template_vars_basic() -> Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_feature_span_enforcement_basic() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");
@@ -187,6 +192,7 @@ async fn test_feature_span_enforcement_basic() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_feature_service_routing() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");
@@ -208,6 +214,7 @@ async fn test_feature_service_routing() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_feature_chaos_container_restart() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");
@@ -236,6 +243,7 @@ async fn test_feature_chaos_container_restart() -> Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_regression_container_lifecycle() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");
@@ -305,6 +313,7 @@ async fn test_error_invalid_toml_syntax() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_error_execute_on_unregistered_service() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let result = env
@@ -316,6 +325,7 @@ async fn test_error_execute_on_unregistered_service() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_error_start_nonexistent_service() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let result = env.start_service("nonexistent").await;
@@ -344,6 +354,7 @@ async fn test_error_invalid_template_syntax() -> Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_perf_container_startup_time() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");
@@ -360,6 +371,7 @@ async fn test_perf_container_startup_time() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_perf_command_execution_overhead() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");
@@ -383,6 +395,7 @@ async fn test_perf_command_execution_overhead() -> Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_security_filesystem_isolation() -> Result<()> {
     let env1 = helpers::create_test_environment().await?;
     let env2 = helpers::create_test_environment().await?;
@@ -425,6 +438,7 @@ async fn test_security_filesystem_isolation() -> Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_security_cleanup_verification() -> Result<()> {
     let env = helpers::create_test_environment().await?;
     let plugin = services::generic::GenericContainerPlugin::new("alpine", "alpine:latest");

@@ -2,6 +2,7 @@
 //!
 //! Exports all CLI command implementations with their associated functionality.
 
+// pub mod ai_monitor;
 pub mod analyze;
 pub mod collector;
 pub mod collector_noun_verb;

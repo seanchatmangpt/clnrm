@@ -727,7 +727,8 @@ mod tests {
                     // Should fail gracefully, not panic
                     tracing::info!(
                         "Test '{}' failed gracefully with edge case: {}",
-                        test_name, e
+                        test_name,
+                        e
                     );
                 }
             }

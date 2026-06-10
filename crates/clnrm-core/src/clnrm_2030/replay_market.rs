@@ -28,7 +28,11 @@ impl ReplayMarket {
         self.listings.insert(listing.fixture_id.clone(), listing);
     }
 
-    pub fn buy_fixture_access(&self, fixture_id: &str, payment: f64) -> Result<Vec<u8>, &'static str> {
+    pub fn buy_fixture_access(
+        &self,
+        fixture_id: &str,
+        payment: f64,
+    ) -> Result<Vec<u8>, &'static str> {
         let listing = self.listings.get(fixture_id).ok_or("Fixture not found")?;
         if payment >= listing.price {
             // Unseal logic omitted

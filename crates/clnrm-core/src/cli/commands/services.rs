@@ -223,7 +223,10 @@ pub async fn ai_manage(
 
         tracing::info!(
             "  ✓ {} - CPU: {:.1}%, Memory: {:.0}MB, RPS: {:.1}",
-            handle.service_name, metrics.cpu_usage, metrics.memory_usage, metrics.request_rate
+            handle.service_name,
+            metrics.cpu_usage,
+            metrics.memory_usage,
+            metrics.request_rate
         );
 
         manager.record_metrics(metrics);
@@ -333,7 +336,8 @@ pub async fn ai_manage(
                         ScalingAction::ScaleUp(count) => {
                             tracing::info!(
                                 "  📈 {} - Scale UP by {} instance(s)",
-                                handle.service_name, count
+                                handle.service_name,
+                                count
                             );
                             tracing::info!("     Reason: High resource utilization detected");
                             manager.update_instance_count(
@@ -344,7 +348,8 @@ pub async fn ai_manage(
                         ScalingAction::ScaleDown(count) => {
                             tracing::info!(
                                 "  📉 {} - Scale DOWN by {} instance(s)",
-                                handle.service_name, count
+                                handle.service_name,
+                                count
                             );
                             tracing::info!("     Reason: Low resource utilization detected");
                             let current = *manager.service_instances.get(&handle.id).unwrap_or(&1);

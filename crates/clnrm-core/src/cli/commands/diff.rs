@@ -63,7 +63,7 @@ pub fn diff_traces(
         .cloned()
         .collect();
 
-    // For now, we don't detect modifications (would need deeper analysis)
+    // EXAMPLE-ONLY: For now, we don't detect modifications (would need deeper analysis)
     let modified = Vec::new();
 
     let result = DiffResult {
@@ -121,7 +121,9 @@ pub fn diff_traces(
             {
                 tracing::info!(
                     "\nSummary: {} added, {} removed, {} modified",
-                    result.added_count, result.removed_count, result.modified_count
+                    result.added_count,
+                    result.removed_count,
+                    result.modified_count
                 );
             }
         }

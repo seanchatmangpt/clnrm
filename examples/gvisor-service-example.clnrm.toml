@@ -3,7 +3,7 @@
 # This example demonstrates using gVisor-native service management
 # to run tests against SurrealDB without testcontainers dependency.
 
-[test.metadata]
+[test]
 name = "gvisor_service_example"
 description = "Example of gVisor-native service management"
 timeout = "60s"
@@ -68,7 +68,7 @@ command = [
     "--command", "INFO FOR DB;"
 ]
 expected_output_regex = "DEFINE"
-service = "my_surrealdb"
+container = "my_surrealdb"
 
 [[steps]]
 name = "test_postgres_connection"
@@ -81,7 +81,7 @@ command = [
     "-c", "SELECT version();"
 ]
 expected_output_regex = "PostgreSQL"
-service = "postgres_db"
+container = "postgres_db"
 
 [assertions]
 services_should_start = ["my_surrealdb", "postgres_db"]

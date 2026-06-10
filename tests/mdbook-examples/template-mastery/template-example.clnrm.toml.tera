@@ -3,7 +3,16 @@
 # This example demonstrates Tera template usage with variable resolution
 # and macro composition, following clnrm v1.0.1 patterns.
 
-{% import "_macros.toml.tera" as m %}
+[vars]
+svc = "testapi"
+env = "dev"
+version = "1.0.1"
+image = "nginx:alpine"
+port = 80
+otel_enabled = true
+exporter = "otlp"
+endpoint = "http://localhost:4318"
+freeze_clock = "2026-05-30T12:00:00Z"
 
 [test.metadata]
 name = "{{ svc }}_template_example"
@@ -31,20 +40,36 @@ sample_ratio = 1.0
 resources = { "service.name" = "{{ svc }}", "env" = "{{ env }}" }
 {% endif %}
 
-# Macro usage for span validation
-{{ m::span("clnrm.run", kind="internal", attrs={"result":"pass"}) }}
+# Span validation expectations
+[[expect.span]]
+name = "clnrm.run"
+kind = "internal"
+attrs.all = { "result" = "pass" }
 
-{{ m::span("{{ svc }}.start", kind="internal", attrs={"service":"{{ svc }}"}) }}
+[[expect.span]]
+name = "{{ svc }}.start"
+kind = "internal"
+attrs.all = { "service" = "{{ svc }}" }
 
-{{ m::span("{{ svc }}.exec", kind="internal", attrs={"command":"test"}) }}
+[[expect.span]]
+name = "{{ svc }}.exec"
+kind = "internal"
+attrs.all = { "command" = "test" }
 
-{{ m::span("{{ svc }}.stop", kind="internal") }}
+[[expect.span]]
+name = "{{ svc }}.stop"
+kind = "internal"
 
-# Service lifecycle using macro
-{{ m::lifecycle("{{ svc }}") }}
+# Service lifecycle order constraints
+[expect.order]
+must_precede = [
+  ["{{ svc }}.start", "{{ svc }}.exec"],
+  ["{{ svc }}.exec", "{{ svc }}.stop"]
+]
 
-# Count validation using macro
-{{ m::count("internal", 4, 4) }}
+# Count validation
+[expect.count]
+by_kind.internal = { min = 4, max = 4 }
 
 # Test steps
 [[steps]]

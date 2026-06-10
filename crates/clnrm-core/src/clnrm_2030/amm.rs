@@ -13,6 +13,10 @@ impl NDimensionalAMM {
         }
     }
 
+    pub fn reserves(&self) -> &HashMap<String, f64> {
+        &self.reserves
+    }
+
     /// Calculates the current invariant (k = product of all reserves).
     pub fn invariant(&self) -> f64 {
         if self.reserves.is_empty() {
@@ -43,7 +47,7 @@ impl NDimensionalAMM {
                 return Err(format!("Token {} not in AMM", token));
             }
         }
-        
+
         // Ensure proportional addition
         let first_token = amounts.keys().next().unwrap();
         let ratio = amounts[first_token] / self.reserves[first_token];
@@ -80,7 +84,12 @@ impl NDimensionalAMM {
     }
 
     /// Swaps an `input_amount` of `input_token` for `output_token` while preserving the invariant product.
-    pub fn swap(&mut self, input_token: &str, input_amount: f64, output_token: &str) -> Result<f64, String> {
+    pub fn swap(
+        &mut self,
+        input_token: &str,
+        input_amount: f64,
+        output_token: &str,
+    ) -> Result<f64, String> {
         if input_amount <= 0.0 {
             return Err("Swap amount must be positive".into());
         }
@@ -95,7 +104,7 @@ impl NDimensionalAMM {
         let output_reserve = self.reserves[output_token];
 
         let new_input_reserve = input_reserve + input_amount;
-        
+
         // R_out_new = (R_in_old * R_out_old) / R_in_new
         let new_output_reserve = (input_reserve * output_reserve) / new_input_reserve;
         let output_amount = output_reserve - new_output_reserve;

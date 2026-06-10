@@ -4,7 +4,7 @@
 //! false positives by failing when telemetry is broken.
 
 use clnrm_core::telemetry::validators::*;
-use clnrm_core::telemetry::{span_storage, ExportMonitor, OtelConfig, Export, init_otel};
+use clnrm_core::telemetry::{init_otel, span_storage, Export, ExportMonitor, OtelConfig};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
@@ -19,8 +19,14 @@ fn test_weaver_health_check_detects_installation() {
 
     // Assert
     match health {
-        WeaverHealth::Healthy { version, registry_valid } => {
-            println!("✅ Weaver is healthy: version={}, registry_valid={}", version, registry_valid);
+        WeaverHealth::Healthy {
+            version,
+            registry_valid,
+        } => {
+            println!(
+                "✅ Weaver is healthy: version={}, registry_valid={}",
+                version, registry_valid
+            );
             assert!(registry_valid, "Registry should be valid");
         }
         WeaverHealth::Degraded { reason } => {
@@ -28,7 +34,10 @@ fn test_weaver_health_check_detects_installation() {
             // Degraded is acceptable for testing (may not have registry)
         }
         WeaverHealth::Unavailable { reason } => {
-            panic!("❌ Weaver is unavailable: {}. Install with: cargo install weaver-cli", reason);
+            panic!(
+                "❌ Weaver is unavailable: {}. Install with: cargo install weaver-cli",
+                reason
+            );
         }
     }
 }
@@ -85,7 +94,10 @@ fn test_otlp_export_validation_with_monitor() {
     let validation = verify_otlp_export(Some(&monitor), 1).expect("Validation failed");
 
     // Assert
-    assert!(validation.is_functional, "Should be functional with successful exports");
+    assert!(
+        validation.is_functional,
+        "Should be functional with successful exports"
+    );
     assert_eq!(validation.spans_exported, 3);
     assert_eq!(validation.export_failures, 0);
     assert!(validation.is_healthy(60));
@@ -106,10 +118,16 @@ fn test_otlp_export_validation_detects_failures() {
     let validation = verify_otlp_export(Some(&monitor), 2).expect("Validation failed");
 
     // Assert - should not be healthy with failures
-    assert!(!validation.is_healthy(60), "Should not be healthy with export failures");
+    assert!(
+        !validation.is_healthy(60),
+        "Should not be healthy with export failures"
+    );
     assert_eq!(validation.export_failures, 2);
     assert!(validation.diagnostics.contains("failures"));
-    println!("✅ Correctly detected export failures: {}", validation.diagnostics);
+    println!(
+        "✅ Correctly detected export failures: {}",
+        validation.diagnostics
+    );
 }
 
 #[test]
@@ -182,7 +200,10 @@ fn test_telemetry_quality_validation_with_spans() {
     assert_eq!(quality.completeness, 1.0);
     assert!(quality.is_acceptable(0.9));
     assert!(quality.missing_attributes.is_empty());
-    println!("✅ Telemetry quality validation passed: {:.1}% complete", quality.completeness * 100.0);
+    println!(
+        "✅ Telemetry quality validation passed: {:.1}% complete",
+        quality.completeness * 100.0
+    );
 }
 
 #[test]
@@ -212,9 +233,7 @@ fn test_telemetry_quality_detects_missing_attributes() {
         name: Cow::Owned("incomplete_span".to_string()),
         start_time: SystemTime::now(),
         end_time: SystemTime::now(),
-        attributes: vec![
-            KeyValue::new("some.other", "attribute"),
-        ],
+        attributes: vec![KeyValue::new("some.other", "attribute")],
         dropped_attributes_count: 0,
         events: SpanEvents::default(),
         links: SpanLinks::default(),
@@ -234,9 +253,16 @@ fn test_telemetry_quality_detects_missing_attributes() {
     assert_eq!(quality.spans_missing_attrs, 1);
     assert_eq!(quality.completeness, 0.0);
     assert!(!quality.is_acceptable(0.9));
-    assert!(quality.missing_attributes.contains(&"container.id".to_string()));
-    assert!(quality.missing_attributes.contains(&"test.isolated".to_string()));
-    println!("✅ Correctly detected missing attributes: {:?}", quality.missing_attributes);
+    assert!(quality
+        .missing_attributes
+        .contains(&"container.id".to_string()));
+    assert!(quality
+        .missing_attributes
+        .contains(&"test.isolated".to_string()));
+    println!(
+        "✅ Correctly detected missing attributes: {:?}",
+        quality.missing_attributes
+    );
 }
 
 #[test]
@@ -246,8 +272,7 @@ fn test_comprehensive_validation_no_export_monitor() {
     let required = vec!["container.id", "test.isolated"];
 
     // Act
-    let report = validate_complete(None, &registry_path, &required, 1)
-        .expect("Validation failed");
+    let report = validate_complete(None, &registry_path, &required, 1).expect("Validation failed");
 
     // Assert - should fail because no export monitoring
     assert!(!report.is_valid());
@@ -301,8 +326,8 @@ fn test_comprehensive_validation_with_healthy_system() {
     span_storage::store_span(span);
 
     // Act
-    let report = validate_complete(Some(&monitor), &registry_path, &required, 1)
-        .expect("Validation failed");
+    let report =
+        validate_complete(Some(&monitor), &registry_path, &required, 1).expect("Validation failed");
 
     // Assert
     println!("Export: {:?}", report.export_validation);
@@ -312,8 +337,14 @@ fn test_comprehensive_validation_with_healthy_system() {
 
     // Note: This may not be fully valid if Weaver isn't installed,
     // but at least export and quality should be good
-    assert!(report.export_validation.is_healthy(60), "Export should be healthy");
-    assert!(report.telemetry_quality.is_acceptable(0.9), "Quality should be acceptable");
+    assert!(
+        report.export_validation.is_healthy(60),
+        "Export should be healthy"
+    );
+    assert!(
+        report.telemetry_quality.is_acceptable(0.9),
+        "Quality should be acceptable"
+    );
 }
 
 #[test]
@@ -374,7 +405,8 @@ async fn test_validator_usage_example() {
 
     // Act - Run some code that emits telemetry
     {
-        let span = tracing::info_span!("test_operation",
+        let span = tracing::info_span!(
+            "test_operation",
             test.name = "example_test",
             test.isolated = true
         );
@@ -394,13 +426,16 @@ async fn test_validator_usage_example() {
     let registry_path = PathBuf::from("registry");
     let required = vec!["test.name"];
 
-    let report = validate_complete(Some(&monitor), &registry_path, &required, 0)
-        .expect("Validation failed");
+    let report =
+        validate_complete(Some(&monitor), &registry_path, &required, 0).expect("Validation failed");
 
     println!("\n📊 Validation Report:");
     println!("  Export: {}", report.export_validation.diagnostics);
     println!("  Weaver: {:?}", report.weaver_health);
-    println!("  Quality: {:.1}% complete", report.telemetry_quality.completeness * 100.0);
+    println!(
+        "  Quality: {:.1}% complete",
+        report.telemetry_quality.completeness * 100.0
+    );
     println!("  Summary: {}", report.summary());
 
     // Note: We can't assert is_valid() because Weaver may not be installed in CI

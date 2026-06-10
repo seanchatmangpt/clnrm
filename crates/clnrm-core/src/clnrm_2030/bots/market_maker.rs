@@ -1,9 +1,9 @@
+use rand::Rng;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
-use rand::Rng;
 
 use crate::clnrm_2030::amm::NDimensionalAMM;
 

@@ -27,6 +27,7 @@ async fn create_test_environment() -> clnrm_core::Result<CleanroomEnvironment> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_async_service_start() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -53,6 +54,7 @@ async fn test_async_service_start() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_async_service_stop() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -80,6 +82,7 @@ async fn test_async_service_stop() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_async_service_lifecycle() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -108,6 +111,7 @@ async fn test_async_service_lifecycle() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_async_multiple_service_starts() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -142,6 +146,7 @@ async fn test_async_multiple_service_starts() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_concurrent_service_starts() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -186,6 +191,7 @@ async fn test_concurrent_service_starts() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_concurrent_command_execution() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -221,6 +227,7 @@ async fn test_concurrent_command_execution() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_concurrent_mixed_operations() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -261,6 +268,7 @@ async fn test_concurrent_mixed_operations() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_cpu_efficient_service_operations() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -298,6 +306,7 @@ async fn test_cpu_efficient_service_operations() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_no_blocking_on_async_operations() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -325,6 +334,7 @@ async fn test_no_blocking_on_async_operations() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_plugin_registration() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -341,6 +351,7 @@ async fn test_plugin_registration() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_multiple_plugin_registrations() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -359,6 +370,7 @@ async fn test_multiple_plugin_registrations() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_service_restart() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -395,6 +407,7 @@ async fn test_service_restart() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_start_nonexistent_service() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -409,6 +422,7 @@ async fn test_start_nonexistent_service() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_execute_on_unstarted_service() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -431,6 +445,7 @@ async fn test_execute_on_unstarted_service() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_double_stop_service() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -456,6 +471,7 @@ async fn test_double_stop_service() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_rapid_service_cycling() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -483,6 +499,7 @@ async fn test_rapid_service_cycling() -> clnrm_core::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_concurrent_service_lifecycle() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;
@@ -527,6 +544,7 @@ async fn test_concurrent_service_lifecycle() -> clnrm_core::Result<()> {
 // ============================================================================
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_async_plugin_full_workflow() -> clnrm_core::Result<()> {
     // Arrange
     let env = create_test_environment().await?;

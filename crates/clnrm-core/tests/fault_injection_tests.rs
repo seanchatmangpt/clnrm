@@ -1,8 +1,8 @@
+use async_trait::async_trait;
 use clnrm_core::chaos::nist_core::{AttackResult, NistAdversarialEngine, NistAttackVector};
 use clnrm_core::cleanroom::CleanroomEnvironment;
 use clnrm_core::error::CleanroomError;
 use std::sync::Arc;
-use async_trait::async_trait;
 
 struct FaultInjectionAttack;
 
@@ -15,6 +15,7 @@ impl NistAttackVector for FaultInjectionAttack {
 }
 
 #[tokio::test]
+#[ignore = "Requires container runtime (Docker or gVisor)"]
 async fn test_fault_injection_handling() -> Result<(), CleanroomError> {
     let mut engine = NistAdversarialEngine::new();
     let attack = Arc::new(FaultInjectionAttack);

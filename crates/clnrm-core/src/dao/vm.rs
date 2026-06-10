@@ -72,7 +72,7 @@ impl Vm {
     /// Executes a given sequence of bytecode.
     pub fn execute(&mut self, code: &[u8]) -> Result<(), String> {
         let mut pc = 0;
-        
+
         while pc < code.len() {
             let op_byte = code[pc];
             let opcode = Opcode::try_from(op_byte)?;
@@ -110,7 +110,10 @@ impl Vm {
                     self.stack.push(val);
                 }
                 Opcode::Store => {
-                    let addr = self.stack.pop().ok_or("Stack underflow on STORE (address)")?;
+                    let addr = self
+                        .stack
+                        .pop()
+                        .ok_or("Stack underflow on STORE (address)")?;
                     let val = self.stack.pop().ok_or("Stack underflow on STORE (value)")?;
                     self.memory.insert(addr, val);
                 }
@@ -123,8 +126,14 @@ impl Vm {
                     continue; // Skip the default pc += 1
                 }
                 Opcode::Jumpi => {
-                    let dest = self.stack.pop().ok_or("Stack underflow on JUMPI (destination)")?;
-                    let cond = self.stack.pop().ok_or("Stack underflow on JUMPI (condition)")?;
+                    let dest = self
+                        .stack
+                        .pop()
+                        .ok_or("Stack underflow on JUMPI (destination)")?;
+                    let cond = self
+                        .stack
+                        .pop()
+                        .ok_or("Stack underflow on JUMPI (condition)")?;
                     if cond != 0 {
                         if dest as usize >= code.len() {
                             return Err(format!("Invalid JUMPI destination: {}", dest));
@@ -177,7 +186,7 @@ mod tests {
         let mut vm = Vm::new();
         // Stack layout for STORE: [..., val, addr] (top is addr)
         // Let's store value 100 at address 50
-        
+
         // PUSH 100 (value)
         let mut code = vec![Opcode::Push as u8];
         code.extend_from_slice(&100u64.to_be_bytes());

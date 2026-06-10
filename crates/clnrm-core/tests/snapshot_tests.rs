@@ -1,5 +1,5 @@
+use clnrm_core::environment::sigma::{ContentHash, SemVer, SigmaBase, TelemetryDef};
 use clnrm_core::service::registry::ServiceMetadata;
-use clnrm_core::environment::sigma::{SigmaBase, SemVer, ContentHash, TelemetryDef};
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -11,15 +11,15 @@ async fn test_service_metadata_export_env_snapshot() {
     );
     metadata.add_port(8080, 10000);
     metadata.add_endpoint("url".to_string(), "http://localhost:10000".to_string());
-    
+
     let env = metadata.export_env();
-    
+
     // Sort to ensure deterministic output
     let mut sorted_env: Vec<_> = env.into_iter().collect();
     sorted_env.sort_by(|a, b| a.0.cmp(&b.0));
-    
+
     let json_output = serde_json::to_string_pretty(&sorted_env).expect("Failed to serialize");
-    
+
     let expected_snapshot = r#"[
   [
     "TEST_SERVICE_HOST",
@@ -38,6 +38,9 @@ async fn test_service_metadata_export_env_snapshot() {
     "http://localhost:10000"
   ]
 ]"#;
-    
-    assert_eq!(json_output, expected_snapshot, "Snapshot mismatch for ServiceRegistry::export_env()");
+
+    assert_eq!(
+        json_output, expected_snapshot,
+        "Snapshot mismatch for ServiceRegistry::export_env()"
+    );
 }

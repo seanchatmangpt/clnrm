@@ -20,11 +20,7 @@ impl fmt::Display for SandboxError {
                 "Illegal memory access at address {}, sandbox memory size is {}",
                 address, limit
             ),
-            SandboxError::CapabilityExceeded(cap) => write!(
-                f,
-                "Capability exceeded: {}",
-                cap
-            ),
+            SandboxError::CapabilityExceeded(cap) => write!(f, "Capability exceeded: {}", cap),
         }
     }
 }
@@ -103,14 +99,18 @@ impl VmSandbox {
     pub fn execute_step(&mut self) -> Result<(), SandboxError> {
         self.execution_steps = self.execution_steps.saturating_add(1);
         if self.execution_steps > self.limits.max_execution_steps {
-            return Err(SandboxError::CapabilityExceeded("Max execution steps reached"));
+            return Err(SandboxError::CapabilityExceeded(
+                "Max execution steps reached",
+            ));
         }
         Ok(())
     }
 
     pub fn request_network(&self) -> Result<(), SandboxError> {
         if !self.limits.allow_network {
-            return Err(SandboxError::CapabilityExceeded("Network access is not allowed"));
+            return Err(SandboxError::CapabilityExceeded(
+                "Network access is not allowed",
+            ));
         }
         Ok(())
     }

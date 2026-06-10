@@ -82,7 +82,7 @@ impl ServiceRegistry {
 
     /// Initialize default plugins
     pub fn with_default_plugins(mut self) -> Self {
-        use crate::services::{ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin};
+        use crate::services::{ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin, generic::GenericContainerPlugin};
 
         // Register core plugins (gVisor-based, no Docker required)
         {
@@ -390,7 +390,7 @@ impl Default for CleanroomEnvironment {
     /// handling impossible. Therefore, this implementation is explicitly marked as test-only
     /// and uses MockBackend for hermetic testing without external dependencies.
     fn default() -> Self {
-        use crate::backend::mock_backend;
+        // No mock_backend used anymore
 
         // TEST-ONLY: Uses gVisor-compatible mock backend for hermetic testing
         // No Docker dependency required
@@ -475,10 +475,10 @@ impl CleanroomEnvironment {
     /// # Errors
     /// * Returns error if configuration is invalid
     pub async fn with_config(config: Option<crate::config::CleanroomConfig>) -> Result<Self> {
-        use crate::backend::mock_backend;
+        // No mock_backend used anymore
 
         // Extract default image from config (informational only with gVisor backend)
-        let _default_image = config
+        let default_image = config
             .as_ref()
             .map(|c| c.containers.default_image.clone())
             .unwrap_or_else(|| "alpine:latest".to_string());

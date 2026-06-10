@@ -157,7 +157,8 @@ impl NDimensionalToken {
     pub fn apply_mint(&mut self, operation: Minting) -> Result<(), TokenError> {
         // Validate all components before state changes
         for (dim_id, amount) in &operation.vector.components {
-            let dim = self.dimensions
+            let dim = self
+                .dimensions
                 .get(dim_id)
                 .ok_or(TokenError::DimensionNotFound(*dim_id))?;
 
@@ -173,9 +174,15 @@ impl NDimensionalToken {
         }
 
         // Apply mutations
-        let account = self.accounts.entry(operation.to).or_insert_with(TokenVector::new);
+        let account = self
+            .accounts
+            .entry(operation.to)
+            .or_insert_with(TokenVector::new);
         for (dim_id, amount) in operation.vector.components {
-            let dim = self.dimensions.get_mut(&dim_id).expect("Dimension verified");
+            let dim = self
+                .dimensions
+                .get_mut(&dim_id)
+                .expect("Dimension verified");
             dim.current_supply = dim.current_supply.saturating_add(amount);
 
             account.add(dim_id, amount);
@@ -186,7 +193,8 @@ impl NDimensionalToken {
 
     /// Applies a multidimensional burning operation, removing assets across dimensions.
     pub fn apply_burn(&mut self, operation: Burning) -> Result<(), TokenError> {
-        let account = self.accounts
+        let account = self
+            .accounts
             .get(&operation.from)
             .ok_or(TokenError::AccountNotFound(operation.from))?;
 
@@ -206,9 +214,15 @@ impl NDimensionalToken {
         }
 
         // Apply mutations
-        let account = self.accounts.get_mut(&operation.from).expect("Account verified");
+        let account = self
+            .accounts
+            .get_mut(&operation.from)
+            .expect("Account verified");
         for (dim_id, amount) in operation.vector.components {
-            let dim = self.dimensions.get_mut(&dim_id).expect("Dimension verified");
+            let dim = self
+                .dimensions
+                .get_mut(&dim_id)
+                .expect("Dimension verified");
             dim.current_supply = dim.current_supply.saturating_sub(amount);
 
             account.subtract(dim_id, amount);
@@ -220,7 +234,8 @@ impl NDimensionalToken {
     /// Applies a multidimensional transfer operation, atomically shifting vectors.
     pub fn apply_transfer(&mut self, operation: Transferring) -> Result<(), TokenError> {
         // Validation phase
-        let from_account = self.accounts
+        let from_account = self
+            .accounts
             .get(&operation.from)
             .ok_or(TokenError::AccountNotFound(operation.from))?;
 
@@ -239,13 +254,19 @@ impl NDimensionalToken {
         }
 
         // Mutation phase - subtract from sender
-        let from_account = self.accounts.get_mut(&operation.from).expect("Account verified");
+        let from_account = self
+            .accounts
+            .get_mut(&operation.from)
+            .expect("Account verified");
         for (dim_id, amount) in &operation.vector.components {
             from_account.subtract(*dim_id, *amount);
         }
 
         // Mutation phase - add to receiver
-        let to_account = self.accounts.entry(operation.to).or_insert_with(TokenVector::new);
+        let to_account = self
+            .accounts
+            .entry(operation.to)
+            .or_insert_with(TokenVector::new);
         for (dim_id, amount) in operation.vector.components {
             to_account.add(dim_id, amount);
         }

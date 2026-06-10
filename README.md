@@ -39,7 +39,22 @@ brew install gvisor
 curl -fsSL https://gvisor.dev/install | bash
 ```
 
-### 2. Run Tests
+### 2. Install clnrm
+
+#### Via Homebrew (macOS & Linux)
+
+```bash
+brew tap seanchatmangpt/clnrm
+brew install clnrm
+```
+
+#### From Source
+
+```bash
+cargo install --path crates/clnrm-cli
+```
+
+### 3. Run Tests
 
 ```bash
 # Run all tests in a directory
@@ -47,6 +62,7 @@ clnrm run tests/
 
 # Run a specific test
 clnrm run tests/my_test.clnrm.toml
+```
 
 # Validate configuration without running
 clnrm validate tests/

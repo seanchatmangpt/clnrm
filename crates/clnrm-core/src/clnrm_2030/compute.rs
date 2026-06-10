@@ -39,7 +39,8 @@ impl ComputeMarket {
     pub fn update_network_utilization(&mut self, utilization_percentage: f64) {
         // Dynamic pricing model based on DAO utilization
         if utilization_percentage > 0.8 {
-            self.base_demand_multiplier = 1.0 + (utilization_percentage - 0.8) * 5.0; // Surge pricing
+            self.base_demand_multiplier = 1.0 + (utilization_percentage - 0.8) * 5.0;
+        // Surge pricing
         } else {
             self.base_demand_multiplier = 1.0;
         }
@@ -51,7 +52,10 @@ impl ComputeMarket {
     }
 
     pub fn lease(&mut self, provider: &NodeId) -> Result<ComputeContract, &'static str> {
-        let contract = self.inventory.get_mut(provider).ok_or("Provider not found")?;
+        let contract = self
+            .inventory
+            .get_mut(provider)
+            .ok_or("Provider not found")?;
         if !contract.available {
             return Err("Compute resources currently leased");
         }

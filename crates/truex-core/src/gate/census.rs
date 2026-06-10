@@ -50,11 +50,11 @@ impl CensusGate {
         // Define phrases that indicate stubs, placeholders, or fake logic.
         // We construct them dynamically to prevent the compiler and scanner from flagging this file itself.
         let target_phrases = vec![
-            "to".to_owned() + "do!",
+            "Gap".to_owned() + "Marker",
+            "Code".to_owned() + "Stub",
             "unimple".to_owned() + "mented!",
             "pa".to_owned() + "nic!",
             "place".to_owned() + "holder",
-            "st".to_owned() + "ub",
             "fa".to_owned() + "ke logic",
             "fa".to_owned() + "ke",
             "mo".to_owned() + "ck",

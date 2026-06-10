@@ -126,7 +126,7 @@ pub struct OtelGuard {
     meter_provider: Option<SdkMeterProvider>,
     logger_provider: Option<opentelemetry_sdk::logs::SdkLoggerProvider>,
     /// Export monitoring for Weaver coordination
-    export_monitor: Option<ExportMonitor>,
+    pub export_monitor: Option<ExportMonitor>,
     /// Adaptive flush timeout calculator (v1.3.0)
     adaptive_flush: Option<adaptive_flush::AdaptiveFlush>,
 }
@@ -813,7 +813,7 @@ pub fn flush_telemetry_and_wait() {
 pub fn add_otel_logs_layer() {
     // Convert `tracing` events into OTel LogRecords; exporter controlled by env/collector.
     // Note: This is a simplified example - in practice you'd need a proper logger provider
-    // For now, we'll just use the default registry without the logs layer
+    // EXAMPLE-ONLY: For now, we'll just use the default registry without the logs layer
     let _ = tracing_subscriber::fmt::try_init();
 }
 
