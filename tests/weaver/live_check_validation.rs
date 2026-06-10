@@ -429,11 +429,11 @@ fn test_weaver_registry_check() {
                 .unwrap()
         });
 
-        if output.status.success() {
+    if output.status.success() {
         println!("Weaver registry validation succeeded");
-        } else {
+    } else {
         println!("Weaver registry validation skipped or failed");
-        }
+    }
 }
 
 // ============================================================================

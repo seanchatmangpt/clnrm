@@ -61,7 +61,10 @@ mod tests {
 
         // Assert - OTel Rust might allow it, just ensure it exported
         let spans = collector.get_spans();
-        assert!(!spans.is_empty(), "Span with null bytes should still export");
+        assert!(
+            !spans.is_empty(),
+            "Span with null bytes should still export"
+        );
     }
 
     #[tokio::test]

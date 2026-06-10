@@ -427,12 +427,32 @@ mod tests {
 
         // Assert - Hierarchy maintained
         let spans = collector.get_spans();
-        
-        let parent = spans.iter().find(|s| s.name == "test.execution" || s.name == "parent-test" || s.name == "test_execution")
-            .unwrap_or_else(|| panic!("Parent span not found. Available spans: {:?}", spans.iter().map(|s| &s.name).collect::<Vec<_>>()));
-            
-        let child = spans.iter().find(|s| s.name == "container.lifecycle" || s.name == "container-child" || s.name == "container_lifecycle")
-            .unwrap_or_else(|| panic!("Child span not found. Available spans: {:?}", spans.iter().map(|s| &s.name).collect::<Vec<_>>()));
+
+        let parent = spans
+            .iter()
+            .find(|s| {
+                s.name == "test.execution" || s.name == "parent-test" || s.name == "test_execution"
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "Parent span not found. Available spans: {:?}",
+                    spans.iter().map(|s| &s.name).collect::<Vec<_>>()
+                )
+            });
+
+        let child = spans
+            .iter()
+            .find(|s| {
+                s.name == "container.lifecycle"
+                    || s.name == "container-child"
+                    || s.name == "container_lifecycle"
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "Child span not found. Available spans: {:?}",
+                    spans.iter().map(|s| &s.name).collect::<Vec<_>>()
+                )
+            });
 
         assert!(
             child.attributes.contains_key("parent.span.id"),
