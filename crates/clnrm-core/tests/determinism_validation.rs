@@ -9,7 +9,7 @@
 
 #![cfg(feature = "docker-integration")]
 
-use clnrm_core::backend::{Backend, Cmd, TestcontainerBackend};
+use clnrm_core::backend::{Backend, Cmd, GvisorBackend};
 use clnrm_core::config::DeterminismConfig;
 use clnrm_core::determinism::DeterminismEngine;
 use clnrm_core::error::Result;
@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 /// Run a command multiple times and collect outputs
 fn run_multiple_times(
-    backend: &TestcontainerBackend,
+    backend: &GvisorBackend,
     cmd: &Cmd,
     iterations: usize,
 ) -> Result<Vec<String>> {
@@ -43,7 +43,7 @@ fn test_deterministic_random_seed() -> Result<()> {
     };
 
     let engine = Arc::new(DeterminismEngine::new(config)?);
-    let backend = TestcontainerBackend::new("alpine:latest")?.with_determinism(engine.clone());
+    let backend = GvisorBackend::new("alpine:latest")?.with_determinism(engine.clone());
 
     // Command to read RANDOM env var
     let cmd = Cmd {
@@ -89,9 +89,9 @@ fn test_deterministic_random_seed_different_values() -> Result<()> {
     let engine1 = Arc::new(DeterminismEngine::new(config1)?);
     let engine2 = Arc::new(DeterminismEngine::new(config2)?);
 
-    let backend1 = TestcontainerBackend::new("alpine:latest")?.with_determinism(engine1);
+    let backend1 = GvisorBackend::new("alpine:latest")?.with_determinism(engine1);
 
-    let backend2 = TestcontainerBackend::new("alpine:latest")?.with_determinism(engine2);
+    let backend2 = GvisorBackend::new("alpine:latest")?.with_determinism(engine2);
 
     let cmd = Cmd {
         bin: "sh".to_string(),
@@ -125,7 +125,7 @@ fn test_deterministic_ports_env() -> Result<()> {
     };
 
     let engine = Arc::new(DeterminismEngine::new(config)?);
-    let backend = TestcontainerBackend::new("alpine:latest")?.with_determinism(engine);
+    let backend = GvisorBackend::new("alpine:latest")?.with_determinism(engine);
 
     let cmd = Cmd {
         bin: "sh".to_string(),
@@ -272,7 +272,7 @@ fn test_clock_freezing() -> Result<()> {
     };
 
     let engine = Arc::new(DeterminismEngine::new(config)?);
-    let backend = TestcontainerBackend::new("alpine:latest")?.with_determinism(engine);
+    let backend = GvisorBackend::new("alpine:latest")?.with_determinism(engine);
 
     let cmd = Cmd {
         bin: "sh".to_string(),
