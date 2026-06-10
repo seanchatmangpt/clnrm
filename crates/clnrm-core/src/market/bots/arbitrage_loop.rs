@@ -1,5 +1,5 @@
-use crate::clnrm_2030::amm::NDimensionalAMM;
-use crate::clnrm_2030::router::InterDimensionalRouter;
+use crate::market::amm::NDimensionalAMM;
+use crate::market::router::InterDimensionalRouter;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;

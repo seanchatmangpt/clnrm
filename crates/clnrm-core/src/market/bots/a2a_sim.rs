@@ -1,4 +1,4 @@
-use crate::clnrm_2030::a2a::{AgentBid, AgentId, AgentOrderbook, AgentTask, TaskType};
+use crate::market::a2a::{AgentBid, AgentId, AgentOrderbook, AgentTask, TaskType};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::sync::Arc;

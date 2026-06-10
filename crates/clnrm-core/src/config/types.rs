@@ -143,6 +143,12 @@ pub struct TestConfig {
     /// Determinism configuration (v0.6.0)
     #[serde(default)]
     pub determinism: Option<DeterminismConfig>,
+    /// Truex Configuration (v2.0.0 / 2030)
+    #[serde(default)]
+    pub truex: Option<TruexConfig>,
+    /// CLNRM 2030 AMM Configuration (v2.0.0 / 2030)
+    #[serde(default)]
+    pub market: Option<MarketConfig>,
     /// Resource limits (v0.6.0)
     #[serde(default)]
     pub limits: Option<LimitsConfig>,
@@ -780,4 +786,16 @@ impl PolicyConfig {
 
         Ok(())
     }
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Default)]
+pub struct MarketConfig {
+    pub enable_amm: Option<bool>,
+    pub target_inflation: Option<f64>,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone, Default)]
+pub struct TruexConfig {
+    pub enable_admission_kernel: Option<bool>,
+    pub enforce_pqc_seals: Option<bool>,
 }

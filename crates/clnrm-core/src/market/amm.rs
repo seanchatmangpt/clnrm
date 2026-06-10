@@ -1,20 +1,44 @@
 use std::collections::HashMap;
 
-/// An N-Dimensional Automated Market Maker using the invariant product surface (x1 * x2 * ... * xn = k).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
+pub enum AssetType {
+    Token,
+    ComputeContract,
+    ProverBid,
+    OracleDataPoint,
+    SybilRegistry,
+}
+
+#[derive(Debug, Clone)]
 pub struct NDimensionalAMM {
     reserves: HashMap<String, f64>,
+    asset_types: HashMap<String, AssetType>,
+}
+
+impl Default for NDimensionalAMM {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NDimensionalAMM {
     pub fn new() -> Self {
         Self {
             reserves: HashMap::new(),
+            asset_types: HashMap::new(),
         }
     }
 
     pub fn reserves(&self) -> &HashMap<String, f64> {
         &self.reserves
+    }
+
+    pub fn asset_types(&self) -> &HashMap<String, AssetType> {
+        &self.asset_types
+    }
+
+    pub fn register_asset(&mut self, token: &str, asset_type: AssetType) {
+        self.asset_types.insert(token.to_string(), asset_type);
     }
 
     /// Calculates the current invariant (k = product of all reserves).

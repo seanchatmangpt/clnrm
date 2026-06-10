@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 
-use crate::clnrm_2030::oracle::{DecentralizedOracle, OracleDataPoint};
+use crate::market::oracle::{DecentralizedOracle, OracleDataPoint};
 
 /// Simulator that continuously generates simulated real-world metric data
 /// and submits it to the DecentralizedOracle every 5 seconds.

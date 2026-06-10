@@ -25,6 +25,7 @@ pub mod error;
 pub mod executor; // v2.0: New executor with docker exec support
 pub mod formatting;
 pub mod macros;
+pub mod market;
 pub mod metrics;
 pub mod otel;
 pub mod phases; // v1.8.0: Phases 8-10 determinism, conformance, & contracts

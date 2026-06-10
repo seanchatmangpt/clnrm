@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 
-use crate::clnrm_2030::amm::NDimensionalAMM;
+use crate::market::amm::NDimensionalAMM;
 
 pub struct AutonomousMarketMaker {
     pub amm: Arc<Mutex<NDimensionalAMM>>,

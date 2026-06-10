@@ -2,8 +2,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration};
 
-use crate::clnrm_2030::oracle::DecentralizedOracle;
-use crate::clnrm_2030::treasury::AlgorithmicTreasury;
+use crate::market::oracle::DecentralizedOracle;
+use crate::market::treasury::AlgorithmicTreasury;
 
 pub struct TreasuryLoop {
     treasury: Arc<RwLock<AlgorithmicTreasury>>,
