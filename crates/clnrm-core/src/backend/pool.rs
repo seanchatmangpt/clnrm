@@ -1137,6 +1137,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Requires container runtime"]
     async fn test_pooled_container_timeout() {
         let backend = GvisorBackend::new("alpine:latest").expect("Failed to create backend");
         let container = PooledContainer::new(backend, None);
@@ -1145,6 +1146,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Requires container runtime"]
     async fn test_pool_acquire_release_cycle() {
         let config = PoolConfig {
             max_size: 10,
@@ -1176,6 +1178,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Requires container runtime"]
     async fn test_parallel_prewarm_faster_than_sequential() {
         use std::time::Instant;
 
@@ -1225,6 +1228,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Requires container runtime"]
     async fn test_health_check_doesnt_block_acquire() {
         use std::time::Instant;
         use tokio::time::sleep;
@@ -1270,6 +1274,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Requires container runtime"]
     async fn test_concurrent_acquire_during_health_check() {
         use tokio::time::sleep;
 
@@ -1324,6 +1329,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Requires container runtime"]
     async fn test_pool_acquire_returns_error_not_panic_on_logic_failure() {
         // Arrange: This test validates that pool.acquire() returns a proper
         // CleanroomError instead of panicking when internal logic fails.

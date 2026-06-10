@@ -487,6 +487,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "Requires active OTel subscriber"]
     fn test_gvisor_span_builders_create_valid_spans() {
         // Initialize tracing subscriber for test environment
         let _ = tracing_subscriber::fmt().with_test_writer().try_init();

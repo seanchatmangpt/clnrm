@@ -10,6 +10,7 @@ mod tests {
     use std::time::Duration;
 
     #[tokio::test]
+    #[ignore = "Requires container runtime"]
     async fn test_jit_container_creation_audit() {
         // Configure pool with a high min_idle to simulate potential over-production
         let config = PoolConfig {
