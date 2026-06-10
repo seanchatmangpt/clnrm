@@ -82,7 +82,9 @@ impl ServiceRegistry {
 
     /// Initialize default plugins
     pub fn with_default_plugins(mut self) -> Self {
-        use crate::services::{ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin, generic::GenericContainerPlugin};
+        use crate::services::{
+            generic::GenericContainerPlugin, ollama::OllamaPlugin, tgi::TgiPlugin, vllm::VllmPlugin,
+        };
 
         // Register core plugins (gVisor-based, no Docker required)
         {
