@@ -3,7 +3,8 @@
 //! Provides deterministic RNG using StdRng with fixed seeds.
 
 use rand::rngs::StdRng;
-use rand::{RngCore, SeedableRng};
+use rand::SeedableRng;
+use rand::RngCore;
 
 /// Create a seeded RNG for deterministic random number generation
 ///

@@ -25,7 +25,7 @@ impl AutonomousMarketMaker {
     }
 
     pub async fn run(&self) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Initial liquidity injection if AMM is completely empty
         {

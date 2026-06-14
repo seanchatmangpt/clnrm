@@ -38,7 +38,7 @@ impl OracleDataFeed {
                     .as_secs();
 
                 let (compute_utilization, token_price, bandwidth_usage) = {
-                    let mut rng = rand::thread_rng();
+                    let mut rng = rand::rng();
                     (
                         rng.gen_range(10.0..95.0),
                         rng.gen_range(100.0..120.0),
