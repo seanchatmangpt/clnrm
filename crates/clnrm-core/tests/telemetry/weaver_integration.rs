@@ -178,12 +178,18 @@ fn check_convention_ok(report: &Value, convention: &str) -> bool {
 }
 
 fn export_incomplete_span() {
-    // This would create a span without required attributes
-    // to test Weaver's detection capabilities
-    todo!("Implement incomplete span export for testing")
+    let _span = tracing::span!(tracing::Level::INFO, "test.execution").entered();
+    // Intentionally missing required attributes: test.name, container.image
 }
 
 fn export_all_span_types() {
-    // Export all span types to validate conventions
-    todo!("Implement all span types export")
+    use clnrm_core::telemetry::generated::{events, spans};
+
+    let execution_span = spans::TestExecutionSpan::new("test_example", "alpine:latest");
+    let _guard = execution_span.enter();
+
+    events::TestStartedEvent::emit("test_example", "alpine:latest");
+    events::TestCompletedEvent::emit("test_example", "pass", 100.0);
+
+    execution_span.end();
 }
