@@ -92,3 +92,4 @@ book/book/
 # Test outputs
 test_output/
 validation_output/
+.claude/worktrees/
