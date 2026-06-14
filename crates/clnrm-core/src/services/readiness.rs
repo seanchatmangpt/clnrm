@@ -287,3 +287,59 @@ fn convert_grpc_to_http_endpoint(endpoint: &str) -> Result<String> {
 
     Ok(url.to_string())
 }
+
+/// Span-based readiness checker that integrates with the service manager.
+///
+/// Polls a [`SpanSource`] until the expected readiness span appears or the
+/// timeout is reached.
+pub struct SpanReadinessChecker {
+    /// Source to query for spans
+    source: SpanSource,
+    /// Default timeout when none is provided
+    default_timeout: Duration,
+}
+
+impl SpanReadinessChecker {
+    /// Create a new checker backed by the given span source
+    pub fn new(source: SpanSource) -> Self {
+        Self {
+            source,
+            default_timeout: Duration::from_secs(DEFAULT_SPAN_WAIT_TIMEOUT_SECS),
+        }
+    }
+
+    /// Override the default timeout
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.default_timeout = timeout;
+        self
+    }
+
+    /// Block (async) until the named service emits its readiness span.
+    ///
+    /// The `service_name` is used directly as the span name to wait for.
+    /// Returns `Ok(())` once the span is detected, or a timeout error.
+    pub async fn wait_until_ready(&self, service_name: &str) -> Result<()> {
+        let config = SpanReadinessConfig::new(service_name.to_string(), None);
+        let config = SpanReadinessConfig {
+            span_name: config.span_name,
+            timeout: self.default_timeout,
+        };
+        wait_for_span(&config, &self.source).await
+    }
+
+    /// Non-blocking check: returns `true` if the readiness span is already
+    /// visible in the source, `false` otherwise.
+    pub async fn is_ready(&self, service_name: &str) -> bool {
+        match check_span_in_source(service_name, &self.source).await {
+            Ok(found) => found,
+            Err(e) => {
+                tracing::debug!(
+                    service = %service_name,
+                    error = %e,
+                    "Readiness check failed"
+                );
+                false
+            }
+        }
+    }
+}

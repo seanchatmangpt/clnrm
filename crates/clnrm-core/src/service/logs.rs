@@ -114,10 +114,47 @@ impl LogCollector {
         Ok(())
     }
 
-    /// Write log entry to file
+    /// Write log entry to file with automatic rotation at 10 MB
+    ///
+    /// When the log file exceeds 10 MB the current file is renamed with a `.1`
+    /// suffix (rotating any previous `.1` to `.2`, up to `.5`) and a new empty
+    /// file is opened.  This keeps the total on-disk footprint bounded to ~60 MB.
     fn write_to_file(&self, path: &PathBuf, entry: &LogEntry) -> Result<()> {
         use std::fs::OpenOptions;
         use std::io::Write;
+
+        const MAX_LOG_BYTES: u64 = 10 * 1024 * 1024; // 10 MB
+        const MAX_ROTATIONS: u32 = 5;
+
+        // Rotate if the file already exists and exceeds the size limit
+        if let Ok(meta) = std::fs::metadata(path) {
+            if meta.len() >= MAX_LOG_BYTES {
+                // Rotate: .5 is deleted, .4 → .5, …, .1 → .2, current → .1
+                for i in (1..MAX_ROTATIONS).rev() {
+                    let src = {
+                        let mut p = path.as_os_str().to_owned();
+                        p.push(format!(".{}", i));
+                        std::path::PathBuf::from(p)
+                    };
+                    let dst = {
+                        let mut p = path.as_os_str().to_owned();
+                        p.push(format!(".{}", i + 1));
+                        std::path::PathBuf::from(p)
+                    };
+                    if src.exists() {
+                        // Ignore errors — best effort rotation
+                        let _ = std::fs::rename(&src, &dst);
+                    }
+                }
+                // Rotate current → .1
+                let rotated = {
+                    let mut p = path.as_os_str().to_owned();
+                    p.push(".1");
+                    std::path::PathBuf::from(p)
+                };
+                let _ = std::fs::rename(path, &rotated);
+            }
+        }
 
         let formatted = self.format_entry(entry);
 
@@ -134,6 +171,71 @@ impl LogCollector {
         })?;
 
         Ok(())
+    }
+
+    /// Stream container logs from runsc line by line
+    ///
+    /// Spawns `runsc logs <container_id>` and collects each output line as a
+    /// `LogEntry`.  Returns an empty vec if runsc is unavailable.
+    pub fn collect_container_logs(&self, container_id: &str) -> Vec<LogEntry> {
+        let root_dir = dirs::cache_dir()
+            .map(|c| c.join("clnrm").join("runsc"))
+            .unwrap_or_else(|| std::path::PathBuf::from("/tmp/clnrm-runsc"));
+
+        let output = match std::process::Command::new("runsc")
+            .arg("--root")
+            .arg(&root_dir)
+            .arg("logs")
+            .arg(container_id)
+            .output()
+        {
+            Ok(o) => o,
+            Err(_) => return Vec::new(),
+        };
+
+        let now = std::time::SystemTime::now();
+        let mut entries = Vec::new();
+
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            entries.push(LogEntry {
+                timestamp: now,
+                level: None,
+                message: line.to_string(),
+                source: LogSource::Stdout,
+                container_id: container_id.to_string(),
+            });
+        }
+
+        entries
+    }
+
+    /// Collect stderr from a running container
+    ///
+    /// Runs `runsc logs --stderr <container_id>` to capture stderr separately.
+    pub fn collect_stderr(&self, container_id: &str) -> Vec<LogEntry> {
+        let root_dir = dirs::cache_dir()
+            .map(|c| c.join("clnrm").join("runsc"))
+            .unwrap_or_else(|| std::path::PathBuf::from("/tmp/clnrm-runsc"));
+
+        // Check for a pre-written stderr log file (written by RunscExecutor during create)
+        let stderr_file = root_dir.join(format!("{}.stderr", container_id));
+        if stderr_file.exists() {
+            if let Ok(content) = std::fs::read_to_string(&stderr_file) {
+                let now = std::time::SystemTime::now();
+                return content
+                    .lines()
+                    .map(|line| LogEntry {
+                        timestamp: now,
+                        level: Some("ERROR".to_string()),
+                        message: line.to_string(),
+                        source: LogSource::Stderr,
+                        container_id: container_id.to_string(),
+                    })
+                    .collect();
+            }
+        }
+
+        Vec::new()
     }
 
     /// Write log entry to stdout

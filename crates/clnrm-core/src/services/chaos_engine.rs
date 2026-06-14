@@ -109,6 +109,18 @@ pub struct ChaosMetrics {
     pub affected_services: Vec<String>,
     /// Chaos scenarios executed
     pub scenarios_executed: u64,
+    /// Total scenario execution duration (ms)
+    pub total_duration_ms: u64,
+    /// Memory pressure injected (MB × seconds)
+    pub memory_pressure_mb_secs: u64,
+    /// CPU stress thread-seconds consumed
+    pub cpu_stress_thread_secs: u64,
+    /// Disk bytes written by fill scenarios
+    pub disk_bytes_written: u64,
+    /// Scenario start timestamps (scenario_id → epoch ms)
+    pub scenario_start_times_ms: std::collections::HashMap<String, u64>,
+    /// Per-scenario duration (scenario_id → ms)
+    pub scenario_durations_ms: std::collections::HashMap<String, u64>,
 }
 
 impl ChaosEnginePlugin {
@@ -212,11 +224,24 @@ impl ChaosEnginePlugin {
     /// Run chaos scenario
     pub async fn run_scenario(&self, scenario: &ChaosScenario) -> Result<()> {
         let scenario_id = Uuid::new_v4().to_string();
-        let mut active = self.active_scenarios.write().await;
-        active.push(scenario_id.clone());
+        let scenario_start = std::time::Instant::now();
+        let scenario_start_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
 
-        let mut metrics = self.metrics.write().await;
-        metrics.scenarios_executed += 1;
+        {
+            let mut active = self.active_scenarios.write().await;
+            active.push(scenario_id.clone());
+        }
+
+        {
+            let mut metrics = self.metrics.write().await;
+            metrics.scenarios_executed += 1;
+            metrics
+                .scenario_start_times_ms
+                .insert(scenario_id.clone(), scenario_start_ms);
+        }
 
         match scenario {
             ChaosScenario::RandomFailures {
@@ -229,12 +254,17 @@ impl ChaosEnginePlugin {
                     "Chaos engine running random failures scenario"
                 );
 
-                // Simulate random failures over duration
+                // Simulate random failures over duration, updating metrics after each tick
+                let mut injected: u64 = 0;
                 for _ in 0..*duration_secs {
                     if rand::random::<f64>() < *failure_rate {
-                        metrics.failures_injected += 1;
+                        injected += 1;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
+                {
+                    let mut m = self.metrics.write().await;
+                    m.failures_injected += injected;
                 }
             }
             ChaosScenario::LatencySpikes {
@@ -247,14 +277,20 @@ impl ChaosEnginePlugin {
                     "Chaos engine running latency spikes scenario"
                 );
 
-                // Simulate latency spikes
+                // Simulate latency spikes, accumulate latency without holding lock during sleep
+                let mut total_latency: u64 = 0;
                 for _ in 0..*duration_secs {
                     if rand::random::<f64>() < 0.1 {
-                        let latency = rand::random::<u64>() % max_latency_ms;
-                        metrics.latency_injected_ms += latency;
+                        let max_latency = (*max_latency_ms).max(1);
+                        let latency = rand::random::<u64>() % max_latency;
+                        total_latency += latency;
                         tokio::time::sleep(std::time::Duration::from_millis(latency)).await;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
+                {
+                    let mut m = self.metrics.write().await;
+                    m.latency_injected_ms += total_latency;
                 }
             }
             ChaosScenario::MemoryExhaustion {
@@ -267,9 +303,37 @@ impl ChaosEnginePlugin {
                     "Chaos engine running memory exhaustion scenario"
                 );
 
-                // Simulate memory pressure
-                let _memory_pressure = vec![0u8; (*target_mb * 1024 * 1024) as usize];
+                let start = std::time::Instant::now();
+                let duration_secs_val = *duration_secs;
+                let target_mb_val = *target_mb;
+
+                // Actually allocate and touch the memory so the OS cannot optimize it away.
+                // Run in a blocking task to avoid starving the tokio executor.
+                let hold_task = tokio::task::spawn_blocking(move || {
+                    let size = (target_mb_val * 1024 * 1024) as usize;
+                    // Allocate and write to every page so it is resident in physical memory
+                    let mut memory_pressure = vec![0u8; size];
+                    memory_pressure.iter_mut().for_each(|b| *b = 1);
+                    // Hold the allocation for the requested duration
+                    let target = std::time::Duration::from_secs(duration_secs_val);
+                    while start.elapsed() < target {
+                        // Touch a few bytes every 100ms to prevent deallocation
+                        memory_pressure[0] = memory_pressure[0].wrapping_add(1);
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                    }
+                    // Return the vec so it is dropped only after the duration
+                    memory_pressure
+                });
+
                 tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
+                // Cancel the blocking task by dropping (best-effort)
+                drop(hold_task);
+
+                // Record memory pressure metrics
+                {
+                    let mut m = self.metrics.write().await;
+                    m.memory_pressure_mb_secs += target_mb * duration_secs;
+                }
             }
             ChaosScenario::CpuSaturation {
                 duration_secs,
@@ -281,14 +345,56 @@ impl ChaosEnginePlugin {
                     "Chaos engine running CPU saturation scenario"
                 );
 
-                // Simulate CPU stress
-                let start = std::time::Instant::now();
-                while start.elapsed().as_secs() < *duration_secs {
-                    if rand::random::<u8>() < *target_percent {
-                        // Simulate CPU work
-                        let _ = (0..1000).map(|i| i * i).collect::<Vec<_>>();
-                    }
-                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                let duration_secs_val = *duration_secs;
+                let target_percent_val = *target_percent;
+
+                // Determine how many logical CPUs to stress
+                let num_cpus = std::thread::available_parallelism()
+                    .map(|n| n.get())
+                    .unwrap_or(1);
+                // Scale number of threads by target_percent (1–100 → 1..num_cpus)
+                let stress_threads = ((num_cpus as f64 * (target_percent_val as f64 / 100.0))
+                    .ceil() as usize)
+                    .max(1)
+                    .min(num_cpus);
+
+                tracing::info!(
+                    stress_threads,
+                    num_cpus,
+                    "Spawning CPU stress threads"
+                );
+
+                // Spawn busy-loop threads that actually consume CPU
+                let mut thread_handles = Vec::with_capacity(stress_threads);
+                for _ in 0..stress_threads {
+                    let duration = std::time::Duration::from_secs(duration_secs_val);
+                    let handle = std::thread::spawn(move || {
+                        let deadline = std::time::Instant::now() + duration;
+                        let mut counter: u64 = 0;
+                        while std::time::Instant::now() < deadline {
+                            // Busy loop — genuinely consumes CPU
+                            counter = counter.wrapping_add(1);
+                            // Occasionally yield to avoid starving the OS scheduler
+                            if counter % 1_000_000 == 0 {
+                                std::thread::yield_now();
+                            }
+                        }
+                    });
+                    thread_handles.push(handle);
+                }
+
+                // Wait for duration in async context while threads burn CPU
+                tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
+
+                // Threads will self-terminate after duration; join for clean shutdown
+                for h in thread_handles {
+                    let _ = h.join();
+                }
+
+                // Record CPU stress metrics (thread-seconds = threads × duration)
+                {
+                    let mut m = self.metrics.write().await;
+                    m.cpu_stress_thread_secs += stress_threads as u64 * duration_secs_val;
                 }
             }
             ChaosScenario::NetworkPartition {
@@ -301,10 +407,11 @@ impl ChaosEnginePlugin {
                     "Chaos engine running network partition scenario"
                 );
 
-                metrics.network_partitions += 1;
-                metrics
-                    .affected_services
-                    .extend(affected_services.iter().cloned());
+                {
+                    let mut m = self.metrics.write().await;
+                    m.network_partitions += 1;
+                    m.affected_services.extend(affected_services.iter().cloned());
+                }
                 tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
             }
             ChaosScenario::CascadingFailures {
@@ -317,16 +424,22 @@ impl ChaosEnginePlugin {
                     "Chaos engine running cascading failures scenario"
                 );
 
-                // Simulate cascading failure
-                metrics.failures_injected += 1;
-                metrics.affected_services.push(trigger_service.clone());
+                // Simulate cascading failure — primary service fails immediately
+                {
+                    let mut m = self.metrics.write().await;
+                    m.failures_injected += 1;
+                    m.affected_services.push(trigger_service.clone());
+                }
 
                 tokio::time::sleep(std::time::Duration::from_millis(*propagation_delay_ms)).await;
 
-                // Simulate propagation to other services
+                // Simulate propagation to downstream services
                 let cascade_services = vec!["service_b".to_string(), "service_c".to_string()];
-                metrics.failures_injected += cascade_services.len() as u64;
-                metrics.affected_services.extend(cascade_services);
+                {
+                    let mut m = self.metrics.write().await;
+                    m.failures_injected += cascade_services.len() as u64;
+                    m.affected_services.extend(cascade_services);
+                }
             }
             ChaosScenario::DiskFill {
                 duration_secs,
@@ -362,15 +475,17 @@ impl ChaosEnginePlugin {
                 // Perform disk fill in a blocking task to avoid stalling tokio executor
                 let file_path_clone = file_path.clone();
                 let fill_mb_val = *fill_mb;
-                tokio::task::spawn_blocking(move || -> std::io::Result<()> {
+                let bytes_written = tokio::task::spawn_blocking(move || -> std::io::Result<u64> {
                     use std::io::Write;
                     let mut file = std::fs::File::create(&file_path_clone)?;
                     let chunk = vec![0u8; 1024 * 1024]; // 1MB buffer
+                    let mut written: u64 = 0;
                     for _ in 0..fill_mb_val {
                         file.write_all(&chunk)?;
+                        written += chunk.len() as u64;
                     }
                     file.sync_all()?;
-                    Ok(())
+                    Ok(written)
                 })
                 .await
                 .map_err(|e| {
@@ -386,6 +501,12 @@ impl ChaosEnginePlugin {
                     ))
                 })?;
 
+                // Record disk bytes written
+                {
+                    let mut metrics = self.metrics.write().await;
+                    metrics.disk_bytes_written += bytes_written;
+                }
+
                 // Keep it filled for duration_secs
                 tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
 
@@ -396,8 +517,27 @@ impl ChaosEnginePlugin {
             }
         }
 
-        // Remove from active scenarios
-        active.retain(|id| id != &scenario_id);
+        // Record scenario duration and remove from active scenarios
+        let scenario_duration_ms = scenario_start.elapsed().as_millis() as u64;
+        {
+            let mut metrics = self.metrics.write().await;
+            metrics
+                .scenario_durations_ms
+                .insert(scenario_id.clone(), scenario_duration_ms);
+            metrics.total_duration_ms += scenario_duration_ms;
+        }
+
+        {
+            let mut active = self.active_scenarios.write().await;
+            active.retain(|id| id != &scenario_id);
+        }
+
+        tracing::info!(
+            scenario_id = %scenario_id,
+            duration_ms = scenario_duration_ms,
+            "Chaos scenario completed"
+        );
+
         Ok(())
     }
 
