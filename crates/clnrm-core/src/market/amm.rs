@@ -139,16 +139,6 @@ impl NDimensionalAMM {
 
         Ok(output_amount)
     }
-
-    /// Spot price = ratio of reserves (how much to_token per 1 from_token).
-    pub fn get_price(&self, from_token: &str, to_token: &str) -> Option<f64> {
-        let from_reserve = self.reserves.get(from_token)?;
-        let to_reserve = self.reserves.get(to_token)?;
-        if *from_reserve == 0.0 {
-            return None;
-        }
-        Some(to_reserve / from_reserve)
-    }
 }
 
 impl NDimensionalAMM {
