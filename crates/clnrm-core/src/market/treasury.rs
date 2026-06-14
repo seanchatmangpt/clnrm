@@ -33,6 +33,7 @@ pub struct AlgorithmicTreasury {
     pub current_base_fee: f64,
     pub emission_pid: PidController,
     pub fee_pid: PidController,
+    pub last_epoch: u64,
 }
 
 impl AlgorithmicTreasury {
@@ -43,6 +44,7 @@ impl AlgorithmicTreasury {
             current_base_fee: 0.01,
             emission_pid: PidController::new(0.5, 0.1, 0.05),
             fee_pid: PidController::new(0.3, 0.05, 0.01),
+            last_epoch: 0,
         }
     }
 
@@ -57,5 +59,26 @@ impl AlgorithmicTreasury {
         let fee_error = actual_inflation - self.target_inflation;
         let fee_adjustment = self.fee_pid.update(fee_error, dt);
         self.current_base_fee = (self.current_base_fee + fee_adjustment).max(0.001);
+    }
+}
+
+impl AlgorithmicTreasury {
+    /// Execute emission for the current epoch. Returns tokens emitted (0 if emergency brake).
+    pub fn execute_emission(&mut self, epoch: u64, dt: f64) -> f64 {
+        if self.emergency_brake_check() {
+            return 0.0;
+        }
+        self.last_epoch = epoch;
+        self.current_emission_rate * dt
+    }
+
+    /// Sum all transaction fees collected.
+    pub fn collect_fees(transactions: &[f64]) -> f64 {
+        transactions.iter().sum()
+    }
+
+    /// Returns true if PID integral > 2x target inflation (runaway inflation).
+    pub fn emergency_brake_check(&self) -> bool {
+        self.emission_pid.integral > self.target_inflation * 2.0
     }
 }

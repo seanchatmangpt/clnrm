@@ -184,6 +184,70 @@ impl LiquidityIncentiveEngine {
     }
 }
 
+impl LiquidityIncentiveEngine {
+    /// Calculate tier multiplier based on stake amount.
+    /// Bronze (< 1000): 1.0x, Silver (1000-9999): 1.5x, Gold (>= 10000): 2.5x
+    pub fn calculate_tier_multiplier(stake_amount: u64) -> f64 {
+        if stake_amount >= 10_000 {
+            2.5
+        } else if stake_amount >= 1_000 {
+            1.5
+        } else {
+            1.0
+        }
+    }
+
+    /// Returns penalty percentage for early unstaking.
+    /// < 7 days: 50%, 7-30: 25%, 30-90: 10%, >= 90: 0%
+    pub fn apply_unstaking_penalty(&self, _user_id: &str, early_exit_days: u64) -> f64 {
+        if early_exit_days < 7 {
+            0.5
+        } else if early_exit_days < 30 {
+            0.25
+        } else if early_exit_days < 90 {
+            0.10
+        } else {
+            0.0
+        }
+    }
+
+    /// Returns Err if the user's funds are still time-locked.
+    pub fn enforce_time_lock(
+        &self,
+        user_id: &str,
+        lock_period_days: u64,
+        current_time: u64,
+    ) -> Result<(), String> {
+        let stake = self
+            .stakers
+            .get(user_id)
+            .ok_or_else(|| format!("User {} has no stake", user_id))?;
+
+        let lock_duration_secs = lock_period_days * 86_400;
+        let unlock_time = stake.timestamp + lock_duration_secs;
+
+        if current_time < unlock_time {
+            return Err(format!(
+                "Funds are time-locked until {}",
+                unlock_time
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Claim rewards applying the tier multiplier to the base yield.
+    pub fn claim_rewards_with_tier(&mut self, user_id: &str, now: u64) -> Result<u64, String> {
+        let stake_amount = self.get_stake_amount(user_id);
+        let multiplier = Self::calculate_tier_multiplier(stake_amount);
+
+        let base_yield = self.claim_yield_with_time(user_id, now)?;
+        let boosted = (base_yield as f64 * multiplier) as u64;
+
+        Ok(boosted)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
