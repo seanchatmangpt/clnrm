@@ -184,7 +184,7 @@ impl DeterminismEngine {
             rng.fill_bytes(dest);
             Ok(())
         } else {
-            rand::thread_rng().fill_bytes(dest);
+            rand::rng().fill_bytes(dest);
             Ok(())
         }
     }

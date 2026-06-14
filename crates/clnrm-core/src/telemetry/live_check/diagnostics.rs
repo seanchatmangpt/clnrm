@@ -384,10 +384,9 @@ pub fn detect_format() -> DiagnosticFormat {
     // Check if stdout is a TTY
     #[cfg(unix)]
     {
-        use std::os::unix::io::AsRawFd;
         // Use nix crate for isatty check (already a dependency)
         use nix::unistd::isatty;
-        if isatty(std::io::stdout().as_raw_fd()).unwrap_or(false) {
+        if isatty(std::io::stdout()).unwrap_or(false) {
             return DiagnosticFormat::Ansi;
         }
     }

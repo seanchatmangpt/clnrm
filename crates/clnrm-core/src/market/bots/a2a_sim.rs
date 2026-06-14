@@ -15,7 +15,7 @@ pub async fn run_a2a_simulation() {
         let task_ids_clone = Arc::clone(&task_ids);
 
         let handle = tokio::spawn(async move {
-            let mut rng = StdRng::from_entropy();
+            let mut rng = StdRng::from_os_rng();
             // Each virtual agent has a unique 32-byte ID
             let agent_id_bytes: [u8; 32] = rand::random();
             let agent_id = AgentId(agent_id_bytes);

@@ -48,7 +48,7 @@ impl PortAllocator {
                 if let Some(seed) = seed {
                     Some(StdRng::seed_from_u64(*seed))
                 } else {
-                    Some(StdRng::from_entropy())
+                    Some(StdRng::from_os_rng())
                 }
             }
             _ => None,
