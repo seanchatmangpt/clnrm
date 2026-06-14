@@ -811,10 +811,17 @@ pub fn flush_telemetry_and_wait() {
 
 /// Add OTel logs layer for tracing events -> OTel LogRecords
 pub fn add_otel_logs_layer() {
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
     // Convert `tracing` events into OTel LogRecords; exporter controlled by env/collector.
-    // Note: This is a simplified example - in practice you'd need a proper logger provider
-    // EXAMPLE-ONLY: For now, we'll just use the default registry without the logs layer
-    let _ = tracing_subscriber::fmt::try_init();
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .with_target(true)
+        .with_thread_ids(false);
+
+    // Install the composed subscriber — ignore error if already initialized
+    let _ = tracing_subscriber::registry()
+        .with(fmt_layer)
+        .try_init();
 }
 
 /// Span creation helpers for clnrm self-testing

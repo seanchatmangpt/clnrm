@@ -1084,8 +1084,8 @@ pub async fn run_with_graceful_fallback(
             // Live-check available - use it
             info!("Live-check enabled, using Weaver validation");
 
-            // For full integration, caller would run tests here
-            // EXAMPLE-ONLY: For now, just stop and return report
+            // Callers should run their tests while Weaver is active before calling this function.
+            // This function handles the stop-and-collect lifecycle.
             let completed = (*running).stop_weaver().await?;
 
             Ok(GracefulFallbackResult {

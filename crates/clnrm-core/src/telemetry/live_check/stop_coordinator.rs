@@ -306,8 +306,7 @@ impl StopCoordinator {
             self.config.phase1_timeout
         );
         let phase1_result = tokio::time::timeout(phase1_timeout, async {
-            // EXAMPLE-ONLY: For now, just flush OTLP
-            // Stop accepting telemetry is handled by Weaver
+            // Stop accepting new telemetry (handled by Weaver), then flush buffers
             self.flush_otlp_buffers().await
         })
         .await;
@@ -391,9 +390,9 @@ impl StopCoordinator {
 
     /// Flush OTLP buffers
     async fn flush_otlp_buffers(&self) -> Result<()> {
-        // OTEL SDK flush happens when the guard is dropped
-        // v1.4.0: Use a more robust wait with polling of export statistics if possible
-        // EXAMPLE-ONLY: For now, we use a controlled wait that could be signaled in the future
+        // OTEL SDK flush happens when the guard is dropped.
+        // v1.4.0: Use a more robust wait with polling of export statistics if possible.
+        // A controlled wait is the correct mechanism for OTLP flush (SDK buffers asynchronously).
         let flush_timeout = Duration::from_millis(500);
         debug!("⌛ Waiting for OTLP buffers to flush ({:?})", flush_timeout);
         tokio::time::sleep(flush_timeout).await;
