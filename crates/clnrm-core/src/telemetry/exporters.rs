@@ -22,21 +22,18 @@ pub enum SpanExporterType {
 }
 
 impl opentelemetry_sdk::trace::SpanExporter for SpanExporterType {
-    #[allow(refining_impl_trait)]
-    fn export(
+    async fn export(
         &self,
         batch: Vec<opentelemetry_sdk::trace::SpanData>,
-    ) -> std::pin::Pin<
-        Box<dyn std::future::Future<Output = opentelemetry_sdk::error::OTelSdkResult> + Send + '_>,
-    > {
+    ) -> opentelemetry_sdk::error::OTelSdkResult {
         match self {
-            SpanExporterType::Otlp(exporter) => Box::pin(exporter.export(batch)),
-            SpanExporterType::Stdout(exporter) => Box::pin(exporter.export(batch)),
-            SpanExporterType::NdjsonStdout(exporter) => Box::pin(exporter.export(batch)),
+            SpanExporterType::Otlp(exporter) => exporter.export(batch).await,
+            SpanExporterType::Stdout(exporter) => exporter.export(batch).await,
+            SpanExporterType::NdjsonStdout(exporter) => exporter.export(batch).await,
         }
     }
 
-    fn shutdown(&mut self) -> opentelemetry_sdk::error::OTelSdkResult {
+    fn shutdown(&self) -> opentelemetry_sdk::error::OTelSdkResult {
         match self {
             SpanExporterType::Otlp(exporter) => exporter.shutdown(),
             SpanExporterType::Stdout(exporter) => exporter.shutdown(),

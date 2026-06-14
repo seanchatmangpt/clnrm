@@ -219,7 +219,7 @@ impl SpanBuilder {
             "clnrm.run",
             { semconv::resource::SERVICE_NAME } = "clnrm",
             { semconv::resource::SERVICE_VERSION } = env!("CARGO_PKG_VERSION"),
-            { semconv::resource::DEPLOYMENT_ENVIRONMENT } = "testing",
+            { semconv::resource::DEPLOYMENT_ENVIRONMENT_NAME } = "testing",
             { clnrm::TEST_NAME } = config_path,
             test_count = test_count,
             otel.span.kind = "internal",

@@ -97,7 +97,7 @@ impl TelemetryBuilder {
                 KeyValue::new("service.version", self.config.service_version.clone()),
                 KeyValue::new("telemetry.sdk.language", "rust"),
                 KeyValue::new("telemetry.sdk.name", "opentelemetry"),
-                KeyValue::new("telemetry.sdk.version", "0.31.0"),
+                KeyValue::new("telemetry.sdk.version", "0.32.0"),
                 KeyValue::new(
                     "service.instance.id",
                     format!("clnrm-{}", std::process::id()),

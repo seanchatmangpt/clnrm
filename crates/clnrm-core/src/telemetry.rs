@@ -85,23 +85,22 @@ enum SpanExporterType {
     NdjsonFile(json_exporter::NdjsonFileExporter),
 }
 
-#[allow(refining_impl_trait)]
 impl SpanExporter for SpanExporterType {
-    fn export(
+    async fn export(
         &self,
         batch: Vec<opentelemetry_sdk::trace::SpanData>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = OTelSdkResult> + Send + '_>> {
+    ) -> OTelSdkResult {
         match self {
-            SpanExporterType::Otlp(exporter) => Box::pin(exporter.as_ref().export(batch)),
-            SpanExporterType::Stdout(exporter) => Box::pin(exporter.export(batch)),
-            SpanExporterType::NdjsonStdout(exporter) => Box::pin(exporter.export(batch)),
-            SpanExporterType::NdjsonFile(exporter) => Box::pin(exporter.export(batch)),
+            SpanExporterType::Otlp(exporter) => exporter.as_ref().export(batch).await,
+            SpanExporterType::Stdout(exporter) => exporter.export(batch).await,
+            SpanExporterType::NdjsonStdout(exporter) => exporter.export(batch).await,
+            SpanExporterType::NdjsonFile(exporter) => exporter.export(batch).await,
         }
     }
 
-    fn shutdown(&mut self) -> OTelSdkResult {
+    fn shutdown(&self) -> OTelSdkResult {
         match self {
-            SpanExporterType::Otlp(exporter) => exporter.as_mut().shutdown(),
+            SpanExporterType::Otlp(exporter) => exporter.as_ref().shutdown(),
             SpanExporterType::Stdout(exporter) => exporter.shutdown(),
             SpanExporterType::NdjsonStdout(exporter) => exporter.shutdown(),
             SpanExporterType::NdjsonFile(exporter) => exporter.shutdown(),
@@ -340,7 +339,7 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
             KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
             KeyValue::new("telemetry.sdk.language", "rust"),
             KeyValue::new("telemetry.sdk.name", "opentelemetry"),
-            KeyValue::new("telemetry.sdk.version", "0.31.0"),
+            KeyValue::new("telemetry.sdk.version", "0.32.0"),
         ])
         .build();
 
