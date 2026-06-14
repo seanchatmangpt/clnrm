@@ -31,12 +31,12 @@ async-trait = "0.1"
 # Container dependencies
 futures-util = { workspace = true }
 surrealdb = { workspace = true }
-petgraph = "0.6"
+petgraph = "0.8"
 
 # CLI dependencies
 clap = { workspace = true }
-clap-noun-verb = { version = "5.3.2", features = ["async"] }
-clap-noun-verb-macros = "5.3.2"
+clap-noun-verb = { version = "26.6.2" }
+clap-noun-verb-macros = "26.6.2"
 linkme = "0.3"  # Required for clap-noun-verb macro auto-discovery
 env_logger = { workspace = true }
 log = { workspace = true }
@@ -74,8 +74,8 @@ rand = "0.9"
 semver = "1.0"
 glob = "0.3"
 url = "2.5"
-which = "6.0"
-colored = "2.1"  # For beautiful terminal output in diagnostic formatter
+which = "8.0"
+colored = "3.1"  # For beautiful terminal output in diagnostic formatter
 crossbeam = "0.8"  # Lock-free concurrent data structures (SegQueue)
 socket2 = "0.6"
 num_cpus = "1.16"  # For CPU core detection
@@ -93,8 +93,8 @@ ed25519-dalek = { version = "2.1", optional = true }  # For receipt signature ve
 # OCI and gVisor support
 flate2 = "1.0"     # For gzip decompression of OCI layers
 tar = "0.4"        # For extracting tar archives
-dirs = "5.0"       # For accessing standard directories
-chicago-tdd-tools = { version = "1.4.0", features = ["async", "observability-full", "integration-full"] }
+dirs = "6.0"       # For accessing standard directories
+chicago-tdd-tools = { version = "26.6.121", features = ["async", "observability-full", "integration-full"] }
 
 [dev-dependencies]
 # Property-based testing
