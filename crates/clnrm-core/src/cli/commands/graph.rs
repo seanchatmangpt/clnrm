@@ -4,8 +4,9 @@
 
 use crate::cli::types::GraphFormat;
 use crate::error::{CleanroomError, Result};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use tracing::{debug, info};
 
@@ -41,12 +42,23 @@ pub fn visualize_graph(
     // Load trace data
     let trace_data = load_trace_data(trace_path)?;
 
-    // Apply filter if provided
+    // Apply filter if provided (using regex matching)
     let spans = if let Some(filter_pattern) = filter {
+        let span_nodes: Vec<SpanNode> = trace_data
+            .spans
+            .iter()
+            .map(|s| SpanNode {
+                span_id: s.span_id.clone(),
+                name: s.name.clone(),
+                parent_id: s.parent_span_id.clone(),
+            })
+            .collect();
+        let filtered_nodes = filter_spans(&span_nodes, filter_pattern)?;
+        let filtered_ids: HashSet<&str> = filtered_nodes.iter().map(|n| n.span_id.as_str()).collect();
         trace_data
             .spans
             .into_iter()
-            .filter(|span| span.name.contains(filter_pattern))
+            .filter(|span| filtered_ids.contains(span.span_id.as_str()))
             .collect()
     } else {
         trace_data.spans
@@ -284,4 +296,95 @@ fn sanitize_mermaid_id(id: &str) -> String {
     id.chars()
         .map(|c| if c.is_alphanumeric() { c } else { '_' })
         .collect()
+}
+
+/// Node in a span dependency graph
+#[derive(Debug, Clone)]
+pub struct SpanNode {
+    pub span_id: String,
+    pub name: String,
+    pub parent_id: Option<String>,
+}
+
+/// Detect cycles in span graph using DFS
+///
+/// Uses DFS with coloring (white=0/not visited, gray=1/in stack, black=2/done).
+/// Returns each cycle as a Vec<String> of span_ids.
+pub fn detect_cycles(spans: &[SpanNode]) -> Vec<Vec<String>> {
+    // Build child->parent adjacency list (parent_id -> vec of child span_ids)
+    let mut adjacency: HashMap<String, Vec<String>> = HashMap::new();
+    for span in spans {
+        if let Some(parent_id) = &span.parent_id {
+            adjacency
+                .entry(parent_id.clone())
+                .or_default()
+                .push(span.span_id.clone());
+        }
+        // Ensure every node appears in the map even if childless
+        adjacency.entry(span.span_id.clone()).or_default();
+    }
+
+    // Color: 0 = white (unvisited), 1 = gray (in stack), 2 = black (done)
+    let mut color: HashMap<String, u8> = HashMap::new();
+    let mut cycles: Vec<Vec<String>> = Vec::new();
+
+    let all_ids: Vec<String> = spans.iter().map(|s| s.span_id.clone()).collect();
+
+    for start in &all_ids {
+        if color.get(start).copied().unwrap_or(0) == 0 {
+            let mut stack: Vec<(String, usize)> = vec![(start.clone(), 0)];
+            let mut path: Vec<String> = Vec::new();
+
+            while let Some((node, child_idx)) = stack.last_mut() {
+                let node = node.clone();
+                if color.get(&node).copied().unwrap_or(0) == 0 {
+                    // First visit: mark gray, push onto path
+                    color.insert(node.clone(), 1);
+                    path.push(node.clone());
+                }
+
+                let children = adjacency.get(&node).cloned().unwrap_or_default();
+                if *child_idx < children.len() {
+                    let child = children[*child_idx].clone();
+                    *stack.last_mut().unwrap() = (node.clone(), *child_idx + 1);
+
+                    match color.get(&child).copied().unwrap_or(0) {
+                        0 => {
+                            // Unvisited: recurse
+                            stack.push((child, 0));
+                        }
+                        1 => {
+                            // Gray: back edge found - cycle detected
+                            if let Some(cycle_start) = path.iter().position(|n| *n == child) {
+                                let cycle: Vec<String> = path[cycle_start..].to_vec();
+                                cycles.push(cycle);
+                            }
+                        }
+                        _ => {
+                            // Black: already processed, skip
+                        }
+                    }
+                } else {
+                    // All children processed: mark black, pop from path and stack
+                    color.insert(node.clone(), 2);
+                    path.pop();
+                    stack.pop();
+                }
+            }
+        }
+    }
+
+    cycles
+}
+
+/// Filter spans by regex pattern on name
+pub fn filter_spans<'a>(spans: &'a [SpanNode], pattern: &str) -> Result<Vec<&'a SpanNode>> {
+    let re = Regex::new(pattern).map_err(|e| {
+        CleanroomError::validation_error(format!(
+            "Invalid regex pattern '{}': {}",
+            pattern, e
+        ))
+    })?;
+
+    Ok(spans.iter().filter(|span| re.is_match(&span.name)).collect())
 }

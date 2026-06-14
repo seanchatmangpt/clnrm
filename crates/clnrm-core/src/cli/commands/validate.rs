@@ -6,8 +6,9 @@
 use crate::cli::types::ACCEPTED_EXTENSIONS;
 use crate::cli::utils::discover_test_files;
 use crate::error::{CleanroomError, Result};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// Validate TOML test files
 pub fn validate_config(path: &PathBuf) -> Result<()> {

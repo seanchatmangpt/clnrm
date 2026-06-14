@@ -225,6 +225,54 @@ impl SpanBuilder {
             otel.span.kind = "internal",
         )
     }
+
+    /// Create span with container attributes (name, image, tag, runtime, id)
+    pub fn with_container_attributes(
+        container_id: &str,
+        image_name: &str,
+        image_tag: &str,
+        container_name: &str,
+    ) -> tracing::Span {
+        tracing::debug_span!(
+            "container.lifecycle",
+            { semconv::resource::CONTAINER_ID } = container_id,
+            { semconv::resource::CONTAINER_IMAGE_NAME } = image_name,
+            container.image.tag = image_tag,
+            container.name = container_name,
+            { semconv::resource::CONTAINER_RUNTIME } = "runsc",
+            otel.span.kind = "internal",
+        )
+    }
+
+    /// Create span with process attributes populated from current process
+    pub fn with_process_attributes() -> tracing::Span {
+        let pid = std::process::id();
+        let command = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.to_str().map(|s| s.to_string()))
+            .unwrap_or_else(|| "clnrm".to_string());
+        tracing::debug_span!(
+            "process.info",
+            process.pid = pid,
+            process.command = %command,
+            otel.span.kind = "internal",
+        )
+    }
+
+    /// Create span with host attributes populated from runtime
+    pub fn with_host_attributes() -> tracing::Span {
+        let hostname = hostname::get()
+            .ok()
+            .and_then(|h| h.into_string().ok())
+            .unwrap_or_else(|| "unknown".to_string());
+        let arch = std::env::consts::ARCH;
+        tracing::debug_span!(
+            "host.info",
+            host.name = %hostname,
+            host.arch = arch,
+            otel.span.kind = "internal",
+        )
+    }
 }
 
 /// Attribute setters with semantic convention validation
@@ -252,6 +300,46 @@ impl SpanAttributes {
     pub fn set_container_runtime(runtime: &str) {
         tracing::Span::current().record(semconv::resource::CONTAINER_RUNTIME, runtime);
     }
+
+    /// Set container image tag attribute
+    pub fn set_container_image_tag(tag: &str) {
+        tracing::Span::current().record("container.image.tag", tag);
+    }
+
+    /// Set container name attribute
+    pub fn set_container_name(name: &str) {
+        tracing::Span::current().record("container.name", name);
+    }
+
+    /// Set process PID attribute
+    pub fn set_process_pid(pid: u32) {
+        tracing::Span::current().record("process.pid", pid);
+    }
+
+    /// Set host name attribute
+    pub fn set_host_name(name: &str) {
+        tracing::Span::current().record("host.name", name);
+    }
+}
+
+/// Resource attribute constants using semconv 0.15.0
+/// These wrap the OTel semconv constants for convenient use
+pub mod resource {
+    pub use opentelemetry_semantic_conventions::resource::{
+        CONTAINER_ID,
+        CONTAINER_IMAGE_NAME,
+        CONTAINER_RUNTIME,
+        SERVICE_NAME,
+        SERVICE_VERSION,
+        HOST_NAME,
+    };
+
+    // Additional constants not in 0.15.0 resource module
+    pub const CONTAINER_NAME: &str = "container.name";
+    pub const CONTAINER_IMAGE_TAG: &str = "container.image.tag";
+    pub const HOST_ARCH: &str = "host.arch";
+    pub const PROCESS_PID: &str = "process.pid";
+    pub const PROCESS_COMMAND: &str = "process.command";
 }
 
 #[cfg(test)]

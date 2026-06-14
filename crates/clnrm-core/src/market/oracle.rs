@@ -127,6 +127,126 @@ impl DecentralizedOracle {
 
         Some(points[0].value) // Fallback
     }
+
+    /// Returns (aggregated_value, confidence) for a stream using weighted median + confidence score.
+    pub fn aggregate_with_confidence(&self, stream_id: &str) -> Option<(f64, f64)> {
+        let points = self.streams.get(stream_id)?;
+        if points.is_empty() {
+            return None;
+        }
+
+        let values: Vec<f64> = points.iter().map(|p| p.value).collect();
+        let weights: Vec<f64> = points.iter().map(|p| p.stake as f64).collect();
+
+        let value = aggregate_prices(&values, &weights);
+        let confidence = compute_confidence(&values);
+
+        Some((value, confidence))
+    }
+
+    /// Returns list of provider IDs whose data points are outliers for the given stream.
+    pub fn detect_and_log_outliers(&self, stream_id: &str) -> Vec<String> {
+        let points = match self.streams.get(stream_id) {
+            Some(p) => p,
+            None => return Vec::new(),
+        };
+        if points.is_empty() {
+            return Vec::new();
+        }
+
+        let values: Vec<f64> = points.iter().map(|p| p.value).collect();
+        let outlier_flags = detect_outliers_iqr(&values);
+
+        points
+            .iter()
+            .zip(outlier_flags.iter())
+            .filter(|(_, &is_outlier)| is_outlier)
+            .map(|(p, _)| p.provider.clone())
+            .collect()
+    }
+}
+
+/// Weighted median: sort by value, find cumulative weight >= total_weight/2.
+pub fn aggregate_prices(values: &[f64], weights: &[f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+    if values.len() != weights.len() {
+        return values.iter().sum::<f64>() / values.len() as f64;
+    }
+
+    let mut pairs: Vec<(f64, f64)> = values.iter().copied().zip(weights.iter().copied()).collect();
+    pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let total_weight: f64 = pairs.iter().map(|(_, w)| w).sum();
+    if total_weight == 0.0 {
+        return pairs[0].0;
+    }
+
+    let target = total_weight / 2.0;
+    let mut cumulative = 0.0;
+    for (value, weight) in &pairs {
+        cumulative += weight;
+        if cumulative >= target {
+            return *value;
+        }
+    }
+
+    pairs[pairs.len() - 1].0
+}
+
+/// IQR outlier detection. Returns a bool per price: true = outlier.
+pub fn detect_outliers_iqr(prices: &[f64]) -> Vec<bool> {
+    if prices.len() < 4 {
+        return vec![false; prices.len()];
+    }
+
+    let mut sorted = prices.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    let n = sorted.len();
+    let q1 = sorted[n / 4];
+    let q3 = sorted[3 * n / 4];
+    let iqr = q3 - q1;
+    let lower = q1 - 1.5 * iqr;
+    let upper = q3 + 1.5 * iqr;
+
+    prices.iter().map(|&p| p < lower || p > upper).collect()
+}
+
+/// TWAP: average of prices within the last `window_secs` seconds of `current_time`.
+pub fn compute_twap(prices: &[(f64, u64)], window_secs: u64, current_time: u64) -> f64 {
+    let cutoff = current_time.saturating_sub(window_secs);
+    let relevant: Vec<f64> = prices
+        .iter()
+        .filter(|(_, ts)| *ts >= cutoff && *ts <= current_time)
+        .map(|(p, _)| *p)
+        .collect();
+
+    if relevant.is_empty() {
+        return 0.0;
+    }
+
+    relevant.iter().sum::<f64>() / relevant.len() as f64
+}
+
+/// Confidence score [0,1] based on coefficient of variation (CV = std_dev/mean).
+/// confidence = 1.0 - CV, clamped to [0,1]. Returns 0.0 if mean == 0.
+pub fn compute_confidence(prices: &[f64]) -> f64 {
+    if prices.is_empty() {
+        return 0.0;
+    }
+
+    let mean = prices.iter().sum::<f64>() / prices.len() as f64;
+    if mean == 0.0 {
+        return 0.0;
+    }
+
+    let variance = prices.iter().map(|&p| (p - mean).powi(2)).sum::<f64>() / prices.len() as f64;
+    let std_dev = variance.sqrt();
+    let cv = std_dev / mean;
+
+    (1.0 - cv).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]

@@ -332,14 +332,30 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     ]));
 
     // Resource with standard attributes.
+    let hostname = hostname::get()
+        .ok()
+        .and_then(|h| h.into_string().ok())
+        .unwrap_or_else(|| "unknown".to_string());
+
     let resource = Resource::builder_empty()
         .with_service_name(cfg.service_name)
-        .with_attributes([
+        .with_attributes(vec![
             KeyValue::new("deployment.environment", cfg.deployment_env),
             KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
             KeyValue::new("telemetry.sdk.language", "rust"),
             KeyValue::new("telemetry.sdk.name", "opentelemetry"),
             KeyValue::new("telemetry.sdk.version", "0.32.0"),
+            // Container attributes
+            KeyValue::new(opentelemetry_semantic_conventions::resource::CONTAINER_RUNTIME, "runsc"),
+            // Process attributes
+            KeyValue::new("process.pid", std::process::id().to_string()),
+            KeyValue::new("process.command", std::env::current_exe()
+                .ok()
+                .and_then(|p| p.to_str().map(|s| s.to_string()))
+                .unwrap_or_else(|| "clnrm".to_string())),
+            // Host attributes
+            KeyValue::new("host.name", hostname),
+            KeyValue::new("host.arch", std::env::consts::ARCH),
         ])
         .build();
 
