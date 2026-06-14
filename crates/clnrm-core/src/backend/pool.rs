@@ -597,6 +597,7 @@ impl ContainerPool {
     }
 
     /// Pre-warm the pool with min_idle containers (parallel creation)
+    #[allow(dead_code)]
     #[instrument(name = "pool.prewarm", skip(self))]
     async fn prewarm(self: Arc<Self>) -> Result<()> {
         info!(

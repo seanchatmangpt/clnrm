@@ -293,9 +293,11 @@ impl PortAllocator {
         // Step 3: Acquire exclusive flock
         #[cfg(unix)]
         {
+            #[allow(deprecated)]
             use nix::fcntl::{flock, FlockArg};
             use std::os::unix::io::AsRawFd;
 
+            #[allow(deprecated)]
             match flock(file.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
                 Ok(_) => {
                     // Lock acquired! Safe to write metadata and truncate

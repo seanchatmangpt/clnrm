@@ -495,6 +495,7 @@ impl WeaverProcessManager {
     /// - Tier 3: 6317-6337 (extended)
     ///
     /// Total capacity: 40 concurrent processes
+    #[allow(dead_code)]
     fn find_available_otlp_port() -> Result<u16> {
         // Tier 1: Standard OTLP range
         if let Ok(port) = Self::try_port_range(4317, 4327) {
@@ -524,6 +525,7 @@ impl WeaverProcessManager {
     /// - Tier 1: 8080-8089
     /// - Tier 2: 9080-9089
     /// - Tier 3: 10080-11099
+    #[allow(dead_code)]
     fn find_available_admin_port() -> Result<u16> {
         // Tier 1: Standard admin range
         if let Ok(port) = Self::try_port_range(8080, 8089) {
@@ -548,6 +550,7 @@ impl WeaverProcessManager {
     }
 
     /// Try to find available port in range
+    #[allow(dead_code)]
     fn try_port_range(start: u16, end: u16) -> Result<u16> {
         // Use thread ID to stagger start offset and prevent concurrent race conditions
         let thread_id = format!("{:?}", std::thread::current().id());
@@ -575,6 +578,7 @@ impl WeaverProcessManager {
     }
 
     /// Check if port is available by attempting to bind on both localhost and all interfaces (macOS compatibility)
+    #[allow(dead_code)]
     fn is_port_available(port: u16) -> bool {
         std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
             && std::net::TcpListener::bind(("0.0.0.0", port)).is_ok()

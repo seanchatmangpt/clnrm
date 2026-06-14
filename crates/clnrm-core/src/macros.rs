@@ -226,6 +226,7 @@ impl TestContext {
 #[derive(Debug)]
 pub struct DatabaseServicePlugin {
     name: String,
+    #[allow(dead_code)]
     image: String,
 }
 
