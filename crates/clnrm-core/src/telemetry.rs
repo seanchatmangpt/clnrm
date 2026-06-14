@@ -809,18 +809,56 @@ pub fn flush_telemetry_and_wait() {
 }
 
 /// Add OTel logs layer for tracing events -> OTel LogRecords
+///
+/// Installs a structured `tracing_subscriber` fmt layer that emits log records
+/// with target, thread-id, and level fields.  The layer is composed with the
+/// global registry so callers can still add their own layers afterwards.
+///
+/// If a global subscriber is already installed (e.g. from `init_otel`) this
+/// function is a no-op — `try_init` returns an error that is intentionally
+/// discarded.
 pub fn add_otel_logs_layer() {
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+    use tracing_subscriber::fmt::format::FmtSpan;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::EnvFilter;
 
-    // Convert `tracing` events into OTel LogRecords; exporter controlled by env/collector.
+    // Build a structured fmt layer capturing span close events.
+    // Note: .json() requires the "json" feature — we use the default compact
+    // format enriched with target, thread-id, and level instead.
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_target(true)
-        .with_thread_ids(false);
+        .with_thread_ids(true)
+        .with_level(true)
+        .with_span_events(FmtSpan::CLOSE);
 
-    // Install the composed subscriber — ignore error if already initialized
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info"));
+
+    // Compose and attempt to install; ignore the error if already initialised.
     let _ = tracing_subscriber::registry()
+        .with(env_filter)
         .with(fmt_layer)
         .try_init();
+}
+
+/// Flush any pending OTel log records and shut down the logs pipeline.
+///
+/// When using `opentelemetry-appender-tracing` or a logger provider the
+/// provider must be explicitly shut down to ensure all buffered records are
+/// exported before the process exits.  In the current implementation we use
+/// a pure `tracing_subscriber` fmt layer (no async logger provider), so the
+/// only action required is a brief sleep to allow any in-flight I/O to
+/// complete.
+pub fn shutdown_otel_logs() {
+    // If a logger provider was installed (future: via opentelemetry-appender-tracing)
+    // it should be shut down here.  For the current fmt-only implementation we
+    // flush stdout to ensure all JSON lines have been written.
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+    let _ = std::io::stderr().flush();
+
+    tracing::debug!("OTel logs pipeline shut down");
 }
 
 /// Span creation helpers for clnrm self-testing

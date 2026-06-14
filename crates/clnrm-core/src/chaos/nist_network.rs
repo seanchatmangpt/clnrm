@@ -1,6 +1,119 @@
 use crate::chaos::nist_core::{AttackResult, NistAttackVector};
 use crate::cleanroom::CleanroomEnvironment;
 use async_trait::async_trait;
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+// ─── Network Latency Injector ──────────────────────────────────────────────
+
+/// Simulates network latency by sleeping the calling thread.
+pub struct NetworkLatencyInjector;
+
+impl NetworkLatencyInjector {
+    /// Inject synthetic network latency.
+    ///
+    /// Sleeps the calling thread for `target_ms` plus a random jitter up to
+    /// `jitter_ms` milliseconds, simulating an unreliable network link.
+    pub fn inject_latency(target_ms: u64, jitter_ms: u64) {
+        let jitter = if jitter_ms > 0 {
+            let random_bytes: [u8; 8] = rand::random();
+            u64::from_ne_bytes(random_bytes) % (jitter_ms + 1)
+        } else {
+            0
+        };
+        let total_ms = target_ms + jitter;
+        std::thread::sleep(Duration::from_millis(total_ms));
+    }
+}
+
+// ─── Network Partition Injector ────────────────────────────────────────────
+
+/// Simulates a network partition by marking services as unreachable.
+pub struct NetworkPartitionInjector {
+    /// Shared state of currently partitioned services.
+    partitioned: Arc<Mutex<HashSet<String>>>,
+}
+
+impl NetworkPartitionInjector {
+    /// Create a new injector with an empty partition set.
+    pub fn new() -> Self {
+        Self {
+            partitioned: Arc::new(Mutex::new(HashSet::new())),
+        }
+    }
+
+    /// Mark `services` as unreachable for `duration`, then clear the partition.
+    pub fn partition(&self, services: &[&str], duration: Duration) {
+        {
+            let mut set = self.partitioned.lock().expect("partitioned lock");
+            for svc in services {
+                tracing::info!(
+                    service = *svc,
+                    duration_ms = duration.as_millis() as u64,
+                    "chaos.network.partition" = true,
+                    "Network partition injected"
+                );
+                set.insert(svc.to_string());
+            }
+        }
+
+        std::thread::sleep(duration);
+
+        {
+            let mut set = self.partitioned.lock().expect("partitioned lock");
+            for svc in services {
+                set.remove(*svc);
+            }
+        }
+    }
+
+    /// Returns `true` if the given service is currently partitioned.
+    pub fn is_partitioned(&self, service: &str) -> bool {
+        self.partitioned
+            .lock()
+            .expect("partitioned lock")
+            .contains(service)
+    }
+}
+
+impl Default for NetworkPartitionInjector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ─── Packet Loss Simulator ─────────────────────────────────────────────────
+
+/// Decides probabilistically whether an individual packet should be dropped.
+pub struct PacketLossSimulator;
+
+impl PacketLossSimulator {
+    /// Return `true` with probability `loss_rate` (0.0 = no loss, 1.0 = all dropped).
+    pub fn should_drop(loss_rate: f64) -> bool {
+        let r: f64 = rand::random();
+        r < loss_rate
+    }
+}
+
+// ─── Bandwidth Limiter ─────────────────────────────────────────────────────
+
+/// Computes the sleep duration required to honour a bandwidth cap.
+pub struct BandwidthLimiter;
+
+impl BandwidthLimiter {
+    /// Return the [`Duration`] the caller must sleep to send `bytes` at `bandwidth_bps`.
+    ///
+    /// Formula: `sleep = bytes / bandwidth_bps` (in seconds).
+    /// Returns [`Duration::ZERO`] when `bandwidth_bps` is zero to avoid division by zero.
+    pub fn throttle_bytes(bytes: usize, bandwidth_bps: u64) -> Duration {
+        if bandwidth_bps == 0 {
+            return Duration::ZERO;
+        }
+        let seconds = bytes as f64 / bandwidth_bps as f64;
+        Duration::from_secs_f64(seconds)
+    }
+}
 
 /// Simulates a network egress attack attempting to connect to external
 /// unauthorized IPs (like 8.8.8.8) or perform DNS tunneling.
