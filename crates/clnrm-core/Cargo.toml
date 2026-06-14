@@ -61,7 +61,7 @@ tracing-subscriber = { workspace = true }
 
 # Additional dependencies for OTLP integration
 reqwest = { workspace = true }
-tonic = { version = "0.12", features = ["transport"] }
+tonic = { version = "0.14", features = ["transport"] }
 
 # Utility dependencies
 uuid = { workspace = true }

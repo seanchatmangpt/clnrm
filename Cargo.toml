@@ -39,7 +39,7 @@ tracing = "0.1"
 testcontainers = { version = "0.27", features = ["blocking"] }
 testcontainers-modules = { version = "0.13", features = ["surrealdb"] }
 futures-util = "0.3"
-surrealdb = "2.2"
+surrealdb = "3.1"
 
 # CLI dependencies
 clap = { version = "4.5.49", features = ["derive"] }
@@ -92,7 +92,7 @@ tracing-subscriber = { version = "0.3.20", features = [
 ] }
 
 # Additional dependencies for OTLP integration
-reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"] }
+reqwest = { version = "0.13", features = ["json", "rustls", "blocking"] }
 
 # Utility dependencies
 uuid = { version = "1.0", features = ["v4", "serde"] }
