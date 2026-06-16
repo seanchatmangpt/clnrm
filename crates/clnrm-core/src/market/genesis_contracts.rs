@@ -1,3 +1,6 @@
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+
 /// Helper functions to compile/build bytecode for genesis contracts.
 pub fn build_erc20_contract() -> Vec<u8> {
     // Return genesis ERC20 bytecode representation

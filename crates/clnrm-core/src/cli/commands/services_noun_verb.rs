@@ -7,7 +7,7 @@
 
 use crate::cleanroom::CleanroomEnvironment;
 use clap_noun_verb::Result as CnvResult;
-use clap_noun_verb_macros::verb;
+use clap_noun_verb_macros::{noun, verb};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
