@@ -23,7 +23,7 @@ runs:
       uses: Swatinem/rust-cache@v2
       with:
         cache-on-failure: true
-        cache-key-prefix: ${{ inputs.cache-key-prefix }}
+        prefix-key: ${{ inputs.cache-key-prefix }}
 
     - name: Show Rust version
       shell: bash

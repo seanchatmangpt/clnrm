@@ -21,7 +21,7 @@ runs:
       shell: bash
       run: |
         if command -v ${{ inputs.tool-name }} &> /dev/null; then
-          INSTALLED=$(${tool-name} --version 2>&1 | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+          INSTALLED=$(${{ inputs.tool-name }} --version 2>&1 | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
           echo "installed-version=$INSTALLED" >> $GITHUB_OUTPUT
           if [[ "$INSTALLED" == "${{ inputs.version }}" ]]; then
             echo "cached=true" >> $GITHUB_OUTPUT
