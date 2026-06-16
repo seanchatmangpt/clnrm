@@ -188,7 +188,7 @@ impl PortAllocator {
         let mut port_allocated = None;
 
         for _ in 0..max_attempts {
-            let port = rng.gen_range(self.port_range.clone());
+            let port = rng.random_range(self.port_range.clone());
 
             // Check if port is available
             if !self.allocated.contains(&port) && self.is_port_available(port)? {

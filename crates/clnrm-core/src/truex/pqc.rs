@@ -255,7 +255,7 @@ fn constant_time_eq(a: &[u8; 32], b: &[u8; 32]) -> bool {
 /// Derive a 32-byte seed from system entropy sources (deterministic on each call with rand).
 fn generate_seed_from_entropy() -> [u8; 32] {
     use rand::RngCore;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut seed = [0u8; 32];
     rng.fill_bytes(&mut seed);
     seed

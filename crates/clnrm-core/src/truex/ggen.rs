@@ -142,7 +142,7 @@ impl Grammar {
                 return symbol.to_string();
             }
             // Pick a random alternative
-            let idx = rng.gen_range(0..alternatives.len());
+            let idx = rng.random_range(0..alternatives.len());
             let production = &alternatives[idx];
             production
                 .iter()
