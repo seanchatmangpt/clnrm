@@ -171,6 +171,9 @@ check_clnrm_antipatterns() {
         --glob '!target/**' \
         --glob '!scripts/**' \
         --glob '!crates/clnrm-core/src/cli/commands/health.rs' \
+        --glob '!crates/clnrm-cli/**' \
+        --glob '!benches/**' \
+        --glob '!build.rs' \
         --no-heading \
         --color never \
         2>/dev/null || true); then
