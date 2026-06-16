@@ -280,16 +280,36 @@ main() {
     fi
 
     # Pattern 4: .unwrap() and .expect() in production code
-    if ! scan_pattern_safely \
-        '\.(unwrap|expect)\(' \
-        "unwrap/expect in production code" \
-        "$VALIDATED_ROOT" \
-        "$SCRIPT_TIMEOUT" \
-        'crates/clnrm-core/examples/**' \
-        'crates/clnrm-core/tests/**' \
-        'crates/clnrm/tests/**' \
-        '**/test*.rs'; then
+    # Uses per-file approach to exclude inline #[cfg(test)] modules and honor // OK: annotations
+    log_info "Scanning: unwrap/expect in production code"
+    _unwrap_issues=""
+    while IFS= read -r -d '' _src_file; do
+        _test_line=$(grep -n "^#\[cfg(test)\]" "$_src_file" 2>/dev/null | head -1 | cut -d: -f1)
+        if [ -n "$_test_line" ]; then
+            _file_matches=$(head -n $((_test_line - 1)) "$_src_file" | grep -nE '\.unwrap\(\)|\.expect\(' | grep -v '// OK: ' | grep -v '//!' | grep -v '/// ' 2>/dev/null || true)
+        else
+            _file_matches=$(grep -nE '\.unwrap\(\)|\.expect\(' "$_src_file" | grep -v '// OK: ' | grep -v '//!' | grep -v '/// ' 2>/dev/null || true)
+        fi
+        if [ -n "$_file_matches" ]; then
+            _unwrap_issues="${_unwrap_issues}${_src_file}:"$'\n'"${_file_matches}"$'\n'
+        fi
+    done < <(find "$VALIDATED_ROOT" -name "*.rs" -type f \
+        -not -path "*/target/*" \
+        -not -path "*/scripts/*" \
+        -not -path "*/.git/*" \
+        -not -path "*/crates/clnrm-core/examples/*" \
+        -not -path "*/crates/clnrm-core/tests/*" \
+        -not -path "*/crates/clnrm/tests/*" \
+        -not -name "test*.rs" \
+        -print0 2>/dev/null)
+    if [ -n "$_unwrap_issues" ]; then
+        log_error "Fake pattern detected: unwrap/expect in production code"
+        echo "----------------------------------------"
+        echo "$_unwrap_issues"
+        echo "----------------------------------------"
         exit_code=1
+    else
+        log_success "Clean: No unwrap/expect in production code"
     fi
 
     # Check clnrm-specific anti-patterns
