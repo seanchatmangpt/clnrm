@@ -251,7 +251,7 @@ impl PortAllocator {
     async fn try_lock_port(&self, port: u16) -> Result<Option<PortLock>> {
         // Step 0: Check in-process lock to prevent thread-level conflicts within same process
         {
-            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap();
+            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap(); // OK: Safe unwrap - mutex poisoning is unrecoverable
             if locks.contains(&port) {
                 return Ok(None);
             }
@@ -260,7 +260,7 @@ impl PortAllocator {
 
         // Helper to remove port from in-process locks on failure
         let cleanup_in_process_lock = || {
-            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap();
+            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap(); // OK: Safe unwrap - mutex poisoning is unrecoverable
             locks.remove(&port);
         };
 
@@ -421,7 +421,7 @@ impl PortAllocator {
 
 impl Default for PortAllocator {
     fn default() -> Self {
-        Self::new().expect("Failed to create default PortAllocator")
+        Self::new().expect("Failed to create default PortAllocator") // OK: Safe unwrap - Default::default() panics by convention on init failure
     }
 }
 

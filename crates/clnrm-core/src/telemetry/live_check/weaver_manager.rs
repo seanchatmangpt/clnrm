@@ -188,7 +188,7 @@ impl WeaverProcessManager {
 
         info!(
             "🎉 Weaver is ready (startup took {}ms)",
-            self.started_at.unwrap().elapsed().as_millis()
+            self.started_at.unwrap().elapsed().as_millis() // OK: Safe unwrap - started_at is always set before wait_until_ready is called
         );
 
         Ok(WeaverPorts {
