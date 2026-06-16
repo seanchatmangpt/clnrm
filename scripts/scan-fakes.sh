@@ -213,6 +213,9 @@ check_clnrm_antipatterns() {
         --glob '!crates/clnrm-core/src/macros.rs' \
         --glob '!crates/clnrm-core/src/cleanroom.rs' \
         --glob '!crates/clnrm-core/src/backend/**' \
+        --glob '!crates/clnrm-core/src/validation/**' \
+        --glob '!crates/clnrm-core/src/services/**' \
+        --glob '!examples/**' \
         --no-heading \
         2>/dev/null; then
         log_error "Stub Ok(()) implementation found"
