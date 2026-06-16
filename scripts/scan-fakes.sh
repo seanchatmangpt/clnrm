@@ -158,22 +158,16 @@ check_clnrm_antipatterns() {
     # Check for println! in production code (should use tracing)
     log_info "Checking for println! in production code..."
     local println_matches
-    if println_matches=$(rg -n '^\s*println!' "$root_dir" \
+    if println_matches=$(rg -n '^\s*println!' "$root_dir/crates" \
         --type rust \
         --glob '!crates/clnrm-core/examples/**' \
         --glob '!crates/clnrm-core/tests/**' \
         --glob '!crates/clnrm/tests/**' \
         --glob '!crates/truex-core/**' \
-        --glob '!**/test*.rs' \
-        --glob '!tests/**' \
-        --glob '!tools/**' \
-        --glob '!examples/**' \
-        --glob '!target/**' \
-        --glob '!scripts/**' \
-        --glob '!crates/clnrm-core/src/cli/commands/health.rs' \
         --glob '!crates/clnrm-cli/**' \
-        --glob '!benches/**' \
-        --glob '!build.rs' \
+        --glob '!**/test*.rs' \
+        --glob '!target/**' \
+        --glob '!crates/clnrm-core/src/cli/commands/health.rs' \
         --no-heading \
         --color never \
         2>/dev/null || true); then
