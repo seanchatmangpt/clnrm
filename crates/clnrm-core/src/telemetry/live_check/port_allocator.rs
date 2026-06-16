@@ -277,6 +277,7 @@ impl PortAllocator {
         let mut file = match OpenOptions::new()
             .create(true)
             .write(true)
+            .truncate(false)
             .open(&lock_file_path)
         {
             Ok(f) => f,

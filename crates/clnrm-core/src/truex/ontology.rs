@@ -63,8 +63,7 @@ impl Ontology {
             .laws
             .iter()
             .flat_map(|law| law.transitions.iter())
-            .filter(|t| t.from == self.current_state && t.select_condition == condition)
-            .next()
+            .find(|t| t.from == self.current_state && t.select_condition == condition)
             .map(|t| (t.to.clone(), t.select_condition.clone(), t.effects.clone()));
 
         match matched {

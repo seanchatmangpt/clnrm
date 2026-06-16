@@ -138,7 +138,7 @@ impl ServiceMetadata {
             );
 
             // Export first port as default PORT
-            if env.get(&format!("{}_PORT", prefix)).is_none() {
+            if !env.contains_key(&format!("{}_PORT", prefix)) {
                 env.insert(format!("{}_PORT", prefix), host_port.to_string());
             }
         }

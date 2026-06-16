@@ -82,13 +82,13 @@ impl PartyPacket {
         // Security note: this is a simplification; production code would use the full lattice verify().
         let mut hasher = Sha256::new();
         hasher.update(self.payload.as_bytes());
-        hasher.update(&self.nonce.to_le_bytes());
+        hasher.update(self.nonce.to_le_bytes());
         let payload_hash = hasher.finalize();
 
         // Verify: recompute expected tag over pk_bytes + payload_hash, compare against z_bytes
         let mut verifier = Sha256::new();
         verifier.update(&pk_bytes);
-        verifier.update(&payload_hash);
+        verifier.update(payload_hash);
         let expected = verifier.finalize();
 
         // For the escrow test case: if signature was over different payload, z_bytes won't match.

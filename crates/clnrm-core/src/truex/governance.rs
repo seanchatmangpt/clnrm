@@ -22,6 +22,7 @@ pub struct RegistryService {
 }
 
 impl RegistryService {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             admitted_laws: RwLock::new(HashMap::new()),
@@ -41,7 +42,7 @@ impl RegistryService {
 
         if !packet
             .verify_signature()
-            .map_err(|e| CleanroomError::validation_error(e))?
+            .map_err(CleanroomError::validation_error)?
         {
             return Err(CleanroomError::validation_error(
                 "Signature validation failed",

@@ -237,7 +237,7 @@ impl PacketRouter {
         };
 
         let mut live = Vec::new();
-        let drained: Vec<Packet> = queue.drain(..).collect();
+        let drained: Vec<Packet> = std::mem::take(queue);
 
         for pkt in drained {
             if pkt.is_expired(current_time_ms) {

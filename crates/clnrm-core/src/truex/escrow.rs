@@ -571,7 +571,7 @@ mod tests {
         let signature_hex = format!(
             "z:{}-c:{}",
             hex::encode(
-                &sig.z
+                sig.z
                     .coeffs
                     .iter()
                     .take(32)
@@ -579,7 +579,7 @@ mod tests {
                     .collect::<String>()
             ),
             hex::encode(
-                &sig.c
+                sig.c
                     .coeffs
                     .iter()
                     .take(32)
@@ -588,7 +588,7 @@ mod tests {
             )
         );
         let public_key_hex = hex::encode(
-            &kp.public
+            kp.public
                 .t
                 .coeffs
                 .iter()

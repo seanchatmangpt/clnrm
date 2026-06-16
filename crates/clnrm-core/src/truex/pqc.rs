@@ -235,7 +235,7 @@ fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
     // outer = H(opad || inner)
     let mut outer = Sha256::new();
     outer.update(opad);
-    outer.update(&inner_hash);
+    outer.update(inner_hash);
     let result = outer.finalize();
 
     let mut out = [0u8; 32];

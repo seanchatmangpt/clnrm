@@ -314,8 +314,10 @@ mod tests {
             },
         );
 
-        let mut constraints = ConstraintSet::default();
-        constraints.hermetic = hermetic;
+        let constraints = ConstraintSet {
+            hermetic,
+            ..Default::default()
+        };
 
         let receipt = TestReceipt {
             id: ContentHash::from_string("hash"),

@@ -87,6 +87,7 @@ impl ImageRef {
     }
 
     /// Convert to full image reference string
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         let mut result = String::new();
 

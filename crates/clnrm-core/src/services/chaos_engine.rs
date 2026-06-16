@@ -371,7 +371,7 @@ impl ChaosEnginePlugin {
                             // Busy loop — genuinely consumes CPU
                             counter = counter.wrapping_add(1);
                             // Occasionally yield to avoid starving the OS scheduler
-                            if counter % 1_000_000 == 0 {
+                            if counter.is_multiple_of(1_000_000) {
                                 std::thread::yield_now();
                             }
                         }

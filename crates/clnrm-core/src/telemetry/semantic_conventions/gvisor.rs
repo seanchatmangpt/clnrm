@@ -9,6 +9,7 @@
 //! by Weaver during live-check integration tests.
 
 /// gvisor-specific semantic conventions
+#[allow(clippy::module_inception)]
 pub mod gvisor {
     /// gvisor sandbox ID (the actual runsc container identifier)
     ///

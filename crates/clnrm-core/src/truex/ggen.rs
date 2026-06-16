@@ -53,6 +53,7 @@ impl Grammar {
     /// Alternatives are separated by ` | `.
     /// Each alternative is space-split into symbols.
     /// Quoted strings are treated as single terminal tokens (quotes stripped).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(grammar_def: &str) -> Result<Self> {
         let mut grammar = Grammar {
             rules: HashMap::new(),
