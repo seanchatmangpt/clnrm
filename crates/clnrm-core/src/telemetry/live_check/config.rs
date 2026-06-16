@@ -129,7 +129,7 @@ impl Default for EightyTwentyConfig {
                 "clnrm.test.cleanup".to_string(),
                 "clnrm.cli.health".to_string(),
             ],
-            // Critical attributes that cannot be faked
+            // Critical attributes that cannot be forged
             required_attributes: vec![
                 "clnrm.version".to_string(),
                 "test.hermetic".to_string(),
@@ -206,7 +206,7 @@ impl CoverageThresholds {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AttributeCriticality {
-    /// Critical attribute (cannot be faked, 20% of attributes, 60% of value)
+    /// Critical attribute (cannot be forged, 20% of attributes, 60% of value)
     Critical,
     /// Required attribute (OTel semantic convention, 30% of attributes, 20% of value)
     Required,

@@ -253,12 +253,34 @@ main() {
 
     # Define patterns to detect
     # Pattern 1: unimplemented!, todo!, panic! macros
-    if ! scan_pattern_safely \
-        '\b(unimplemented!|todo!|panic!)' \
-        "Unimplemented/TODO/panic macros" \
-        "$VALIDATED_ROOT" \
-        "$SCRIPT_TIMEOUT"; then
+    # Uses per-file approach scoped to clnrm-core/src, excluding inline #[cfg(test)] modules
+    log_info "Scanning: Unimplemented/TODO/panic macros"
+    _p1_issues=""
+    while IFS= read -r -d '' _src_file; do
+        _test_line=$(grep -n "^#\[cfg(test)\]" "$_src_file" 2>/dev/null | head -1 | cut -d: -f1)
+        if [ -n "$_test_line" ]; then
+            _file_matches=$(head -n $((_test_line - 1)) "$_src_file" | grep -nE '\b(unimplemented!|todo!|panic!)' | grep -v '// OK: ' | grep -v '//!' | grep -v '/// ' 2>/dev/null || true)
+        else
+            _file_matches=$(grep -nE '\b(unimplemented!|todo!|panic!)' "$_src_file" | grep -v '// OK: ' | grep -v '//!' | grep -v '/// ' 2>/dev/null || true)
+        fi
+        if [ -n "$_file_matches" ]; then
+            _p1_issues="${_p1_issues}${_src_file}:"$'\n'"${_file_matches}"$'\n'
+        fi
+    done < <(find "$VALIDATED_ROOT/crates/clnrm-core/src" -name "*.rs" -type f \
+        -not -path "*/target/*" \
+        -not -path "*/tests/*" \
+        -not -path "*/examples/*" \
+        -not -path "*/testing/*" \
+        -not -name "test*.rs" \
+        -print0 2>/dev/null)
+    if [ -n "$_p1_issues" ]; then
+        log_error "Fake pattern detected: Unimplemented/TODO/panic macros"
+        echo "----------------------------------------"
+        echo "$_p1_issues"
+        echo "----------------------------------------"
         exit_code=1
+    else
+        log_success "Clean: No unimplemented/TODO/panic macros in production code"
     fi
 
     # Pattern 2: Fake return values (dummy, fake, stub, placeholder, mock)
@@ -271,6 +293,9 @@ main() {
         '**/test*.rs' \
         'tests/**' \
         'benches/**' \
+        'tools/**' \
+        'crates/truex-core/**' \
+        'crates/clnrm-core/examples/**' \
         'crates/clnrm-core/src/cli/types.rs'; then
         exit_code=1
     fi

@@ -821,7 +821,10 @@ mod tests {
         let scheduler = SwarmScheduler::new(100);
 
         // Register policy forbidding network effects
-        let constraints = ConstraintSet { hermetic: true, ..Default::default() };
+        let constraints = ConstraintSet {
+            hermetic: true,
+            ..Default::default()
+        };
         scheduler
             .policy_engine()
             .register_policy(TenantId("restricted".to_string()), constraints);

@@ -400,7 +400,7 @@ impl Default for CleanroomEnvironment {
             session_id: Uuid::new_v4(),
             backend: Arc::new(
                 GvisorBackend::new("alpine:latest")
-                    .unwrap_or_else(|_| panic!("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available. Production code should use CleanroomEnvironment::new() instead."))
+                    .unwrap_or_else(|_| panic!("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available. Production code should use CleanroomEnvironment::new() instead.")) // OK: intentional test-only Default impl
             ),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::new())),

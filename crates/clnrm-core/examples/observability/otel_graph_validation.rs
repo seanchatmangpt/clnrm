@@ -72,12 +72,9 @@ impl GraphValidator {
     pub fn new() -> Result<Self> {
         let processor = ValidationSpanProcessor::new();
         let validator = OtelValidator::with_config(OtelValidationConfig {
-            validate_spans: true,
-            validate_traces: true,
             validate_exports: false,
             validate_performance: false,
-            max_overhead_ms: 100.0,
-            required_attributes: HashMap::new(),
+            ..OtelValidationConfig::default()
         })
         .with_validation_processor(processor.clone());
 
