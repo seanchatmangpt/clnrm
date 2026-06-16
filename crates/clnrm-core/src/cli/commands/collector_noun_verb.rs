@@ -150,7 +150,8 @@ pub struct CollectorLogsOutput {
 /// * `http_port` - HTTP port (default 4318)
 /// * `grpc_port` - gRPC port (default 4317)
 /// * `detach` - Run in background
-#[allow(unexpected_cfgs, clippy::unused_unit)]
+#[allow(unexpected_cfgs, clippy::unused_unit, deprecated)]
+#[noun("collector", "Manage OpenTelemetry collector")]
 #[verb("up")]
 fn collector_up(
     image: Option<String>,
@@ -175,7 +176,8 @@ fn collector_up(
 ///
 /// # Arguments
 /// * `volumes` - Remove associated volumes
-#[allow(unexpected_cfgs, clippy::unused_unit)]
+#[allow(unexpected_cfgs, clippy::unused_unit, deprecated)]
+#[noun("collector", "Manage OpenTelemetry collector")]
 #[verb("down")]
 fn collector_down(volumes: Option<bool>) -> CnvResult<CollectorActionOutput> {
     let volumes = volumes.unwrap_or(false);
@@ -185,7 +187,8 @@ fn collector_down(volumes: Option<bool>) -> CnvResult<CollectorActionOutput> {
 /// Show collector status
 ///
 /// Displays the current status of the collector service, including endpoints and uptime.
-#[allow(unexpected_cfgs, clippy::unused_unit)]
+#[allow(unexpected_cfgs, clippy::unused_unit, deprecated)]
+#[noun("collector", "Manage OpenTelemetry collector")]
 #[verb("status")]
 fn collector_status() -> CnvResult<CollectorStatusOutput> {
     Ok(get_collector_status_impl())
@@ -198,7 +201,8 @@ fn collector_status() -> CnvResult<CollectorStatusOutput> {
 /// # Arguments
 /// * `lines` - Number of log lines to show (default 50)
 /// * `follow` - Follow log output in real-time
-#[allow(unexpected_cfgs, clippy::unused_unit)]
+#[allow(unexpected_cfgs, clippy::unused_unit, deprecated)]
+#[noun("collector", "Manage OpenTelemetry collector")]
 #[verb("logs")]
 fn collector_logs(lines: Option<usize>, follow: Option<bool>) -> CnvResult<CollectorLogsOutput> {
     let lines = lines.unwrap_or(50);

@@ -247,17 +247,15 @@ impl LayerManager {
                     }
                     tar::EntryType::Symlink | tar::EntryType::Link => {
                         // Handle symlinks
-                        if let Ok(link_name) = entry.link_name() {
-                            if let Some(link_path) = link_name {
-                                #[cfg(unix)]
-                                {
-                                    std::os::unix::fs::symlink(link_path, &full_path)?;
-                                }
-                                #[cfg(windows)]
-                                {
-                                    // Windows requires different handling
-                                    std::os::windows::fs::symlink_file(link_path, &full_path)?;
-                                }
+                        if let Ok(Some(link_path)) = entry.link_name() {
+                            #[cfg(unix)]
+                            {
+                                std::os::unix::fs::symlink(link_path, &full_path)?;
+                            }
+                            #[cfg(windows)]
+                            {
+                                // Windows requires different handling
+                                std::os::windows::fs::symlink_file(link_path, &full_path)?;
                             }
                         }
                     }

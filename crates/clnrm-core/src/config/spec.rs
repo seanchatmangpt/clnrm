@@ -216,6 +216,7 @@ pub struct ContainerSpec {
 impl ContainerSpec {
     /// TRIZ Principle 15: Dynamics - Dynamic construction adapter
     /// Allows the struct to adapt to different construction patterns during evolution
+    #[allow(clippy::too_many_arguments)]
     pub fn from_legacy_fields(
         _name: String, // This is actually the image name in legacy format
         image: String,
@@ -243,7 +244,6 @@ impl ContainerSpec {
             final_command = args; // Merge args into command
         }
 
-        let healthcheck = healthcheck; // Keep field name
         let workdir = working_dir; // Rename field
 
         // Convert legacy volume strings to VolumeSpec

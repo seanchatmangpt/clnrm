@@ -22,7 +22,6 @@ use tokio::sync::RwLock;
 ///
 /// ```rust,ignore
 /// use clnrm_core::{with_database, with_cache};
-
 ///
 /// #[cleanroom_test]
 /// async fn test_user_registration() {
@@ -224,6 +223,7 @@ impl TestContext {
 
 /// Database service plugin implementation
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct DatabaseServicePlugin {
     name: String,
     #[allow(dead_code)]

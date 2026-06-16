@@ -269,6 +269,8 @@ pub struct ServiceActionOutput {
 ///
 /// Lists all services currently running, their IDs, and metadata.
 /// Returns JSON output suitable for machine parsing.
+#[allow(deprecated)]
+#[noun("services", "Manage application services")]
 #[verb("status")]
 fn services_status() -> CnvResult<ServiceStatusOutput> {
     tokio::task::block_in_place(|| {
@@ -283,6 +285,8 @@ fn services_status() -> CnvResult<ServiceStatusOutput> {
 /// # Arguments
 /// * `service` - Name of the service to get logs for
 /// * `lines` - Number of log lines to show (default 50)
+#[allow(deprecated)]
+#[noun("services", "Manage application services")]
 #[verb("logs")]
 fn services_logs(service: String, lines: Option<usize>) -> CnvResult<ServiceLogsOutput> {
     let lines = lines.unwrap_or(50);
@@ -299,6 +303,8 @@ fn services_logs(service: String, lines: Option<usize>) -> CnvResult<ServiceLogs
 /// # Arguments
 /// * `name` - Name of the service to start
 /// * `force` - Force restart if already running
+#[allow(deprecated)]
+#[noun("services", "Manage application services")]
 #[verb("start")]
 fn services_start(name: String, force: Option<bool>) -> CnvResult<ServiceActionOutput> {
     let force = force.unwrap_or(false);
@@ -315,6 +321,8 @@ fn services_start(name: String, force: Option<bool>) -> CnvResult<ServiceActionO
 /// # Arguments
 /// * `name` - Name of the service to stop
 /// * `timeout` - Graceful shutdown timeout in seconds (default 30)
+#[allow(deprecated)]
+#[noun("services", "Manage application services")]
 #[verb("stop")]
 fn services_stop(name: String, timeout: Option<u64>) -> CnvResult<ServiceActionOutput> {
     let timeout = timeout.unwrap_or(30);
