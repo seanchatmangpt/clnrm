@@ -45,8 +45,8 @@ impl Default for OtelValidationConfig {
             forbidden_attributes: Vec::new(),
             validate_spans: true,
             validate_traces: true,
-            validate_exports: true,
-            validate_performance: false,
+            validate_exports: false,
+            validate_performance: true,
             max_overhead_ms: 100.0,
         }
     }

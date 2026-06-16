@@ -131,6 +131,7 @@ pub struct Trade {
 
 /// Wrapper for bids in max-heap (highest price wins).
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct BidOrder {
     price: f64,
     quantity: f64,
@@ -164,6 +165,7 @@ impl Ord for BidOrder {
 
 /// Wrapper for asks in min-heap (lowest price wins). We invert ordering.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct AskOrder {
     price: f64,
     quantity: f64,
@@ -271,8 +273,8 @@ impl OrderBook {
             }
 
             // Pop both
-            let mut bid = self.bids.pop().unwrap();
-            let mut ask = self.asks.pop().unwrap();
+            let mut bid = self.bids.pop().unwrap(); // OK: Safe unwrap - bids is non-empty (checked via peek above)
+            let mut ask = self.asks.pop().unwrap(); // OK: Safe unwrap - asks is non-empty (checked via peek above)
 
             // Fill at ask price (price-time priority)
             let fill_qty = bid.quantity.min(ask.quantity);

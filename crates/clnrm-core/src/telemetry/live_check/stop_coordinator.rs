@@ -169,7 +169,7 @@ impl StopCoordinator {
         let reason = Arc::clone(&self.shutdown_reason);
         tokio::spawn(async move {
             let mut sigint =
-                signal(SignalKind::interrupt()).expect("Failed to install SIGINT handler");
+                signal(SignalKind::interrupt()).expect("Failed to install SIGINT handler"); // OK: signal setup fails only on OS error
             sigint.recv().await;
             info!("🛑 Received SIGINT (Ctrl+C), initiating graceful shutdown");
             *reason.lock().await = Some(StopReason::Sigint);
@@ -181,7 +181,7 @@ impl StopCoordinator {
         let reason = Arc::clone(&self.shutdown_reason);
         tokio::spawn(async move {
             let mut sighup =
-                signal(SignalKind::hangup()).expect("Failed to install SIGHUP handler");
+                signal(SignalKind::hangup()).expect("Failed to install SIGHUP handler"); // OK: signal setup fails only on OS error
             sighup.recv().await;
             info!("🛑 Received SIGHUP (hangup), initiating graceful shutdown");
             *reason.lock().await = Some(StopReason::Sighup);
@@ -193,7 +193,7 @@ impl StopCoordinator {
         let reason = Arc::clone(&self.shutdown_reason);
         tokio::spawn(async move {
             let mut sigterm =
-                signal(SignalKind::terminate()).expect("Failed to install SIGTERM handler");
+                signal(SignalKind::terminate()).expect("Failed to install SIGTERM handler"); // OK: signal setup fails only on OS error
             sigterm.recv().await;
             info!("🛑 Received SIGTERM, initiating graceful shutdown");
             *reason.lock().await = Some(StopReason::Sigterm);
@@ -213,7 +213,7 @@ impl StopCoordinator {
         tokio::spawn(async move {
             tokio::signal::ctrl_c()
                 .await
-                .expect("Failed to install Ctrl+C handler");
+                .expect("Failed to install Ctrl+C handler"); // OK: setup fails only on OS error
             info!("🛑 Received Ctrl+C, initiating graceful shutdown");
             *reason.lock().await = Some(StopReason::Sigint);
             token.cancel();

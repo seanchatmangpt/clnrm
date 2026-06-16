@@ -46,7 +46,7 @@ impl NetworkPartitionInjector {
     /// Mark `services` as unreachable for `duration`, then clear the partition.
     pub fn partition(&self, services: &[&str], duration: Duration) {
         {
-            let mut set = self.partitioned.lock().expect("partitioned lock");
+            let mut set = self.partitioned.lock().expect("partitioned lock"); // OK: mutex poisoning not expected
             for svc in services {
                 tracing::info!(
                     service = *svc,
@@ -61,7 +61,7 @@ impl NetworkPartitionInjector {
         std::thread::sleep(duration);
 
         {
-            let mut set = self.partitioned.lock().expect("partitioned lock");
+            let mut set = self.partitioned.lock().expect("partitioned lock"); // OK: mutex poisoning not expected
             for svc in services {
                 set.remove(*svc);
             }
@@ -72,7 +72,7 @@ impl NetworkPartitionInjector {
     pub fn is_partitioned(&self, service: &str) -> bool {
         self.partitioned
             .lock()
-            .expect("partitioned lock")
+            .expect("partitioned lock") // OK: mutex poisoning not expected
             .contains(service)
     }
 }

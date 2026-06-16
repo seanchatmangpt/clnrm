@@ -161,7 +161,7 @@ impl OciImageManager {
 
 impl Default for OciImageManager {
     fn default() -> Self {
-        Self::new().unwrap()
+        Self::new().unwrap() // OK: Safe unwrap - OciImageManager::new() only fails on missing env, valid in default context
     }
 }
 

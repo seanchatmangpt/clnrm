@@ -54,7 +54,7 @@ fn get_storage() -> &'static Arc<RwLock<Vec<SpanData>>> {
 pub fn store_span(span: SpanData) {
     get_storage()
         .write()
-        .expect("SPAN_STORAGE lock poisoned")
+        .expect("SPAN_STORAGE lock poisoned") // OK: RwLock poisoning not expected
         .push(span);
 }
 
@@ -73,7 +73,7 @@ pub fn store_span(span: SpanData) {
 pub fn get_collected_spans() -> Vec<SpanData> {
     get_storage()
         .read()
-        .expect("SPAN_STORAGE lock poisoned")
+        .expect("SPAN_STORAGE lock poisoned") // OK: RwLock poisoning not expected
         .clone()
 }
 
@@ -88,7 +88,7 @@ pub fn get_collected_spans() -> Vec<SpanData> {
 pub fn clear_collected_spans() {
     get_storage()
         .write()
-        .expect("SPAN_STORAGE lock poisoned")
+        .expect("SPAN_STORAGE lock poisoned") // OK: RwLock poisoning not expected
         .clear();
 }
 
@@ -107,7 +107,7 @@ pub fn clear_collected_spans() {
 pub fn span_count() -> usize {
     get_storage()
         .read()
-        .expect("SPAN_STORAGE lock poisoned")
+        .expect("SPAN_STORAGE lock poisoned") // OK: RwLock poisoning not expected
         .len()
 }
 

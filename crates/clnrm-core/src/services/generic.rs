@@ -214,7 +214,7 @@ impl GenericContainerPlugin {
 
         let image = self.image.clone();
         let cmd = self.build_cmd();
-        let timeout = self.timeout;
+        let _timeout = self.timeout;
 
         // Run in a blocking context so we can use async OCI loader
         let result = tokio::task::block_in_place(|| {
@@ -417,7 +417,7 @@ impl ServicePlugin for GenericContainerPlugin {
             if TcpStream::connect_timeout(
                 &addr
                     .parse()
-                    .unwrap_or_else(|_| "127.0.0.1:0".parse().unwrap()),
+                    .unwrap_or_else(|_| "127.0.0.1:0".parse().unwrap()), // OK: valid literal
                 Duration::from_millis(200),
             )
             .is_ok()

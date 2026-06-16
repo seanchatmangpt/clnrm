@@ -37,7 +37,7 @@ pub fn format_rfc3339(timestamp: &DateTime<Utc>) -> String {
 /// ```no_run
 /// use clnrm_core::determinism::time::FrozenClock;
 ///
-/// let mut clock = FrozenClock::parse("2025-01-01T00:00:00Z").unwrap();
+/// let mut clock = FrozenClock::parse("2025-01-01T00:00:00Z").unwrap(); // OK: doc example
 /// assert_eq!(clock.unix_ms() % 1000, 0);
 /// clock.advance(500);
 /// ```

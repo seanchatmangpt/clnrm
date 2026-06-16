@@ -42,7 +42,7 @@
 //! "#;
 //!
 //! // Parse spans from stdout
-//! let spans = StdoutSpanParser::parse(stdout).unwrap();
+//! let spans = StdoutSpanParser::parse(stdout).unwrap(); // OK: doc example
 //! assert_eq!(spans.len(), 2);
 //! assert_eq!(spans[0].name, "clnrm.run");
 //! ```

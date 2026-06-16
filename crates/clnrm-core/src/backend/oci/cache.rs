@@ -151,7 +151,7 @@ impl ImageCache {
                 .join("layers")
                 .join(layer.digest.replace(':', "_"));
 
-            tokio::fs::create_dir_all(layer_path.parent().unwrap()).await?;
+            tokio::fs::create_dir_all(layer_path.parent().unwrap()).await?; // OK: path has parent
             tokio::fs::write(&layer_path, &layer.data).await?;
 
             layer_entries.push(LayerEntry {
@@ -171,7 +171,7 @@ impl ImageCache {
             .join("configs")
             .join(config_digest.replace(':', "_"));
 
-        tokio::fs::create_dir_all(config_path.parent().unwrap()).await?;
+        tokio::fs::create_dir_all(config_path.parent().unwrap()).await?; // OK: path has parent
         tokio::fs::write(&config_path, &image.config_bytes).await?;
 
         // Add to index

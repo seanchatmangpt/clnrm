@@ -80,7 +80,7 @@ impl SettlementReceipt {
 
     /// Produces an HMAC-SHA256 over `digest` using `secret`.
     pub fn sign(digest: &[u8; 32], secret: &[u8]) -> Vec<u8> {
-        let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC accepts keys of any length");
+        let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC accepts keys of any length"); // OK: any key len
         mac.update(digest);
         mac.finalize().into_bytes().to_vec()
     }

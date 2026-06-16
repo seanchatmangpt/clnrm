@@ -1589,7 +1589,7 @@ async fn test_concurrency_testing_pattern() -> Result<()> {
         let counter = Arc::clone(&shared_counter);
         let handle = thread::spawn(move || {
             for _ in 0..100 {
-                let mut value = counter.lock().unwrap();
+                let mut value = counter.lock().unwrap(); // OK: Safe unwrap - mutex only poisoned on panic in spawned thread
                 *value += 1;
             }
         });
@@ -1603,7 +1603,7 @@ async fn test_concurrency_testing_pattern() -> Result<()> {
             .map_err(|_| CleanroomError::internal_error("Thread join failed"))?;
     }
 
-    let final_value = shared_counter.lock().unwrap();
+    let final_value = shared_counter.lock().unwrap(); // OK: Safe unwrap - threads completed via join before this point
     if *final_value != 1000 {
         return Err(CleanroomError::validation_error(format!(
             "All increments should be applied atomically, got {}",

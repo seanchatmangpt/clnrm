@@ -45,7 +45,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: |
-          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null || echo "weaver unavailable"
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
 
       - name: Install dependencies
         run: |
@@ -53,6 +53,7 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Validate setup
+        if: steps.install-weaver.outcome == 'success'
         run: |
           ./scripts/tests/validate_test_setup.sh
 
@@ -83,7 +84,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: |
-          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null || echo "weaver unavailable"
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
 
       - name: Install dependencies
         run: |
@@ -135,7 +136,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: |
-          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null || echo "weaver unavailable"
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
 
       - name: Install dependencies
         run: |
@@ -187,7 +188,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: |
-          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null || echo "weaver unavailable"
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
 
       - name: Install dependencies
         run: |
@@ -245,7 +246,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         run: |
-          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null || echo "weaver unavailable"
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
 
       - name: Install dependencies
         run: |

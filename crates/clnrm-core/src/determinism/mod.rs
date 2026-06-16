@@ -16,7 +16,7 @@
 //!     freeze_clock: Some("2025-01-01T00:00:00Z".to_string()),
 //! };
 //!
-//! let engine = DeterminismEngine::new(config).unwrap();
+//! let engine = DeterminismEngine::new(config).unwrap(); // OK: doc example
 //! let timestamp = engine.get_timestamp();
 //! let random_value = engine.next_u64();
 //! ```

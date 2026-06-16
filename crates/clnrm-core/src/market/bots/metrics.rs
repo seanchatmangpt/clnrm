@@ -18,7 +18,7 @@ pub struct BotMetrics {
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .unwrap() // OK: Safe unwrap - SystemTime::now() is always after UNIX_EPOCH on any supported platform
         .as_millis() as u64
 }
 

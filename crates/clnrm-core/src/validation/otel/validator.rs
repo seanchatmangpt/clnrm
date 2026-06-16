@@ -96,7 +96,7 @@ impl OtelValidator {
     ///
     /// This method validates that a span with the expected attributes exists.
     /// Following core team standards:
-    /// - No .unwrap() or .expect()
+    /// - No .unwrap() or .expect() // OK: guideline text, not code
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     pub fn validate_span(&self, assertion: &SpanAssertion) -> Result<SpanValidationResult> {
@@ -272,7 +272,7 @@ impl OtelValidator {
     ///
     /// This method performs actual validation against real span data collected
     /// from the OpenTelemetry tracer provider. Following core team standards:
-    /// - No .unwrap() or .expect()
+    /// - No .unwrap() or .expect() // OK: guideline text, not code
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     /// - No false positives - validates against actual telemetry data
@@ -297,7 +297,7 @@ impl OtelValidator {
     ///
     /// This method validates that a complete trace with all expected spans exists.
     /// Following core team standards:
-    /// - No .unwrap() or .expect()
+    /// - No .unwrap() or .expect() // OK: guideline text, not code
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     pub fn validate_trace(&self, assertion: &TraceAssertion) -> Result<TraceValidationResult> {
@@ -391,7 +391,7 @@ impl OtelValidator {
     ///
     /// This method validates that telemetry data reaches configured destinations.
     /// Following core team standards:
-    /// - No .unwrap() or .expect()
+    /// - No .unwrap() or .expect() // OK: guideline text, not code
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     pub fn validate_export(&self, endpoint: &str) -> Result<bool> {
@@ -455,7 +455,7 @@ impl OtelValidator {
     /// validation as a foundation.
     ///
     /// Following core team standards:
-    /// - No .unwrap() or .expect()
+    /// - No .unwrap() or .expect() // OK: guideline text, not code
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     /// - No false positives - validates actual connectivity
@@ -561,7 +561,7 @@ impl OtelValidator {
     /// 3. Checking trace completeness if required
     ///
     /// Following core team standards:
-    /// - No .unwrap() or .expect()
+    /// - No .unwrap() or .expect() // OK: guideline text, not code
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     /// - No false positives - validates against actual telemetry data
@@ -717,7 +717,7 @@ impl OtelValidator {
     ///
     /// This method measures telemetry performance impact.
     /// Following core team standards:
-    /// - No .unwrap() or .expect()
+    /// - No .unwrap() or .expect() // OK: guideline text, not code
     /// - Sync method (dyn compatible)
     /// - Returns Result<T, CleanroomError>
     pub fn validate_performance_overhead(

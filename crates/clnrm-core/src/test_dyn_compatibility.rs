@@ -1,5 +1,6 @@
 //! Test dyn ServicePlugin compatibility
 
+#[cfg(test)]
 use clnrm_core::cleanroom::{ServicePlugin, MockDatabasePlugin};
 
 #[test]

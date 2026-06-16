@@ -34,7 +34,7 @@ impl LiquidityIncentiveEngine {
     fn current_timestamp() -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap() // OK: Safe unwrap - SystemTime::now() is always after UNIX_EPOCH on any supported platform
             .as_secs()
     }
 
@@ -161,7 +161,7 @@ impl LiquidityIncentiveEngine {
 
         let mut pending = 0;
         if stake_amount > 0 {
-            let user_debt = self.user_reward_debt.get_mut(user_id).unwrap();
+            let user_debt = self.user_reward_debt.get_mut(user_id).unwrap(); // OK: stake > 0 implies entry exists
             let current_share =
                 (stake_amount as u128 * self.accumulated_reward_per_share) / precision_factor;
             pending = current_share.saturating_sub(*user_debt);

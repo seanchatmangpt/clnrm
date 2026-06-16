@@ -117,6 +117,8 @@ mod tests {
             performance: None,
             chaos: None,
             containers: None,
+            market: None,
+            truex: None,
         }
     }
 
@@ -143,6 +145,8 @@ mod tests {
             otel_headers: None,
             otel_propagators: None,
             weaver: None, // No weaver config
+            market: None,
+            truex: None,
             performance: None,
             chaos: None,
             containers: None,

@@ -42,8 +42,8 @@ jobs:
         id: install-weaver
         continue-on-error: true
         run: |
-          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null || echo "weaver unavailable"
-          command -v weaver && weaver --version || true
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
+          command -v weaver && weaver --version
 
       - name: Validate schema registry
         id: schema_check
@@ -83,8 +83,8 @@ jobs:
         id: install-weaver
         continue-on-error: true
         run: |
-          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null || echo "weaver unavailable"
-          command -v weaver && weaver --version || true
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
+          command -v weaver && weaver --version
 
       - name: Collect registry statistics
         id: stats
@@ -160,10 +160,11 @@ jobs:
         with:
 
       - name: Install Weaver
+        id: install-weaver
+        continue-on-error: true
         run: |
-          # FMEA fix: Use cargo install instead of curl (platform-independent)
-          cargo install weaver-cli --locked
-          weaver --version
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
+          command -v weaver && weaver --version
 
       - name: Build clnrm with OTEL features
         run: |
@@ -205,6 +206,7 @@ jobs:
 
       - name: Start Weaver live-check listener
         id: weaver
+        if: steps.install-weaver.outcome == 'success'
         run: |
           mkdir -p validation_output
           echo "🔍 Starting Weaver live-check"

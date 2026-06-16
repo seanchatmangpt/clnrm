@@ -282,7 +282,7 @@ mod otel_validation_tests {
             assert!(!config.validate_exports);
             assert!(config.validate_performance);
             assert_eq!(config.max_overhead_ms, 100.0);
-            assert!(config.expected_attributes.is_empty());
+            assert!(config.required_attributes.is_empty());
 
             Ok(())
         }

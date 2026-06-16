@@ -179,7 +179,7 @@ impl NDimensionalToken {
             let dim = self
                 .dimensions
                 .get_mut(&dim_id)
-                .expect("Dimension verified");
+                .expect("Dimension verified"); // OK: Safe unwrap - dimension existence verified in validation phase above
             dim.current_supply = dim.current_supply.saturating_add(amount);
 
             account.add(dim_id, amount);
@@ -214,12 +214,12 @@ impl NDimensionalToken {
         let account = self
             .accounts
             .get_mut(&operation.from)
-            .expect("Account verified");
+            .expect("Account verified"); // OK: Safe unwrap - account existence verified in validation phase above
         for (dim_id, amount) in operation.vector.components {
             let dim = self
                 .dimensions
                 .get_mut(&dim_id)
-                .expect("Dimension verified");
+                .expect("Dimension verified"); // OK: Safe unwrap - dimension existence verified in validation phase above
             dim.current_supply = dim.current_supply.saturating_sub(amount);
 
             account.subtract(dim_id, amount);
@@ -254,7 +254,7 @@ impl NDimensionalToken {
         let from_account = self
             .accounts
             .get_mut(&operation.from)
-            .expect("Account verified");
+            .expect("Account verified"); // OK: Safe unwrap - account existence verified in validation phase above
         for (dim_id, amount) in &operation.vector.components {
             from_account.subtract(*dim_id, *amount);
         }

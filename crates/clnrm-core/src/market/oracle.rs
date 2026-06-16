@@ -115,7 +115,7 @@ impl DecentralizedOracle {
         // We use a staked-weighted median to discount outliers
         let mut weighted_points: Vec<(f64, u64)> =
             points.iter().map(|p| (p.value, p.stake)).collect();
-        weighted_points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        weighted_points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap()); // OK: prices are finite f64
 
         let total_stake: u64 = weighted_points.iter().map(|(_, s)| s).sum();
         let target_weight = total_stake / 2;
@@ -259,6 +259,7 @@ pub fn compute_confidence(prices: &[f64]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::truex::receipt::Verdict;
 
     fn generate_valid_hash(data: &str) -> String {
         let mut hasher = Sha256::new();

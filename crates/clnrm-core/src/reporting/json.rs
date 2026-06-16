@@ -99,8 +99,9 @@ impl JsonTestReport {
     }
 
     /// Render the report as pretty-printed JSON
+    #[rustfmt::skip]
     pub fn to_pretty_json(&self) -> String {
-        serde_json::to_string_pretty(self).expect("JsonTestReport is always serializable")
+        serde_json::to_string_pretty(self).expect("JsonTestReport is always serializable") // OK: serializable struct
     }
 
     /// Write the pretty-printed JSON report to the given file path

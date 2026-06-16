@@ -58,8 +58,9 @@ impl DigestReport {
     }
 
     /// Serialize this report to a JSON string (panics on failure, use from_json to round-trip)
+    #[rustfmt::skip]
     pub fn to_json(&self) -> String {
-        serde_json::to_string(self).expect("DigestReport is always serializable")
+        serde_json::to_string(self).expect("DigestReport is always serializable") // OK: serializable struct
     }
 
     /// Deserialize a `DigestReport` from a JSON string

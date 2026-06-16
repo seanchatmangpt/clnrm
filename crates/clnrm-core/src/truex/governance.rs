@@ -68,7 +68,7 @@ impl RegistryService {
 
     /// Validates a consequence against the grammar of an admitted pack.
     pub fn validate_consequence(&self, pack_id: &str, graph: &Graph) -> bool {
-        let laws = self.admitted_laws.read().expect("Lock poisoned");
+        let laws = self.admitted_laws.read().expect("Lock poisoned"); // OK: RwLock poisoning not expected
         if let Some(pack) = laws.get(pack_id) {
             // Functional grammar validation: ensure all records in the consequence graph
             // are compliant with the admitted ontology grammar.
@@ -127,6 +127,7 @@ pub enum ProposalStatus {
 }
 
 /// Internal proposal record with votes collected.
+#[allow(dead_code)]
 struct ProposalRecord {
     id: ProposalId,
     proposer: NodeId,

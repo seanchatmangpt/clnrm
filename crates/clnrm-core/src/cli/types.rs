@@ -848,8 +848,8 @@ pub const ACCEPTED_EXTENSIONS: &[&str] = &[".toml", ".clnrm.toml"];
 ///
 /// ```
 /// # use clnrm_core::cli::types::parse_shard;
-/// assert_eq!(parse_shard("1/4").unwrap(), (1, 4));
-/// assert_eq!(parse_shard("3/8").unwrap(), (3, 8));
+/// assert_eq!(parse_shard("1/4").unwrap(), (1, 4)); // OK: doc example
+/// assert_eq!(parse_shard("3/8").unwrap(), (3, 8)); // OK: doc example
 /// assert!(parse_shard("0/4").is_err()); // i must be >= 1
 /// assert!(parse_shard("5/4").is_err()); // i must be <= m
 /// ```
