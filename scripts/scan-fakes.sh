@@ -91,7 +91,7 @@ scan_pattern_safely() {
 
     # Build exclusion arguments
     local exclude_args=()
-    for excl in "${exclusions[@]}"; do
+    for excl in "${exclusions[@]+"${exclusions[@]}"}"; do
         exclude_args+=(--glob "!${excl}")
     done
 
