@@ -127,7 +127,7 @@ impl ServiceFactory {
         // Add port mappings if present
         if let Some(ref ports) = config.ports {
             for port in ports {
-                plugin = plugin.with_port(*port);
+                plugin = plugin.with_port(*port, *port);
             }
         }
 

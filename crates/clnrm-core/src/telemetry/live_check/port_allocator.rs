@@ -293,6 +293,7 @@ impl PortAllocator {
 
         // Step 3: Acquire exclusive flock
         #[cfg(unix)]
+        #[allow(deprecated)]
         {
             use nix::fcntl::{flock, FlockArg};
             use std::os::unix::io::AsRawFd;

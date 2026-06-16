@@ -40,7 +40,8 @@ impl TruncationAttack {
     /// Truncate `data` to at most `target_len` bytes.
     ///
     /// If `data` is already shorter than `target_len` it is left unchanged.
-    pub fn truncate(data: &mut [u8], target_len: usize) {
+    #[allow(clippy::ptr_arg)]
+    pub fn truncate(data: &mut Vec<u8>, target_len: usize) {
         if data.len() > target_len {
             data.truncate(target_len);
         }
