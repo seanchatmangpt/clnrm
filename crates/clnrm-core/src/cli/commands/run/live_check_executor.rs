@@ -151,8 +151,6 @@ mod tests {
             performance: None,
             chaos: None,
             containers: None,
-            market: None,
-            truex: None,
         };
         let paths = vec![PathBuf::from("tests/")];
 
