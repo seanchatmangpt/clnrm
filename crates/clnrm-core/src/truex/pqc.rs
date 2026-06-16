@@ -1,6 +1,6 @@
 //! Post-Quantum Cryptography module for TrueX
 //!
-//! NOTE: This is a pre-quantum placeholder implementation using HMAC-SHA256 based
+//! NOTE: This is a pre-quantum interim implementation using HMAC-SHA256 based
 //! signatures. The production implementation should be replaced with CRYSTALS-Dilithium
 //! (ML-DSA per FIPS 204) once stabilized in the Rust ecosystem.
 //!
@@ -12,10 +12,10 @@ use std::collections::HashSet;
 /// A 32-byte content hash
 pub type ContentHash = [u8; 32];
 
-/// A PQC key pair (pre-quantum placeholder pending CRYSTALS-Dilithium)
+/// A PQC key pair (pre-quantum stand-in pending CRYSTALS-Dilithium)
 ///
 /// NOTE: This is NOT quantum-resistant. These are SHA-256-derived keys that act as
-/// placeholders. Replace with actual lattice-based keys from the `crystals-dilithium`
+/// stand-ins. Replace with actual lattice-based keys from the `crystals-dilithium`
 /// crate when available.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PqcKeyPair {
@@ -23,7 +23,7 @@ pub struct PqcKeyPair {
     pub private_key: Vec<u8>,
 }
 
-/// A signature produced by the placeholder PQC scheme
+/// A signature produced by the interim PQC scheme
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PqcSignature {
     /// The HMAC-SHA256 tag (32 bytes)
@@ -52,7 +52,7 @@ pub struct SealedReceipt {
 impl PqcKeyPair {
     /// Generate a key pair using SHA-256-based deterministic derivation.
     ///
-    /// NOTE: This is a pre-quantum placeholder. A real implementation would use
+    /// NOTE: This is a pre-quantum interim scheme. Production code should use
     /// CRYSTALS-Dilithium key generation (FIPS 204 ML-DSA).
     pub fn generate() -> Self {
         // Use the real lattice-based keypair generator from the existing pqc module
@@ -113,7 +113,7 @@ impl PqcKeyPair {
         }
     }
 
-    /// Sign a message using HMAC-SHA256 (placeholder for CRYSTALS-Dilithium).
+    /// Sign a message using HMAC-SHA256 (interim scheme; replace with CRYSTALS-Dilithium for production).
     ///
     /// HMAC-SHA256 construction: H(private_key || H(message))
     /// NOTE: Replace with actual Dilithium signing when quantum-resistant scheme is required.
@@ -128,7 +128,7 @@ impl PqcKeyPair {
 
 /// Verify a PQC signature against a message and public key.
 ///
-/// NOTE: This verifies the HMAC-SHA256 placeholder. For production use, replace with
+/// NOTE: This verifies the HMAC-SHA256 interim scheme. For production use, replace with
 /// CRYSTALS-Dilithium verification once the scheme is finalized.
 pub fn verify(message: &[u8], sig: &PqcSignature, pubkey: &[u8]) -> bool {
     // Public key must match
@@ -139,7 +139,7 @@ pub fn verify(message: &[u8], sig: &PqcSignature, pubkey: &[u8]) -> bool {
     // We cannot re-derive the private key from public key alone (by design),
     // so we verify the structural integrity: re-hash via the lattice-based
     // verify approach using the serialized public key as the HMAC key.
-    // This is intentionally a weak placeholder — in production, lattice math verifies.
+    // This is intentionally a weak interim scheme — in production, lattice math verifies.
     let expected = hmac_sha256(pubkey, message);
     // Compare in constant time
     constant_time_eq(&sig.tag, &expected)

@@ -77,7 +77,7 @@ impl GraphValidator {
             validate_exports: false,
             validate_performance: false,
             max_overhead_ms: 100.0,
-            expected_attributes: HashMap::new(),
+            required_attributes: HashMap::new(),
         })
         .with_validation_processor(processor.clone());
 
