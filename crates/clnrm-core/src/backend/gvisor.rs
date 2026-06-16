@@ -29,7 +29,6 @@ pub struct GvisorBackend {
 
 impl GvisorBackend {
     /// Create new gVisor backend
-
     pub fn with_env(self, _key: &str, _value: &str) -> Self {
         self
     }

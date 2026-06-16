@@ -587,7 +587,7 @@ impl SwarmScheduler {
         }
 
         // Sort release events so the earliest is at the end (for easy popping)
-        release_events.sort_by(|a, b| b.0.cmp(&a.0));
+        release_events.sort_by_key(|b| std::cmp::Reverse(b.0));
 
         let mut sim_time = now;
         let mut global_active = release_events.len();
@@ -619,7 +619,7 @@ impl SwarmScheduler {
                     }
 
                     release_events.push((completion_time, req_to_start.tenant.clone()));
-                    release_events.sort_by(|a, b| b.0.cmp(&a.0));
+                    release_events.sort_by_key(|b| std::cmp::Reverse(b.0));
 
                     progress = true;
                 } else {
@@ -709,10 +709,7 @@ impl SwarmScheduler {
 
     /// Track active execution
     pub fn track_execution(&self, tenant: TenantId, handle: ExecutionHandle) {
-        self.active
-            .entry(tenant)
-            .or_insert_with(Vec::new)
-            .push(handle);
+        self.active.entry(tenant).or_default().push(handle);
     }
 
     /// Mark execution complete
@@ -824,8 +821,10 @@ mod tests {
         let scheduler = SwarmScheduler::new(100);
 
         // Register policy forbidding network effects
-        let mut constraints = ConstraintSet::default();
-        constraints.hermetic = true;
+        let constraints = ConstraintSet {
+            hermetic: true,
+            ..Default::default()
+        };
         scheduler
             .policy_engine()
             .register_policy(TenantId("restricted".to_string()), constraints);

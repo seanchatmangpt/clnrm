@@ -160,7 +160,7 @@ impl SybilRegistry {
         seed.copy_from_slice(&result[..]);
 
         let mut rng = StdRng::from_seed(seed);
-        let target = rng.gen_range(0..self.total_stake);
+        let target = rng.random_range(0..self.total_stake);
 
         let mut current: u64 = 0;
 

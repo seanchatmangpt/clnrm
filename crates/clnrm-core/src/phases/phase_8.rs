@@ -202,10 +202,7 @@ impl ScheduleLedger {
 
         // Update indexes
         self.entry_index.insert(entry_id.clone(), index);
-        self.runs_index
-            .entry(run_id)
-            .or_insert_with(Vec::new)
-            .push(index);
+        self.runs_index.entry(run_id).or_default().push(index);
 
         Ok(entry_id)
     }

@@ -18,10 +18,10 @@ for file in $(find crates/clnrm-core/src -name "*.rs" -type f | grep -v "/tests/
 
   if [ -n "$TEST_START" ]; then
     # Only check lines before the test module
-    UNWRAPS=$(head -n $((TEST_START - 1)) "$file" | grep -n "\.unwrap()\|\.expect(" | grep -v "// OK: " | grep -v "//!" | grep -v "/// " || true)
+    UNWRAPS=$(head -n $((TEST_START - 1)) "$file" | grep -n '\.unwrap()\|\.expect(' | grep -v '// OK: ' | grep -v '^[0-9]*:[[:space:]]*//' || true)
   else
     # No test module, check entire file
-    UNWRAPS=$(grep -n "\.unwrap()\|\.expect(" "$file" | grep -v "// OK: " | grep -v "//!" | grep -v "/// " || true)
+    UNWRAPS=$(grep -n '\.unwrap()\|\.expect(' "$file" | grep -v '// OK: ' | grep -v '^[0-9]*:[[:space:]]*//' || true)
   fi
 
   if [ -n "$UNWRAPS" ]; then

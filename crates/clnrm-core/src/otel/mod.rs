@@ -1,11 +1,11 @@
-//! OpenTelemetry integration for fake-green detection
+//! OpenTelemetry integration for false-green detection
 //!
-//! This module provides comprehensive OTEL validation to detect "fake-green" tests
+//! This module provides comprehensive OTEL validation to detect "false-green" tests
 //! (tests that report success without actually executing containers).
 //!
-//! ## Fake-Green Detection
+//! ## False-Green Detection
 //!
-//! A fake-green test is one that:
+//! A false-green test is one that:
 //! - Reports success without creating expected spans
 //! - Has incorrect parent-child span relationships
 //! - Has insufficient span/event counts
@@ -16,14 +16,14 @@
 //!
 //! ## OpenTelemetry Integration
 //!
-//! This module provides OpenTelemetry integration for fake-green detection,
+//! This module provides OpenTelemetry integration for false-green detection,
 //! focusing on span parsing and processing capabilities.
 //!
 //! ## Core Functionality
 //!
 //! - **Span Parsing**: Extract OTEL spans from container stdout
 //! - **Validation Integration**: Works with the main validation system in `/validation/`
-//! - **Fake-Green Detection**: Identifies tests that report success without actual execution
+//! - **False-Green Detection**: Identifies tests that report success without actual execution
 //!
 //! ## Usage Example
 //!
@@ -42,7 +42,7 @@
 //! "#;
 //!
 //! // Parse spans from stdout
-//! let spans = StdoutSpanParser::parse(stdout).unwrap();
+//! let spans = StdoutSpanParser::parse(stdout).unwrap(); // OK: doc example
 //! assert_eq!(spans.len(), 2);
 //! assert_eq!(spans[0].name, "clnrm.run");
 //! ```

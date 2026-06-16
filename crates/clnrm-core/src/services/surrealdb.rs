@@ -3,6 +3,7 @@ use crate::cleanroom::{HealthStatus, ServiceHandle, ServicePlugin};
 use crate::error::{CleanroomError, Result};
 use tracing::info;
 
+#[allow(dead_code)]
 const SURREALDB_PORT: u16 = 8000;
 
 #[derive(Debug)]

@@ -221,6 +221,163 @@ pub enum HealthStatus {
     Unknown,
 }
 
+impl HealthStatus {
+    /// Returns `true` when the status is [`HealthStatus::Healthy`].
+    pub fn is_healthy(&self) -> bool {
+        matches!(self, HealthStatus::Healthy)
+    }
+}
+
+/// A named health check result
+#[derive(Debug, Clone)]
+pub struct HealthCheckResult {
+    /// Name of the check
+    pub name: String,
+    /// Whether this check passed
+    pub passed: bool,
+    /// Optional error message on failure
+    pub error: Option<String>,
+}
+
+/// Multi-probe health checker for a service
+///
+/// Aggregates multiple [`HealthCheck`] probes and returns a combined
+/// [`HealthStatus`].  All probes are executed; the overall status is
+/// `Healthy` only when every probe passes.
+pub struct HealthChecker {
+    /// Configured health checks
+    checks: Vec<(String, HealthCheck)>,
+    /// Maximum retries per check
+    max_retries: u32,
+}
+
+impl HealthChecker {
+    /// Create a new `HealthChecker`
+    pub fn new() -> Self {
+        Self {
+            checks: Vec::new(),
+            max_retries: 3,
+        }
+    }
+
+    /// Set the maximum number of retries per check
+    pub fn with_max_retries(mut self, retries: u32) -> Self {
+        self.max_retries = retries;
+        self
+    }
+
+    /// Register a named health check
+    pub fn add_check(mut self, name: impl Into<String>, check: HealthCheck) -> Self {
+        self.checks.push((name.into(), check));
+        self
+    }
+
+    /// TCP connect probe — checks whether the given host:port is reachable.
+    ///
+    /// Retries up to `max_retries` times with exponential backoff starting at
+    /// `initial_delay`.  Returns `true` if the probe succeeds within the
+    /// configured timeout.
+    pub async fn check_tcp(
+        host: &str,
+        port: u16,
+        timeout: Duration,
+        max_retries: u32,
+    ) -> Result<bool> {
+        use tokio::net::TcpStream;
+
+        let addr = format!("{}:{}", host, port);
+        let mut delay = Duration::from_millis(100);
+
+        for attempt in 0..=max_retries {
+            let result = tokio::time::timeout(timeout, TcpStream::connect(&addr)).await;
+            match result {
+                Ok(Ok(_)) => return Ok(true),
+                Ok(Err(e)) => {
+                    if attempt == max_retries {
+                        tracing::debug!(addr = %addr, error = %e, "TCP health check failed after max retries");
+                        return Ok(false);
+                    }
+                }
+                Err(_elapsed) => {
+                    if attempt == max_retries {
+                        tracing::debug!(addr = %addr, "TCP health check timed out after max retries");
+                        return Ok(false);
+                    }
+                }
+            }
+            tokio::time::sleep(delay).await;
+            // Exponential backoff capped at 5s
+            delay = (delay * 2).min(Duration::from_secs(5));
+        }
+        Ok(false)
+    }
+
+    /// Run all registered checks against `container_id` / `container_ip`.
+    ///
+    /// Returns `Healthy` only when every probe passes (with retries).
+    /// Individual results are returned in [`HealthCheckResult`].
+    pub async fn check_all(
+        &self,
+        container_id: &str,
+        container_ip: &str,
+    ) -> (HealthStatus, Vec<HealthCheckResult>) {
+        let mut results = Vec::with_capacity(self.checks.len());
+        let mut all_passed = true;
+
+        for (name, check) in &self.checks {
+            let mut probe = HealthProbe::new(check.clone());
+            let mut passed = false;
+            let mut last_error: Option<String> = None;
+            let max_retries = self.max_retries;
+            let mut delay = Duration::from_millis(100);
+
+            for attempt in 0..=max_retries {
+                match probe.check(container_id, container_ip).await {
+                    Ok(HealthStatus::Healthy) => {
+                        passed = true;
+                        break;
+                    }
+                    Ok(status) => {
+                        last_error = Some(format!("Check returned {:?}", status));
+                    }
+                    Err(e) => {
+                        last_error = Some(e.to_string());
+                    }
+                }
+
+                if attempt < max_retries {
+                    tokio::time::sleep(delay).await;
+                    delay = (delay * 2).min(Duration::from_secs(5));
+                }
+            }
+
+            if !passed {
+                all_passed = false;
+            }
+
+            results.push(HealthCheckResult {
+                name: name.clone(),
+                passed,
+                error: if passed { None } else { last_error },
+            });
+        }
+
+        let status = if self.checks.is_empty() || all_passed {
+            HealthStatus::Healthy
+        } else {
+            HealthStatus::Unhealthy
+        };
+
+        (status, results)
+    }
+}
+
+impl Default for HealthChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Health probe executor
 pub struct HealthProbe {
     /// Health check configuration

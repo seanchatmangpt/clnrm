@@ -103,10 +103,7 @@ impl ZkMarket {
             return Err(MarketError::InsufficientStake);
         }
 
-        self.bids
-            .entry(bid.task_id.clone())
-            .or_default()
-            .push(bid);
+        self.bids.entry(bid.task_id.clone()).or_default().push(bid);
 
         Ok(())
     }

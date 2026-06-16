@@ -25,7 +25,7 @@
 //! exec = ["echo", "hello"]
 //! "#;
 //!
-//! let config = Config::from_toml(toml).unwrap();
+//! let config = Config::from_toml(toml).unwrap(); // OK: doc example
 //! assert_eq!(config.test.name, "my_test");
 //! assert!(config.containers.contains_key("alpine"));
 //! ```
@@ -76,7 +76,7 @@ use std::collections::HashMap;
 /// name = "run"
 /// container = "alpine"
 /// exec = ["echo", "hello"]
-/// "#).unwrap();
+/// "#).unwrap(); // OK: doc example
 ///
 /// assert_eq!(config.test.name, "basic_test");
 /// ```
@@ -98,9 +98,9 @@ use std::collections::HashMap;
 /// name = "check_env"
 /// container = "app"
 /// exec = ["sh", "-c", "echo $MY_VAR"]
-/// "#).unwrap();
+/// "#).unwrap(); // OK: doc example
 ///
-/// let app = config.containers.get("app").unwrap();
+/// let app = config.containers.get("app").unwrap(); // OK: doc example
 /// assert_eq!(app.env.get("MY_VAR"), Some(&"hello".to_string()));
 /// ```
 ///
@@ -126,11 +126,11 @@ use std::collections::HashMap;
 /// container = "alpine"
 /// exec = ["echo", "2"]
 /// depends_on = ["first"]
-/// "#).unwrap();
+/// "#).unwrap(); // OK: doc example
 ///
-/// let order = config.step_execution_order().unwrap();
-/// let first_pos = order.iter().position(|&x| x == "first").unwrap();
-/// let second_pos = order.iter().position(|&x| x == "second").unwrap();
+/// let order = config.step_execution_order().unwrap(); // OK: doc example
+/// let first_pos = order.iter().position(|&x| x == "first").unwrap(); // OK: doc example
+/// let second_pos = order.iter().position(|&x| x == "second").unwrap(); // OK: doc example
 /// assert!(first_pos < second_pos);
 /// ```
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -216,6 +216,7 @@ pub struct ContainerSpec {
 impl ContainerSpec {
     /// TRIZ Principle 15: Dynamics - Dynamic construction adapter
     /// Allows the struct to adapt to different construction patterns during evolution
+    #[allow(clippy::too_many_arguments)]
     pub fn from_legacy_fields(
         _name: String, // This is actually the image name in legacy format
         image: String,
@@ -243,7 +244,6 @@ impl ContainerSpec {
             final_command = args; // Merge args into command
         }
 
-        let healthcheck = healthcheck; // Keep field name
         let workdir = working_dir; // Rename field
 
         // Convert legacy volume strings to VolumeSpec
@@ -375,7 +375,7 @@ impl Config {
     /// name = "hello"
     /// container = "alpine"
     /// exec = ["echo", "hello"]
-    /// "#).unwrap();
+    /// "#).unwrap(); // OK: doc example
     ///
     /// assert_eq!(config.test.name, "example");
     /// ```
@@ -406,7 +406,7 @@ impl Config {
     /// "#);
     ///
     /// assert!(result.is_err());
-    /// assert!(result.unwrap_err().to_string().contains("nonexistent"));
+    /// assert!(result.unwrap_err().to_string().contains("nonexistent")); // OK: doc example
     /// ```
     pub fn from_toml(content: &str) -> Result<Self> {
         let config: Config = toml::from_str(content).map_err(|e| {
@@ -572,14 +572,14 @@ impl Config {
     /// name = "check"
     /// container = "app"
     /// exec = ["echo", "ok"]
-    /// "#).unwrap();
+    /// "#).unwrap(); // OK: doc example
     ///
-    /// let order = config.container_execution_order().unwrap();
+    /// let order = config.container_execution_order().unwrap(); // OK: doc example
     ///
     /// // db and cache come before app
-    /// let app_pos = order.iter().position(|&x| x == "app").unwrap();
-    /// let db_pos = order.iter().position(|&x| x == "db").unwrap();
-    /// let cache_pos = order.iter().position(|&x| x == "cache").unwrap();
+    /// let app_pos = order.iter().position(|&x| x == "app").unwrap(); // OK: doc example
+    /// let db_pos = order.iter().position(|&x| x == "db").unwrap(); // OK: doc example
+    /// let cache_pos = order.iter().position(|&x| x == "cache").unwrap(); // OK: doc example
     ///
     /// assert!(db_pos < app_pos);
     /// assert!(cache_pos < app_pos);

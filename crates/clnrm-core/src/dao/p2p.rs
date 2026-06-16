@@ -73,7 +73,7 @@ impl P2pNetwork {
     pub fn new(listener_port: u16) -> Self {
         let local_address = format!("0.0.0.0:{}", listener_port)
             .parse::<SocketAddr>()
-            .expect("Invalid local address format");
+            .expect("Invalid local address format"); // OK: Safe unwrap - format string produces a valid SocketAddr pattern
         let (tx, rx) = mpsc::channel(1024);
 
         Self {

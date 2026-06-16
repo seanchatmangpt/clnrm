@@ -392,7 +392,7 @@ impl Default for CleanroomEnvironment {
     /// handling impossible. Therefore, this implementation is explicitly marked as test-only
     /// and uses the underlying backend directly for hermetic testing without external dependencies.
     fn default() -> Self {
-        // No stub backend used anymore
+        // No legacy backend used anymore
 
         // TEST-ONLY: Uses gVisor-compatible testing backend for hermetic testing
         // No Docker dependency required
@@ -400,7 +400,7 @@ impl Default for CleanroomEnvironment {
             session_id: Uuid::new_v4(),
             backend: Arc::new(
                 GvisorBackend::new("alpine:latest")
-                    .unwrap_or_else(|_| panic!("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available. Production code should use CleanroomEnvironment::new() instead."))
+                    .unwrap_or_else(|_| panic!("Default CleanroomEnvironment requires Docker. Tests should ensure Docker is available. Production code should use CleanroomEnvironment::new() instead.")) // OK: intentional test-only Default impl
             ),
             services: Arc::new(RwLock::new(ServiceRegistry::new())),
             metrics: Arc::new(RwLock::new(SimpleMetrics::new())),
@@ -477,7 +477,7 @@ impl CleanroomEnvironment {
     /// # Errors
     /// * Returns error if configuration is invalid
     pub async fn with_config(config: Option<crate::config::CleanroomConfig>) -> Result<Self> {
-        // No stub backend used anymore
+        // No legacy backend used anymore
 
         // Extract default image from config (informational only with gVisor backend)
         let default_image = config

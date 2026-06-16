@@ -365,7 +365,7 @@ impl UncoveredBehaviors {
         }
 
         // Sort by priority descending
-        behaviors.sort_by(|a, b| b.priority.cmp(&a.priority));
+        behaviors.sort_by_key(|b| std::cmp::Reverse(b.priority));
 
         behaviors.into_iter().take(limit).collect()
     }

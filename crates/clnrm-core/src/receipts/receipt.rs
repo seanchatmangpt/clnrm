@@ -281,7 +281,7 @@ impl TestReceipt {
         };
 
         let serialized =
-            serde_json::to_string(&hashable).expect("Failed to serialize TestReceipt for hashing");
+            serde_json::to_string(&hashable).expect("Failed to serialize TestReceipt for hashing"); // OK: serializable
 
         let mut hasher = Sha256::new();
         hasher.update(serialized.as_bytes());

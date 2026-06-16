@@ -30,43 +30,37 @@ impl NdjsonFileExporter {
     }
 }
 
-#[allow(refining_impl_trait)]
 impl SpanExporter for NdjsonFileExporter {
-    fn export(
-        &self,
-        batch: Vec<SpanData>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = OTelSdkResult> + Send + '_>> {
+    async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
         let path = self.path.clone();
-        Box::pin(async move {
-            let mut file = match std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&path)
-            {
-                Ok(f) => f,
-                Err(e) => {
-                    tracing::info!(
-                        "Failed to open telemetry fallback file {}: {}",
-                        path.display(),
-                        e
-                    );
-                    return Ok(());
-                }
-            };
-
-            for span in batch {
-                let json = NdjsonStdoutExporter::span_to_json(&span);
-                let json_str = match serde_json::to_string(&json) {
-                    Ok(s) => s,
-                    Err(_) => continue,
-                };
-                let _ = writeln!(file, "{}", json_str);
+        let mut file = match std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+        {
+            Ok(f) => f,
+            Err(e) => {
+                tracing::info!(
+                    "Failed to open telemetry fallback file {}: {}",
+                    path.display(),
+                    e
+                );
+                return Ok(());
             }
-            Ok(())
-        })
+        };
+
+        for span in batch {
+            let json = NdjsonStdoutExporter::span_to_json(&span);
+            let json_str = match serde_json::to_string(&json) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let _ = writeln!(file, "{}", json_str);
+        }
+        Ok(())
     }
 
-    fn shutdown(&mut self) -> OTelSdkResult {
+    fn shutdown(&self) -> OTelSdkResult {
         Ok(())
     }
 }
@@ -180,51 +174,45 @@ impl Default for NdjsonStdoutExporter {
     }
 }
 
-#[allow(refining_impl_trait)]
 impl SpanExporter for NdjsonStdoutExporter {
-    fn export(
-        &self,
-        batch: Vec<SpanData>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = OTelSdkResult> + Send + '_>> {
-        Box::pin(async move {
-            // Export each span as NDJSON line
-            for span in batch {
-                let json = Self::span_to_json(&span);
+    async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
+        // Export each span as NDJSON line
+        for span in batch {
+            let json = Self::span_to_json(&span);
 
-                // Serialize to string
-                let json_str = match serde_json::to_string(&json) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        tracing::info!("Failed to serialize span to JSON: {}", e);
-                        continue;
-                    }
-                };
+            // Serialize to string
+            let json_str = match serde_json::to_string(&json) {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::info!("Failed to serialize span to JSON: {}", e);
+                    continue;
+                }
+            };
 
-                // Write to stdout or stderr
-                if self.use_stderr {
-                    if let Err(e) = writeln!(io::stderr(), "{}", json_str) {
-                        tracing::info!("Failed to write span to stderr: {}", e);
-                    }
-                } else {
-                    // Write to stdout
-                    if let Err(e) = writeln!(io::stdout(), "{}", json_str) {
-                        tracing::info!("Failed to write span to stdout: {}", e);
-                    }
+            // Write to stdout or stderr
+            if self.use_stderr {
+                if let Err(e) = writeln!(io::stderr(), "{}", json_str) {
+                    tracing::info!("Failed to write span to stderr: {}", e);
+                }
+            } else {
+                // Write to stdout
+                if let Err(e) = writeln!(io::stdout(), "{}", json_str) {
+                    tracing::info!("Failed to write span to stdout: {}", e);
                 }
             }
+        }
 
-            // Flush output
-            if self.use_stderr {
-                let _ = io::stderr().flush();
-            } else {
-                let _ = io::stdout().flush();
-            }
+        // Flush output
+        if self.use_stderr {
+            let _ = io::stderr().flush();
+        } else {
+            let _ = io::stdout().flush();
+        }
 
-            Ok(())
-        })
+        Ok(())
     }
 
-    fn shutdown(&mut self) -> OTelSdkResult {
+    fn shutdown(&self) -> OTelSdkResult {
         // Flush output on shutdown
         if self.use_stderr {
             let _ = io::stderr().flush();

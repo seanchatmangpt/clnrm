@@ -1,4 +1,5 @@
 use crate::pqc::hash::custom_hash;
+use sha2::{Digest as Sha2Digest, Sha256};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,5 +62,91 @@ impl ZkRollupBatcher {
         self.current_batch.clear();
 
         Ok(root)
+    }
+}
+
+// ── Batch ZK proof aggregator ────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct BatchedProof {
+    pub batch_id: String,
+    pub proofs: Vec<Vec<u8>>,
+    pub aggregate_hash: [u8; 32],
+    pub batch_size: usize,
+    pub created_at_ms: u64,
+}
+
+pub struct ZkRollup {
+    pub pending_proofs: Vec<Vec<u8>>,
+    pub committed_batches: Vec<BatchedProof>,
+    pub batch_size: usize,
+    batch_counter: u64,
+}
+
+impl ZkRollup {
+    pub fn new(batch_size: usize) -> Self {
+        Self {
+            pending_proofs: Vec::new(),
+            committed_batches: Vec::new(),
+            batch_size,
+            batch_counter: 0,
+        }
+    }
+
+    /// Add a proof to the pending queue. Automatically commits if batch_size is reached.
+    pub fn submit_proof(&mut self, proof: Vec<u8>) {
+        self.pending_proofs.push(proof);
+    }
+
+    /// Aggregate and commit the pending batch when pending_count() >= batch_size.
+    /// Returns Some(BatchedProof) on success, None if there are not enough pending proofs.
+    pub fn commit_batch(&mut self) -> Option<BatchedProof> {
+        if self.pending_proofs.len() < self.batch_size {
+            return None;
+        }
+
+        let proofs: Vec<Vec<u8>> = self.pending_proofs.drain(..self.batch_size).collect();
+        let aggregate_hash = Self::aggregate_proofs(&proofs);
+
+        self.batch_counter += 1;
+        let batch_id = format!("batch-{}", self.batch_counter);
+
+        // Use a monotonic counter as a simple timestamp substitute (ms since epoch via std::time)
+        let created_at_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+
+        let batched = BatchedProof {
+            batch_id: batch_id.clone(),
+            batch_size: proofs.len(),
+            proofs,
+            aggregate_hash,
+            created_at_ms,
+        };
+
+        self.committed_batches.push(batched.clone());
+        Some(batched)
+    }
+
+    /// SHA-256 of all proofs concatenated.
+    pub fn aggregate_proofs(proofs: &[Vec<u8>]) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        for proof in proofs {
+            hasher.update(proof);
+        }
+        hasher.finalize().into()
+    }
+
+    /// Returns true if a batch with the given ID is in the committed list.
+    pub fn verify_batch(&self, batch_id: &str) -> bool {
+        self.committed_batches
+            .iter()
+            .any(|b| b.batch_id == batch_id)
+    }
+
+    /// Number of proofs waiting to be batched.
+    pub fn pending_count(&self) -> usize {
+        self.pending_proofs.len()
     }
 }

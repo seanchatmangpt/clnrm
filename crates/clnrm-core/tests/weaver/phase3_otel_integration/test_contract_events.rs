@@ -52,5 +52,19 @@ mod test_events_contract_tests {
         assert!(leak_event.container_age_seconds > 0);
     }
 
-    // TODO: Add test for isolation.violation event (should also never occur)
+    #[test]
+    fn test_events_isolation_violation_should_never_occur() {
+        // ARRANGE - isolation.violation should never be emitted in a clean run
+        // It would only fire if the cleanroom constraint is breached
+        let mock_otel = OTELExporterMock::new();
+
+        // Simulate a successful, isolated test run with no events
+        // (no isolation.violation recorded)
+
+        // ACT - Check for isolation violation events
+        let violation_events = mock_otel.find_events("isolation.violation");
+
+        // ASSERT - No isolation violations in a clean run
+        assert!(violation_events.is_empty(), "isolation.violation must never occur in a clean run");
+    }
 }

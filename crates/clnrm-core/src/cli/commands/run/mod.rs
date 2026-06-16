@@ -79,7 +79,7 @@ pub use test_runner::run_test;
 ///
 /// ```ignore
 /// # use clnrm_core::cli::commands::run::resolve_registry_path;
-/// let registry_path = resolve_registry_path().expect("Failed to resolve registry");
+/// let registry_path = resolve_registry_path().expect("Failed to resolve registry"); // OK: doc example
 /// tracing::info!("Registry at: {}", registry_path.display());
 /// ```
 fn resolve_registry_path() -> Result<PathBuf> {

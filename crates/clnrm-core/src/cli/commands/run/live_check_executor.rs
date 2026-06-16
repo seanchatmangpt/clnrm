@@ -73,12 +73,13 @@ pub async fn execute_with_live_check(
         ));
     }
 
-    let mut cli_config = CliConfig::default();
-    cli_config.parallel = parallel;
-    if let Some(j) = jobs {
-        cli_config.jobs = j;
-    }
-    cli_config.validate = true; // Force validation mode
+    let default_config = CliConfig::default();
+    let cli_config = CliConfig {
+        parallel,
+        jobs: jobs.unwrap_or(default_config.jobs),
+        validate: true, // Force validation mode
+        ..default_config
+    };
 
     crate::cli::commands::run::run_tests_with_shard(paths, &cli_config, None).await
 }
@@ -117,6 +118,8 @@ mod tests {
             performance: None,
             chaos: None,
             containers: None,
+            market: None,
+            truex: None,
         }
     }
 
@@ -143,6 +146,8 @@ mod tests {
             otel_headers: None,
             otel_propagators: None,
             weaver: None, // No weaver config
+            market: None,
+            truex: None,
             performance: None,
             chaos: None,
             containers: None,

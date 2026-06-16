@@ -69,6 +69,7 @@ impl ServiceFactory {
             "tgi" => Self::create_tgi_plugin(name, config),
             "vllm" => Self::create_vllm_plugin(name, config),
             _ => {
+                #[cfg(feature = "backend-testcontainers")]
                 let msg = format!(
                     "Unknown service type: '{}'. Supported types: surrealdb, generic_container, testcontainers, ollama, tgi, vllm",
                     config.plugin
@@ -126,7 +127,7 @@ impl ServiceFactory {
         // Add port mappings if present
         if let Some(ref ports) = config.ports {
             for port in ports {
-                plugin = plugin.with_port(*port);
+                plugin = plugin.with_port(*port, *port);
             }
         }
 

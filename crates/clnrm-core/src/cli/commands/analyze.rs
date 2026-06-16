@@ -1,7 +1,7 @@
 //! OTEL validation command - runs 7 validators on collected traces
 //!
 //! Provides the `clnrm analyze` command to validate OpenTelemetry traces
-//! against TOML-defined expectations, catching fake-green tests.
+//! against TOML-defined expectations, catching false-green tests.
 //!
 //! This module implements first-failing-rule reporting, showing the FIRST
 //! validator that fails with detailed context and recommendations.
@@ -698,4 +698,198 @@ pub struct ValidatorResult {
     pub passed: bool,
     /// Details or error message
     pub details: String,
+}
+
+/// Span statistics per span name
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SpanStatistics {
+    pub span_name: String,
+    pub count: usize,
+    pub p50_ms: f64,
+    pub p95_ms: f64,
+    pub p99_ms: f64,
+    pub min_ms: f64,
+    pub max_ms: f64,
+    pub mean_ms: f64,
+}
+
+/// Bottleneck: a span that causes high child wait time
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Bottleneck {
+    pub span_name: String,
+    pub span_id: String,
+    pub child_count: usize,
+    pub total_wait_ms: f64,
+}
+
+/// Compute critical path through span DAG (longest execution path by duration)
+///
+/// Returns span IDs in order from root to leaf forming the critical path.
+pub fn compute_critical_path(spans: &[crate::validation::span_validator::SpanData]) -> Vec<String> {
+    // Build parent -> children map
+    let mut children: std::collections::HashMap<
+        String,
+        Vec<&crate::validation::span_validator::SpanData>,
+    > = std::collections::HashMap::new();
+    let mut all_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for span in spans {
+        all_ids.insert(span.span_id.clone());
+    }
+
+    for span in spans {
+        if let Some(ref parent_id) = span.parent_span_id {
+            children.entry(parent_id.clone()).or_default().push(span);
+        }
+    }
+
+    // Find root spans (those whose parent_span_id is None or not in the set)
+    let roots: Vec<&crate::validation::span_validator::SpanData> = spans
+        .iter()
+        .filter(|s| {
+            s.parent_span_id
+                .as_ref()
+                .map(|pid| !all_ids.contains(pid))
+                .unwrap_or(true)
+        })
+        .collect();
+
+    if roots.is_empty() {
+        return Vec::new();
+    }
+
+    // DFS to find the path with maximum cumulative duration
+    fn dfs_max_path<'a>(
+        span: &'a crate::validation::span_validator::SpanData,
+        children: &std::collections::HashMap<
+            String,
+            Vec<&'a crate::validation::span_validator::SpanData>,
+        >,
+    ) -> (f64, Vec<String>) {
+        let self_dur = span.duration_ms().unwrap_or(1.0);
+        let child_list = children.get(&span.span_id);
+
+        match child_list {
+            None => (self_dur, vec![span.span_id.clone()]),
+            Some(kids) if kids.is_empty() => (self_dur, vec![span.span_id.clone()]),
+            Some(kids) => {
+                let mut best_dur = 0.0_f64;
+                let mut best_path: Vec<String> = Vec::new();
+
+                for kid in kids {
+                    let (child_dur, child_path) = dfs_max_path(kid, children);
+                    if child_dur > best_dur {
+                        best_dur = child_dur;
+                        best_path = child_path;
+                    }
+                }
+
+                let total = self_dur + best_dur;
+                let mut path = vec![span.span_id.clone()];
+                path.extend(best_path);
+                (total, path)
+            }
+        }
+    }
+
+    // Pick the root with the longest overall path
+    let mut global_best_dur = 0.0_f64;
+    let mut global_best_path: Vec<String> = Vec::new();
+
+    for root in roots {
+        let (dur, path) = dfs_max_path(root, &children);
+        if dur > global_best_dur {
+            global_best_dur = dur;
+            global_best_path = path;
+        }
+    }
+
+    global_best_path
+}
+
+/// Detect bottlenecks: spans where children spend the most cumulative time waiting
+pub fn detect_bottlenecks(
+    spans: &[crate::validation::span_validator::SpanData],
+) -> Vec<Bottleneck> {
+    // Build span_id -> span map
+    let span_map: std::collections::HashMap<&str, &crate::validation::span_validator::SpanData> =
+        spans.iter().map(|s| (s.span_id.as_str(), s)).collect();
+
+    // Build parent -> children map
+    let mut children: std::collections::HashMap<
+        &str,
+        Vec<&crate::validation::span_validator::SpanData>,
+    > = std::collections::HashMap::new();
+
+    for span in spans {
+        if let Some(ref parent_id) = span.parent_span_id {
+            children.entry(parent_id.as_str()).or_default().push(span);
+        }
+    }
+
+    let mut bottlenecks: Vec<Bottleneck> = children
+        .iter()
+        .filter_map(|(parent_id, kids)| {
+            let parent = span_map.get(*parent_id)?;
+            let total_wait: f64 = kids.iter().filter_map(|s| s.duration_ms()).sum();
+            Some(Bottleneck {
+                span_name: parent.name.clone(),
+                span_id: parent.span_id.clone(),
+                child_count: kids.len(),
+                total_wait_ms: total_wait,
+            })
+        })
+        .collect();
+
+    // Sort by total_wait_ms descending, take up to 10
+    bottlenecks.sort_by(|a, b| {
+        b.total_wait_ms
+            .partial_cmp(&a.total_wait_ms)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    bottlenecks.truncate(10);
+    bottlenecks
+}
+
+/// Compute p50/p95/p99 statistics for each distinct span name
+pub fn compute_statistics(
+    spans: &[crate::validation::span_validator::SpanData],
+) -> Vec<SpanStatistics> {
+    // Group spans by name, collecting durations
+    let mut by_name: std::collections::HashMap<String, Vec<f64>> = std::collections::HashMap::new();
+
+    for span in spans {
+        if let Some(dur) = span.duration_ms() {
+            by_name.entry(span.name.clone()).or_default().push(dur);
+        }
+    }
+
+    let mut stats: Vec<SpanStatistics> = by_name
+        .into_iter()
+        .map(|(name, mut durations)| {
+            durations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let count = durations.len();
+
+            let p50 = durations[count * 50 / 100];
+            let p95 = durations[count * 95 / 100];
+            let p99 = durations[count * 99 / 100];
+            let min = durations[0];
+            let max = durations[count - 1];
+            let mean = durations.iter().sum::<f64>() / count as f64;
+
+            SpanStatistics {
+                span_name: name,
+                count,
+                p50_ms: p50,
+                p95_ms: p95,
+                p99_ms: p99,
+                min_ms: min,
+                max_ms: max,
+                mean_ms: mean,
+            }
+        })
+        .collect();
+
+    stats.sort_by(|a, b| a.span_name.cmp(&b.span_name));
+    stats
 }

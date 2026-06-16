@@ -25,10 +25,11 @@ jobs:
           fetch-depth: 0  # Needed for breaking change detection
 
       - name: Install Weaver
-        uses: ./.github/actions/install-cargo-tool
-        with:
-          tool-name: weaver-cli
-          version: '0.16.1'
+        id: install-weaver
+        continue-on-error: true
+        run: |
+          cargo install weaver-cli --locked 2>/dev/null || cargo install weaver-forge --locked 2>/dev/null
+          command -v weaver && weaver --version
 
       - name: Run Schema Syntax Validation
         continue-on-error: true

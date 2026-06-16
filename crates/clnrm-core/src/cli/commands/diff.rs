@@ -63,8 +63,16 @@ pub fn diff_traces(
         .cloned()
         .collect();
 
-    // EXAMPLE-ONLY: For now, we don't detect modifications (would need deeper analysis)
-    let modified = Vec::new();
+    let modified: Vec<String> = baseline_spans
+        .iter()
+        .filter(|s| current_spans.contains(s))
+        .filter(|s| {
+            let baseline_attrs = extract_span_attributes(&baseline_json, s);
+            let current_attrs = extract_span_attributes(&current_json, s);
+            baseline_attrs != current_attrs
+        })
+        .cloned()
+        .collect();
 
     let result = DiffResult {
         added_count: added.len(),
@@ -154,4 +162,35 @@ fn extract_span_names(json: &serde_json::Value) -> Vec<String> {
     }
 
     spans
+}
+
+/// Extract attributes for a specific span by name from JSON trace
+fn extract_span_attributes(json: &serde_json::Value, span_name: &str) -> Option<serde_json::Value> {
+    if let Some(array) = json.as_array() {
+        for item in array {
+            if item.get("name").and_then(|n| n.as_str()) == Some(span_name) {
+                return Some(
+                    item.get("attributes")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null),
+                );
+            }
+        }
+    } else if let Some(obj) = json.as_object() {
+        if obj.get("name").and_then(|n| n.as_str()) == Some(span_name) {
+            return Some(
+                obj.get("attributes")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null),
+            );
+        }
+
+        for (_, value) in obj {
+            if let Some(attrs) = extract_span_attributes(value, span_name) {
+                return Some(attrs);
+            }
+        }
+    }
+
+    None
 }

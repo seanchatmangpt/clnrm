@@ -172,3 +172,66 @@ impl DerivativesEngine {
         Ok(settlement)
     }
 }
+
+// ─── Black-Scholes Pricing ─────────────────────────────────────────────────────
+
+/// Cumulative normal distribution approximation using Abramowitz and Stegun method.
+pub fn normcdf(x: f64) -> f64 {
+    let t = 1.0 / (1.0 + 0.2316419 * x.abs());
+    let poly = t
+        * (0.319381530
+            + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    let pdf = (-x * x / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt();
+    let cdf = 1.0 - pdf * poly;
+    if x >= 0.0 {
+        cdf
+    } else {
+        1.0 - cdf
+    }
+}
+
+/// Black-Scholes call option price.
+/// C = S*N(d1) - K*exp(-r*t)*N(d2)
+pub fn black_scholes_call(s: f64, k: f64, t: f64, r: f64, sigma: f64) -> f64 {
+    if t <= 0.0 || sigma <= 0.0 {
+        return (s - k).max(0.0);
+    }
+    let sqrt_t = t.sqrt();
+    let d1 = ((s / k).ln() + (r + sigma * sigma / 2.0) * t) / (sigma * sqrt_t);
+    let d2 = d1 - sigma * sqrt_t;
+    s * normcdf(d1) - k * (-r * t).exp() * normcdf(d2)
+}
+
+/// Black-Scholes put option price.
+/// P = K*exp(-r*t)*N(-d2) - S*N(-d1)
+pub fn black_scholes_put(s: f64, k: f64, t: f64, r: f64, sigma: f64) -> f64 {
+    if t <= 0.0 || sigma <= 0.0 {
+        return (k - s).max(0.0);
+    }
+    let sqrt_t = t.sqrt();
+    let d1 = ((s / k).ln() + (r + sigma * sigma / 2.0) * t) / (sigma * sqrt_t);
+    let d2 = d1 - sigma * sqrt_t;
+    k * (-r * t).exp() * normcdf(-d2) - s * normcdf(-d1)
+}
+
+impl DerivativesEngine {
+    /// Maintenance margin = position_value / leverage * 0.5
+    pub fn calculate_maintenance_margin(position_value: f64, leverage: f64) -> f64 {
+        if leverage == 0.0 {
+            return 0.0;
+        }
+        position_value / leverage * 0.5
+    }
+
+    /// Returns true if the position should be liquidated.
+    pub fn check_liquidation(position_value: f64, margin_posted: f64, leverage: f64) -> bool {
+        margin_posted < Self::calculate_maintenance_margin(position_value, leverage)
+    }
+
+    /// Unrealized PnL = (current_price - strike_price) * quantity for the long party.
+    pub fn mark_to_market_future(&mut self, future_id: &str, current_price: u64) -> Option<i64> {
+        let future = self.futures.get(future_id)?;
+        let pnl = (current_price as i64 - future.strike_price as i64) * future.quantity as i64;
+        Some(pnl)
+    }
+}

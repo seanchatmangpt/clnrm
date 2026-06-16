@@ -1,11 +1,11 @@
 // pub mod actuator;
 pub mod admission;
-// pub mod admission_types;
+pub mod admission_types;
 pub mod chamber;
 pub mod construct;
-// pub mod escrow;
+pub mod escrow;
 pub mod ggen;
-// pub mod governance;
+pub mod governance;
 pub mod gvisor;
 // pub mod lsp;
 pub mod marketplace;

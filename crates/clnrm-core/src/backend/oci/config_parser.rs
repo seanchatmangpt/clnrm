@@ -162,7 +162,7 @@ impl ConfigParser {
         // Apply seccomp profile if required by security level
         if let Some(p) = policy {
             if p.security.security_level != SecurityLevel::Low {
-                runtime_config.linux.as_mut().unwrap().seccomp =
+                runtime_config.linux.as_mut().unwrap().seccomp = // OK: linux is Some when security level is non-Low
                     Some(self.generate_seccomp_profile(p));
             }
         }

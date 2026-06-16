@@ -15,19 +15,19 @@ pub async fn run_a2a_simulation() {
         let task_ids_clone = Arc::clone(&task_ids);
 
         let handle = tokio::spawn(async move {
-            let mut rng = StdRng::from_entropy();
+            let mut rng = StdRng::from_os_rng();
             // Each virtual agent has a unique 32-byte ID
             let agent_id_bytes: [u8; 32] = rand::random();
             let agent_id = AgentId(agent_id_bytes);
 
             // Each agent performs 100 random actions in the high-frequency network
             for _ in 0..100 {
-                let action = rng.gen_range(0..100);
+                let action = rng.random_range(0..100);
 
                 if action < 30 {
                     // 30% chance to generate and post a new AgentTask
                     let task_id: [u8; 32] = rand::random();
-                    let task_type = match rng.gen_range(0..4) {
+                    let task_type = match rng.random_range(0..4) {
                         0 => TaskType::Compute,
                         1 => TaskType::Verification,
                         2 => TaskType::Search,
@@ -38,8 +38,8 @@ pub async fn run_a2a_simulation() {
                         task_id,
                         requester: agent_id.clone(),
                         task_type,
-                        max_price: rng.gen_range(100..1000),
-                        min_reputation: rng.gen_range(0.0..10.0),
+                        max_price: rng.random_range(100..1000),
+                        min_reputation: rng.random_range(0.0..10.0),
                     };
 
                     {
@@ -55,13 +55,13 @@ pub async fn run_a2a_simulation() {
                     // 50% chance to generate an AgentBid for an existing task
                     let t_ids = task_ids_clone.read().await;
                     if !t_ids.is_empty() {
-                        let idx = rng.gen_range(0..t_ids.len());
+                        let idx = rng.random_range(0..t_ids.len());
                         let target_task_id = t_ids[idx];
 
                         let bid = AgentBid {
                             bidder: agent_id.clone(),
-                            price: rng.gen_range(50..950), // Competitive bidding
-                            reputation: rng.gen_range(5.0..15.0),
+                            price: rng.random_range(50..950), // Competitive bidding
+                            reputation: rng.random_range(5.0..15.0),
                         };
 
                         // Drop read lock before acquiring write lock
@@ -77,7 +77,7 @@ pub async fn run_a2a_simulation() {
                         if t_ids.is_empty() {
                             None
                         } else {
-                            let idx = rng.gen_range(0..t_ids.len());
+                            let idx = rng.random_range(0..t_ids.len());
                             Some(t_ids[idx])
                         }
                     };
@@ -89,7 +89,7 @@ pub async fn run_a2a_simulation() {
                 }
 
                 // Process ticks without artificial simulation latency
-                tokio::time::sleep(std::time::Duration::from_millis(rng.gen_range(1..10))).await;
+                tokio::time::sleep(std::time::Duration::from_millis(rng.random_range(1..10))).await;
             }
         });
         handles.push(handle);

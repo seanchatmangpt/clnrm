@@ -10,6 +10,31 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 use tracing::info;
 
+/// Info about a running container from runsc list
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct ContainerInfo {
+    /// Container ID
+    pub id: String,
+    /// Container status
+    pub status: String,
+    /// PID of the container sandbox
+    pub pid: Option<i32>,
+}
+
+/// Status of a specific container from runsc state
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct ContainerStatus {
+    /// Container ID
+    pub id: String,
+    /// OCI status (created, running, stopped, etc.)
+    pub status: String,
+    /// PID of the container sandbox
+    pub pid: Option<i32>,
+    /// Annotations from config
+    #[serde(default)]
+    pub annotations: std::collections::HashMap<String, String>,
+}
+
 /// gVisor platform type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GvisorPlatform {
@@ -111,6 +136,10 @@ pub struct GvisorBackend {
     image_name: String,
     /// Image tag
     image_tag: String,
+    /// Path to runsc binary
+    runtime_path: PathBuf,
+    /// Root directory for container state
+    root_dir: PathBuf,
 }
 
 impl GvisorBackend {
@@ -138,7 +167,7 @@ impl GvisorBackend {
         };
 
         // Find runsc binary
-        let _runtime_path = Self::find_runsc()?;
+        let runtime_path = Self::find_runsc()?;
 
         // Create root directory for container state
         let root_dir = std::env::temp_dir().join("clnrm-gvisor");
@@ -154,6 +183,8 @@ impl GvisorBackend {
             timeout: Duration::from_secs(30),
             image_name,
             image_tag,
+            runtime_path,
+            root_dir,
         })
     }
 
@@ -225,10 +256,15 @@ impl GvisorBackend {
     }
 
     /// Execute command in gVisor container
+    ///
+    /// Builds an OCI bundle and runs it through the real crate::backend::GvisorBackend
+    /// which uses OciImageLoader + OciBundleBuilder + RunscExecutor.
     fn execute_in_container(&self, cmd: &Cmd) -> Result<RunResult> {
         info!(
-            "Starting gVisor container with image {}:{}",
-            self.image_name, self.image_tag
+            "Starting gVisor container with image {}:{} via runsc at {}",
+            self.image_name,
+            self.image_tag,
+            self.runtime_path.display()
         );
 
         let image_ref = format!("{}:{}", self.image_name, self.image_tag);
@@ -237,6 +273,106 @@ impl GvisorBackend {
             .with_policy(self.policy.clone());
 
         backend.run_cmd(cmd.clone())
+    }
+
+    /// List all containers managed by this backend
+    ///
+    /// Runs `runsc --root <root> list --format json` and parses the JSON output.
+    pub fn list_containers(&self) -> Result<Vec<ContainerInfo>> {
+        let output = Command::new(&self.runtime_path)
+            .arg("--root")
+            .arg(&self.root_dir)
+            .arg("list")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .map_err(|e| {
+                CleanroomError::container_error(format!("Failed to run runsc list: {}", e))
+            })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(CleanroomError::container_error(format!(
+                "runsc list failed: {}",
+                stderr
+            )));
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let containers: Vec<ContainerInfo> =
+            serde_json::from_str(&stdout).unwrap_or_else(|_| Vec::new());
+
+        Ok(containers)
+    }
+
+    /// Kill a container by sending SIGTERM
+    ///
+    /// Runs `runsc --root <root> kill <container_id> SIGTERM`.
+    pub fn kill_container(&self, container_id: &str) -> Result<()> {
+        info!("Killing container {}", container_id);
+
+        let output = Command::new(&self.runtime_path)
+            .arg("--root")
+            .arg(&self.root_dir)
+            .arg("kill")
+            .arg(container_id)
+            .arg("SIGTERM")
+            .output()
+            .map_err(|e| {
+                CleanroomError::container_error(format!(
+                    "Failed to run runsc kill {}: {}",
+                    container_id, e
+                ))
+            })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            // Ignore "container not found" errors — container may have already exited
+            if !stderr.contains("not found") && !stderr.contains("does not exist") {
+                return Err(CleanroomError::container_error(format!(
+                    "runsc kill {} failed: {}",
+                    container_id, stderr
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Inspect a container's current state
+    ///
+    /// Runs `runsc --root <root> state <container_id>` and parses the JSON output.
+    pub fn inspect_container(&self, container_id: &str) -> Result<ContainerStatus> {
+        let output = Command::new(&self.runtime_path)
+            .arg("--root")
+            .arg(&self.root_dir)
+            .arg("state")
+            .arg(container_id)
+            .output()
+            .map_err(|e| {
+                CleanroomError::container_error(format!(
+                    "Failed to run runsc state {}: {}",
+                    container_id, e
+                ))
+            })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(CleanroomError::container_error(format!(
+                "runsc state {} failed: {}",
+                container_id, stderr
+            )));
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let status: ContainerStatus = serde_json::from_str(&stdout).map_err(|e| {
+            CleanroomError::container_error(format!(
+                "Failed to parse runsc state output: {} — raw: {}",
+                e, stdout
+            ))
+        })?;
+
+        Ok(status)
     }
 }
 

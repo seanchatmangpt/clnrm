@@ -138,9 +138,8 @@ impl ServiceMetadata {
             );
 
             // Export first port as default PORT
-            if env.get(&format!("{}_PORT", prefix)).is_none() {
-                env.insert(format!("{}_PORT", prefix), host_port.to_string());
-            }
+            env.entry(format!("{}_PORT", prefix))
+                .or_insert_with(|| host_port.to_string());
         }
 
         // Export endpoints

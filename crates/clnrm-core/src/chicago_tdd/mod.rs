@@ -296,9 +296,72 @@ impl ChicagoTddAdapter {
             ))
         })?;
 
-        let _sample = lifecycle.to_telemetry_sample();
+        let sample = lifecycle.to_telemetry_sample();
+
+        // Export the telemetry sample as an OTEL span event so it flows through
+        // the tracing pipeline (and on to any connected OTLP collector).
+        tracing::info!(
+            telemetry.span.name = sample["name"].as_str().unwrap_or("container.lifecycle"),
+            telemetry.span.kind = sample["kind"].as_str().unwrap_or("internal"),
+            telemetry.timestamp = sample["timestamp"].as_i64().unwrap_or(0),
+            "container.id" = sample["attributes"]["container.id"]
+                .as_str()
+                .unwrap_or("unknown"),
+            "container.state" = sample["attributes"]["container.state"]
+                .as_str()
+                .unwrap_or("unknown"),
+            "chicago_tdd.collaboration_test" = true,
+            "Chicago-TDD collaboration test lifecycle telemetry emitted"
+        );
 
         Ok(())
+    }
+}
+
+/// Outcome of a Chicago-style TDD test execution.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ChicagoTestResult {
+    /// Name of the test
+    pub test_name: String,
+    /// Whether the test passed
+    pub passed: bool,
+    /// Optional failure message
+    pub message: Option<String>,
+    /// Elapsed time in milliseconds
+    pub duration_ms: u64,
+}
+
+impl ChicagoTestResult {
+    /// Create a new test result.
+    pub fn new(test_name: &str, passed: bool, duration_ms: u64) -> Self {
+        Self {
+            test_name: test_name.to_string(),
+            passed,
+            message: None,
+            duration_ms,
+        }
+    }
+
+    /// Attach a message (error details for failures, notes for passes).
+    pub fn with_message(mut self, msg: &str) -> Self {
+        self.message = Some(msg.to_string());
+        self
+    }
+
+    /// Emit a `test.completed` OTEL span event for this result.
+    ///
+    /// The event is emitted via `tracing::info!` so it participates in the
+    /// standard telemetry pipeline and will appear as a span event in any
+    /// connected OTLP backend.
+    pub fn emit_otel_event(&self) {
+        tracing::info!(
+            "test.name" = self.test_name.as_str(),
+            "test.result" = if self.passed { "pass" } else { "fail" },
+            "test.duration_ms" = self.duration_ms,
+            "test.message" = self.message.as_deref().unwrap_or(""),
+            "chicago_tdd.event" = "test.completed",
+            "Chicago-TDD test completed"
+        );
     }
 }
 

@@ -57,7 +57,8 @@ pub async fn load_services_from_config(
 
                 if let Some(ports) = &service_config.ports {
                     for port in ports {
-                        plugin = plugin.with_port(*port);
+                        // Map each config port to itself (host == container port)
+                        plugin = plugin.with_port(*port, *port);
                     }
                 }
 

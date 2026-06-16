@@ -5,6 +5,7 @@
 use crate::error::{CleanroomError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 
 use super::health::{HealthCheck, ReadinessProbe};
 use super::network::PortMapping;
@@ -85,26 +86,21 @@ impl ImageRef {
             digest,
         })
     }
+}
 
-    /// Convert to full image reference string
-    pub fn to_string(&self) -> String {
-        let mut result = String::new();
-
+impl fmt::Display for ImageRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref registry) = self.registry {
-            result.push_str(registry);
-            result.push('/');
+            write!(f, "{}/", registry)?;
         }
 
-        result.push_str(&self.repository);
-        result.push(':');
-        result.push_str(&self.tag);
+        write!(f, "{}:{}", self.repository, self.tag)?;
 
         if let Some(ref digest) = self.digest {
-            result.push('@');
-            result.push_str(digest);
+            write!(f, "@{}", digest)?;
         }
 
-        result
+        Ok(())
     }
 }
 

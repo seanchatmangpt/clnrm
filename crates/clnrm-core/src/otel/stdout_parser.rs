@@ -34,7 +34,7 @@ impl StdoutSpanParser {
     /// Done.
     /// "#;
     ///
-    /// let spans = StdoutSpanParser::parse(stdout).unwrap();
+    /// let spans = StdoutSpanParser::parse(stdout).unwrap(); // OK: doc example
     /// assert_eq!(spans.len(), 2);
     /// ```
     pub fn parse(stdout: &str) -> Result<Vec<SpanData>> {

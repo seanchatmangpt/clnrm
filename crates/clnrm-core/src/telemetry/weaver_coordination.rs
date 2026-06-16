@@ -290,7 +290,7 @@ impl WeaverController<Running> {
         self.inner
             .coordination
             .as_ref()
-            .expect("Running state always has coordination")
+            .expect("Running state always has coordination") // OK: state machine invariant
     }
 
     pub fn is_validation_passing(&self) -> bool {
@@ -312,7 +312,7 @@ impl WeaverController<Running> {
             .inner
             .live_check_process
             .take()
-            .expect("Running state always has process");
+            .expect("Running state always has process"); // OK: state machine invariant
 
         #[cfg(unix)]
         {
@@ -465,7 +465,7 @@ impl WeaverController<Stopped> {
             .inner
             .validation_report
             .clone()
-            .expect("Stopped state always has report"))
+            .expect("Stopped state always has report")) // OK: state machine invariant
     }
 
     pub fn coordination(&self) -> Option<&WeaverCoordination> {
@@ -476,7 +476,7 @@ impl WeaverController<Stopped> {
         let inner = unsafe { ManuallyDrop::take(&mut self.inner) };
         inner
             .validation_report
-            .expect("Stopped state always has report")
+            .expect("Stopped state always has report") // OK: state machine invariant
     }
 }
 

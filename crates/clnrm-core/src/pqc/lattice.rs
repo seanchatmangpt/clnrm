@@ -64,8 +64,8 @@ impl Poly {
             }
         }
         let mut poly = Poly::zero();
-        for i in 0..N {
-            poly.coeffs[i] = reduce(r[i]);
+        for (i, &val) in r.iter().enumerate() {
+            poly.coeffs[i] = reduce(val);
         }
         poly
     }
@@ -85,12 +85,12 @@ impl Poly {
     /// Extracts the high bits of each coefficient.
     pub fn high_bits(&self) -> [i64; N] {
         let mut out = [0i64; N];
-        for i in 0..N {
-            let mut pos_x = self.coeffs[i] % Q;
+        for (out_val, &coeff) in out.iter_mut().zip(self.coeffs.iter()) {
+            let mut pos_x = coeff % Q;
             if pos_x < 0 {
                 pos_x += Q;
             }
-            out[i] = pos_x / D;
+            *out_val = pos_x / D;
         }
         out
     }
@@ -144,13 +144,8 @@ impl Sha256 {
 
     fn transform(&mut self) {
         let mut m = [0u32; 64];
-        for i in 0..16 {
-            m[i] = u32::from_be_bytes([
-                self.data[i * 4],
-                self.data[i * 4 + 1],
-                self.data[i * 4 + 2],
-                self.data[i * 4 + 3],
-            ]);
+        for (i, chunk) in self.data.chunks_exact(4).enumerate().take(16) {
+            m[i] = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
         }
         for i in 16..64 {
             let s0 = m[i - 15].rotate_right(7) ^ m[i - 15].rotate_right(18) ^ (m[i - 15] >> 3);

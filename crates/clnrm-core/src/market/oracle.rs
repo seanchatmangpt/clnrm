@@ -1,6 +1,6 @@
 use crate::truex::receipt::TruexReceipt;
-use std::collections::HashMap;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 
 pub fn compute_receipt_hash(receipt: &TruexReceipt) -> String {
     let mut hasher = Sha256::new();
@@ -38,7 +38,10 @@ pub async fn forensic_audit_loop(receipts: Vec<TruexReceipt>) -> Result<(), Stri
         }
 
         // 2. Validate hash lengths/formatting (basic cryptographic sanity check)
-        if receipt.input_hash.len() != 64 || receipt.output_hash.len() != 64 || receipt.procedure_hash.len() != 64 {
+        if receipt.input_hash.len() != 64
+            || receipt.output_hash.len() != 64
+            || receipt.procedure_hash.len() != 64
+        {
             return Err(format!(
                 "Cryptographic deviation: Malformed hash at index {}. Input hash length: {}, Output hash length: {}, Procedure hash length: {}.",
                 i, receipt.input_hash.len(), receipt.output_hash.len(), receipt.procedure_hash.len()
@@ -112,7 +115,7 @@ impl DecentralizedOracle {
         // We use a staked-weighted median to discount outliers
         let mut weighted_points: Vec<(f64, u64)> =
             points.iter().map(|p| (p.value, p.stake)).collect();
-        weighted_points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        weighted_points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap()); // OK: prices are finite f64
 
         let total_stake: u64 = weighted_points.iter().map(|(_, s)| s).sum();
         let target_weight = total_stake / 2;
@@ -127,11 +130,136 @@ impl DecentralizedOracle {
 
         Some(points[0].value) // Fallback
     }
+
+    /// Returns (aggregated_value, confidence) for a stream using weighted median + confidence score.
+    pub fn aggregate_with_confidence(&self, stream_id: &str) -> Option<(f64, f64)> {
+        let points = self.streams.get(stream_id)?;
+        if points.is_empty() {
+            return None;
+        }
+
+        let values: Vec<f64> = points.iter().map(|p| p.value).collect();
+        let weights: Vec<f64> = points.iter().map(|p| p.stake as f64).collect();
+
+        let value = aggregate_prices(&values, &weights);
+        let confidence = compute_confidence(&values);
+
+        Some((value, confidence))
+    }
+
+    /// Returns list of provider IDs whose data points are outliers for the given stream.
+    pub fn detect_and_log_outliers(&self, stream_id: &str) -> Vec<String> {
+        let points = match self.streams.get(stream_id) {
+            Some(p) => p,
+            None => return Vec::new(),
+        };
+        if points.is_empty() {
+            return Vec::new();
+        }
+
+        let values: Vec<f64> = points.iter().map(|p| p.value).collect();
+        let outlier_flags = detect_outliers_iqr(&values);
+
+        points
+            .iter()
+            .zip(outlier_flags.iter())
+            .filter(|(_, &is_outlier)| is_outlier)
+            .map(|(p, _)| p.provider.clone())
+            .collect()
+    }
+}
+
+/// Weighted median: sort by value, find cumulative weight >= total_weight/2.
+pub fn aggregate_prices(values: &[f64], weights: &[f64]) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+    if values.len() != weights.len() {
+        return values.iter().sum::<f64>() / values.len() as f64;
+    }
+
+    let mut pairs: Vec<(f64, f64)> = values
+        .iter()
+        .copied()
+        .zip(weights.iter().copied())
+        .collect();
+    pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let total_weight: f64 = pairs.iter().map(|(_, w)| w).sum();
+    if total_weight == 0.0 {
+        return pairs[0].0;
+    }
+
+    let target = total_weight / 2.0;
+    let mut cumulative = 0.0;
+    for (value, weight) in &pairs {
+        cumulative += weight;
+        if cumulative >= target {
+            return *value;
+        }
+    }
+
+    pairs[pairs.len() - 1].0
+}
+
+/// IQR outlier detection. Returns a bool per price: true = outlier.
+pub fn detect_outliers_iqr(prices: &[f64]) -> Vec<bool> {
+    if prices.len() < 4 {
+        return vec![false; prices.len()];
+    }
+
+    let mut sorted = prices.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    let n = sorted.len();
+    let q1 = sorted[n / 4];
+    let q3 = sorted[3 * n / 4];
+    let iqr = q3 - q1;
+    let lower = q1 - 1.5 * iqr;
+    let upper = q3 + 1.5 * iqr;
+
+    prices.iter().map(|&p| p < lower || p > upper).collect()
+}
+
+/// TWAP: average of prices within the last `window_secs` seconds of `current_time`.
+pub fn compute_twap(prices: &[(f64, u64)], window_secs: u64, current_time: u64) -> f64 {
+    let cutoff = current_time.saturating_sub(window_secs);
+    let relevant: Vec<f64> = prices
+        .iter()
+        .filter(|(_, ts)| *ts >= cutoff && *ts <= current_time)
+        .map(|(p, _)| *p)
+        .collect();
+
+    if relevant.is_empty() {
+        return 0.0;
+    }
+
+    relevant.iter().sum::<f64>() / relevant.len() as f64
+}
+
+/// Confidence score [0,1] based on coefficient of variation (CV = std_dev/mean).
+/// confidence = 1.0 - CV, clamped to [0,1]. Returns 0.0 if mean == 0.
+pub fn compute_confidence(prices: &[f64]) -> f64 {
+    if prices.is_empty() {
+        return 0.0;
+    }
+
+    let mean = prices.iter().sum::<f64>() / prices.len() as f64;
+    if mean == 0.0 {
+        return 0.0;
+    }
+
+    let variance = prices.iter().map(|&p| (p - mean).powi(2)).sum::<f64>() / prices.len() as f64;
+    let std_dev = variance.sqrt();
+    let cv = std_dev / mean;
+
+    (1.0 - cv).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::truex::receipt::Verdict;
 
     fn generate_valid_hash(data: &str) -> String {
         let mut hasher = Sha256::new();
@@ -165,16 +293,34 @@ mod tests {
     async fn test_forensic_audit_loop_valid_chain() {
         let mut receipts = Vec::new();
         let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
-        
-        let mut r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
+
+        let r1 = create_dummy_receipt(
+            "in1",
+            "out1",
+            genesis_prev_hash,
+            "seal1".to_string(),
+            "ptr1".to_string(),
+        );
         let r1_hash = compute_receipt_hash(&r1);
         receipts.push(r1);
 
-        let mut r2 = create_dummy_receipt("in2", "out2", r1_hash, "seal2".to_string(), "ptr2".to_string());
+        let r2 = create_dummy_receipt(
+            "in2",
+            "out2",
+            r1_hash,
+            "seal2".to_string(),
+            "ptr2".to_string(),
+        );
         let r2_hash = compute_receipt_hash(&r2);
         receipts.push(r2);
 
-        let r3 = create_dummy_receipt("in3", "out3", r2_hash, "seal3".to_string(), "ptr3".to_string());
+        let r3 = create_dummy_receipt(
+            "in3",
+            "out3",
+            r2_hash,
+            "seal3".to_string(),
+            "ptr3".to_string(),
+        );
         receipts.push(r3);
 
         let result = forensic_audit_loop(receipts).await;
@@ -185,12 +331,24 @@ mod tests {
     async fn test_forensic_audit_loop_broken_chain() {
         let mut receipts = Vec::new();
         let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
-        
-        let r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
+
+        let r1 = create_dummy_receipt(
+            "in1",
+            "out1",
+            genesis_prev_hash,
+            "seal1".to_string(),
+            "ptr1".to_string(),
+        );
         receipts.push(r1);
 
         // Third-party tampered previous receipt hash link
-        let r2 = create_dummy_receipt("in2", "out2", "tampered_prev_hash".to_string(), "seal2".to_string(), "ptr2".to_string());
+        let r2 = create_dummy_receipt(
+            "in2",
+            "out2",
+            "tampered_prev_hash".to_string(),
+            "seal2".to_string(),
+            "ptr2".to_string(),
+        );
         receipts.push(r2);
 
         let result = forensic_audit_loop(receipts).await;
@@ -203,8 +361,14 @@ mod tests {
     async fn test_forensic_audit_loop_malformed_hashes() {
         let mut receipts = Vec::new();
         let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
-        
-        let mut r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
+
+        let mut r1 = create_dummy_receipt(
+            "in1",
+            "out1",
+            genesis_prev_hash,
+            "seal1".to_string(),
+            "ptr1".to_string(),
+        );
         // Malform input hash
         r1.input_hash = "short_hash".to_string();
         receipts.push(r1);
@@ -236,7 +400,8 @@ mod tests {
         let result = forensic_audit_loop(receipts).await;
         assert!(result.is_err());
         let err_msg = result.unwrap_err();
-        assert!(err_msg.contains("Cryptographic deviation: Missing Post-Quantum Cryptography (PQC) seal"));
+        assert!(err_msg
+            .contains("Cryptographic deviation: Missing Post-Quantum Cryptography (PQC) seal"));
     }
 
     #[tokio::test]
@@ -263,4 +428,3 @@ mod tests {
         assert!(err_msg.contains("Audit failure: Missing replay pointer"));
     }
 }
-

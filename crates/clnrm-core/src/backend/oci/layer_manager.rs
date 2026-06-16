@@ -217,7 +217,7 @@ impl LayerManager {
 
                         // Regular whiteout: delete specific file
                         let whiteout_target =
-                            path.with_file_name(name_str.strip_prefix(".wh.").unwrap());
+                            path.with_file_name(name_str.strip_prefix(".wh.").unwrap()); // OK: Safe unwrap - strip_prefix succeeds only when prefix exists (checked above)
                         let full_path = target.join(&whiteout_target);
                         if full_path.exists() {
                             if full_path.is_dir() {
@@ -247,17 +247,15 @@ impl LayerManager {
                     }
                     tar::EntryType::Symlink | tar::EntryType::Link => {
                         // Handle symlinks
-                        if let Ok(link_name) = entry.link_name() {
-                            if let Some(link_path) = link_name {
-                                #[cfg(unix)]
-                                {
-                                    std::os::unix::fs::symlink(link_path, &full_path)?;
-                                }
-                                #[cfg(windows)]
-                                {
-                                    // Windows requires different handling
-                                    std::os::windows::fs::symlink_file(link_path, &full_path)?;
-                                }
+                        if let Ok(Some(link_path)) = entry.link_name() {
+                            #[cfg(unix)]
+                            {
+                                std::os::unix::fs::symlink(link_path, &full_path)?;
+                            }
+                            #[cfg(windows)]
+                            {
+                                // Windows requires different handling
+                                std::os::windows::fs::symlink_file(link_path, &full_path)?;
                             }
                         }
                     }

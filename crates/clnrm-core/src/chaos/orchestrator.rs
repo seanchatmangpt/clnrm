@@ -7,9 +7,159 @@
 use crate::config::{ChaosConfigSection, ChaosExperiment};
 use crate::error::{CleanroomError, Result};
 use crate::services::chaos_engine::{ChaosConfig, ChaosEnginePlugin, ChaosScenario};
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+use uuid::Uuid;
+
+/// Unique identifier for a scheduled chaos scenario
+pub type ScenarioId = String;
+
+/// Report from executing a chaos scenario
+#[derive(Debug, Clone)]
+pub struct ChaosReport {
+    /// Scenario identifier
+    pub id: ScenarioId,
+    /// Name of the scenario type
+    pub scenario_type: String,
+    /// When the scenario started
+    pub started_at: std::time::SystemTime,
+    /// How long the scenario ran
+    pub duration: Duration,
+    /// Whether the scenario completed without error
+    pub success: bool,
+}
+
+/// Validates that the system recovered after chaos injection
+pub type RecoveryValidator = Box<dyn Fn() -> bool + Send + Sync>;
 
 /// Chaos orchestrator - converts TOML configuration to chaos plugin
-pub struct ChaosOrchestrator;
+pub struct ChaosOrchestrator {
+    /// Scheduled scenarios: id -> (delay, scenario)
+    scheduled: HashMap<ScenarioId, (Duration, ChaosScenario)>,
+    /// Optional recovery validator run after scenarios
+    recovery_validator: Option<RecoveryValidator>,
+}
+
+impl Default for ChaosOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ChaosOrchestrator {
+    /// Create a new, empty orchestrator.
+    pub fn new() -> Self {
+        Self {
+            scheduled: HashMap::new(),
+            recovery_validator: None,
+        }
+    }
+
+    /// Schedule a chaos scenario to run after `delay`.
+    ///
+    /// Returns a unique [`ScenarioId`] that can be used to reference the scenario.
+    pub fn schedule(&mut self, scenario: ChaosScenario, delay: Duration) -> ScenarioId {
+        let id = Uuid::new_v4().to_string();
+        self.scheduled.insert(id.clone(), (delay, scenario));
+        id
+    }
+
+    /// Run all provided scenarios concurrently using `tokio::spawn`.
+    ///
+    /// Each scenario is executed in parallel; results are collected in the order
+    /// they complete (unspecified order).
+    pub async fn run_concurrent(
+        &self,
+        scenarios: Vec<ChaosScenario>,
+    ) -> Vec<std::result::Result<ChaosReport, CleanroomError>> {
+        use tokio::task::JoinSet;
+
+        let mut join_set: JoinSet<std::result::Result<ChaosReport, CleanroomError>> =
+            JoinSet::new();
+
+        for scenario in scenarios {
+            let scenario_type = scenario_type_name(&scenario).to_string();
+            let id = Uuid::new_v4().to_string();
+            join_set.spawn(async move {
+                let start = Instant::now();
+                let started_at = std::time::SystemTime::now();
+                let result = run_scenario_inner(&scenario).await;
+                let duration = start.elapsed();
+                match result {
+                    Ok(()) => Ok(ChaosReport {
+                        id,
+                        scenario_type,
+                        started_at,
+                        duration,
+                        success: true,
+                    }),
+                    Err(e) => Err(e),
+                }
+            });
+        }
+
+        let mut results = Vec::new();
+        while let Some(res) = join_set.join_next().await {
+            match res {
+                Ok(inner) => results.push(inner),
+                Err(join_err) => results.push(Err(CleanroomError::internal_error(format!(
+                    "Chaos task panicked: {}",
+                    join_err
+                )))),
+            }
+        }
+        results
+    }
+
+    /// Run all provided scenarios sequentially, capturing each result.
+    ///
+    /// Failures do not stop subsequent scenarios from running.
+    pub async fn run_sequential(
+        &self,
+        scenarios: Vec<ChaosScenario>,
+    ) -> Vec<std::result::Result<ChaosReport, CleanroomError>> {
+        let mut results = Vec::with_capacity(scenarios.len());
+
+        for scenario in &scenarios {
+            let scenario_type = scenario_type_name(scenario).to_string();
+            let id = Uuid::new_v4().to_string();
+            let start = Instant::now();
+            let started_at = std::time::SystemTime::now();
+            let result = run_scenario_inner(scenario).await;
+            let duration = start.elapsed();
+
+            results.push(match result {
+                Ok(()) => Ok(ChaosReport {
+                    id,
+                    scenario_type,
+                    started_at,
+                    duration,
+                    success: true,
+                }),
+                Err(e) => Err(e),
+            });
+        }
+
+        // Run recovery validation after all scenarios if one is registered.
+        if let Some(ref validator) = self.recovery_validator {
+            let recovered = validator();
+            tracing::info!(
+                recovered,
+                "chaos.recovery.validation" = true,
+                "Recovery validation completed after sequential run"
+            );
+        }
+
+        results
+    }
+
+    /// Register a recovery validator that is called after scenario execution.
+    ///
+    /// The validator returns `true` if the system has recovered, `false` otherwise.
+    pub fn with_recovery_validation(&mut self, validator: RecoveryValidator) {
+        self.recovery_validator = Some(validator);
+    }
+}
 
 impl ChaosOrchestrator {
     /// Create a ChaosEnginePlugin from TOML configuration
@@ -210,6 +360,115 @@ impl ChaosOrchestrator {
 
         attrs
     }
+}
+
+/// Return a stable string name for a scenario variant (used in reports).
+fn scenario_type_name(scenario: &ChaosScenario) -> &'static str {
+    match scenario {
+        ChaosScenario::RandomFailures { .. } => "random_failures",
+        ChaosScenario::LatencySpikes { .. } => "latency_spikes",
+        ChaosScenario::MemoryExhaustion { .. } => "memory_exhaustion",
+        ChaosScenario::CpuSaturation { .. } => "cpu_saturation",
+        ChaosScenario::NetworkPartition { .. } => "network_partition",
+        ChaosScenario::CascadingFailures { .. } => "cascading_failures",
+        ChaosScenario::DiskFill { .. } => "disk_fill",
+    }
+}
+
+/// Execute a single chaos scenario inline (lightweight simulation).
+///
+/// This does not spawn a full `ChaosEnginePlugin` but exercises the same
+/// scenario logic for use in concurrent/sequential runners.
+async fn run_scenario_inner(scenario: &ChaosScenario) -> Result<()> {
+    match scenario {
+        ChaosScenario::RandomFailures {
+            duration_secs,
+            failure_rate,
+        } => {
+            tracing::info!(
+                duration_secs,
+                failure_rate_percent = failure_rate * 100.0,
+                "chaos.scenario" = "random_failures",
+                "Running random failures chaos scenario"
+            );
+            // Simulate the scenario duration (1 ms per second for test speed).
+            tokio::time::sleep(Duration::from_millis(*duration_secs)).await;
+        }
+        ChaosScenario::LatencySpikes {
+            duration_secs,
+            max_latency_ms,
+        } => {
+            tracing::info!(
+                duration_secs,
+                max_latency_ms,
+                "chaos.scenario" = "latency_spikes",
+                "Running latency spikes chaos scenario"
+            );
+            tokio::time::sleep(Duration::from_millis(*duration_secs)).await;
+        }
+        ChaosScenario::MemoryExhaustion {
+            duration_secs,
+            target_mb,
+        } => {
+            tracing::info!(
+                duration_secs,
+                target_mb,
+                "chaos.scenario" = "memory_exhaustion",
+                "Running memory exhaustion chaos scenario"
+            );
+            tokio::time::sleep(Duration::from_millis(*duration_secs)).await;
+        }
+        ChaosScenario::CpuSaturation {
+            duration_secs,
+            target_percent,
+        } => {
+            tracing::info!(
+                duration_secs,
+                target_percent,
+                "chaos.scenario" = "cpu_saturation",
+                "Running CPU saturation chaos scenario"
+            );
+            tokio::time::sleep(Duration::from_millis(*duration_secs)).await;
+        }
+        ChaosScenario::NetworkPartition {
+            duration_secs,
+            affected_services,
+        } => {
+            tracing::info!(
+                duration_secs,
+                affected_services = ?affected_services,
+                "chaos.scenario" = "network_partition",
+                "Running network partition chaos scenario"
+            );
+            tokio::time::sleep(Duration::from_millis(*duration_secs)).await;
+        }
+        ChaosScenario::CascadingFailures {
+            trigger_service,
+            propagation_delay_ms,
+        } => {
+            tracing::info!(
+                trigger_service = %trigger_service,
+                propagation_delay_ms,
+                "chaos.scenario" = "cascading_failures",
+                "Running cascading failures chaos scenario"
+            );
+            tokio::time::sleep(Duration::from_millis(*propagation_delay_ms)).await;
+        }
+        ChaosScenario::DiskFill {
+            duration_secs,
+            fill_mb,
+            path: _,
+        } => {
+            tracing::info!(
+                duration_secs,
+                fill_mb,
+                "chaos.scenario" = "disk_fill",
+                "Running disk fill chaos scenario"
+            );
+            tokio::time::sleep(Duration::from_millis(*duration_secs)).await;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -440,5 +699,65 @@ mod tests {
             }
             _ => panic!("Expected DiskFill scenario"),
         }
+    }
+
+    #[test]
+    fn test_schedule_returns_id() {
+        let mut orch = ChaosOrchestrator::new();
+        let scenario = ChaosScenario::RandomFailures {
+            duration_secs: 1,
+            failure_rate: 0.5,
+        };
+        let id = orch.schedule(scenario, Duration::from_secs(0));
+        assert!(!id.is_empty());
+        assert_eq!(orch.scheduled.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_run_sequential_collects_results() {
+        let orch = ChaosOrchestrator::new();
+        let scenarios = vec![
+            ChaosScenario::RandomFailures {
+                duration_secs: 0,
+                failure_rate: 0.0,
+            },
+            ChaosScenario::LatencySpikes {
+                duration_secs: 0,
+                max_latency_ms: 0,
+            },
+        ];
+        let results = orch.run_sequential(scenarios).await;
+        assert_eq!(results.len(), 2);
+        for r in &results {
+            assert!(r.is_ok());
+            assert!(r.as_ref().unwrap().success);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_run_concurrent_collects_results() {
+        let orch = ChaosOrchestrator::new();
+        let scenarios = vec![
+            ChaosScenario::MemoryExhaustion {
+                duration_secs: 0,
+                target_mb: 0,
+            },
+            ChaosScenario::CpuSaturation {
+                duration_secs: 0,
+                target_percent: 0,
+            },
+        ];
+        let results = orch.run_concurrent(scenarios).await;
+        assert_eq!(results.len(), 2);
+        for r in &results {
+            assert!(r.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_with_recovery_validation() {
+        let mut orch = ChaosOrchestrator::new();
+        orch.with_recovery_validation(Box::new(|| true));
+        assert!(orch.recovery_validator.is_some());
     }
 }

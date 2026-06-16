@@ -1,7 +1,70 @@
 use crate::truex::marketplace::ConsequenceListing;
 
-/// The N-dimensional vector specified in the Truex PRD.
-/// Dimensions: ontology fit, procedure completeness, receipt strength, replay depth, compute cost.
+// ── General-purpose pricing engine ──────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct PricingEngine {
+    pub amm_weight: f64,
+    pub oracle_weight: f64,
+    pub derivatives_weight: f64,
+}
+
+impl Default for PricingEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PricingEngine {
+    pub fn new() -> Self {
+        let w = 1.0 / 3.0;
+        Self {
+            amm_weight: w,
+            oracle_weight: w,
+            derivatives_weight: w,
+        }
+    }
+
+    pub fn with_weights(amm: f64, oracle: f64, derivatives: f64) -> Result<Self, String> {
+        let sum = amm + oracle + derivatives;
+        if (sum - 1.0).abs() > 1e-9 {
+            return Err(format!("Weights must sum to 1.0, got {:.10}", sum));
+        }
+        Ok(Self {
+            amm_weight: amm,
+            oracle_weight: oracle,
+            derivatives_weight: derivatives,
+        })
+    }
+
+    pub fn compute_price(&self, amm_price: f64, oracle_price: f64, derivatives_price: f64) -> f64 {
+        amm_price * self.amm_weight
+            + oracle_price * self.oracle_weight
+            + derivatives_price * self.derivatives_weight
+    }
+
+    pub fn fair_value_range(&self, price: f64, volatility: f64) -> (f64, f64) {
+        (price * (1.0 - volatility), price * (1.0 + volatility))
+    }
+
+    pub fn mark_to_market(&self, position_size: f64, entry_price: f64, current_price: f64) -> f64 {
+        (current_price - entry_price) * position_size
+    }
+
+    pub fn liquidation_price(&self, entry: f64, leverage: f64, is_long: bool) -> f64 {
+        if leverage == 0.0 {
+            return entry;
+        }
+        if is_long {
+            entry * (1.0 - 1.0 / leverage)
+        } else {
+            entry * (1.0 + 1.0 / leverage)
+        }
+    }
+}
+
+// ── Truex N-dimensional vector pricing ──────────────────────────────────────
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PricingVector {
     pub ontology_fit: f64,
@@ -29,8 +92,6 @@ impl PricingVector {
     }
 }
 
-/// The mathematical engine that dynamically prices `ConsequenceListing` items
-/// based on the N-dimensional vector specified in the Truex PRD.
 #[derive(Debug, Clone)]
 pub struct ValueVectorPricingEngine {
     pub base_price: f64,
@@ -60,10 +121,7 @@ impl ValueVectorPricingEngine {
         }
     }
 
-    /// Calculates the dynamic price of a ConsequenceListing based on the PRD's N-dimensional vector.
-    /// It combines the inherent pricing properties of the listing with the dynamic metrics from the vector.
     pub fn calculate_price(&self, listing: &ConsequenceListing, vector: &PricingVector) -> f64 {
-        // We incorporate both the vector's dimensions and the listing's existing intrinsic values.
         let effective_ontology = vector.ontology_fit.max(listing.pricing.ontology_fit);
         let effective_receipt = vector
             .receipt_strength
@@ -73,11 +131,7 @@ impl ValueVectorPricingEngine {
         let procedure_value = vector.procedure_completeness * self.procedure_weight;
         let receipt_value = effective_receipt * self.receipt_weight;
         let replay_value = vector.replay_depth * self.replay_weight;
-
-        // Compute cost represents an overhead/latency factor reducing the listing's value
         let compute_penalty = vector.compute_cost * self.compute_cost_weight;
-
-        // Listing intrinsic trust value bonus
         let trust_bonus = listing.pricing.counterparty_trust_reduction * 50.0;
 
         let total_value = self.base_price
@@ -88,7 +142,6 @@ impl ValueVectorPricingEngine {
             + trust_bonus
             - compute_penalty;
 
-        // Minimum price bounds
         if total_value < 0.0 {
             0.0
         } else {

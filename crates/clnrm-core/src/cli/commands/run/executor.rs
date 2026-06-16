@@ -225,7 +225,6 @@ struct PoolMetrics {
 }
 
 impl PoolMetrics {
-    #[allow(dead_code)] // Will be used when pool integration is complete (Agent 7)
     fn record_hit(&self) {
         self.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
@@ -328,15 +327,18 @@ pub async fn run_tests_parallel_with_results(
             let permit = semaphore_clone
                 .acquire_owned()
                 .await
-                .expect("Semaphore closed unexpectedly");
+                .expect("Semaphore closed unexpectedly"); // OK: Safe - semaphore is never explicitly closed
 
             debug!("Acquired permit for test: {}", test_name);
 
             // Track pool usage if pooling is enabled
-            if pool_clone.is_some() {
-                // EXAMPLE-ONLY: For now, record as miss since we need to refactor run_single_test
-                // Record metric tracking for the pool.
-                metrics_clone.record_miss();
+            if let Some(ref pool) = pool_clone {
+                let stats = pool.stats().await;
+                if stats.available > 0 {
+                    metrics_clone.record_hit();
+                } else {
+                    metrics_clone.record_miss();
+                }
             }
 
             let telemetry_builder = TestExecutionBuilder::new(test_name.clone(), test_suite);

@@ -5,6 +5,7 @@
 use crate::cleanroom::CleanroomEnvironment;
 use crate::error::{CleanroomError, Result};
 use crate::telemetry::cli_helpers::{CliHealthSpanBuilder, HealthCheckResult};
+use colored::Colorize;
 // Note: AIIntelligenceService moved to clnrm-ai crate
 use std::time::Instant;
 use tracing::info;
@@ -331,5 +332,203 @@ fn get_health_status(percentage: u32) -> &'static str {
         70..=79 => "ACCEPTABLE - Some features degraded",
         60..=69 => "DEGRADED - Multiple issues detected",
         _ => "CRITICAL - Immediate attention required",
+    }
+}
+
+/// Individual service health status
+#[derive(Debug, Clone)]
+pub struct ServiceHealth {
+    pub name: String,
+    pub status: HealthStatus,
+    pub latency_ms: Option<u64>,
+    pub last_check: chrono::DateTime<chrono::Utc>,
+    pub error: Option<String>,
+}
+
+/// Health status variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum HealthStatus {
+    Healthy,
+    Degraded,
+    Unhealthy,
+    Unknown,
+}
+
+impl HealthStatus {
+    fn as_str(&self) -> &'static str {
+        match self {
+            HealthStatus::Healthy => "Healthy",
+            HealthStatus::Degraded => "Degraded",
+            HealthStatus::Unhealthy => "Unhealthy",
+            HealthStatus::Unknown => "Unknown",
+        }
+    }
+
+    fn colored_str(&self) -> colored::ColoredString {
+        match self {
+            HealthStatus::Healthy => "Healthy".green(),
+            HealthStatus::Degraded => "Degraded".yellow(),
+            HealthStatus::Unhealthy => "Unhealthy".red(),
+            HealthStatus::Unknown => "Unknown".white(),
+        }
+    }
+}
+
+/// Aggregated health report across multiple services
+#[derive(Debug, Clone)]
+pub struct HealthReport {
+    pub services: Vec<ServiceHealth>,
+    pub overall: HealthStatus,
+    pub checked_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl HealthReport {
+    /// Print ASCII table: Service | Status | Latency | Last Check
+    pub fn print_table(&self) {
+        let col_widths = (20usize, 10usize, 12usize, 26usize);
+        let sep = format!(
+            "+-{}-+-{}-+-{}-+-{}-+",
+            "-".repeat(col_widths.0),
+            "-".repeat(col_widths.1),
+            "-".repeat(col_widths.2),
+            "-".repeat(col_widths.3),
+        );
+
+        println!("{}", sep);
+        println!(
+            "| {:<w0$} | {:<w1$} | {:<w2$} | {:<w3$} |",
+            "Service",
+            "Status",
+            "Latency (ms)",
+            "Last Check",
+            w0 = col_widths.0,
+            w1 = col_widths.1,
+            w2 = col_widths.2,
+            w3 = col_widths.3,
+        );
+        println!("{}", sep);
+
+        for svc in &self.services {
+            let latency = svc
+                .latency_ms
+                .map(|l| l.to_string())
+                .unwrap_or_else(|| "N/A".to_string());
+            let last_check = svc.last_check.format("%Y-%m-%d %H:%M:%S").to_string();
+            println!(
+                "| {:<w0$} | {:<w1$} | {:<w2$} | {:<w3$} |",
+                &svc.name,
+                svc.status.as_str(),
+                latency,
+                last_check,
+                w0 = col_widths.0,
+                w1 = col_widths.1,
+                w2 = col_widths.2,
+                w3 = col_widths.3,
+            );
+        }
+
+        println!("{}", sep);
+        println!(
+            "Overall: {}  |  Checked at: {}",
+            self.overall.colored_str(),
+            self.checked_at.format("%Y-%m-%d %H:%M:%S UTC"),
+        );
+    }
+}
+
+/// Get actionable remediation suggestions for failing services
+pub fn suggest_remediation(failing: &[ServiceHealth]) -> Vec<String> {
+    let mut suggestions = Vec::new();
+
+    for svc in failing {
+        let error_lower = svc.error.as_deref().unwrap_or("").to_lowercase();
+
+        let suggestion = if error_lower.contains("connection refused") {
+            format!(
+                "Service '{}': Connection refused — start the service with: systemctl start {} (or the appropriate start command)",
+                svc.name, svc.name
+            )
+        } else if error_lower.contains("timeout") {
+            format!(
+                "Service '{}': Request timed out — check if the service is overloaded or increase the timeout threshold",
+                svc.name
+            )
+        } else if error_lower.contains("not found") || error_lower.contains("404") {
+            format!(
+                "Service '{}': Endpoint not found (404) — verify the health endpoint path and ensure the service is correctly deployed",
+                svc.name
+            )
+        } else {
+            format!(
+                "Service '{}': Check the service logs for details: journalctl -u {} --since '5 minutes ago'",
+                svc.name, svc.name
+            )
+        };
+
+        suggestions.push(suggestion);
+    }
+
+    suggestions
+}
+
+/// Check health of named services via HTTP ping
+pub async fn check_services_health(service_names: &[&str], endpoint_base: &str) -> HealthReport {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .unwrap_or_default();
+
+    let mut services = Vec::new();
+
+    for &name in service_names {
+        let url = format!("{}/{}/health", endpoint_base.trim_end_matches('/'), name);
+        let check_start = Instant::now();
+        let now = chrono::Utc::now();
+
+        let (status, latency_ms, error) = match client.get(&url).send().await {
+            Ok(response) => {
+                let latency = check_start.elapsed().as_millis() as u64;
+                if response.status().is_success() {
+                    (HealthStatus::Healthy, Some(latency), None)
+                } else {
+                    let err = format!("HTTP {}", response.status());
+                    (HealthStatus::Unhealthy, Some(latency), Some(err))
+                }
+            }
+            Err(e) => {
+                let err_str = e.to_string();
+                let status = if err_str.to_lowercase().contains("timeout") {
+                    HealthStatus::Degraded
+                } else {
+                    HealthStatus::Unhealthy
+                };
+                (status, None, Some(err_str))
+            }
+        };
+
+        services.push(ServiceHealth {
+            name: name.to_string(),
+            status,
+            latency_ms,
+            last_check: now,
+            error,
+        });
+    }
+
+    // Aggregate overall status
+    let overall = if services.iter().all(|s| s.status == HealthStatus::Healthy) {
+        HealthStatus::Healthy
+    } else if services.iter().any(|s| s.status == HealthStatus::Unhealthy) {
+        HealthStatus::Unhealthy
+    } else if services.iter().any(|s| s.status == HealthStatus::Degraded) {
+        HealthStatus::Degraded
+    } else {
+        HealthStatus::Unknown
+    };
+
+    HealthReport {
+        services,
+        overall,
+        checked_at: chrono::Utc::now(),
     }
 }

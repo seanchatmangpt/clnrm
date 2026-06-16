@@ -184,7 +184,7 @@ impl ExportStatistics {
             return 1.0; // Assume healthy if can't lock
         }
 
-        let attempts = attempts.unwrap();
+        let attempts = attempts.unwrap(); // OK: Safe unwrap - None branch already returned above
         if attempts.is_empty() {
             return 1.0; // No data yet, assume healthy
         }
@@ -203,7 +203,7 @@ impl ExportStatistics {
             return Duration::from_millis(500); // Default
         }
 
-        let attempts = attempts.unwrap();
+        let attempts = attempts.unwrap(); // OK: Safe unwrap - None branch already returned above
         if attempts.is_empty() {
             return Duration::from_millis(500); // Default
         }
@@ -226,7 +226,7 @@ impl ExportStatistics {
             return 0;
         }
 
-        let attempts = attempts.unwrap();
+        let attempts = attempts.unwrap(); // OK: Safe unwrap - None branch already returned above
         attempts.iter().filter(|a| !a.success).count()
     }
 
@@ -237,7 +237,7 @@ impl ExportStatistics {
             return 0;
         }
 
-        attempts.unwrap().len()
+        attempts.unwrap().len() // OK: Safe unwrap - None branch already returned above
     }
 
     /// Get age of last export attempt
@@ -256,7 +256,7 @@ impl ExportStatistics {
             return 0.0;
         }
 
-        let window_start = window_start.unwrap();
+        let window_start = window_start.unwrap(); // OK: Safe unwrap - None branch already returned above
         let elapsed = window_start.elapsed().as_secs_f64();
 
         // Reset window every 60 seconds for adaptive behavior
@@ -295,7 +295,7 @@ impl ExportStatistics {
             return 1.0; // Assume full utilization if can't measure
         }
 
-        let attempts = attempts.unwrap();
+        let attempts = attempts.unwrap(); // OK: Safe unwrap - None branch already returned above
         if attempts.is_empty() {
             return 1.0;
         }

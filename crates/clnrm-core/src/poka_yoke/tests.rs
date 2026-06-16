@@ -57,9 +57,9 @@ name = "test"
 #[tokio::test]
 async fn test_container_creation_lock() {
     let lock = DefaultContainerCreationLock::new();
-    lock.acquire("alpine:latest").await.unwrap();
+    lock.acquire("alpine:latest").await.unwrap(); // OK: Safe unwrap - test code, panic is acceptable on failure
     // Second acquire should succeed (lock released after first)
-    lock.acquire("alpine:latest").await.unwrap();
+    lock.acquire("alpine:latest").await.unwrap(); // OK: Safe unwrap - test code, panic is acceptable on failure
 }
 
 #[test]

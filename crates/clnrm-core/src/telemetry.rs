@@ -85,23 +85,19 @@ enum SpanExporterType {
     NdjsonFile(json_exporter::NdjsonFileExporter),
 }
 
-#[allow(refining_impl_trait)]
 impl SpanExporter for SpanExporterType {
-    fn export(
-        &self,
-        batch: Vec<opentelemetry_sdk::trace::SpanData>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = OTelSdkResult> + Send + '_>> {
+    async fn export(&self, batch: Vec<opentelemetry_sdk::trace::SpanData>) -> OTelSdkResult {
         match self {
-            SpanExporterType::Otlp(exporter) => Box::pin(exporter.as_ref().export(batch)),
-            SpanExporterType::Stdout(exporter) => Box::pin(exporter.export(batch)),
-            SpanExporterType::NdjsonStdout(exporter) => Box::pin(exporter.export(batch)),
-            SpanExporterType::NdjsonFile(exporter) => Box::pin(exporter.export(batch)),
+            SpanExporterType::Otlp(exporter) => exporter.as_ref().export(batch).await,
+            SpanExporterType::Stdout(exporter) => exporter.export(batch).await,
+            SpanExporterType::NdjsonStdout(exporter) => exporter.export(batch).await,
+            SpanExporterType::NdjsonFile(exporter) => exporter.export(batch).await,
         }
     }
 
-    fn shutdown(&mut self) -> OTelSdkResult {
+    fn shutdown(&self) -> OTelSdkResult {
         match self {
-            SpanExporterType::Otlp(exporter) => exporter.as_mut().shutdown(),
+            SpanExporterType::Otlp(exporter) => exporter.as_ref().shutdown(),
             SpanExporterType::Stdout(exporter) => exporter.shutdown(),
             SpanExporterType::NdjsonStdout(exporter) => exporter.shutdown(),
             SpanExporterType::NdjsonFile(exporter) => exporter.shutdown(),
@@ -333,14 +329,36 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
     ]));
 
     // Resource with standard attributes.
+    let hostname = hostname::get()
+        .ok()
+        .and_then(|h| h.into_string().ok())
+        .unwrap_or_else(|| "unknown".to_string());
+
     let resource = Resource::builder_empty()
         .with_service_name(cfg.service_name)
-        .with_attributes([
+        .with_attributes(vec![
             KeyValue::new("deployment.environment", cfg.deployment_env),
             KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
             KeyValue::new("telemetry.sdk.language", "rust"),
             KeyValue::new("telemetry.sdk.name", "opentelemetry"),
-            KeyValue::new("telemetry.sdk.version", "0.31.0"),
+            KeyValue::new("telemetry.sdk.version", "0.32.0"),
+            // Container attributes
+            KeyValue::new(
+                opentelemetry_semantic_conventions::resource::CONTAINER_RUNTIME,
+                "runsc",
+            ),
+            // Process attributes
+            KeyValue::new("process.pid", std::process::id().to_string()),
+            KeyValue::new(
+                "process.command",
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|p| p.to_str().map(|s| s.to_string()))
+                    .unwrap_or_else(|| "clnrm".to_string()),
+            ),
+            // Host attributes
+            KeyValue::new("host.name", hostname),
+            KeyValue::new("host.arch", std::env::consts::ARCH),
         ])
         .build();
 
@@ -810,11 +828,55 @@ pub fn flush_telemetry_and_wait() {
 }
 
 /// Add OTel logs layer for tracing events -> OTel LogRecords
+///
+/// Installs a structured `tracing_subscriber` fmt layer that emits log records
+/// with target, thread-id, and level fields.  The layer is composed with the
+/// global registry so callers can still add their own layers afterwards.
+///
+/// If a global subscriber is already installed (e.g. from `init_otel`) this
+/// function is a no-op — `try_init` returns an error that is intentionally
+/// discarded.
 pub fn add_otel_logs_layer() {
-    // Convert `tracing` events into OTel LogRecords; exporter controlled by env/collector.
-    // Note: This is a simplified example - in practice you'd need a proper logger provider
-    // EXAMPLE-ONLY: For now, we'll just use the default registry without the logs layer
-    let _ = tracing_subscriber::fmt::try_init();
+    use tracing_subscriber::fmt::format::FmtSpan;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::EnvFilter;
+
+    // Build a structured fmt layer capturing span close events.
+    // Note: .json() requires the "json" feature — we use the default compact
+    // format enriched with target, thread-id, and level instead.
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .with_target(true)
+        .with_thread_ids(true)
+        .with_level(true)
+        .with_span_events(FmtSpan::CLOSE);
+
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    // Compose and attempt to install; ignore the error if already initialised.
+    let _ = tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt_layer)
+        .try_init();
+}
+
+/// Flush any pending OTel log records and shut down the logs pipeline.
+///
+/// When using `opentelemetry-appender-tracing` or a logger provider the
+/// provider must be explicitly shut down to ensure all buffered records are
+/// exported before the process exits.  In the current implementation we use
+/// a pure `tracing_subscriber` fmt layer (no async logger provider), so the
+/// only action required is a brief sleep to allow any in-flight I/O to
+/// complete.
+pub fn shutdown_otel_logs() {
+    // If a logger provider was installed (future: via opentelemetry-appender-tracing)
+    // it should be shut down here.  For the current fmt-only implementation we
+    // flush stdout to ensure all JSON lines have been written.
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+    let _ = std::io::stderr().flush();
+
+    tracing::debug!("OTel logs pipeline shut down");
 }
 
 /// Span creation helpers for clnrm self-testing

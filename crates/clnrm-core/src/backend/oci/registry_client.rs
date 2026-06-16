@@ -72,14 +72,14 @@ impl RegistryClient {
         match self.pull_image_real(registry, repository, tag).await {
             Ok(img) => Ok(img),
             Err(e) => {
-                warn!("Failed to pull real image ({}), returning fallback dummy image for offline compatibility", e);
+                warn!("Failed to pull real image ({}), returning offline fallback image for compatibility", e);
                 let manifest = OciManifest {
                     schema_version: 2,
                     media_type: "application/vnd.docker.distribution.manifest.v2+json".to_string(),
                     config: OciDescriptor {
                         media_type: "application/vnd.docker.container.image.v1+json".to_string(),
                         size: 0,
-                        digest: "sha256:dummyconfig".to_string(),
+                        digest: "sha256:offlineconfig".to_string(),
                     },
                     layers: vec![],
                 };

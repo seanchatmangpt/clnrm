@@ -122,8 +122,8 @@ async fn setup_surrealdb_connection(host: &str, port: u16) -> Result<Surreal<Cli
     })?;
 
     db.signin(Root {
-        username: "root",
-        password: "root",
+        username: "root".to_string(),
+        password: "root".to_string(),
     })
     .await
     .map_err(|e| {
