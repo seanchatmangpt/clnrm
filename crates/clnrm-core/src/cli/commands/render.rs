@@ -56,14 +56,11 @@ pub fn render_template(template: &str, ctx: &RenderContext) -> std::result::Resu
         result = result.replace(&placeholder, val);
     }
 
-    // Check for any remaining unresolved placeholders
-    let mut search = result.as_str();
-    while let Some(start) = search.find("{{") {
-        if let Some(end) = search[start..].find("}}") {
-            let key = search[start + 2..start + end].trim();
+    // Check for any remaining unresolved placeholders (report the first one found)
+    if let Some(start) = result.find("{{") {
+        if let Some(end) = result[start..].find("}}") {
+            let key = result[start + 2..start + end].trim();
             return Err(format!("Unknown variable: {}", key));
-        } else {
-            break;
         }
     }
 
@@ -71,16 +68,14 @@ pub fn render_template(template: &str, ctx: &RenderContext) -> std::result::Resu
 }
 
 /// Read `input`, render it with `ctx`, then write to `output` or log to stdout.
-pub fn render_file(
-    input: &Path,
-    output: Option<&Path>,
-    ctx: &RenderContext,
-) -> Result<()> {
-    let content = std::fs::read_to_string(input)
-        .map_err(|e| CleanroomError::io_error(format!("Failed to read {}: {}", input.display(), e)))?;
+pub fn render_file(input: &Path, output: Option<&Path>, ctx: &RenderContext) -> Result<()> {
+    let content = std::fs::read_to_string(input).map_err(|e| {
+        CleanroomError::io_error(format!("Failed to read {}: {}", input.display(), e))
+    })?;
 
-    let rendered = render_template(&content, ctx)
-        .map_err(|e| CleanroomError::template_error(format!("Template error in {}: {}", input.display(), e)))?;
+    let rendered = render_template(&content, ctx).map_err(|e| {
+        CleanroomError::template_error(format!("Template error in {}: {}", input.display(), e))
+    })?;
 
     if let Some(out_path) = output {
         std::fs::write(out_path, &rendered).map_err(|e| {

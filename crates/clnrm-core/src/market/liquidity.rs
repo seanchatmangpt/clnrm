@@ -227,10 +227,7 @@ impl LiquidityIncentiveEngine {
         let unlock_time = stake.timestamp + lock_duration_secs;
 
         if current_time < unlock_time {
-            return Err(format!(
-                "Funds are time-locked until {}",
-                unlock_time
-            ));
+            return Err(format!("Funds are time-locked until {}", unlock_time));
         }
 
         Ok(())

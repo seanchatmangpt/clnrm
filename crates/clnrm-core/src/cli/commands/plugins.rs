@@ -76,7 +76,11 @@ pub fn list_plugins_info() -> Result<Vec<PluginInfo>> {
 /// Internal helper: load a `PluginInfo` from a JSON file at `path`.
 fn load_plugin_from_path(path: &Path) -> Result<PluginInfo> {
     let content = std::fs::read_to_string(path).map_err(|e| {
-        CleanroomError::io_error(format!("Failed to read plugin file '{}': {}", path.display(), e))
+        CleanroomError::io_error(format!(
+            "Failed to read plugin file '{}': {}",
+            path.display(),
+            e
+        ))
     })?;
 
     let raw: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
@@ -90,19 +94,25 @@ fn load_plugin_from_path(path: &Path) -> Result<PluginInfo> {
     let name = raw
         .get("name")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| CleanroomError::validation_error("Plugin JSON missing required field: name"))?
+        .ok_or_else(|| {
+            CleanroomError::validation_error("Plugin JSON missing required field: name")
+        })?
         .to_string();
 
     let version = raw
         .get("version")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| CleanroomError::validation_error("Plugin JSON missing required field: version"))?
+        .ok_or_else(|| {
+            CleanroomError::validation_error("Plugin JSON missing required field: version")
+        })?
         .to_string();
 
     let plugin_type = raw
         .get("type")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| CleanroomError::validation_error("Plugin JSON missing required field: type"))?
+        .ok_or_else(|| {
+            CleanroomError::validation_error("Plugin JSON missing required field: type")
+        })?
         .to_string();
 
     let mut config = HashMap::new();
@@ -114,7 +124,10 @@ fn load_plugin_from_path(path: &Path) -> Result<PluginInfo> {
         }
     }
 
-    let status_str = raw.get("status").and_then(|v| v.as_str()).unwrap_or("loaded");
+    let status_str = raw
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("loaded");
     let status = match status_str {
         "stopped" => PluginStatus::Stopped,
         "error" => PluginStatus::Error(

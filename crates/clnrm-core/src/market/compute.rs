@@ -168,7 +168,11 @@ impl ComputeMarket {
         }
         let winner = bids
             .iter()
-            .min_by(|a, b| a.price.partial_cmp(&b.price).unwrap_or(std::cmp::Ordering::Equal))
+            .min_by(|a, b| {
+                a.price
+                    .partial_cmp(&b.price)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .ok_or("No bids found")?;
         Ok(winner.bidder.clone())
     }

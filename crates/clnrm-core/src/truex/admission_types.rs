@@ -54,23 +54,24 @@ impl PartyPacket {
         // Parse signature format: "z:<hex_joined>-c:<hex_joined>"
         let parts: Vec<&str> = sig_hex.splitn(2, '-').collect();
         if parts.len() != 2 {
-            return Err(format!("Invalid signature format (expected 'z:...-c:...'): {}", sig_hex));
+            return Err(format!(
+                "Invalid signature format (expected 'z:...-c:...'): {}",
+                sig_hex
+            ));
         }
 
-        let z_part = parts[0].strip_prefix("z:").ok_or_else(|| {
-            format!("Signature missing 'z:' prefix in part: {}", parts[0])
-        })?;
-        let c_part = parts[1].strip_prefix("c:").ok_or_else(|| {
-            format!("Signature missing 'c:' prefix in part: {}", parts[1])
-        })?;
+        let z_part = parts[0]
+            .strip_prefix("z:")
+            .ok_or_else(|| format!("Signature missing 'z:' prefix in part: {}", parts[0]))?;
+        let c_part = parts[1]
+            .strip_prefix("c:")
+            .ok_or_else(|| format!("Signature missing 'c:' prefix in part: {}", parts[1]))?;
 
         // Decode hex strings back to i64 coefficient strings
-        let z_bytes = hex::decode(z_part)
-            .map_err(|e| format!("Failed to decode z hex: {}", e))?;
-        let c_bytes = hex::decode(c_part)
-            .map_err(|e| format!("Failed to decode c hex: {}", e))?;
-        let pk_bytes = hex::decode(pk_hex)
-            .map_err(|e| format!("Failed to decode public key hex: {}", e))?;
+        let z_bytes = hex::decode(z_part).map_err(|e| format!("Failed to decode z hex: {}", e))?;
+        let c_bytes = hex::decode(c_part).map_err(|e| format!("Failed to decode c hex: {}", e))?;
+        let pk_bytes =
+            hex::decode(pk_hex).map_err(|e| format!("Failed to decode public key hex: {}", e))?;
 
         // The signature hex encodes the string representation of coefficients
         // (format used in the escrow tests: each coefficient formatted as 4-char hex strings joined).
@@ -196,7 +197,9 @@ impl std::fmt::Display for RefusalReason {
         match self {
             RefusalReason::MissingRequiredSender(s) => write!(f, "MissingRequiredSender({})", s),
             RefusalReason::InvalidSignature(s) => write!(f, "InvalidSignature({})", s),
-            RefusalReason::RecordConstraintViolation(s) => write!(f, "RecordConstraintViolation({})", s),
+            RefusalReason::RecordConstraintViolation(s) => {
+                write!(f, "RecordConstraintViolation({})", s)
+            }
             RefusalReason::TimeLockViolation(s) => write!(f, "TimeLockViolation({})", s),
         }
     }
@@ -275,9 +278,10 @@ impl AdmissionKernel {
 
         // 3. Record constraints
         for constraint in &policy.record_constraints {
-            let matching_record = graph.records.iter().find(|r| {
-                r.entity == constraint.entity && r.attribute == constraint.attribute
-            });
+            let matching_record = graph
+                .records
+                .iter()
+                .find(|r| r.entity == constraint.entity && r.attribute == constraint.attribute);
 
             let satisfied = if let Some(record) = matching_record {
                 match &constraint.operator {

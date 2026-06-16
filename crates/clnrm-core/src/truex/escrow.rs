@@ -95,7 +95,10 @@ impl Escrow {
 
     /// Fund a party's balance (for bootstrapping / testing).
     pub fn fund(&self, party: &str, amount: TokenAmount) -> Result<()> {
-        let mut bal = self.balances.lock().map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
+        let mut bal = self
+            .balances
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
         *bal.entry(party.to_string()).or_insert(0) += amount;
         Ok(())
     }
@@ -114,11 +117,16 @@ impl Escrow {
             return Err(CleanroomError::validation_error("Party ID cannot be empty"));
         }
         if amount == 0 {
-            return Err(CleanroomError::validation_error("Deposit amount must be > 0"));
+            return Err(CleanroomError::validation_error(
+                "Deposit amount must be > 0",
+            ));
         }
 
         // Check and deduct balance
-        let mut bal = self.balances.lock().map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
+        let mut bal = self
+            .balances
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
         let party_bal = bal.entry(from.clone()).or_insert(0);
         if *party_bal < amount {
             return Err(CleanroomError::validation_error(format!(
@@ -160,7 +168,10 @@ impl Escrow {
         expiry: DateTime<Utc>,
     ) -> Result<EscrowId> {
         let id = self.deposit(from, amount, condition)?;
-        let mut entries = self.entries.lock().map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
+        let mut entries = self
+            .entries
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
         if let Some(e) = entries.get_mut(&id) {
             e.expiry = Some(expiry);
         }
@@ -171,10 +182,13 @@ impl Escrow {
     ///
     /// Returns the amount released.
     pub fn release(&self, escrow_id: &EscrowId, proof: &ConditionProof) -> Result<TokenAmount> {
-        let mut entries = self.entries.lock().map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
-        let entry = entries
-            .get_mut(escrow_id)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Escrow not found: {}", escrow_id)))?;
+        let mut entries = self
+            .entries
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
+        let entry = entries.get_mut(escrow_id).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Escrow not found: {}", escrow_id))
+        })?;
 
         if entry.status != EscrowStatus::Active {
             return Err(CleanroomError::validation_error(format!(
@@ -210,7 +224,10 @@ impl Escrow {
         drop(entries);
 
         // Credit balance
-        let mut bal = self.balances.lock().map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
+        let mut bal = self
+            .balances
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
         *bal.entry(from.clone()).or_insert(0) += amount;
 
         info!(escrow_id = %escrow_id, from = %from, amount = %amount, "Escrow released.");
@@ -223,10 +240,13 @@ impl Escrow {
     /// Slashed funds are removed from escrow (burned / sent to penalty pool).
     /// Returns the amount slashed.
     pub fn slash(&self, escrow_id: &EscrowId, violation: &Violation) -> Result<SlashAmount> {
-        let mut entries = self.entries.lock().map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
-        let entry = entries
-            .get_mut(escrow_id)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Escrow not found: {}", escrow_id)))?;
+        let mut entries = self
+            .entries
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
+        let entry = entries.get_mut(escrow_id).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Escrow not found: {}", escrow_id))
+        })?;
 
         if entry.status != EscrowStatus::Active {
             return Err(CleanroomError::validation_error(format!(
@@ -258,10 +278,13 @@ impl Escrow {
     /// Refund escrow: return remaining funds to the depositor if the condition has expired
     /// or is otherwise unmet.
     pub fn refund(&self, escrow_id: &EscrowId) -> Result<()> {
-        let mut entries = self.entries.lock().map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
-        let entry = entries
-            .get_mut(escrow_id)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Escrow not found: {}", escrow_id)))?;
+        let mut entries = self
+            .entries
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
+        let entry = entries.get_mut(escrow_id).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Escrow not found: {}", escrow_id))
+        })?;
 
         if entry.status != EscrowStatus::Active && entry.status != EscrowStatus::Expired {
             return Err(CleanroomError::validation_error(format!(
@@ -275,7 +298,10 @@ impl Escrow {
         entry.status = EscrowStatus::Refunded;
         drop(entries);
 
-        let mut bal = self.balances.lock().map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
+        let mut bal = self
+            .balances
+            .lock()
+            .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
         *bal.entry(from.clone()).or_insert(0) += amount;
 
         info!(escrow_id = %escrow_id, from = %from, amount = %amount, "Escrow refunded.");
@@ -396,7 +422,9 @@ mod escrow_token_tests {
             .deposit(
                 "dave".to_string(),
                 100,
-                ReleaseCondition::HashPreimage { expected_hash: hash },
+                ReleaseCondition::HashPreimage {
+                    expected_hash: hash,
+                },
             )
             .unwrap();
 
@@ -424,7 +452,11 @@ impl EscrowClearinghouse {
         }
     }
 
-    pub fn slash_stake(&self, seller_pubkey: String, reason: String) -> std::result::Result<(), String> {
+    pub fn slash_stake(
+        &self,
+        seller_pubkey: String,
+        reason: String,
+    ) -> std::result::Result<(), String> {
         info!(seller = %seller_pubkey, %reason, "Slashed seller stake.");
         if let Ok(mut slashed) = self.slashed_stakes.write() {
             slashed.push((seller_pubkey, reason));
@@ -535,12 +567,35 @@ mod tests {
         let kp = crate::pqc::lattice::generate_keypair([1u8; 32]);
         let msg = b"malicious_action";
         let sig = crate::pqc::lattice::sign(&kp.secret, msg, [2u8; 32]);
-        
-        let signature_hex = format!("z:{}-c:{}", 
-            hex::encode(&sig.z.coeffs.iter().take(32).map(|x| format!("{:04x}", x)).collect::<String>()),
-            hex::encode(&sig.c.coeffs.iter().take(32).map(|x| format!("{:04x}", x)).collect::<String>())
+
+        let signature_hex = format!(
+            "z:{}-c:{}",
+            hex::encode(
+                &sig.z
+                    .coeffs
+                    .iter()
+                    .take(32)
+                    .map(|x| format!("{:04x}", x))
+                    .collect::<String>()
+            ),
+            hex::encode(
+                &sig.c
+                    .coeffs
+                    .iter()
+                    .take(32)
+                    .map(|x| format!("{:04x}", x))
+                    .collect::<String>()
+            )
         );
-        let public_key_hex = hex::encode(&kp.public.t.coeffs.iter().take(32).map(|x| format!("{:04x}", x)).collect::<String>());
+        let public_key_hex = hex::encode(
+            &kp.public
+                .t
+                .coeffs
+                .iter()
+                .take(32)
+                .map(|x| format!("{:04x}", x))
+                .collect::<String>(),
+        );
 
         // Packet with invalid signature details (simulate tamper by modifying payload but keeping original signature)
         let packet = PartyPacket {

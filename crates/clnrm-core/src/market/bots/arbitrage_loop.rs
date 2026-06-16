@@ -194,7 +194,10 @@ mod tests {
         );
         let mut amm = make_balanced_amm();
         let opps = lp.scan(&mut amm, 1000);
-        assert!(opps.is_empty(), "Balanced AMM should have no arb opportunities");
+        assert!(
+            opps.is_empty(),
+            "Balanced AMM should have no arb opportunities"
+        );
     }
 
     #[test]

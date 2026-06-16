@@ -116,7 +116,10 @@ pub struct Price {
 
 impl Price {
     pub fn new(amount: TokenAmount, currency: impl Into<String>) -> Self {
-        Self { amount, currency: currency.into() }
+        Self {
+            amount,
+            currency: currency.into(),
+        }
     }
 }
 
@@ -223,13 +226,19 @@ impl Marketplace {
         price: Price,
     ) -> Result<ListingId> {
         if seller.is_empty() {
-            return Err(CleanroomError::validation_error("Seller ID cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Seller ID cannot be empty",
+            ));
         }
         if item.name.is_empty() {
-            return Err(CleanroomError::validation_error("Item name cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Item name cannot be empty",
+            ));
         }
         if price.amount == 0 {
-            return Err(CleanroomError::validation_error("Price must be greater than zero"));
+            return Err(CleanroomError::validation_error(
+                "Price must be greater than zero",
+            ));
         }
 
         let id = Uuid::new_v4().to_string();
@@ -317,15 +326,10 @@ impl Marketplace {
     /// - The buyer has sufficient funds
     ///
     /// On success, transfers funds from buyer to seller and marks listing as Sold.
-    pub fn purchase(
-        &mut self,
-        buyer: BuyerId,
-        listing_id: ListingId,
-    ) -> Result<PurchaseReceipt> {
-        let listing = self
-            .listings
-            .get(&listing_id)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Listing not found: {}", listing_id)))?;
+    pub fn purchase(&mut self, buyer: BuyerId, listing_id: ListingId) -> Result<PurchaseReceipt> {
+        let listing = self.listings.get(&listing_id).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Listing not found: {}", listing_id))
+        })?;
 
         if listing.status != ListingStatus::Active {
             return Err(CleanroomError::validation_error(format!(
@@ -369,12 +373,7 @@ impl Marketplace {
     ///
     /// The buyer must provide a non-empty reason.
     /// Returns the new `DisputeId`.
-    pub fn dispute(
-        &mut self,
-        buyer: BuyerId,
-        listing_id: ListingId,
-        reason: String,
-    ) -> DisputeId {
+    pub fn dispute(&mut self, buyer: BuyerId, listing_id: ListingId, reason: String) -> DisputeId {
         let id = Uuid::new_v4().to_string();
         let dispute = Dispute {
             id: id.clone(),
@@ -396,15 +395,10 @@ impl Marketplace {
     }
 
     /// Resolve a dispute with a ruling.
-    pub fn resolve_dispute(
-        &mut self,
-        dispute_id: DisputeId,
-        ruling: DisputeRuling,
-    ) -> Result<()> {
-        let dispute = self
-            .disputes
-            .get_mut(&dispute_id)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Dispute not found: {}", dispute_id)))?;
+    pub fn resolve_dispute(&mut self, dispute_id: DisputeId, ruling: DisputeRuling) -> Result<()> {
+        let dispute = self.disputes.get_mut(&dispute_id).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Dispute not found: {}", dispute_id))
+        })?;
 
         if dispute.status != DisputeStatus::Open {
             return Err(CleanroomError::validation_error(format!(
@@ -436,7 +430,10 @@ impl Marketplace {
                 DisputeRuling::SellerWins => {
                     // No fund transfer; seller keeps the funds
                 }
-                DisputeRuling::Split { buyer_pct, seller_pct: _ } => {
+                DisputeRuling::Split {
+                    buyer_pct,
+                    seller_pct: _,
+                } => {
                     let buyer_share = price * (buyer_pct as u64) / 100;
                     let seller_bal = self.balances.entry(seller).or_insert(0);
                     let refund = buyer_share.min(*seller_bal);
@@ -506,7 +503,11 @@ mod tests_marketplace {
         market.deposit("buyer-1", 200);
 
         let id = market
-            .create_listing("seller-1".to_string(), make_item("item-a"), Price::new(50, "TRX"))
+            .create_listing(
+                "seller-1".to_string(),
+                make_item("item-a"),
+                Price::new(50, "TRX"),
+            )
             .unwrap();
 
         let receipt = market.purchase("buyer-1".to_string(), id.clone()).unwrap();
@@ -514,17 +515,18 @@ mod tests_marketplace {
         assert_eq!(receipt.price_paid.amount, 50);
         assert_eq!(market.balance_of("buyer-1"), 150);
         assert_eq!(market.balance_of("seller-1"), 50);
-        assert_eq!(
-            market.get_listing(&id).unwrap().status,
-            ListingStatus::Sold
-        );
+        assert_eq!(market.get_listing(&id).unwrap().status, ListingStatus::Sold);
     }
 
     #[test]
     fn test_purchase_insufficient_funds() {
         let mut market = Marketplace::new();
         let id = market
-            .create_listing("seller-1".to_string(), make_item("expensive"), Price::new(1000, "TRX"))
+            .create_listing(
+                "seller-1".to_string(),
+                make_item("expensive"),
+                Price::new(1000, "TRX"),
+            )
             .unwrap();
 
         let result = market.purchase("buyer-poor".to_string(), id);
@@ -538,7 +540,11 @@ mod tests_marketplace {
         market.deposit("seller-1", 0);
 
         let id = market
-            .create_listing("seller-1".to_string(), make_item("disputed-item"), Price::new(100, "TRX"))
+            .create_listing(
+                "seller-1".to_string(),
+                make_item("disputed-item"),
+                Price::new(100, "TRX"),
+            )
             .unwrap();
         market.purchase("buyer-1".to_string(), id.clone()).unwrap();
 
@@ -560,8 +566,16 @@ mod tests_marketplace {
     #[test]
     fn test_search_with_filters() {
         let mut market = Marketplace::new();
-        market.create_listing("s1".to_string(), make_item("cheap"), Price::new(10, "TRX")).unwrap();
-        market.create_listing("s1".to_string(), make_item("expensive"), Price::new(1000, "TRX")).unwrap();
+        market
+            .create_listing("s1".to_string(), make_item("cheap"), Price::new(10, "TRX"))
+            .unwrap();
+        market
+            .create_listing(
+                "s1".to_string(),
+                make_item("expensive"),
+                Price::new(1000, "TRX"),
+            )
+            .unwrap();
 
         let filters = SearchFilters {
             max_price: Some(500),

@@ -727,8 +727,10 @@ pub struct Bottleneck {
 /// Returns span IDs in order from root to leaf forming the critical path.
 pub fn compute_critical_path(spans: &[crate::validation::span_validator::SpanData]) -> Vec<String> {
     // Build parent -> children map
-    let mut children: std::collections::HashMap<String, Vec<&crate::validation::span_validator::SpanData>> =
-        std::collections::HashMap::new();
+    let mut children: std::collections::HashMap<
+        String,
+        Vec<&crate::validation::span_validator::SpanData>,
+    > = std::collections::HashMap::new();
     let mut all_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     for span in spans {
@@ -759,7 +761,10 @@ pub fn compute_critical_path(spans: &[crate::validation::span_validator::SpanDat
     // DFS to find the path with maximum cumulative duration
     fn dfs_max_path<'a>(
         span: &'a crate::validation::span_validator::SpanData,
-        children: &std::collections::HashMap<String, Vec<&'a crate::validation::span_validator::SpanData>>,
+        children: &std::collections::HashMap<
+            String,
+            Vec<&'a crate::validation::span_validator::SpanData>,
+        >,
     ) -> (f64, Vec<String>) {
         let self_dur = span.duration_ms().unwrap_or(1.0);
         let child_list = children.get(&span.span_id);
@@ -803,14 +808,18 @@ pub fn compute_critical_path(spans: &[crate::validation::span_validator::SpanDat
 }
 
 /// Detect bottlenecks: spans where children spend the most cumulative time waiting
-pub fn detect_bottlenecks(spans: &[crate::validation::span_validator::SpanData]) -> Vec<Bottleneck> {
+pub fn detect_bottlenecks(
+    spans: &[crate::validation::span_validator::SpanData],
+) -> Vec<Bottleneck> {
     // Build span_id -> span map
     let span_map: std::collections::HashMap<&str, &crate::validation::span_validator::SpanData> =
         spans.iter().map(|s| (s.span_id.as_str(), s)).collect();
 
     // Build parent -> children map
-    let mut children: std::collections::HashMap<&str, Vec<&crate::validation::span_validator::SpanData>> =
-        std::collections::HashMap::new();
+    let mut children: std::collections::HashMap<
+        &str,
+        Vec<&crate::validation::span_validator::SpanData>,
+    > = std::collections::HashMap::new();
 
     for span in spans {
         if let Some(ref parent_id) = span.parent_span_id {
@@ -822,10 +831,7 @@ pub fn detect_bottlenecks(spans: &[crate::validation::span_validator::SpanData])
         .iter()
         .filter_map(|(parent_id, kids)| {
             let parent = span_map.get(*parent_id)?;
-            let total_wait: f64 = kids
-                .iter()
-                .filter_map(|s| s.duration_ms())
-                .sum();
+            let total_wait: f64 = kids.iter().filter_map(|s| s.duration_ms()).sum();
             Some(Bottleneck {
                 span_name: parent.name.clone(),
                 span_id: parent.span_id.clone(),
@@ -846,10 +852,11 @@ pub fn detect_bottlenecks(spans: &[crate::validation::span_validator::SpanData])
 }
 
 /// Compute p50/p95/p99 statistics for each distinct span name
-pub fn compute_statistics(spans: &[crate::validation::span_validator::SpanData]) -> Vec<SpanStatistics> {
+pub fn compute_statistics(
+    spans: &[crate::validation::span_validator::SpanData],
+) -> Vec<SpanStatistics> {
     // Group spans by name, collecting durations
-    let mut by_name: std::collections::HashMap<String, Vec<f64>> =
-        std::collections::HashMap::new();
+    let mut by_name: std::collections::HashMap<String, Vec<f64>> = std::collections::HashMap::new();
 
     for span in spans {
         if let Some(dur) = span.duration_ms() {

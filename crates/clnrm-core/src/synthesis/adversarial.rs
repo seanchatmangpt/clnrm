@@ -83,7 +83,9 @@ impl AdversarialSynthesizer {
         // Unicode
         inputs.push(AdversarialInput {
             input_type: InputType::Unicode,
-            data: "\u{FFFE}\u{202E}\u{0000}overflow\u{200B}".as_bytes().to_vec(),
+            data: "\u{FFFE}\u{202E}\u{0000}overflow\u{200B}"
+                .as_bytes()
+                .to_vec(),
             description: "unicode special characters".to_string(),
             severity: Severity::Medium,
         });
@@ -125,7 +127,10 @@ impl AdversarialSynthesizer {
         inputs.extend(Self::generate_shell_injections());
 
         // Boundary values
-        inputs.extend(Self::generate_boundary_values(i32::MIN as i64, i32::MAX as i64));
+        inputs.extend(Self::generate_boundary_values(
+            i32::MIN as i64,
+            i32::MAX as i64,
+        ));
 
         // Random
         inputs.push(self.generate_random(256));

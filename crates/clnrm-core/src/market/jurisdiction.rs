@@ -60,12 +60,7 @@ impl JurisdictionEnforcer {
     }
 
     /// Checks that both parties are not sanctioned AND the region is allowed.
-    pub fn check_transaction(
-        &self,
-        buyer: &str,
-        seller: &str,
-        region: &str,
-    ) -> Result<(), String> {
+    pub fn check_transaction(&self, buyer: &str, seller: &str, region: &str) -> Result<(), String> {
         if self.is_sanctioned(buyer) {
             return Err(format!("Buyer '{}' is sanctioned", buyer));
         }
@@ -73,7 +68,10 @@ impl JurisdictionEnforcer {
             return Err(format!("Seller '{}' is sanctioned", seller));
         }
         if !self.allowed_regions.contains(region) {
-            return Err(format!("Region '{}' is not an allowed jurisdiction", region));
+            return Err(format!(
+                "Region '{}' is not an allowed jurisdiction",
+                region
+            ));
         }
         Ok(())
     }

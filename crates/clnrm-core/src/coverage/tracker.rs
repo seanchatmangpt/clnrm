@@ -73,10 +73,7 @@ impl CoverageTracker {
     pub async fn build_report(&self) -> CoverageReport {
         let points_guard = self.points.read().await;
         let total_lines = points_guard.len();
-        let covered_lines = points_guard
-            .values()
-            .filter(|p| p.hit_count > 0)
-            .count();
+        let covered_lines = points_guard.values().filter(|p| p.hit_count > 0).count();
         let coverage_pct = if total_lines == 0 {
             0.0
         } else {

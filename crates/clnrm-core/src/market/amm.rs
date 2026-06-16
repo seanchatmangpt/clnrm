@@ -73,7 +73,10 @@ impl NDimensionalAMM {
         }
 
         // Ensure proportional addition
-        let first_token = amounts.keys().next().unwrap();
+        if amounts.is_empty() {
+            return Ok(());
+        }
+        let first_token = amounts.keys().next().unwrap(); // OK: Safe unwrap - amounts is non-empty (checked above)
         let ratio = amounts[first_token] / self.reserves[first_token];
 
         for (token, amount) in amounts {
@@ -85,7 +88,7 @@ impl NDimensionalAMM {
 
         // Apply state updates
         for (token, amount) in amounts {
-            *self.reserves.get_mut(token).unwrap() += amount;
+            *self.reserves.get_mut(token).unwrap() += amount; // OK: Safe unwrap - token validated in reserves above
         }
 
         Ok(())
@@ -134,8 +137,8 @@ impl NDimensionalAMM {
         let output_amount = output_reserve - new_output_reserve;
 
         // Apply state updates
-        *self.reserves.get_mut(input_token).unwrap() = new_input_reserve;
-        *self.reserves.get_mut(output_token).unwrap() = new_output_reserve;
+        *self.reserves.get_mut(input_token).unwrap() = new_input_reserve; // OK: Safe unwrap - token validated above
+        *self.reserves.get_mut(output_token).unwrap() = new_output_reserve; // OK: Safe unwrap - token validated above
 
         Ok(output_amount)
     }

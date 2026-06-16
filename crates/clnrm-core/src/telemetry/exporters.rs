@@ -178,7 +178,7 @@ fn create_jaeger_exporter(
 ) -> Result<SpanExporterType> {
     Err(CleanroomError::validation_error(
         "Jaeger exporter requires additional crate dependencies (opentelemetry-jaeger). \
-         Use OTLP with a Jaeger OTLP endpoint instead."
+         Use OTLP with a Jaeger OTLP endpoint instead.",
     ))
 }
 
@@ -194,7 +194,7 @@ fn create_jaeger_exporter(
 fn create_zipkin_exporter(_endpoint: &str) -> Result<SpanExporterType> {
     Err(CleanroomError::validation_error(
         "Zipkin exporter requires additional crate dependencies (opentelemetry-zipkin). \
-         Use OTLP with a Zipkin OTLP endpoint instead."
+         Use OTLP with a Zipkin OTLP endpoint instead.",
     ))
 }
 

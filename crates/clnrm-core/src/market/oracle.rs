@@ -1,6 +1,6 @@
 use crate::truex::receipt::TruexReceipt;
-use std::collections::HashMap;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 
 pub fn compute_receipt_hash(receipt: &TruexReceipt) -> String {
     let mut hasher = Sha256::new();
@@ -38,7 +38,10 @@ pub async fn forensic_audit_loop(receipts: Vec<TruexReceipt>) -> Result<(), Stri
         }
 
         // 2. Validate hash lengths/formatting (basic cryptographic sanity check)
-        if receipt.input_hash.len() != 64 || receipt.output_hash.len() != 64 || receipt.procedure_hash.len() != 64 {
+        if receipt.input_hash.len() != 64
+            || receipt.output_hash.len() != 64
+            || receipt.procedure_hash.len() != 64
+        {
             return Err(format!(
                 "Cryptographic deviation: Malformed hash at index {}. Input hash length: {}, Output hash length: {}, Procedure hash length: {}.",
                 i, receipt.input_hash.len(), receipt.output_hash.len(), receipt.procedure_hash.len()
@@ -175,7 +178,11 @@ pub fn aggregate_prices(values: &[f64], weights: &[f64]) -> f64 {
         return values.iter().sum::<f64>() / values.len() as f64;
     }
 
-    let mut pairs: Vec<(f64, f64)> = values.iter().copied().zip(weights.iter().copied()).collect();
+    let mut pairs: Vec<(f64, f64)> = values
+        .iter()
+        .copied()
+        .zip(weights.iter().copied())
+        .collect();
     pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
     let total_weight: f64 = pairs.iter().map(|(_, w)| w).sum();
@@ -285,16 +292,34 @@ mod tests {
     async fn test_forensic_audit_loop_valid_chain() {
         let mut receipts = Vec::new();
         let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
-        
-        let mut r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
+
+        let mut r1 = create_dummy_receipt(
+            "in1",
+            "out1",
+            genesis_prev_hash,
+            "seal1".to_string(),
+            "ptr1".to_string(),
+        );
         let r1_hash = compute_receipt_hash(&r1);
         receipts.push(r1);
 
-        let mut r2 = create_dummy_receipt("in2", "out2", r1_hash, "seal2".to_string(), "ptr2".to_string());
+        let mut r2 = create_dummy_receipt(
+            "in2",
+            "out2",
+            r1_hash,
+            "seal2".to_string(),
+            "ptr2".to_string(),
+        );
         let r2_hash = compute_receipt_hash(&r2);
         receipts.push(r2);
 
-        let r3 = create_dummy_receipt("in3", "out3", r2_hash, "seal3".to_string(), "ptr3".to_string());
+        let r3 = create_dummy_receipt(
+            "in3",
+            "out3",
+            r2_hash,
+            "seal3".to_string(),
+            "ptr3".to_string(),
+        );
         receipts.push(r3);
 
         let result = forensic_audit_loop(receipts).await;
@@ -305,12 +330,24 @@ mod tests {
     async fn test_forensic_audit_loop_broken_chain() {
         let mut receipts = Vec::new();
         let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
-        
-        let r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
+
+        let r1 = create_dummy_receipt(
+            "in1",
+            "out1",
+            genesis_prev_hash,
+            "seal1".to_string(),
+            "ptr1".to_string(),
+        );
         receipts.push(r1);
 
         // Third-party tampered previous receipt hash link
-        let r2 = create_dummy_receipt("in2", "out2", "tampered_prev_hash".to_string(), "seal2".to_string(), "ptr2".to_string());
+        let r2 = create_dummy_receipt(
+            "in2",
+            "out2",
+            "tampered_prev_hash".to_string(),
+            "seal2".to_string(),
+            "ptr2".to_string(),
+        );
         receipts.push(r2);
 
         let result = forensic_audit_loop(receipts).await;
@@ -323,8 +360,14 @@ mod tests {
     async fn test_forensic_audit_loop_malformed_hashes() {
         let mut receipts = Vec::new();
         let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
-        
-        let mut r1 = create_dummy_receipt("in1", "out1", genesis_prev_hash, "seal1".to_string(), "ptr1".to_string());
+
+        let mut r1 = create_dummy_receipt(
+            "in1",
+            "out1",
+            genesis_prev_hash,
+            "seal1".to_string(),
+            "ptr1".to_string(),
+        );
         // Malform input hash
         r1.input_hash = "short_hash".to_string();
         receipts.push(r1);
@@ -356,7 +399,8 @@ mod tests {
         let result = forensic_audit_loop(receipts).await;
         assert!(result.is_err());
         let err_msg = result.unwrap_err();
-        assert!(err_msg.contains("Cryptographic deviation: Missing Post-Quantum Cryptography (PQC) seal"));
+        assert!(err_msg
+            .contains("Cryptographic deviation: Missing Post-Quantum Cryptography (PQC) seal"));
     }
 
     #[tokio::test]
@@ -383,4 +427,3 @@ mod tests {
         assert!(err_msg.contains("Audit failure: Missing replay pointer"));
     }
 }
-

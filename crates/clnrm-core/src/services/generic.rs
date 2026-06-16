@@ -221,7 +221,9 @@ impl GenericContainerPlugin {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .map_err(|e| CleanroomError::runtime_error(format!("Failed to build tokio runtime: {}", e)))?;
+                .map_err(|e| {
+                    CleanroomError::runtime_error(format!("Failed to build tokio runtime: {}", e))
+                })?;
 
             rt.block_on(async move {
                 let loader = Arc::new(OciImageLoader::new()?);
@@ -230,9 +232,7 @@ impl GenericContainerPlugin {
 
                 let image_source = parse_image_ref(&image)?;
                 let oci_image = loader.load_image(image_source).await?;
-                let bundle = builder
-                    .create_bundle(&oci_image, Some(&cmd), None)
-                    .await?;
+                let bundle = builder.create_bundle(&oci_image, Some(&cmd), None).await?;
 
                 let container_id = format!("clnrm-{}", bundle.id);
 
@@ -257,7 +257,10 @@ impl GenericContainerPlugin {
                     )));
                 }
 
-                Ok::<(String, crate::backend::oci::OciBundle), CleanroomError>((container_id, bundle))
+                Ok::<(String, crate::backend::oci::OciBundle), CleanroomError>((
+                    container_id,
+                    bundle,
+                ))
             })
         })?;
 
@@ -326,7 +329,11 @@ impl ServicePlugin for GenericContainerPlugin {
             "Stopping generic container"
         );
 
-        let backend = handle.metadata.get("backend").map(|s| s.as_str()).unwrap_or("gvisor");
+        let backend = handle
+            .metadata
+            .get("backend")
+            .map(|s| s.as_str())
+            .unwrap_or("gvisor");
 
         if backend == "simulated" {
             tracing::info!(container_id = %container_id, "Simulated container stopped");
@@ -342,7 +349,9 @@ impl ServicePlugin for GenericContainerPlugin {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .map_err(|e| CleanroomError::runtime_error(format!("Failed to build tokio runtime: {}", e)))?;
+                .map_err(|e| {
+                    CleanroomError::runtime_error(format!("Failed to build tokio runtime: {}", e))
+                })?;
 
             rt.block_on(async {
                 let executor = RunscExecutor::new()?;
@@ -392,7 +401,11 @@ impl ServicePlugin for GenericContainerPlugin {
             .cloned()
             .unwrap_or_else(|| handle.id.clone());
 
-        let backend = handle.metadata.get("backend").map(|s| s.as_str()).unwrap_or("gvisor");
+        let backend = handle
+            .metadata
+            .get("backend")
+            .map(|s| s.as_str())
+            .unwrap_or("gvisor");
         if backend == "simulated" {
             return HealthStatus::Healthy;
         }
@@ -402,7 +415,9 @@ impl ServicePlugin for GenericContainerPlugin {
             use std::net::TcpStream;
             let addr = format!("127.0.0.1:{}", pm.host_port);
             if TcpStream::connect_timeout(
-                &addr.parse().unwrap_or_else(|_| "127.0.0.1:0".parse().unwrap()),
+                &addr
+                    .parse()
+                    .unwrap_or_else(|_| "127.0.0.1:0".parse().unwrap()),
                 Duration::from_millis(200),
             )
             .is_ok()

@@ -121,7 +121,10 @@ pub struct TestCache {
 impl TestCache {
     /// Create a new `TestCache` that stores entries under `cache_dir`.
     pub fn new(cache_dir: PathBuf, ttl_secs: u64) -> Self {
-        Self { cache_dir, ttl_secs }
+        Self {
+            cache_dir,
+            ttl_secs,
+        }
     }
 
     /// Compute a `CacheKey` for the given test file.

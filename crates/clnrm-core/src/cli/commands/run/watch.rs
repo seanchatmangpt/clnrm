@@ -127,9 +127,7 @@ pub fn watch_and_run_config(config: WatchConfig) -> crate::error::Result<()> {
             }
         },
     )
-    .map_err(|e| {
-        CleanroomError::internal_error(format!("Failed to create watcher: {}", e))
-    })?;
+    .map_err(|e| CleanroomError::internal_error(format!("Failed to create watcher: {}", e)))?;
 
     for path in &config.paths {
         watcher

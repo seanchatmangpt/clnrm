@@ -181,7 +181,9 @@ pub fn dry_run_analyze(file: &Path) -> Result<DryRunReport> {
     // ------------------------------------------------------------------
     let config = load_config_from_file(file)?;
 
-    let test_name = config.get_name().unwrap_or_else(|_| "<unnamed>".to_string());
+    let test_name = config
+        .get_name()
+        .unwrap_or_else(|_| "<unnamed>".to_string());
 
     // ------------------------------------------------------------------
     // 3. Collect all services (both `[services]` and `[service]` tables)
@@ -204,10 +206,7 @@ pub fn dry_run_analyze(file: &Path) -> Result<DryRunReport> {
     let mut service_estimates: Vec<ServiceResourceEstimate> = Vec::new();
 
     for (svc_name, svc) in &all_services {
-        let image = svc
-            .image
-            .clone()
-            .unwrap_or_else(|| "<none>".to_string());
+        let image = svc.image.clone().unwrap_or_else(|| "<none>".to_string());
         let ports = svc.ports.clone().unwrap_or_default();
         let env_var_count = svc.env.as_ref().map(|e| e.len()).unwrap_or(0);
         let has_health_check = svc.health_check.is_some();
@@ -264,10 +263,7 @@ pub fn dry_run_analyze(file: &Path) -> Result<DryRunReport> {
                         issues.push(EnvSubstitutionIssue {
                             service: context.to_string(),
                             variable: key.to_string(),
-                            issue: format!(
-                                "Value '{}' contains empty substitution ${{}}",
-                                key
-                            ),
+                            issue: format!("Value '{}' contains empty substitution ${{}}", key),
                         });
                     } else if !known_env_vars.contains(var_name) {
                         issues.push(EnvSubstitutionIssue {
@@ -344,8 +340,7 @@ pub fn dry_run_analyze(file: &Path) -> Result<DryRunReport> {
     // ------------------------------------------------------------------
     let step_count = config.steps.len() + config.scenario.len();
     let service_count = service_estimates.len();
-    let estimated_duration_secs: u64 =
-        5 + (service_count as u64 * 10) + (step_count as u64 * 2);
+    let estimated_duration_secs: u64 = 5 + (service_count as u64 * 10) + (step_count as u64 * 2);
 
     // ------------------------------------------------------------------
     // 9. Collect warnings for env issues that are non-fatal
@@ -390,12 +385,7 @@ pub fn dry_run_analyze(file: &Path) -> Result<DryRunReport> {
                         .join(", ")
                 )
             };
-            tracing::info!(
-                "  - {} ({}) ports: {}",
-                est.name,
-                est.image,
-                ports_str
-            );
+            tracing::info!("  - {} ({}) ports: {}", est.name, est.image, ports_str);
         }
     }
 

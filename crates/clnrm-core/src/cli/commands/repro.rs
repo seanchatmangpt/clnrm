@@ -77,14 +77,13 @@ pub async fn reproduce_with_diff(
         ))
     })?;
 
-    let baseline_record: BaselineRecord =
-        serde_json::from_str(&baseline_content).map_err(|e| {
-            CleanroomError::serialization_error(format!(
-                "Failed to parse baseline file '{}': {}",
-                baseline.display(),
-                e
-            ))
-        })?;
+    let baseline_record: BaselineRecord = serde_json::from_str(&baseline_content).map_err(|e| {
+        CleanroomError::serialization_error(format!(
+            "Failed to parse baseline file '{}': {}",
+            baseline.display(),
+            e
+        ))
+    })?;
 
     let digest_preview = if baseline_record.digest.len() > 16 {
         format!("{}...", &baseline_record.digest[..16])

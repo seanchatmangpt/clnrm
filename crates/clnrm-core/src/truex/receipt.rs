@@ -33,12 +33,7 @@ impl SettlementReceipt {
     /// Creates a new `SettlementReceipt`, computing the digest and signing it
     /// with an empty secret.  Call [`SettlementReceipt::sign`] separately when
     /// a real secret is available, or re-sign via the builder pattern.
-    pub fn new(
-        transaction_id: &str,
-        parties: Vec<String>,
-        amount: f64,
-        currency: &str,
-    ) -> Self {
+    pub fn new(transaction_id: &str, parties: Vec<String>, amount: f64, currency: &str) -> Self {
         let receipt_id = uuid::Uuid::new_v4().to_string();
         let timestamp_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -85,8 +80,7 @@ impl SettlementReceipt {
 
     /// Produces an HMAC-SHA256 over `digest` using `secret`.
     pub fn sign(digest: &[u8; 32], secret: &[u8]) -> Vec<u8> {
-        let mut mac =
-            HmacSha256::new_from_slice(secret).expect("HMAC accepts keys of any length");
+        let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC accepts keys of any length");
         mac.update(digest);
         mac.finalize().into_bytes().to_vec()
     }

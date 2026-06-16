@@ -327,7 +327,7 @@ pub async fn run_tests_parallel_with_results(
             let permit = semaphore_clone
                 .acquire_owned()
                 .await
-                .expect("Semaphore closed unexpectedly");
+                .expect("Semaphore closed unexpectedly"); // OK: Safe - semaphore is never explicitly closed
 
             debug!("Acquired permit for test: {}", test_name);
 

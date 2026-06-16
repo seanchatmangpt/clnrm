@@ -118,7 +118,10 @@ pub struct DiskFiller;
 impl DiskFiller {
     /// Write a fill file at `path/<uuid>.chaos` of size `fill_mb` MB.
     /// Returns the path of the created file for later cleanup.
-    pub fn inject(dir: &Path, fill_mb: usize) -> Result<std::path::PathBuf, crate::error::CleanroomError> {
+    pub fn inject(
+        dir: &Path,
+        fill_mb: usize,
+    ) -> Result<std::path::PathBuf, crate::error::CleanroomError> {
         use std::io::Write;
         use uuid::Uuid;
 
@@ -133,10 +136,7 @@ impl DiskFiller {
         let chunk = vec![0u8; 1024 * 1024]; // 1 MB buffer
         for _ in 0..fill_mb {
             file.write_all(&chunk).map_err(|e| {
-                crate::error::CleanroomError::io_error(format!(
-                    "DiskFiller: write failed: {}",
-                    e
-                ))
+                crate::error::CleanroomError::io_error(format!("DiskFiller: write failed: {}", e))
             })?;
         }
         file.sync_all().map_err(|e| {

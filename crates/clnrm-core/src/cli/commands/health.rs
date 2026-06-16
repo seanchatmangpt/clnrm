@@ -441,11 +441,7 @@ pub fn suggest_remediation(failing: &[ServiceHealth]) -> Vec<String> {
     let mut suggestions = Vec::new();
 
     for svc in failing {
-        let error_lower = svc
-            .error
-            .as_deref()
-            .unwrap_or("")
-            .to_lowercase();
+        let error_lower = svc.error.as_deref().unwrap_or("").to_lowercase();
 
         let suggestion = if error_lower.contains("connection refused") {
             format!(

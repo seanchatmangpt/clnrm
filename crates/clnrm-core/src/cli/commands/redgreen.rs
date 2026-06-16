@@ -85,15 +85,30 @@ pub fn parse_cargo_test_output(output: &str) -> RedGreenReport {
             for segment in trimmed.split(';') {
                 let seg = segment.trim();
                 if let Some(rest) = seg.strip_suffix(" passed") {
-                    if let Ok(n) = rest.split_whitespace().last().unwrap_or("0").parse::<usize>() {
+                    if let Ok(n) = rest
+                        .split_whitespace()
+                        .last()
+                        .unwrap_or("0")
+                        .parse::<usize>()
+                    {
                         passed = n;
                     }
                 } else if let Some(rest) = seg.strip_suffix(" failed") {
-                    if let Ok(n) = rest.split_whitespace().last().unwrap_or("0").parse::<usize>() {
+                    if let Ok(n) = rest
+                        .split_whitespace()
+                        .last()
+                        .unwrap_or("0")
+                        .parse::<usize>()
+                    {
                         failed = n;
                     }
                 } else if let Some(rest) = seg.strip_suffix(" ignored") {
-                    if let Ok(n) = rest.split_whitespace().last().unwrap_or("0").parse::<usize>() {
+                    if let Ok(n) = rest
+                        .split_whitespace()
+                        .last()
+                        .unwrap_or("0")
+                        .parse::<usize>()
+                    {
                         skipped = n;
                     }
                 }
@@ -134,9 +149,9 @@ pub fn check_redgreen(test_file: Option<&Path>, filter: Option<&str>) -> Result<
 
     info!("Running cargo test...");
 
-    let output = cmd.output().map_err(|e| {
-        CleanroomError::io_error(format!("Failed to spawn cargo test: {}", e))
-    })?;
+    let output = cmd
+        .output()
+        .map_err(|e| CleanroomError::io_error(format!("Failed to spawn cargo test: {}", e)))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);

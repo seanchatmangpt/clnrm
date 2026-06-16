@@ -54,7 +54,8 @@ pub fn visualize_graph(
             })
             .collect();
         let filtered_nodes = filter_spans(&span_nodes, filter_pattern)?;
-        let filtered_ids: HashSet<&str> = filtered_nodes.iter().map(|n| n.span_id.as_str()).collect();
+        let filtered_ids: HashSet<&str> =
+            filtered_nodes.iter().map(|n| n.span_id.as_str()).collect();
         trace_data
             .spans
             .into_iter()
@@ -346,7 +347,7 @@ pub fn detect_cycles(spans: &[SpanNode]) -> Vec<Vec<String>> {
                 let children = adjacency.get(&node).cloned().unwrap_or_default();
                 if *child_idx < children.len() {
                     let child = children[*child_idx].clone();
-                    *stack.last_mut().unwrap() = (node.clone(), *child_idx + 1);
+                    *stack.last_mut().unwrap() = (node.clone(), *child_idx + 1); // OK: Safe unwrap - stack non-empty (inside while-let loop)
 
                     match color.get(&child).copied().unwrap_or(0) {
                         0 => {
@@ -380,11 +381,11 @@ pub fn detect_cycles(spans: &[SpanNode]) -> Vec<Vec<String>> {
 /// Filter spans by regex pattern on name
 pub fn filter_spans<'a>(spans: &'a [SpanNode], pattern: &str) -> Result<Vec<&'a SpanNode>> {
     let re = Regex::new(pattern).map_err(|e| {
-        CleanroomError::validation_error(format!(
-            "Invalid regex pattern '{}': {}",
-            pattern, e
-        ))
+        CleanroomError::validation_error(format!("Invalid regex pattern '{}': {}", pattern, e))
     })?;
 
-    Ok(spans.iter().filter(|span| re.is_match(&span.name)).collect())
+    Ok(spans
+        .iter()
+        .filter(|span| re.is_match(&span.name))
+        .collect())
 }

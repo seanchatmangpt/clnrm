@@ -31,10 +31,7 @@ impl NdjsonFileExporter {
 }
 
 impl SpanExporter for NdjsonFileExporter {
-    async fn export(
-        &self,
-        batch: Vec<SpanData>,
-    ) -> OTelSdkResult {
+    async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
         let path = self.path.clone();
         let mut file = match std::fs::OpenOptions::new()
             .create(true)
@@ -178,10 +175,7 @@ impl Default for NdjsonStdoutExporter {
 }
 
 impl SpanExporter for NdjsonStdoutExporter {
-    async fn export(
-        &self,
-        batch: Vec<SpanData>,
-    ) -> OTelSdkResult {
+    async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
         // Export each span as NDJSON line
         for span in batch {
             let json = Self::span_to_json(&span);

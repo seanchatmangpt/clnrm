@@ -51,7 +51,10 @@ impl PacketPayload {
                 out.extend_from_slice(instr.as_bytes());
                 out
             }
-            PacketPayload::Acknowledgment { packet_id, accepted } => {
+            PacketPayload::Acknowledgment {
+                packet_id,
+                accepted,
+            } => {
                 let mut out = b"ack:".to_vec();
                 out.extend_from_slice(packet_id.as_bytes());
                 out.push(if *accepted { 1 } else { 0 });
@@ -87,12 +90,7 @@ pub struct Packet {
 impl Packet {
     /// Creates a new `Packet`.  The checksum is computed immediately.
     /// `sequence_num` starts at 0 and is overwritten by [`PacketRouter::send`].
-    pub fn new(
-        sender: &str,
-        recipient: &str,
-        payload: PacketPayload,
-        ttl_ms: u64,
-    ) -> Self {
+    pub fn new(sender: &str, recipient: &str, payload: PacketPayload, ttl_ms: u64) -> Self {
         let created_at_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -100,8 +98,7 @@ impl Packet {
 
         let sequence_num = 0u64;
         let payload_bytes = payload.to_bytes();
-        let checksum =
-            Self::compute_checksum(sender, recipient, &payload_bytes, sequence_num);
+        let checksum = Self::compute_checksum(sender, recipient, &payload_bytes, sequence_num);
 
         Packet {
             id: PacketId::new(),
@@ -203,11 +200,7 @@ impl PacketRouter {
     ///
     /// Returns the [`PacketId`] on success, or an error string when the packet
     /// is expired or fails checksum validation.
-    pub fn send(
-        &mut self,
-        mut packet: Packet,
-        current_time_ms: u64,
-    ) -> Result<PacketId, String> {
+    pub fn send(&mut self, mut packet: Packet, current_time_ms: u64) -> Result<PacketId, String> {
         // Assign next sequence number and refresh the checksum.
         self.sequence_counter += 1;
         packet.sequence_num = self.sequence_counter;
@@ -386,13 +379,8 @@ mod tests {
 
     #[test]
     fn test_with_header() {
-        let pkt = Packet::new(
-            "a",
-            "b",
-            PacketPayload::Data(vec![]),
-            0,
-        )
-        .with_header("content-type", "application/octet-stream");
+        let pkt = Packet::new("a", "b", PacketPayload::Data(vec![]), 0)
+            .with_header("content-type", "application/octet-stream");
         assert_eq!(pkt.headers["content-type"], "application/octet-stream");
     }
 

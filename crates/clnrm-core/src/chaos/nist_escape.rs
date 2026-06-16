@@ -103,7 +103,10 @@ impl ContainerEscapeTest {
         let status = match std::fs::read_to_string("/proc/self/status") {
             Ok(s) => s,
             Err(_) => {
-                tracing::warn!("chaos.escape.capability" = false, "Cannot read /proc/self/status");
+                tracing::warn!(
+                    "chaos.escape.capability" = false,
+                    "Cannot read /proc/self/status"
+                );
                 return false;
             }
         };

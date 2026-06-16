@@ -38,11 +38,7 @@ impl SettlementEngine {
     // Original API (backward-compatible)
     // -----------------------------------------------------------------------
 
-    pub fn lock_funds(
-        &mut self,
-        buyer_id: &str,
-        amount: f64,
-    ) -> Result<(), String> {
+    pub fn lock_funds(&mut self, buyer_id: &str, amount: f64) -> Result<(), String> {
         if amount <= 0.0 {
             return Err(format!("Amount must be positive, got {}", amount));
         }
@@ -92,14 +88,13 @@ impl SettlementEngine {
     // -----------------------------------------------------------------------
 
     /// Transfers locked funds from buyer to seller tracking and removes the lock.
-    pub fn release_funds(
-        &mut self,
-        buyer_id: &str,
-        seller_id: &str,
-    ) -> Result<f64, String> {
+    pub fn release_funds(&mut self, buyer_id: &str, seller_id: &str) -> Result<f64, String> {
         if let Some(lock) = self.buyer_escrow.remove(buyer_id) {
             let amount = lock.amount;
-            *self.seller_balances.entry(seller_id.to_string()).or_insert(0.0) += amount;
+            *self
+                .seller_balances
+                .entry(seller_id.to_string())
+                .or_insert(0.0) += amount;
             Ok(amount)
         } else {
             Err(format!("No locked funds found for buyer '{}'", buyer_id))
@@ -128,17 +123,11 @@ impl SettlementEngine {
 
     /// Expires locks older than `timeout_ms` relative to `current_time_ms`.
     /// Returns the list of buyer IDs whose funds were refunded.
-    pub fn expire_old_locks(
-        &mut self,
-        current_time_ms: u64,
-        timeout_ms: u64,
-    ) -> Vec<String> {
+    pub fn expire_old_locks(&mut self, current_time_ms: u64, timeout_ms: u64) -> Vec<String> {
         let expired: Vec<String> = self
             .buyer_escrow
             .values()
-            .filter(|lock| {
-                current_time_ms.saturating_sub(lock.locked_at) >= timeout_ms
-            })
+            .filter(|lock| current_time_ms.saturating_sub(lock.locked_at) >= timeout_ms)
             .map(|lock| lock.buyer_id.clone())
             .collect();
 

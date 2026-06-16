@@ -90,11 +90,7 @@ impl EventLog {
     }
 
     /// Query events whose timestamps fall within [start, end] (inclusive).
-    pub fn query_time_range(
-        &self,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
-    ) -> Vec<&OcelEvent> {
+    pub fn query_time_range(&self, start: DateTime<Utc>, end: DateTime<Utc>) -> Vec<&OcelEvent> {
         self.events
             .iter()
             .filter(|e| e.timestamp >= start && e.timestamp <= end)
@@ -175,10 +171,7 @@ impl EventLog {
                 event.activity,
                 event.timestamp.format("%H:%M:%S")
             );
-            dot.push_str(&format!(
-                "    e{} [label=\"{}\"];\n",
-                event.id, label
-            ));
+            dot.push_str(&format!("    e{} [label=\"{}\"];\n", event.id, label));
         }
 
         dot.push('\n');
@@ -230,7 +223,9 @@ mod tests_event_log {
     fn test_append_and_query_by_object() {
         let mut log = EventLog::new();
         let e1 = OcelEvent::new("Create", make_ts(0)).with_object("order-1");
-        let e2 = OcelEvent::new("Ship", make_ts(10)).with_object("order-1").with_object("item-2");
+        let e2 = OcelEvent::new("Ship", make_ts(10))
+            .with_object("order-1")
+            .with_object("item-2");
         let e3 = OcelEvent::new("Pay", make_ts(20)).with_object("item-2");
 
         let id1 = log.append(e1).unwrap();
@@ -273,7 +268,8 @@ mod tests_event_log {
     #[test]
     fn test_export_json() {
         let mut log = EventLog::new();
-        log.append(OcelEvent::new("Test", make_ts(0)).with_object("obj-1")).unwrap();
+        log.append(OcelEvent::new("Test", make_ts(0)).with_object("obj-1"))
+            .unwrap();
 
         let json = log.export_json().unwrap();
         assert!(json.contains("Test"));
@@ -284,7 +280,8 @@ mod tests_event_log {
     fn test_dot_graph() {
         let mut log = EventLog::new();
         let id0 = log.append(OcelEvent::new("A", make_ts(0))).unwrap();
-        log.append(OcelEvent::new("B", make_ts(5)).with_predecessor(id0)).unwrap();
+        log.append(OcelEvent::new("B", make_ts(5)).with_predecessor(id0))
+            .unwrap();
 
         let dot = log.to_dot_graph();
         assert!(dot.contains("digraph ocel_event_log"));

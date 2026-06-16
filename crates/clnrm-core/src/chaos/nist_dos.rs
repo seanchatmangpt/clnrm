@@ -30,8 +30,11 @@ impl RequestFlooder {
             let ep = endpoint.clone();
             tokio::spawn(async move {
                 // Attempt a TCP connect — the actual HTTP exchange is not required for load.
-                let connect_result =
-                    timeout(Duration::from_millis(500), tokio::net::TcpStream::connect(&ep)).await;
+                let connect_result = timeout(
+                    Duration::from_millis(500),
+                    tokio::net::TcpStream::connect(&ep),
+                )
+                .await;
                 tracing::debug!(
                     endpoint = %ep,
                     success = connect_result.is_ok(),

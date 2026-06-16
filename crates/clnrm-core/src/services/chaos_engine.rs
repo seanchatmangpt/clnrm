@@ -353,16 +353,12 @@ impl ChaosEnginePlugin {
                     .map(|n| n.get())
                     .unwrap_or(1);
                 // Scale number of threads by target_percent (1–100 → 1..num_cpus)
-                let stress_threads = ((num_cpus as f64 * (target_percent_val as f64 / 100.0))
-                    .ceil() as usize)
-                    .max(1)
-                    .min(num_cpus);
+                let stress_threads =
+                    ((num_cpus as f64 * (target_percent_val as f64 / 100.0)).ceil() as usize)
+                        .max(1)
+                        .min(num_cpus);
 
-                tracing::info!(
-                    stress_threads,
-                    num_cpus,
-                    "Spawning CPU stress threads"
-                );
+                tracing::info!(stress_threads, num_cpus, "Spawning CPU stress threads");
 
                 // Spawn busy-loop threads that actually consume CPU
                 let mut thread_handles = Vec::with_capacity(stress_threads);
@@ -410,7 +406,8 @@ impl ChaosEnginePlugin {
                 {
                     let mut m = self.metrics.write().await;
                     m.network_partitions += 1;
-                    m.affected_services.extend(affected_services.iter().cloned());
+                    m.affected_services
+                        .extend(affected_services.iter().cloned());
                 }
                 tokio::time::sleep(std::time::Duration::from_secs(*duration_secs)).await;
             }

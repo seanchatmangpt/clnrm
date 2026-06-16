@@ -90,22 +90,14 @@ impl Grammar {
             let rhs = parts[1].trim();
             let alternatives: Vec<Vec<String>> = rhs
                 .split(" | ")
-                .map(|alt| {
-                    parse_production(alt.trim())
-                })
+                .map(|alt| parse_production(alt.trim()))
                 .collect();
 
-            grammar
-                .rules
-                .entry(lhs)
-                .or_default()
-                .extend(alternatives);
+            grammar.rules.entry(lhs).or_default().extend(alternatives);
         }
 
         if grammar.start_symbol.is_empty() {
-            return Err(CleanroomError::validation_error(
-                "Grammar has no rules",
-            ));
+            return Err(CleanroomError::validation_error("Grammar has no rules"));
         }
 
         Ok(grammar)
@@ -222,9 +214,7 @@ impl Grammar {
     ) -> Option<usize> {
         let mut pos = start;
         for sym in production {
-            if let Some(next) =
-                self.matches_symbol(sym, tokens, pos, end, depth + 1)
-            {
+            if let Some(next) = self.matches_symbol(sym, tokens, pos, end, depth + 1) {
                 pos = next;
             } else {
                 return None;
@@ -271,10 +261,7 @@ impl Grammar {
         let composed_start = "composed__start".to_string();
         let a_start = format!("a__{}", a.start_symbol);
         let b_start = format!("b__{}", b.start_symbol);
-        rules.insert(
-            composed_start.clone(),
-            vec![vec![a_start, b_start]],
-        );
+        rules.insert(composed_start.clone(), vec![vec![a_start, b_start]]);
 
         Grammar {
             rules,
@@ -348,7 +335,10 @@ fn parse_production(alt: &str) -> Vec<String> {
                     }
                 }
                 // Store inner name (without < >) for lookup
-                let inner = token.trim_start_matches('<').trim_end_matches('>').to_string();
+                let inner = token
+                    .trim_start_matches('<')
+                    .trim_end_matches('>')
+                    .to_string();
                 symbols.push(inner);
             }
             ' ' | '\t' => {
@@ -378,17 +368,14 @@ fn parse_production(alt: &str) -> Vec<String> {
 /// Tokenize input string: split on whitespace into tokens.
 /// Punctuation adjacent to words is kept as part of the token (matching terminal behavior).
 fn tokenize(input: &str) -> Vec<String> {
-    input
-        .split_whitespace()
-        .map(|s| s.to_string())
-        .collect()
+    input.split_whitespace().map(|s| s.to_string()).collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
     use rand::rngs::SmallRng;
+    use rand::SeedableRng;
 
     #[test]
     fn test_grammar_from_str_and_generate() {

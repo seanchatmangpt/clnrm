@@ -326,12 +326,8 @@ impl SpanAttributes {
 /// These wrap the OTel semconv constants for convenient use
 pub mod resource {
     pub use opentelemetry_semantic_conventions::resource::{
-        CONTAINER_ID,
-        CONTAINER_IMAGE_NAME,
-        CONTAINER_RUNTIME,
-        SERVICE_NAME,
+        CONTAINER_ID, CONTAINER_IMAGE_NAME, CONTAINER_RUNTIME, HOST_NAME, SERVICE_NAME,
         SERVICE_VERSION,
-        HOST_NAME,
     };
 
     // Additional constants not in 0.15.0 resource module

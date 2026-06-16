@@ -298,7 +298,11 @@ mod tests {
         let sealed = seal_receipt(data, &kp);
         assert!(!sealed.content_hash_hex.is_empty());
         assert_eq!(sealed.content_hash, hash_message(data));
-        assert!(verify_with_keypair(&sealed.content_hash, &sealed.signature, &kp));
+        assert!(verify_with_keypair(
+            &sealed.content_hash,
+            &sealed.signature,
+            &kp
+        ));
     }
 
     #[test]

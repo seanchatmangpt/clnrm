@@ -99,11 +99,7 @@ pub fn assert_span_exists<'a>(spans: &'a [SpanData], name: &str) -> Result<&'a S
 }
 
 /// Assert that exactly `expected` spans share the given name.
-pub fn assert_span_count(
-    spans: &[SpanData],
-    name: &str,
-    expected: usize,
-) -> Result<(), String> {
+pub fn assert_span_count(spans: &[SpanData], name: &str, expected: usize) -> Result<(), String> {
     let actual = spans.iter().filter(|s| s.name == name).count();
     if actual == expected {
         Ok(())
@@ -121,20 +117,17 @@ pub fn assert_span_attribute(
     key: &str,
     expected_value: &str,
 ) -> Result<(), String> {
-    let actual = span
-        .attributes
-        .get(key)
-        .and_then(|v| {
-            if let Some(s) = v.as_str() {
+    let actual = span.attributes.get(key).and_then(|v| {
+        if let Some(s) = v.as_str() {
+            return Some(s.to_string());
+        }
+        if let Some(obj) = v.as_object() {
+            if let Some(s) = obj.get("stringValue").and_then(|sv| sv.as_str()) {
                 return Some(s.to_string());
             }
-            if let Some(obj) = v.as_object() {
-                if let Some(s) = obj.get("stringValue").and_then(|sv| sv.as_str()) {
-                    return Some(s.to_string());
-                }
-            }
-            None
-        });
+        }
+        None
+    });
 
     match actual {
         Some(ref val) if val == expected_value => Ok(()),
@@ -150,11 +143,7 @@ pub fn assert_span_attribute(
 }
 
 /// Assert that `span`'s duration falls within [`min_ms`, `max_ms`].
-pub fn assert_span_duration_range(
-    span: &SpanData,
-    min_ms: f64,
-    max_ms: f64,
-) -> Result<(), String> {
+pub fn assert_span_duration_range(span: &SpanData, min_ms: f64, max_ms: f64) -> Result<(), String> {
     match span.duration_ms() {
         None => Err(format!(
             "Span '{}': duration unavailable (missing start/end timestamps)",
@@ -247,10 +236,7 @@ pub fn assert_no_errors(spans: &[SpanData]) -> Result<(), String> {
     if erred.is_empty() {
         Ok(())
     } else {
-        Err(format!(
-            "Spans with error status: [{}]",
-            erred.join(", ")
-        ))
+        Err(format!("Spans with error status: [{}]", erred.join(", ")))
     }
 }
 

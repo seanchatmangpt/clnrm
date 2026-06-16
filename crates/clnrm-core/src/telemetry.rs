@@ -86,10 +86,7 @@ enum SpanExporterType {
 }
 
 impl SpanExporter for SpanExporterType {
-    async fn export(
-        &self,
-        batch: Vec<opentelemetry_sdk::trace::SpanData>,
-    ) -> OTelSdkResult {
+    async fn export(&self, batch: Vec<opentelemetry_sdk::trace::SpanData>) -> OTelSdkResult {
         match self {
             SpanExporterType::Otlp(exporter) => exporter.as_ref().export(batch).await,
             SpanExporterType::Stdout(exporter) => exporter.export(batch).await,
@@ -346,13 +343,19 @@ pub fn init_otel(cfg: OtelConfig) -> Result<OtelGuard, CleanroomError> {
             KeyValue::new("telemetry.sdk.name", "opentelemetry"),
             KeyValue::new("telemetry.sdk.version", "0.32.0"),
             // Container attributes
-            KeyValue::new(opentelemetry_semantic_conventions::resource::CONTAINER_RUNTIME, "runsc"),
+            KeyValue::new(
+                opentelemetry_semantic_conventions::resource::CONTAINER_RUNTIME,
+                "runsc",
+            ),
             // Process attributes
             KeyValue::new("process.pid", std::process::id().to_string()),
-            KeyValue::new("process.command", std::env::current_exe()
-                .ok()
-                .and_then(|p| p.to_str().map(|s| s.to_string()))
-                .unwrap_or_else(|| "clnrm".to_string())),
+            KeyValue::new(
+                "process.command",
+                std::env::current_exe()
+                    .ok()
+                    .and_then(|p| p.to_str().map(|s| s.to_string()))
+                    .unwrap_or_else(|| "clnrm".to_string()),
+            ),
             // Host attributes
             KeyValue::new("host.name", hostname),
             KeyValue::new("host.arch", std::env::consts::ARCH),
@@ -848,8 +851,7 @@ pub fn add_otel_logs_layer() {
         .with_level(true)
         .with_span_events(FmtSpan::CLOSE);
 
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     // Compose and attempt to install; ignore the error if already initialised.
     let _ = tracing_subscriber::registry()

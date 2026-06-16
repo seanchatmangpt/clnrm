@@ -1,5 +1,4 @@
 /// Helper functions to compile/build bytecode for genesis contracts.
-
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 

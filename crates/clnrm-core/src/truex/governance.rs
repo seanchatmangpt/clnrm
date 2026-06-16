@@ -186,10 +186,14 @@ impl GovernanceRegistry {
     pub fn propose(&self, proposer: NodeId, proposal: Proposal) -> Result<ProposalId> {
         self.assert_not_paused()?;
         if proposer.is_empty() {
-            return Err(CleanroomError::validation_error("Proposer ID cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Proposer ID cannot be empty",
+            ));
         }
         if proposal.title.is_empty() {
-            return Err(CleanroomError::validation_error("Proposal title cannot be empty"));
+            return Err(CleanroomError::validation_error(
+                "Proposal title cannot be empty",
+            ));
         }
         if proposal.quorum_threshold < 0.0 || proposal.quorum_threshold > 1.0 {
             return Err(CleanroomError::validation_error(
@@ -251,9 +255,9 @@ impl GovernanceRegistry {
             .lock()
             .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
 
-        let record = proposals
-            .get_mut(&proposal_id)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Proposal not found: {}", proposal_id)))?;
+        let record = proposals.get_mut(&proposal_id).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Proposal not found: {}", proposal_id))
+        })?;
 
         if record.status != ProposalStatus::Open {
             return Err(CleanroomError::validation_error(format!(
@@ -290,9 +294,9 @@ impl GovernanceRegistry {
             .lock()
             .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
 
-        let record = proposals
-            .get(proposal_id)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Proposal not found: {}", proposal_id)))?;
+        let record = proposals.get(proposal_id).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Proposal not found: {}", proposal_id))
+        })?;
 
         let eligible_voters = self
             .eligible_voters
@@ -302,7 +306,11 @@ impl GovernanceRegistry {
 
         let yes = record.votes.values().filter(|v| **v == Vote::Yes).count();
         let no = record.votes.values().filter(|v| **v == Vote::No).count();
-        let abstain = record.votes.values().filter(|v| **v == Vote::Abstain).count();
+        let abstain = record
+            .votes
+            .values()
+            .filter(|v| **v == Vote::Abstain)
+            .count();
         let total_cast = yes + no + abstain;
 
         let quorum_met = if eligible_voters == 0 {
@@ -346,9 +354,9 @@ impl GovernanceRegistry {
             .lock()
             .map_err(|_| CleanroomError::internal_error("Lock poisoned"))?;
 
-        let record = proposals
-            .get_mut(proposal_id)
-            .ok_or_else(|| CleanroomError::validation_error(format!("Proposal not found: {}", proposal_id)))?;
+        let record = proposals.get_mut(proposal_id).ok_or_else(|| {
+            CleanroomError::validation_error(format!("Proposal not found: {}", proposal_id))
+        })?;
 
         if record.status != ProposalStatus::Open {
             return Err(CleanroomError::validation_error(format!(
@@ -381,7 +389,8 @@ impl GovernanceRegistry {
 
     /// Resume from emergency pause.
     pub fn resume(&self) {
-        self.paused.store(false, std::sync::atomic::Ordering::SeqCst);
+        self.paused
+            .store(false, std::sync::atomic::Ordering::SeqCst);
         info!("Governance registry resumed.");
     }
 
@@ -448,9 +457,15 @@ mod tests {
             .propose("alice".to_string(), make_proposal(3600))
             .unwrap();
 
-        registry.vote("alice".to_string(), pid.clone(), Vote::Yes).unwrap();
-        registry.vote("bob".to_string(), pid.clone(), Vote::Yes).unwrap();
-        registry.vote("carol".to_string(), pid.clone(), Vote::No).unwrap();
+        registry
+            .vote("alice".to_string(), pid.clone(), Vote::Yes)
+            .unwrap();
+        registry
+            .vote("bob".to_string(), pid.clone(), Vote::Yes)
+            .unwrap();
+        registry
+            .vote("carol".to_string(), pid.clone(), Vote::No)
+            .unwrap();
 
         let tally = registry.tally(&pid).unwrap();
         assert!(tally.quorum_met);
@@ -469,7 +484,9 @@ mod tests {
         let pid = registry
             .propose("alice".to_string(), make_proposal(3600))
             .unwrap();
-        registry.vote("alice".to_string(), pid.clone(), Vote::Yes).unwrap();
+        registry
+            .vote("alice".to_string(), pid.clone(), Vote::Yes)
+            .unwrap();
         let result = registry.vote("alice".to_string(), pid.clone(), Vote::No);
         assert!(result.is_err());
     }
@@ -490,11 +507,18 @@ mod tests {
     #[test]
     fn test_no_quorum_rejects() {
         let registry = GovernanceRegistry::new(vec![
-            "a".to_string(), "b".to_string(), "c".to_string(), "d".to_string(),
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
         ]);
-        let pid = registry.propose("a".to_string(), make_proposal(3600)).unwrap();
+        let pid = registry
+            .propose("a".to_string(), make_proposal(3600))
+            .unwrap();
         // Only 1/4 votes = 25% < 50% quorum
-        registry.vote("a".to_string(), pid.clone(), Vote::Yes).unwrap();
+        registry
+            .vote("a".to_string(), pid.clone(), Vote::Yes)
+            .unwrap();
 
         let tally = registry.tally(&pid).unwrap();
         assert!(!tally.quorum_met);

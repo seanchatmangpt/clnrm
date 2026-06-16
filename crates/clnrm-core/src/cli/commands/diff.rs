@@ -169,12 +169,20 @@ fn extract_span_attributes(json: &serde_json::Value, span_name: &str) -> Option<
     if let Some(array) = json.as_array() {
         for item in array {
             if item.get("name").and_then(|n| n.as_str()) == Some(span_name) {
-                return Some(item.get("attributes").cloned().unwrap_or(serde_json::Value::Null));
+                return Some(
+                    item.get("attributes")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null),
+                );
             }
         }
     } else if let Some(obj) = json.as_object() {
         if obj.get("name").and_then(|n| n.as_str()) == Some(span_name) {
-            return Some(obj.get("attributes").cloned().unwrap_or(serde_json::Value::Null));
+            return Some(
+                obj.get("attributes")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null),
+            );
         }
 
         for (_, value) in obj {
