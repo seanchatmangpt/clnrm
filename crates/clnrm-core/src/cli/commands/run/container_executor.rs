@@ -359,7 +359,7 @@ mod tests {
 
             // Assert: Should fail gracefully for each error case
             match result {
-                Ok(results) => {
+                Ok(_results) => {
                     // If it succeeds (e.g., due to Docker not being available),
                     // that's acceptable - we're testing error handling, not Docker availability
                     tracing::info!("Test '{}' unexpectedly succeeded - this may be due to Docker unavailability", test_name);
@@ -720,7 +720,7 @@ mod tests {
 
             // Assert: Should handle edge case strings gracefully
             match result {
-                Ok(results) => {
+                Ok(_results) => {
                     tracing::info!("Test '{}' passed with edge case strings", test_name);
                 }
                 Err(e) => {

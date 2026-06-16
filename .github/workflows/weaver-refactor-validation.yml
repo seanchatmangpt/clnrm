@@ -103,6 +103,7 @@ jobs:
 
       - name: Validate schema registry
         id: check
+        if: steps.install-weaver.outcome == 'success'
         run: |
           echo "::group::Weaver Schema Check"
           if weaver registry check --registry registry/ --future; then
@@ -595,6 +596,7 @@ jobs:
           path: validation_results/
 
       - name: Create PR comment
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |

@@ -50,6 +50,10 @@ jobs:
       - name: Run cargo clippy
         run: cargo clippy --all-features --  -A clippy::unnecessary_unwrap
 
+      - name: Install ripgrep (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ripgrep
+
       - name: Run consistency checks (eliminate mura)
         run: bash scripts/scan-fakes.sh
 

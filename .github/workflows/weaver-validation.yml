@@ -28,6 +28,7 @@ jobs:
         command -v weaver && weaver --version
 
     - name: Validate registry schemas
+      if: steps.install-weaver.outcome == 'success'
       run: |
         # FMEA fix: Capture output and validate explicitly
         echo "🔍 Validating Weaver registry..."

@@ -294,7 +294,7 @@ mod tests {
         let mut receipts = Vec::new();
         let genesis_prev_hash = "genesis_initial_hash_seed".to_string();
 
-        let mut r1 = create_dummy_receipt(
+        let r1 = create_dummy_receipt(
             "in1",
             "out1",
             genesis_prev_hash,
@@ -304,7 +304,7 @@ mod tests {
         let r1_hash = compute_receipt_hash(&r1);
         receipts.push(r1);
 
-        let mut r2 = create_dummy_receipt(
+        let r2 = create_dummy_receipt(
             "in2",
             "out2",
             r1_hash,

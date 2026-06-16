@@ -190,6 +190,7 @@ fn export_all_span_types() {
 
     events::TestStartedEvent::emit("test_example", "alpine:latest");
     events::TestCompletedEvent::emit("test_example", "pass", 100.0);
+    drop(_guard);
 
     execution_span.end();
 }

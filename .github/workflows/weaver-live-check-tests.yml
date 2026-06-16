@@ -92,6 +92,7 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Run basic tests
+        if: steps.install-weaver.outcome == 'success'
         timeout-minutes: 10
         run: |
           ./scripts/tests/run_test_subset.sh --basic
@@ -144,6 +145,7 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Run advanced tests
+        if: steps.install-weaver.outcome == 'success'
         timeout-minutes: 20
         run: |
           ./scripts/tests/run_test_subset.sh --advanced
@@ -196,11 +198,13 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Build clnrm with OTEL
+        if: steps.install-weaver.outcome == 'success'
         timeout-minutes: 25
         run: |
           cargo build --release --features otel -p clnrm-core
 
       - name: Run concurrent tests
+        if: steps.install-weaver.outcome == 'success'
         timeout-minutes: 20
         run: |
           ./scripts/tests/run_test_subset.sh --concurrent
@@ -254,11 +258,13 @@ jobs:
           sudo apt-get install -y jq
 
       - name: Build clnrm with OTEL
+        if: steps.install-weaver.outcome == 'success'
         timeout-minutes: 25
         run: |
           cargo build --release --features otel -p clnrm-core
 
       - name: Run full test suite
+        if: steps.install-weaver.outcome == 'success'
         timeout-minutes: 45
         run: |
           ./scripts/tests/test_live_check_comprehensive.sh

@@ -6,7 +6,6 @@
 #[cfg(test)]
 mod tests {
     use crate::backend::{ContainerPool, PoolConfig};
-    use std::sync::Arc;
     use std::time::Duration;
 
     #[tokio::test]

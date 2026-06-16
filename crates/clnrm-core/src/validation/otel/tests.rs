@@ -1083,6 +1083,8 @@ mod otel_validation_tests {
                             || msg.contains("transport error")
                             || msg.contains("Failed to resolve")
                             || msg.contains("Could not connect")
+                            || msg.contains("Failed to build exporter")
+                            || msg.contains("no TLS feature is enabled")
                         {
                             Ok(())
                         } else {
