@@ -44,19 +44,19 @@ impl Default for RenderContext {
 
 /// Render a `{{key}}` template string against a `RenderContext`.
 ///
-/// Every `{{key}}` placeholder is replaced with the corresponding value from
-/// `ctx.variables`.  If a placeholder cannot be resolved an `Err` is returned
+/// Every `{{key}}` template variable is replaced with the corresponding value from
+/// `ctx.variables`.  If a template variable cannot be resolved an `Err` is returned
 /// containing the unknown key.
 pub fn render_template(template: &str, ctx: &RenderContext) -> std::result::Result<String, String> {
     let mut result = template.to_string();
 
     // Replace all known keys first
     for (key, val) in &ctx.variables {
-        let placeholder = format!("{{{{{}}}}}", key);
-        result = result.replace(&placeholder, val);
+        let template_key = format!("{{{{{}}}}}", key);
+        result = result.replace(&template_key, val);
     }
 
-    // Check for any remaining unresolved placeholders (report the first one found)
+    // Check for any remaining unresolved template variables (report the first one found)
     if let Some(start) = result.find("{{") {
         if let Some(end) = result[start..].find("}}") {
             let key = result[start + 2..start + end].trim();

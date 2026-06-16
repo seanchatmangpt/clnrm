@@ -132,7 +132,7 @@ impl TestCache {
     /// * `test_file_hash` – SHA-256 of the file's byte content.
     /// * `config_hash`    – SHA-256 of the `CLNRM_CONFIG` env var value, or an
     ///                      empty string if unset.
-    /// * `env_hash`       – always an empty SHA-256 digest for now (placeholder).
+    /// * `env_hash`       – always an empty SHA-256 digest for now (not yet implemented).
     pub fn compute_key(test_file: &Path) -> Result<CacheKey> {
         let content = std::fs::read(test_file).map_err(|e| {
             CleanroomError::io_error(format!(

@@ -180,6 +180,7 @@ path = "examples/config/config-loading-test.rs"
 [[example]]
 name = "surrealdb-ollama-integration"
 path = "examples/surrealdb-ollama-integration.rs"
+required-features = ["full-integration"]
 
 # Removed - file does not exist
 
