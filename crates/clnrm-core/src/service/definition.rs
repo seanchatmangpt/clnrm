@@ -86,7 +86,6 @@ impl ImageRef {
             digest,
         })
     }
-
 }
 
 impl fmt::Display for ImageRef {

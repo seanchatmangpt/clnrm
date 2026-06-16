@@ -143,7 +143,6 @@ pub fn watch_and_run_config(config: WatchConfig) -> crate::error::Result<()> {
     }
 
     while let Ok(event) = rx.recv() {
-
         // Determine the changed path
         let changed_path = match event.paths.first() {
             Some(p) => p.clone(),

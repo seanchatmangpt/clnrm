@@ -709,10 +709,7 @@ impl SwarmScheduler {
 
     /// Track active execution
     pub fn track_execution(&self, tenant: TenantId, handle: ExecutionHandle) {
-        self.active
-            .entry(tenant)
-            .or_default()
-            .push(handle);
+        self.active.entry(tenant).or_default().push(handle);
     }
 
     /// Mark execution complete
