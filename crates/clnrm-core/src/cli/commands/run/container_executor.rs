@@ -225,6 +225,7 @@ mod tests {
 
     /// Test that container execution fails gracefully with invalid config
     #[tokio::test]
+    #[ignore = "Requires container runtime (Docker or gVisor)"]
     async fn test_container_executor_invalid_config() {
         // Arrange: Config with no containers but steps reference containers
         let mut test_config = TestConfig::default();
@@ -251,6 +252,7 @@ mod tests {
 
     /// Test boundary condition: empty step list
     #[tokio::test]
+    #[ignore = "Requires container runtime (Docker or gVisor)"]
     async fn test_container_executor_empty_steps() {
         // Arrange: Valid containers but no steps
         let mut test_config = TestConfig::default();
