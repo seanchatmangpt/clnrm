@@ -257,6 +257,7 @@ impl OrderBook {
     pub fn match_orders(&mut self) -> Vec<Trade> {
         let mut new_trades = Vec::new();
 
+        #[allow(clippy::while_let_loop)]
         loop {
             // Peek at best bid and best ask
             let best_bid_price = match self.bids.peek() {
