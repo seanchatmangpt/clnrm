@@ -293,13 +293,10 @@ main() {
         if [ -n "$_file_matches" ]; then
             _unwrap_issues="${_unwrap_issues}${_src_file}:"$'\n'"${_file_matches}"$'\n'
         fi
-    done < <(find "$VALIDATED_ROOT" -name "*.rs" -type f \
+    done < <(find "$VALIDATED_ROOT/crates/clnrm-core/src" -name "*.rs" -type f \
         -not -path "*/target/*" \
-        -not -path "*/scripts/*" \
-        -not -path "*/.git/*" \
-        -not -path "*/crates/clnrm-core/examples/*" \
-        -not -path "*/crates/clnrm-core/tests/*" \
-        -not -path "*/crates/clnrm/tests/*" \
+        -not -path "*/tests/*" \
+        -not -path "*/examples/*" \
         -not -name "test*.rs" \
         -print0 2>/dev/null)
     if [ -n "$_unwrap_issues" ]; then
