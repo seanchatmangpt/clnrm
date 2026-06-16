@@ -223,8 +223,8 @@ impl TestContext {
 
 /// Database service plugin implementation
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct DatabaseServicePlugin {
+    #[allow(dead_code)]
     name: String,
     #[allow(dead_code)]
     image: String,

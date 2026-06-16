@@ -142,11 +142,7 @@ pub fn watch_and_run_config(config: WatchConfig) -> crate::error::Result<()> {
         info!("Watching: {}", path.display());
     }
 
-    loop {
-        let event = match rx.recv() {
-            Ok(e) => e,
-            Err(_) => break,
-        };
+    while let Ok(event) = rx.recv() {
 
         // Determine the changed path
         let changed_path = match event.paths.first() {

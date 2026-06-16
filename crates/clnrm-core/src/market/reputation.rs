@@ -111,8 +111,8 @@ impl ReputationEngine {
 
                 // Normalize the row
                 if sum_scores > 0.0 {
-                    for j in 0..num_peers {
-                        c_matrix[i][j] /= sum_scores;
+                    for val in c_matrix[i].iter_mut() {
+                        *val /= sum_scores;
                     }
                 } else {
                     // If no valid trust, fallback to trusting pre-trusted peers equally
@@ -135,8 +135,8 @@ impl ReputationEngine {
             }
         } else {
             // If no pre-trusted peers, uniform distribution
-            for i in 0..num_peers {
-                p_vector[i] = 1.0 / (num_peers as f64);
+            for val in p_vector.iter_mut() {
+                *val = 1.0 / (num_peers as f64);
             }
         }
 
@@ -178,7 +178,7 @@ impl ReputationEngine {
         result
     }
 
-    fn fallback_to_pre_trusted(&self, row: &mut Vec<f64>, peers: &[PeerId], num_peers: usize) {
+    fn fallback_to_pre_trusted(&self, row: &mut [f64], peers: &[PeerId], num_peers: usize) {
         let num_pre_trusted = self.pre_trusted_peers.len() as f64;
         if num_pre_trusted > 0.0 {
             for (j, peer) in peers.iter().enumerate() {
@@ -187,8 +187,8 @@ impl ReputationEngine {
                 }
             }
         } else {
-            for j in 0..num_peers {
-                row[j] = 1.0 / (num_peers as f64);
+            for val in row.iter_mut() {
+                *val = 1.0 / (num_peers as f64);
             }
         }
     }

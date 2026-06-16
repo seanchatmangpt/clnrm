@@ -84,10 +84,8 @@ impl TableFormatter {
     /// current column width.  Returns `&mut Self` for chaining.
     pub fn add_row(&mut self, row: Vec<String>) -> &mut Self {
         for (i, cell) in row.iter().enumerate() {
-            if i < self.col_widths.len() {
-                if cell.len() > self.col_widths[i] {
-                    self.col_widths[i] = cell.len();
-                }
+            if i < self.col_widths.len() && cell.len() > self.col_widths[i] {
+                self.col_widths[i] = cell.len();
             }
         }
         self.rows.push(row);

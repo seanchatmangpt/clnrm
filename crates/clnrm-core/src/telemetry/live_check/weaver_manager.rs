@@ -188,7 +188,7 @@ impl WeaverProcessManager {
 
         info!(
             "🎉 Weaver is ready (startup took {}ms)",
-            self.started_at.unwrap().elapsed().as_millis() // OK: set during start()
+            self.started_at.unwrap().elapsed().as_millis()
         );
 
         Ok(WeaverPorts {

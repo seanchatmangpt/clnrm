@@ -17,7 +17,7 @@ impl RandomBitFlipper {
     /// Flip `flip_count` randomly-chosen bits inside `data`.
     ///
     /// Uses `rand::random()` for entropy; no-ops if `data` is empty.
-    pub fn corrupt_bytes(data: &mut Vec<u8>, flip_count: usize) {
+    pub fn corrupt_bytes(data: &mut [u8], flip_count: usize) {
         if data.is_empty() || flip_count == 0 {
             return;
         }
@@ -40,7 +40,7 @@ impl TruncationAttack {
     /// Truncate `data` to at most `target_len` bytes.
     ///
     /// If `data` is already shorter than `target_len` it is left unchanged.
-    pub fn truncate(data: &mut Vec<u8>, target_len: usize) {
+    pub fn truncate(data: &mut [u8], target_len: usize) {
         if data.len() > target_len {
             data.truncate(target_len);
         }

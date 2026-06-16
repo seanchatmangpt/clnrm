@@ -25,7 +25,7 @@
 //! exec = ["echo", "hello"]
 //! "#;
 //!
-//! let config = Config::from_toml(toml).unwrap(); // OK: doc example
+//! let config = Config::from_toml(toml).unwrap();
 //! assert_eq!(config.test.name, "my_test");
 //! assert!(config.containers.contains_key("alpine"));
 //! ```
@@ -76,7 +76,7 @@ use std::collections::HashMap;
 /// name = "run"
 /// container = "alpine"
 /// exec = ["echo", "hello"]
-/// "#).unwrap(); // OK: doc example
+/// "#).unwrap();
 ///
 /// assert_eq!(config.test.name, "basic_test");
 /// ```
@@ -98,9 +98,9 @@ use std::collections::HashMap;
 /// name = "check_env"
 /// container = "app"
 /// exec = ["sh", "-c", "echo $MY_VAR"]
-/// "#).unwrap(); // OK: doc example
+/// "#).unwrap();
 ///
-/// let app = config.containers.get("app").unwrap(); // OK: doc example
+/// let app = config.containers.get("app").unwrap();
 /// assert_eq!(app.env.get("MY_VAR"), Some(&"hello".to_string()));
 /// ```
 ///
@@ -126,11 +126,11 @@ use std::collections::HashMap;
 /// container = "alpine"
 /// exec = ["echo", "2"]
 /// depends_on = ["first"]
-/// "#).unwrap(); // OK: doc example
+/// "#).unwrap();
 ///
-/// let order = config.step_execution_order().unwrap(); // OK: doc example
-/// let first_pos = order.iter().position(|&x| x == "first").unwrap(); // OK: doc example
-/// let second_pos = order.iter().position(|&x| x == "second").unwrap(); // OK: doc example
+/// let order = config.step_execution_order().unwrap();
+/// let first_pos = order.iter().position(|&x| x == "first").unwrap();
+/// let second_pos = order.iter().position(|&x| x == "second").unwrap();
 /// assert!(first_pos < second_pos);
 /// ```
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -375,7 +375,7 @@ impl Config {
     /// name = "hello"
     /// container = "alpine"
     /// exec = ["echo", "hello"]
-    /// "#).unwrap(); // OK: doc example
+    /// "#).unwrap();
     ///
     /// assert_eq!(config.test.name, "example");
     /// ```
@@ -572,14 +572,14 @@ impl Config {
     /// name = "check"
     /// container = "app"
     /// exec = ["echo", "ok"]
-    /// "#).unwrap(); // OK: doc example
+    /// "#).unwrap();
     ///
-    /// let order = config.container_execution_order().unwrap(); // OK: doc example
+    /// let order = config.container_execution_order().unwrap();
     ///
     /// // db and cache come before app
-    /// let app_pos = order.iter().position(|&x| x == "app").unwrap(); // OK: doc example
-    /// let db_pos = order.iter().position(|&x| x == "db").unwrap(); // OK: doc example
-    /// let cache_pos = order.iter().position(|&x| x == "cache").unwrap(); // OK: doc example
+    /// let app_pos = order.iter().position(|&x| x == "app").unwrap();
+    /// let db_pos = order.iter().position(|&x| x == "db").unwrap();
+    /// let cache_pos = order.iter().position(|&x| x == "cache").unwrap();
     ///
     /// assert!(db_pos < app_pos);
     /// assert!(cache_pos < app_pos);

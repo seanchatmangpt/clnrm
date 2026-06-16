@@ -130,8 +130,8 @@ impl TestCache {
     /// Compute a `CacheKey` for the given test file.
     ///
     /// * `test_file_hash` – SHA-256 of the file's byte content.
-    /// * `config_hash`    – SHA-256 of the `CLNRM_CONFIG` env var value, or an
-    ///                      empty string if unset.
+    /// * `config_hash` – SHA-256 of the `CLNRM_CONFIG` env var value, or an
+    ///   empty string if unset.
     /// * `env_hash`       – always an empty SHA-256 digest for now (not yet implemented).
     pub fn compute_key(test_file: &Path) -> Result<CacheKey> {
         let content = std::fs::read(test_file).map_err(|e| {
@@ -241,10 +241,8 @@ impl TestCache {
             }
             if let Ok(content) = std::fs::read_to_string(&path) {
                 if let Ok(cache_entry) = serde_json::from_str::<CacheEntry>(&content) {
-                    if cache_entry.expires_at_ms <= now {
-                        if std::fs::remove_file(&path).is_ok() {
-                            deleted += 1;
-                        }
+                    if cache_entry.expires_at_ms <= now && std::fs::remove_file(&path).is_ok() {
+                        deleted += 1;
                     }
                 }
             }

@@ -306,7 +306,7 @@ pub fn save_templates_to_toml() -> Result<String> {
         toml_content.push_str(&format!("# {} Template\n", name));
         toml_content.push_str(&format!("[template.{}]\n", name));
         toml_content.push_str("plugin = \"gvisor_container\"\n");
-        toml_content.push_str(&format!("image = \"{}\"\n", template.image.to_string()));
+        toml_content.push_str(&format!("image = \"{}\"\n", template.image));
 
         if let Some(ref command) = template.command {
             toml_content.push_str(&format!("command = {:?}\n", command));
@@ -345,7 +345,7 @@ mod tests {
     fn test_all_templates_valid() {
         let templates = ServiceTemplates::new();
 
-        for template in templates.templates.values() {
+        for (_name, template) in &templates.templates {
             assert!(template.validate().is_ok());
         }
     }

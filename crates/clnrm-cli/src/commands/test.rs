@@ -1,5 +1,7 @@
 //! Test execution and management
 
+#![allow(clippy::unused_unit)]
+
 use clap_noun_verb::Result as CnvResult;
 use clap_noun_verb_macros::verb;
 use clnrm_core::cli::commands::run::test_runner::run_test;

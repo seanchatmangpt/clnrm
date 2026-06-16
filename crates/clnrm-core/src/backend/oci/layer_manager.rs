@@ -217,7 +217,7 @@ impl LayerManager {
 
                         // Regular whiteout: delete specific file
                         let whiteout_target =
-                            path.with_file_name(name_str.strip_prefix(".wh.").unwrap()); // OK: prefix checked
+                            path.with_file_name(name_str.strip_prefix(".wh.").unwrap());
                         let full_path = target.join(&whiteout_target);
                         if full_path.exists() {
                             if full_path.is_dir() {

@@ -251,7 +251,7 @@ impl PortAllocator {
     async fn try_lock_port(&self, port: u16) -> Result<Option<PortLock>> {
         // Step 0: Check in-process lock to prevent thread-level conflicts within same process
         {
-            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap(); // OK: static mutex, not expected to be poisoned
+            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap();
             if locks.contains(&port) {
                 return Ok(None);
             }
@@ -260,7 +260,7 @@ impl PortAllocator {
 
         // Helper to remove port from in-process locks on failure
         let cleanup_in_process_lock = || {
-            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap(); // OK: static mutex, not expected to be poisoned
+            let mut locks = PROCESS_PORT_LOCKS.lock().unwrap();
             locks.remove(&port);
         };
 
@@ -277,7 +277,7 @@ impl PortAllocator {
         let mut file = match OpenOptions::new()
             .create(true)
             .write(true)
-            .truncate(false)
+            .truncate(true)
             .open(&lock_file_path)
         {
             Ok(f) => f,
@@ -294,11 +294,9 @@ impl PortAllocator {
         // Step 3: Acquire exclusive flock
         #[cfg(unix)]
         {
-            #[allow(deprecated)]
             use nix::fcntl::{flock, FlockArg};
             use std::os::unix::io::AsRawFd;
 
-            #[allow(deprecated)]
             match flock(file.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
                 Ok(_) => {
                     // Lock acquired! Safe to write metadata and truncate
@@ -422,7 +420,7 @@ impl PortAllocator {
 
 impl Default for PortAllocator {
     fn default() -> Self {
-        Self::new().expect("Failed to create default PortAllocator") // OK: I/O failure here is unrecoverable
+        Self::new().expect("Failed to create default PortAllocator")
     }
 }
 
