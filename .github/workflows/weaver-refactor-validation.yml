@@ -256,6 +256,7 @@ jobs:
 
       - name: Start Weaver live-check listener
         id: weaver
+        if: steps.install-weaver.outcome == 'success'
         run: |
           mkdir -p validation_output
           echo "🚀 Starting Weaver live-check..."

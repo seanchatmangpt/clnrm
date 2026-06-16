@@ -200,7 +200,7 @@ jobs:
           rm -f weaver.pid
 
       - name: Verify Validation Output
-        if: always()
+        if: steps.weaver.outcome == 'success'
         run: |
           if [ ! -f validation_output/live_check.json ]; then
             echo "❌ Validation output not found"
@@ -217,7 +217,7 @@ jobs:
           echo "File size: $(wc -c < validation_output/live_check.json) bytes"
 
       - name: Parse Validation Results
-        if: always()
+        if: steps.weaver.outcome == 'success'
         id: results
         run: |
           OUTPUT_FILE="validation_output/live_check.json"

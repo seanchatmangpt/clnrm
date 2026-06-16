@@ -78,8 +78,8 @@ scan_pattern_safely() {
     local description="$2"
     local root_dir="$3"
     local timeout="$4"
+    shift 4
     local exclusions=("$@")
-    exclusions=("${exclusions[@]:4}")
 
     # Validate pattern
     if [[ -z "$pattern" ]]; then
