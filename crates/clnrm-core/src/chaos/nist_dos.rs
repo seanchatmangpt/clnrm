@@ -17,7 +17,7 @@ impl RequestFlooder {
     pub async fn flood(endpoint: &str, rps: u64, duration: Duration) {
         use tokio::time::{interval, timeout};
 
-        let interval_ms = if rps == 0 { 1000 } else { 1000 / rps };
+        let interval_ms = 1000u64.checked_div(rps).unwrap_or(1000);
         let deadline = tokio::time::Instant::now() + duration;
         let mut ticker = interval(Duration::from_millis(interval_ms.max(1)));
         let endpoint = endpoint.to_string();
