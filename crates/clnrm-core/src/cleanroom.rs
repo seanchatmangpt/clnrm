@@ -392,7 +392,7 @@ impl Default for CleanroomEnvironment {
     /// handling impossible. Therefore, this implementation is explicitly marked as test-only
     /// and uses the underlying backend directly for hermetic testing without external dependencies.
     fn default() -> Self {
-        // No stub backend used anymore
+        // No legacy backend used anymore
 
         // TEST-ONLY: Uses gVisor-compatible testing backend for hermetic testing
         // No Docker dependency required
@@ -477,7 +477,7 @@ impl CleanroomEnvironment {
     /// # Errors
     /// * Returns error if configuration is invalid
     pub async fn with_config(config: Option<crate::config::CleanroomConfig>) -> Result<Self> {
-        // No stub backend used anymore
+        // No legacy backend used anymore
 
         // Extract default image from config (informational only with gVisor backend)
         let default_image = config

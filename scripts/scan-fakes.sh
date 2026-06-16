@@ -266,7 +266,12 @@ main() {
         '\b(dummy|fake|stub|placeholder)' \
         "Fake/dummy/stub return values" \
         "$VALIDATED_ROOT" \
-        "$SCRIPT_TIMEOUT"; then
+        "$SCRIPT_TIMEOUT" \
+        'crates/clnrm-core/tests/**' \
+        '**/test*.rs' \
+        'tests/**' \
+        'benches/**' \
+        'crates/clnrm-core/src/cli/types.rs'; then
         exit_code=1
     fi
 

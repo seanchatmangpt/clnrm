@@ -1,7 +1,7 @@
 //! OTEL validation command - runs 7 validators on collected traces
 //!
 //! Provides the `clnrm analyze` command to validate OpenTelemetry traces
-//! against TOML-defined expectations, catching fake-green tests.
+//! against TOML-defined expectations, catching false-green tests.
 //!
 //! This module implements first-failing-rule reporting, showing the FIRST
 //! validator that fails with detailed context and recommendations.

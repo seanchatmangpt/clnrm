@@ -85,7 +85,7 @@ impl NistAttackVector for TelemetrySpoofingAttack {
         &self,
         env: &CleanroomEnvironment,
     ) -> Result<AttackResult, crate::error::CleanroomError> {
-        let payload = r#"{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"forged-service"}}]},"scopeSpans":[{"spans":[{"name":"fake-green-test-pass","spanId":"0000000000000001","traceId":"00000000000000000000000000000001"}]}]}]}"#;
+        let payload = r#"{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"forged-service"}}]},"scopeSpans":[{"spans":[{"name":"forged-test-pass","spanId":"0000000000000001","traceId":"00000000000000000000000000000001"}]}]}]}"#;
 
         let command = vec![
             "curl".to_string(),
