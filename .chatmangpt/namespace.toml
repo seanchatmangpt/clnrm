@@ -1,0 +1,35 @@
+schema_version = "1.0.0"
+namespace_version = "26.7.29"
+
+[namespace]
+origin = "https://chatmangpt.com"
+vocabulary = "https://chatmangpt.com/ns#"
+identifier_base = "https://chatmangpt.com/id/"
+registry_id = "https://chatmangpt.com/id/namespace/26.7.29"
+registry_repository = "seanchatmangpt/chatmangpt"
+registry_pr = 44
+
+[repository]
+id = "https://chatmangpt.com/id/repository/seanchatmangpt/clnrm"
+full_name = "seanchatmangpt/clnrm"
+source_url = "https://github.com/seanchatmangpt/clnrm"
+kind = "system"
+family = "verification"
+admission_basis = "readme"
+standing = "UNKNOWN"
+
+[public_object]
+id = "https://chatmangpt.com/id/system/clnrm"
+canonical_path = "/systems/clnrm"
+canonical_url = "https://chatmangpt.com/systems/clnrm"
+source_repository = "https://chatmangpt.com/id/repository/seanchatmangpt/clnrm"
+publish = true
+admission = "ADMITTED"
+standing = "UNKNOWN"
+description = "Hermetic integration testing framework using gVisor and Docker."
+
+[law]
+repository_is_identity = false
+metadata_implies_standing = false
+unknown_may_claim_alive = false
+receipt_required_for_actuation_claim = true
