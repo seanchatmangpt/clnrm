@@ -1,0 +1,51 @@
+name: MFW GMRW Slim Toolchain Transport
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mfw-gmrw-slim-toolchains.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mfw-gmrw-slim-toolchains-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  toolchains:
+    name: transport/slim-linux-toolchains
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    steps:
+      - name: Download and verify exact Linux toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/toolchains"
+          assets=(
+            'https://static.rust-lang.org/dist/rust-1.82.0-x86_64-unknown-linux-gnu.tar.xz'
+            'https://static.rust-lang.org/dist/2026-06-22/rust-nightly-x86_64-unknown-linux-gnu.tar.xz'
+          )
+          for url in "${assets[@]}"; do
+            name="${url##*/}"
+            curl --fail --location --retry 3 --output "$RUNNER_TEMP/toolchains/$name" "$url"
+            curl --fail --location --retry 3 --output "$RUNNER_TEMP/toolchains/$name.sha256" "$url.sha256"
+            (
+              cd "$RUNNER_TEMP/toolchains"
+              sha256sum --check "$name.sha256"
+            )
+          done
+          (
+            cd "$RUNNER_TEMP/toolchains"
+            sha256sum *.tar.xz > MANIFEST.sha256
+          )
+
+      - name: Upload exact Linux toolchains
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mfw-gmrw-linux-toolchains-${{ github.sha }}
+          path: ${{ runner.temp }}/toolchains/
+          if-no-files-found: error
+          compression-level: 0
