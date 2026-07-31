@@ -1,0 +1,118 @@
+name: MFW GMRW Offline Verifier Transport
+
+on:
+  push:
+    branches:
+      - agent/mfw-gmrw-offline-verifier-transport
+  pull_request:
+    paths:
+      - '.github/workflows/mfw-gmrw-offline-verifier-transport.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mfw-gmrw-offline-verifier-transport-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manufacture:
+    name: transport/offline-verifier-toolchain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout exact ggen authority
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: seanchatmangpt/ggen
+          ref: dc9daf2b2a6f5b8991e75b7f3b715a3203f90d59
+          fetch-depth: 0
+
+      - name: Install exact MFW Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.82.0 --profile minimal --component rustfmt,clippy
+          rustup run 1.82.0 rustc --version --verbose
+          rustup run 1.82.0 cargo --version
+          rustup run 1.82.0 rustfmt --version
+          rustup run 1.82.0 cargo clippy --version
+
+      - name: Build exact ggen actuator
+        uses: ./.github/actions/setup-ggen-build
+        with:
+          cache-key-suffix: mfw-gmrw-offline-transport
+
+      - name: Compile ggen
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --release -p ggen-cli-lib --bin ggen
+          target/release/ggen --version
+
+      - name: Materialize exact MFW dependency closure
+        shell: bash
+        env:
+          CARGO_HOME: ${{ runner.temp }}/mfw-cargo-home
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mfw-deps/src "$CARGO_HOME"
+          cat > /tmp/mfw-deps/Cargo.toml <<'TOML'
+          [package]
+          name = "mfw-gmrw-offline-deps"
+          version = "0.0.0"
+          edition = "2021"
+          rust-version = "1.82"
+
+          [dependencies]
+          blake3 = "=1.8.2"
+          serde = { version = "=1.0.228", features = ["derive"] }
+          serde_json = "=1.0.150"
+          thiserror = "=2.0.18"
+          TOML
+          printf 'fn main() {}\n' > /tmp/mfw-deps/src/main.rs
+          rustup run 1.82.0 cargo generate-lockfile --manifest-path /tmp/mfw-deps/Cargo.toml
+          rustup run 1.82.0 cargo fetch --locked --manifest-path /tmp/mfw-deps/Cargo.toml
+          rustup run 1.82.0 cargo check --locked --manifest-path /tmp/mfw-deps/Cargo.toml
+
+      - name: Manufacture portable bundle and receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/mfw-gmrw-offline-toolchain"
+          mkdir -p "$bundle/toolchain" "$bundle/cargo-home" "$bundle/bin" "$bundle/closure"
+          toolchain="$(rustup toolchain list -v | awk '$1 ~ /^1\.82\.0/ {print $NF; exit}')"
+          test -n "$toolchain"
+          cp -a "$toolchain"/. "$bundle/toolchain/"
+          cp -a "$RUNNER_TEMP/mfw-cargo-home"/. "$bundle/cargo-home/"
+          cp target/release/ggen "$bundle/bin/ggen"
+          cp /tmp/mfw-deps/Cargo.toml /tmp/mfw-deps/Cargo.lock "$bundle/closure/"
+          cat > "$bundle/activate.sh" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          export PATH="$root/toolchain/bin:$root/bin:$PATH"
+          export LD_LIBRARY_PATH="$root/toolchain/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export CARGO_HOME="$root/cargo-home"
+          export CARGO_NET_OFFLINE=true
+          SH
+          chmod +x "$bundle/activate.sh"
+          (
+            cd "$bundle"
+            find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256
+          )
+          tar --sort=name --mtime='UTC 2026-07-31' --owner=0 --group=0 --numeric-owner \
+            -I 'zstd -19 -T0' -cf "$RUNNER_TEMP/mfw-gmrw-offline-toolchain.tar.zst" \
+            -C "$RUNNER_TEMP" mfw-gmrw-offline-toolchain
+          sha256sum "$RUNNER_TEMP/mfw-gmrw-offline-toolchain.tar.zst" > "$RUNNER_TEMP/mfw-gmrw-offline-toolchain.tar.zst.sha256"
+
+      - name: Upload generic verifier toolchain
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mfw-gmrw-offline-toolchain-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/mfw-gmrw-offline-toolchain.tar.zst
+            ${{ runner.temp }}/mfw-gmrw-offline-toolchain.tar.zst.sha256
+          if-no-files-found: error
+          compression-level: 0
