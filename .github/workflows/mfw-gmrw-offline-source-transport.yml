@@ -1,0 +1,157 @@
+name: MFW GMRW Offline Source Transport
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mfw-gmrw-offline-source-transport.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mfw-gmrw-offline-source-transport-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manufacture:
+    name: transport/offline-source-bundle
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Create bundle root
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\mfw-offline\src" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\mfw-offline\toolchains" | Out-Null
+
+      - name: Seal exact ggen source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: seanchatmangpt/ggen
+          ref: dc9daf2b2a6f5b8991e75b7f3b715a3203f90d59
+          fetch-depth: 1
+          path: mfw-offline/src/ggen
+
+      - name: Seal exact sibling source graph
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "$env:GITHUB_WORKSPACE\mfw-offline\src"
+          $repos = @(
+            @{ Name = 'lsp-max'; Sha = '7bcc1e16dec71ef5fb2cedea2dfd6cb5cde37f59' },
+            @{ Name = 'lsp-types-max'; Sha = '6773e6017ca83c565785d0ec39d75304f62c3237' },
+            @{ Name = 'wasm4pm'; Sha = '0bb134b29245517ac4969a9f1916f5432931c5d0' },
+            @{ Name = 'wasm4pm-compat'; Sha = 'e46155e209a750fda0218532d96ae17a9e10903e' }
+          )
+          foreach ($entry in $repos) {
+            $dest = Join-Path $root $entry.Name
+            git init -q $dest
+            git -C $dest remote add origin "https://github.com/seanchatmangpt/$($entry.Name).git"
+            git -C $dest fetch -q --depth 1 origin $entry.Sha
+            git -C $dest checkout -q FETCH_HEAD
+            $actual = git -C $dest rev-parse HEAD
+            if ($actual -ne $entry.Sha) { throw "source seal mismatch for $($entry.Name): $actual" }
+          }
+          $ggen = git -C (Join-Path $root 'ggen') rev-parse HEAD
+          if ($ggen -ne 'dc9daf2b2a6f5b8991e75b7f3b715a3203f90d59') { throw "ggen seal mismatch: $ggen" }
+
+      - name: Install exact ggen build toolchain
+        run: |
+          $ErrorActionPreference = 'Stop'
+          rustup toolchain install nightly-2026-06-22 --profile minimal
+          rustup run nightly-2026-06-22 rustc --version --verbose
+          rustup run nightly-2026-06-22 cargo --version
+
+      - name: Vendor exact ggen dependency graph
+        env:
+          RUSTC_WRAPPER: ''
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = "$env:GITHUB_WORKSPACE\mfw-offline"
+          $ggen = "$bundle\src\ggen"
+          Push-Location $ggen
+          try {
+            $config = rustup run nightly-2026-06-22 cargo vendor --locked "$bundle\ggen-vendor"
+            [System.IO.File]::WriteAllLines("$bundle\ggen-vendor-config.toml", $config)
+          } finally {
+            Pop-Location
+          }
+
+      - name: Vendor exact MFW PCP dependency closure
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = "$env:GITHUB_WORKSPACE\mfw-offline"
+          $closure = "$bundle\mfw-closure"
+          New-Item -ItemType Directory -Force -Path "$closure\src" | Out-Null
+          @'
+          [package]
+          name = "mfw-gmrw-offline-deps"
+          version = "0.0.0"
+          edition = "2021"
+          rust-version = "1.82"
+
+          [dependencies]
+          blake3 = "=1.8.2"
+          serde = { version = "=1.0.228", features = ["derive"] }
+          serde_json = "=1.0.150"
+          thiserror = "=2.0.18"
+          '@ | Set-Content -Encoding utf8 "$closure\Cargo.toml"
+          'fn main() {}' | Set-Content -Encoding utf8 "$closure\src\main.rs"
+          rustup run nightly-2026-06-22 cargo generate-lockfile --manifest-path "$closure\Cargo.toml"
+          $config = rustup run nightly-2026-06-22 cargo vendor --locked --manifest-path "$closure\Cargo.toml" "$bundle\mfw-vendor"
+          [System.IO.File]::WriteAllLines("$bundle\mfw-vendor-config.toml", $config)
+
+      - name: Download exact Linux toolchains
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dest = "$env:GITHUB_WORKSPACE\mfw-offline\toolchains"
+          $assets = @(
+            'https://static.rust-lang.org/dist/rust-1.82.0-x86_64-unknown-linux-gnu.tar.xz',
+            'https://static.rust-lang.org/dist/2026-06-22/rust-nightly-x86_64-unknown-linux-gnu.tar.xz'
+          )
+          foreach ($url in $assets) {
+            $name = Split-Path $url -Leaf
+            $path = Join-Path $dest $name
+            Invoke-WebRequest -Uri $url -OutFile $path
+            Invoke-WebRequest -Uri "$url.sha256" -OutFile "$path.sha256"
+            $expected = ((Get-Content "$path.sha256") -split '\s+')[0].ToLowerInvariant()
+            $actual = (Get-FileHash -Algorithm SHA256 $path).Hash.ToLowerInvariant()
+            if ($actual -ne $expected) { throw "SHA-256 mismatch for $name" }
+          }
+
+      - name: Remove Git transport metadata
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-ChildItem "$env:GITHUB_WORKSPACE\mfw-offline\src" -Directory -Recurse -Force -Filter .git |
+            Sort-Object FullName -Descending |
+            Remove-Item -Recurse -Force
+
+      - name: Manufacture deterministic manifest
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = "$env:GITHUB_WORKSPACE\mfw-offline"
+          $records = Get-ChildItem $root -File -Recurse | Sort-Object FullName | ForEach-Object {
+            [ordered]@{
+              path = $_.FullName.Substring($root.Length + 1).Replace('\', '/')
+              bytes = $_.Length
+              sha256 = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()
+            }
+          }
+          [ordered]@{
+            schema = 'mfw.gmrw.offline-source-bundle.v1'
+            ggen_revision = 'dc9daf2b2a6f5b8991e75b7f3b715a3203f90d59'
+            rust_stable = '1.82.0'
+            rust_nightly = 'nightly-2026-06-22'
+            files = $records
+          } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 "$root\MANIFEST.json"
+
+      - name: Upload sealed offline source bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mfw-gmrw-offline-source-${{ github.sha }}
+          path: mfw-offline/
+          if-no-files-found: error
+          compression-level: 0
