@@ -36,8 +36,8 @@ tracing = "0.1"
 # Container dependencies
 # NOTE: testcontainers is legacy and only available via backend-testcontainers feature
 # Default backend is gVisor (no Docker required) - see crates/clnrm-core/Cargo.toml features
-testcontainers = { version = "0.25", features = ["blocking"] }
-testcontainers-modules = { version = "0.13", features = ["surrealdb"] }
+testcontainers = { version = "0.27.3", features = ["blocking"] }
+testcontainers-modules = { version = "0.15.0", features = ["surrealdb"] }
 futures-util = "0.3"
 surrealdb = "2.2"
 

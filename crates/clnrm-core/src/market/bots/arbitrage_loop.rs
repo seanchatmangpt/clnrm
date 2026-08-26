@@ -17,11 +17,12 @@ pub struct ValueVector {
 
 impl ValueVector {
     pub fn distance_to(&self, other: &ValueVector) -> f64 {
-        ((self.compute - other.compute).powi(2) +
-         (self.latency - other.latency).powi(2) +
-         (self.security - other.security).powi(2) +
-         (self.determinism - other.determinism).powi(2) +
-         (self.trust - other.trust).powi(2)).sqrt()
+        ((self.compute - other.compute).powi(2)
+            + (self.latency - other.latency).powi(2)
+            + (self.security - other.security).powi(2)
+            + (self.determinism - other.determinism).powi(2)
+            + (self.trust - other.trust).powi(2))
+        .sqrt()
     }
 }
 
@@ -55,7 +56,7 @@ impl ArbitrageLoop {
 
         loop {
             interval.tick().await;
-            
+
             // Perform arbitrage logic using ValueVector
             if let Err(e) = self.execute_arbitrage().await {
                 info!(error = %e, "Arbitrage execution failed.");
@@ -76,7 +77,7 @@ impl ArbitrageLoop {
             // Logic: Compare listing's vector against current AMM state
             info!(listing_id = %listing.id, "Scanning listing for arbitrage opportunity.");
         }
-        
+
         Ok(())
     }
 }

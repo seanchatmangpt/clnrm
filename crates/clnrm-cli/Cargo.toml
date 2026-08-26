@@ -1,5 +1,5 @@
 [package]
-name = "clnrm-cli"
+name = "clnrm"
 version = "26.5.28"
 edition = "2021"
 authors = ["Cleanroom Core Team"]
@@ -23,3 +23,8 @@ chrono = { version = "0.4", features = ["serde"] }
 [[bin]]
 name = "clnrm"
 path = "src/main.rs"
+
+
+[lib]
+name = "clnrm"
+path = "src/lib.rs"

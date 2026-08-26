@@ -174,10 +174,7 @@ impl NDimensionalToken {
         }
 
         // Apply mutations
-        let account = self
-            .accounts
-            .entry(operation.to)
-            .or_default();
+        let account = self.accounts.entry(operation.to).or_default();
         for (dim_id, amount) in operation.vector.components {
             let dim = self
                 .dimensions
@@ -263,10 +260,7 @@ impl NDimensionalToken {
         }
 
         // Mutation phase - add to receiver
-        let to_account = self
-            .accounts
-            .entry(operation.to)
-            .or_default();
+        let to_account = self.accounts.entry(operation.to).or_default();
         for (dim_id, amount) in operation.vector.components {
             to_account.add(dim_id, amount);
         }

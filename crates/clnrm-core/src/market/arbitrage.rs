@@ -1,4 +1,3 @@
-
 pub struct ArbitrageBot {
     pub active_dimensions: Vec<String>,
 }
