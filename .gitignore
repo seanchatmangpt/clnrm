@@ -92,3 +92,10 @@ book/book/
 # Test outputs
 test_output/
 validation_output/
+
+# Vendored/scratch cargo registry caches (accidentally staged, TPS muda cleanup)
+.cargo_home_temp/
+.cargo_home_unique_*/
+
+# Agent auditor/explorer scratch directories (TPS muda cleanup)
+.agents/

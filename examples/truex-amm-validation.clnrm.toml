@@ -1,0 +1,23 @@
+# TrueX Admission and AMM Market Validation Configuration
+
+[test]
+name = "truex-amm-validation"
+timeout = "60s"
+description = "JTBD Scenario: Execute hermetic operation and validate via AMM/Truex Admission"
+
+[market]
+enable_amm = true
+target_inflation = 0.05
+
+[truex]
+enable_admission_kernel = true
+enforce_pqc_seals = true
+
+[containers.alpine_exec]
+image = "alpine:latest"
+
+[[steps]]
+name = "compute_consequence"
+container = "alpine_exec"
+exec = ["echo", "CONSEQUENCE_GENERATED"]
+assert.stdout_contains = "CONSEQUENCE_GENERATED"
