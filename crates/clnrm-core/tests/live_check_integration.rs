@@ -16,11 +16,10 @@
 use clnrm_core::error::Result;
 use clnrm_core::telemetry::live_check::{
     ConformanceReport, ConformanceValidator, EightyTwentyConfig, LiveCheckConfig,
-    LiveCheckOrchestrator, Uninitialized, ValidationConfig, ValidationMode, WeaverProcessManager,
+    LiveCheckOrchestrator, Uninitialized, ValidationConfig, WeaverProcessManager,
 };
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
@@ -128,7 +127,7 @@ async fn test_complete_live_check_workflow_succeeds() -> Result<()> {
     let otlp_port = started.otlp_port();
     assert!(otlp_port > 0, "OTLP port should be auto-discovered");
     assert!(
-        otlp_port >= 4317 && otlp_port <= 7337,
+        (4317..=7337).contains(&otlp_port),
         "OTLP port should be in expected range"
     );
 
@@ -468,8 +467,6 @@ async fn test_sigint_triggers_graceful_shutdown() -> Result<()> {
 
 #[test]
 fn test_diagnostic_output_ansi_format_works() -> Result<()> {
-    use clnrm_core::telemetry::live_check::AnsiFormatter;
-
     // Arrange: Create validation result with violations
     let mut report = ConformanceReport::new();
     report.add_required_span("test.span".to_string());

@@ -183,10 +183,7 @@ impl GraphValidator {
             all_span_ids.insert(span_id);
 
             if span.parent_span_id != SpanId::INVALID {
-                graph
-                    .entry(span.parent_span_id)
-                    .or_insert_with(Vec::new)
-                    .push(span_id);
+                graph.entry(span.parent_span_id).or_default().push(span_id);
             }
         }
 
@@ -195,10 +192,10 @@ impl GraphValidator {
         let mut rec_stack = HashSet::new();
 
         for &span_id in &all_span_ids {
-            if !visited.contains(&span_id) {
-                if self.has_cycle(&graph, span_id, &mut visited, &mut rec_stack) {
-                    return Ok(false); // Cycle detected
-                }
+            if !visited.contains(&span_id)
+                && self.has_cycle(&graph, span_id, &mut visited, &mut rec_stack)
+            {
+                return Ok(false); // Cycle detected
             }
         }
 
@@ -249,7 +246,7 @@ impl GraphValidator {
             if span.parent_span_id != SpanId::INVALID {
                 graph
                     .entry(span.parent_span_id)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(span.span_context.span_id());
             }
         }
@@ -361,8 +358,10 @@ impl GraphValidator {
                         let new_depth = parent_depth + 1;
                         let span_id = span.span_context.span_id();
 
-                        if !depth_map.contains_key(&span_id) {
-                            depth_map.insert(span_id, new_depth);
+                        if let std::collections::hash_map::Entry::Vacant(e) =
+                            depth_map.entry(span_id)
+                        {
+                            e.insert(new_depth);
                             changed = true;
                         }
                     }
@@ -389,10 +388,8 @@ impl GraphValidator {
 
         // Check that each span with a parent has a valid parent in the trace
         for span in &spans {
-            if span.parent_span_id != SpanId::INVALID {
-                if !span_ids.contains(&span.parent_span_id) {
-                    return Ok(false); // Orphan detected
-                }
+            if span.parent_span_id != SpanId::INVALID && !span_ids.contains(&span.parent_span_id) {
+                return Ok(false); // Orphan detected
             }
         }
 
@@ -421,17 +418,11 @@ impl GraphValidator {
 
             if span.parent_span_id != SpanId::INVALID {
                 // Add bidirectional edges
-                graph
-                    .entry(span_id)
-                    .or_insert_with(Vec::new)
-                    .push(span.parent_span_id);
-                graph
-                    .entry(span.parent_span_id)
-                    .or_insert_with(Vec::new)
-                    .push(span_id);
+                graph.entry(span_id).or_default().push(span.parent_span_id);
+                graph.entry(span.parent_span_id).or_default().push(span_id);
             } else {
                 // Ensure root is in the graph
-                graph.entry(span_id).or_insert_with(Vec::new);
+                graph.entry(span_id).or_default();
             }
         }
 
@@ -515,7 +506,7 @@ async fn main() -> Result<()> {
     println!("📋 Example Usage:");
     println!("```rust");
     println!("let validator = GraphValidator::new()?;");
-    println!("");
+    println!();
     println!("// Validate specific edges exist");
     println!("let assertions = vec![");
     println!("    GraphAssertion::HasEdge {{");
@@ -525,7 +516,7 @@ async fn main() -> Result<()> {
     println!("    GraphAssertion::NoCycles,");
     println!("    GraphAssertion::NoOrphans,");
     println!("];");
-    println!("");
+    println!();
     println!("let result = validator.validate(&assertions)?;");
     println!("assert!(result.passed);");
     println!("```\n");

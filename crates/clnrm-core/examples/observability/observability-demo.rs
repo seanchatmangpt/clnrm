@@ -231,14 +231,14 @@ async fn test_comprehensive_observability() -> Result<()> {
 async fn main() -> Result<()> {
     println!("🚀 Observability Features Demo");
     println!("=============================");
-    println!("");
+    println!();
     println!("This demo proves the README observability claims:");
     println!("✅ Built-in Observability - Automatic tracing and metrics collection");
     println!("✅ Zero configuration required");
-    println!("");
+    println!();
     println!("Users can copy this code to verify observability:");
     println!("cargo run --example observability-demo");
-    println!("");
+    println!();
 
     // Note: In real usage, these would run with the cleanroom_test attribute
     // For this demo, we'll just show the structure

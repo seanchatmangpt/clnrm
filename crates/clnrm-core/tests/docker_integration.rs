@@ -226,7 +226,7 @@ async fn test_hermetic_isolation_exports_isolation_flag() -> Result<()> {
         let result = env
             .execute_in_container(
                 "test1",
-                &vec!["sh".to_string(), "-c".to_string(), "echo test1".to_string()],
+                &["sh".to_string(), "-c".to_string(), "echo test1".to_string()],
                 None,
                 None,
             )
@@ -240,7 +240,7 @@ async fn test_hermetic_isolation_exports_isolation_flag() -> Result<()> {
         let result = env
             .execute_in_container(
                 "test2",
-                &vec!["sh".to_string(), "-c".to_string(), "echo test2".to_string()],
+                &["sh".to_string(), "-c".to_string(), "echo test2".to_string()],
                 None,
                 None,
             )
@@ -409,7 +409,7 @@ async fn test_service_lifecycle_exports_telemetry() -> Result<()> {
 async fn test_concurrent_execution_exports_individual_telemetry() -> Result<()> {
     // Arrange
     let _guard = init_test_otel()?;
-    let env = CleanroomEnvironment::new().await?;
+    let _env = CleanroomEnvironment::new().await?;
 
     // Act - Execute containers concurrently
     // Note: CleanroomEnvironment is not Clone, so we create separate instances
@@ -514,7 +514,7 @@ async fn test_container_reuse_stats_telemetry() -> Result<()> {
     let result = env
         .execute_in_container(
             "test_reuse",
-            &vec!["echo".to_string(), "test".to_string()],
+            &["echo".to_string(), "test".to_string()],
             None,
             None,
         )
@@ -557,7 +557,7 @@ async fn test_complete_workflow_weaver_ready() -> Result<()> {
     let result = env
         .execute_in_container(
             test_name,
-            &vec!["echo".to_string(), "workflow".to_string()],
+            &["echo".to_string(), "workflow".to_string()],
             None,
             None,
         )

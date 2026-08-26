@@ -2,7 +2,6 @@ use clnrm_core::backend::{ContainerPool, PoolConfig};
 use clnrm_core::service::port_allocator::{AllocationStrategy, PortAllocator};
 use proptest::prelude::*;
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use tokio::runtime::Runtime;
 
 #[derive(Debug, Clone)]

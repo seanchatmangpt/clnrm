@@ -1,8 +1,5 @@
 use clnrm_core::service::registry::{ServiceMetadata, ServiceState};
-use clnrm_core::telemetry::live_check::{
-    Completed, LiveCheckConfig, LiveCheckOrchestrator, OrchestrationMode, Uninitialized,
-    WeaverRunning,
-};
+use clnrm_core::telemetry::live_check::{LiveCheckConfig, LiveCheckOrchestrator, Uninitialized};
 
 #[tokio::test]
 async fn test_service_state_invalid_transitions() {
@@ -101,7 +98,7 @@ async fn test_live_check_orchestrator_typestate_enforcement() {
     };
 
     // 1. Initial State: Uninitialized
-    let orchestrator: LiveCheckOrchestrator<Uninitialized> =
+    let _orchestrator: LiveCheckOrchestrator<Uninitialized> =
         LiveCheckOrchestrator::new(config.clone()).unwrap();
 
     // Attempting `orchestrator.stop_weaver()` here would be a compile-time error.

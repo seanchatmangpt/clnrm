@@ -113,7 +113,7 @@ impl AIPoweredTestOptimizer {
         for record in &self.execution_history {
             test_groups
                 .entry(record.test_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(record);
         }
 

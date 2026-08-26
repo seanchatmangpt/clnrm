@@ -10,7 +10,7 @@
 //! - Attribute completeness verification
 //! - Span relationships (parent-child)
 
-use clnrm_core::config::{ExpectedSpanConfig, SpanExpectationConfig, TestConfig};
+use clnrm_core::config::TestConfig;
 use clnrm_core::error::Result;
 use std::collections::HashMap;
 
@@ -79,7 +79,7 @@ fn test_multiple_span_expectations() {
     // Assert
     let expect = config.expect.as_ref().unwrap();
     // span is a Vec, not Option - check length instead
-    assert!(expect.span.len() > 0);
+    assert!(!expect.span.is_empty());
     // Names are checked at runtime
 }
 
@@ -137,7 +137,7 @@ fn test_span_count_validation() {
     // Assert
     let expect = config.expect.as_ref().unwrap();
     // span is a Vec, not Option - check length instead
-    assert!(expect.span.len() > 0);
+    assert!(!expect.span.is_empty());
     // Count expectations are checked at runtime
 }
 
@@ -393,7 +393,7 @@ fn test_attribute_value_validation() {
 #[test]
 fn test_spanparent_child_relationship() {
     // Arrange
-    let parent = MockSpan {
+    let _parent = MockSpan {
         name: "parent.span".to_string(),
         attributes: HashMap::new(),
         parent_id: None,
@@ -496,7 +496,7 @@ fn test_minimum_span_count() {
     // Assert
     let expect = config.expect.as_ref().unwrap();
     // span is a Vec, not Option - check length instead
-    assert!(expect.span.len() > 0);
+    assert!(!expect.span.is_empty());
     // Count expectations are checked at runtime
 }
 

@@ -8,13 +8,13 @@ async fn test_soak_longevity() {
 
     for _ in 0..1000 {
         // Create environment
-        let mut env = CleanroomEnvironment::new().await.unwrap();
+        let env = CleanroomEnvironment::new().await.unwrap();
 
         // Allocate a port
         let port_lock = allocator.allocate_port().await.unwrap();
 
         // Check active services and containers before destruction
-        let metrics = env.get_metrics().await.unwrap();
+        let _metrics = env.get_metrics().await.unwrap();
         // Since we didn't start a service here, it should be 0.
         // Assuming we started one:
         // env.start_service("test-service").await.unwrap();

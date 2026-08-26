@@ -169,7 +169,7 @@ async fn test_concurrent_service_lifecycle() {
     for _service_id in 0..100 {
         let starts = Arc::clone(&successful_starts);
         let stops = Arc::clone(&successful_stops);
-        let errs = Arc::clone(&errors);
+        let _errs = Arc::clone(&errors);
 
         let handle = tokio::spawn(async move {
             // Simulate service start
@@ -221,7 +221,7 @@ async fn test_otel_span_load_10k_spans() {
     // 1000 threads each emitting 10 spans
     for _thread_id in 0..1000 {
         let emitted = Arc::clone(&spans_emitted);
-        let errors = Arc::clone(&export_errors);
+        let _errors = Arc::clone(&export_errors);
 
         let handle = tokio::spawn(async move {
             for _span_id in 0..10 {
@@ -275,7 +275,7 @@ async fn test_sustained_load_30_seconds() {
     // 10 workers running for the duration
     for _worker_id in 0..10 {
         let ops = Arc::clone(&operations_completed);
-        let errs = Arc::clone(&errors);
+        let _errs = Arc::clone(&errors);
         let duration = test_duration;
 
         let handle = tokio::spawn(async move {
@@ -329,7 +329,7 @@ async fn test_memory_stability() {
 
     // Run operations and sample memory periodically
     for _ in 0..50 {
-        let samples = Arc::clone(&memory_samples);
+        let _samples = Arc::clone(&memory_samples);
 
         let handle = tokio::spawn(async move {
             for _ in 0..100 {

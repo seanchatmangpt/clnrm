@@ -11,8 +11,6 @@
 //! - Interaction patterns between features
 
 use clnrm_core::config::{StepConfig, TestConfig};
-use clnrm_core::error::Result;
-use std::collections::HashMap;
 
 // ============================================================================
 // SECTION 1: Custom Exit Codes

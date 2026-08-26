@@ -28,7 +28,6 @@ fn test_port_range_basic() {
 #[tokio::test]
 async fn test_port_allocator_creation() -> Result<()> {
     use clnrm_core::telemetry::live_check::PortAllocator;
-    use std::path::PathBuf;
 
     let allocator = PortAllocator::new()?;
 

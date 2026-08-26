@@ -300,14 +300,14 @@ async fn test_concurrent_container_operations() -> Result<()> {
 async fn main() -> Result<()> {
     println!("🚀 Framework Self-Testing: Container Lifecycle Demo");
     println!("=================================================");
-    println!("");
+    println!();
     println!("This example demonstrates that the framework tests itself.");
     println!("Every claim made in the README about container lifecycle");
     println!("management is verified by this code.");
-    println!("");
+    println!();
     println!("Users can copy this code to verify the claims:");
     println!("cargo run --example container-lifecycle-test");
-    println!("");
+    println!();
 
     // Note: In a real scenario, these would run automatically with #[cleanroom_test]
     // For this demo, we'll just show the structure

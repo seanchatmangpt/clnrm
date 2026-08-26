@@ -126,7 +126,7 @@ fn test_schedule_certificate_generation_and_verification() {
     // Assert: Certificate validates
     assert!(cert.verify().is_ok());
     assert_eq!(cert.entry_count, 1);
-    assert!(cert.certificate_hash.len() > 0);
+    assert!(!cert.certificate_hash.is_empty());
     assert_eq!(cert.config_hash.len(), 64); // SHA256 hex
 
     // Assert: Certificate consistency

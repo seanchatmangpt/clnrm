@@ -135,17 +135,17 @@ max_containers = 5
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Cleanroom Configuration System Demo");
     println!("=====================================");
-    println!("");
+    println!();
     println!("This demo proves the cleanroom.toml configuration system:");
     println!("✅ Configuration loading from file");
     println!("✅ Configuration validation");
     println!("✅ Environment variable overrides");
     println!("✅ Configuration merging priority");
     println!("✅ Framework self-testing with configuration");
-    println!("");
+    println!();
     println!("Users can copy this code to verify configuration:");
     println!("cargo run --example config-loading-test");
-    println!("");
+    println!();
 
     // Note: In real usage, these would run with the cleanroom_test attribute
     // For this demo, we'll just show the structure

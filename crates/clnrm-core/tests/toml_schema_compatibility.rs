@@ -3,7 +3,7 @@
 //! Validates that both v1.3.0 ([test.metadata]) and v1.4.0 ([test]) schemas
 //! are properly supported and backward compatible.
 
-use clnrm_core::config::{parse_toml_config, TestConfig};
+use clnrm_core::config::parse_toml_config;
 use clnrm_core::error::Result;
 
 #[test]
@@ -290,7 +290,7 @@ fn test_complex_real_world_example() -> Result<()> {
 #[test]
 fn test_backward_compatibility_comprehensive() -> Result<()> {
     // Test that old schema files can still be parsed
-    let old_schemas = vec![
+    let old_schemas = [
         r#"
             [test.metadata]
             name = "test1"

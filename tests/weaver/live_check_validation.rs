@@ -47,10 +47,11 @@ fn find_absolute_registry_path(relative_path: &str) -> std::path::PathBuf {
 fn setup_registry_manifest(registry_path: &std::path::Path) -> Option<std::path::PathBuf> {
     let manifest_path = registry_path.join("manifest.yaml");
     let registry_manifest_path = registry_path.join("registry_manifest.yaml");
-    if !manifest_path.exists() && registry_manifest_path.exists() {
-        if std::fs::copy(&registry_manifest_path, &manifest_path).is_ok() {
-            return Some(manifest_path);
-        }
+    if !manifest_path.exists()
+        && registry_manifest_path.exists()
+        && std::fs::copy(&registry_manifest_path, &manifest_path).is_ok()
+    {
+        return Some(manifest_path);
     }
     None
 }

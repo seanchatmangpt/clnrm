@@ -345,7 +345,7 @@ mod tests {
     fn test_all_templates_valid() {
         let templates = ServiceTemplates::new();
 
-        for (_name, template) in &templates.templates {
+        for template in templates.templates.values() {
             assert!(template.validate().is_ok());
         }
     }

@@ -1,6 +1,4 @@
-use clnrm_core::environment::sigma::{ContentHash, SemVer, SigmaBase, TelemetryDef};
 use clnrm_core::service::registry::ServiceMetadata;
-use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_service_metadata_export_env_snapshot() {

@@ -95,7 +95,7 @@ async fn test_state_machine_transitions() -> Result<()> {
     let completed = running.stop_weaver().await?;
 
     // Can now access report
-    let report = completed.report();
+    let _report = completed.report();
     // sample_count is u64 so always >= 0, assertion is always true
 
     // Cannot call stop_weaver again (compile-time check)
@@ -176,7 +176,7 @@ async fn test_orchestrator_endpoint_format() -> Result<()> {
     assert!(endpoint.contains("127.0.0.1"));
 
     // Parse port from endpoint
-    let port_str = endpoint.split(':').last().unwrap();
+    let port_str = endpoint.split(':').next_back().unwrap();
     let port: u16 = port_str.parse().unwrap();
     assert_eq!(port, running.otlp_port());
 
@@ -293,7 +293,7 @@ async fn test_fallback_to_registry_check() -> Result<()> {
             registry_path,
             reason,
         } => {
-            assert!(reason.len() > 0, "Should have fallback reason");
+            assert!(!reason.is_empty(), "Should have fallback reason");
             assert_eq!(registry_path, PathBuf::from("/nonexistent/registry"));
         }
         OrchestrationMode::LiveCheck(_) => {

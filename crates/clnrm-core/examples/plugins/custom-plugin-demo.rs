@@ -128,12 +128,12 @@ impl ServicePlugin for RedisPlugin {
 async fn main() -> Result<()> {
     println!("🚀 Custom Plugin Development Demo");
     println!("=================================");
-    println!("");
+    println!();
     println!("This demo proves the README plugin architecture claims:");
     println!("✅ Plugin-Based Architecture - Extensible service system");
     println!("✅ Custom plugins can be created and registered");
     println!("✅ Plugin lifecycle management works");
-    println!("");
+    println!();
 
     let env = CleanroomEnvironment::new().await?;
 

@@ -327,7 +327,7 @@ fn bench_throughput_improvement(c: &mut Criterion) {
                     let start = Instant::now();
                     let mut handles = Vec::new();
 
-                    for i in 0..count {
+                    for _i in 0..count {
                         let pool_clone = Arc::clone(&pool);
                         let handle = tokio::spawn(async move {
                             let (mut container, is_hit) = pool_clone.acquire().await;
@@ -347,7 +347,7 @@ fn bench_throughput_improvement(c: &mut Criterion) {
                     let elapsed = start.elapsed().as_secs_f64();
                     let throughput = count as f64 / elapsed;
 
-                    let (hits, misses, hit_rate) = pool.stats();
+                    let (_hits, _misses, hit_rate) = pool.stats();
 
                     black_box((results.len(), throughput, hit_rate))
                 })
@@ -385,7 +385,7 @@ fn bench_concurrency_scaling(c: &mut Criterion) {
                     let start = Instant::now();
                     let mut handles = Vec::new();
 
-                    for i in 0..count {
+                    for _i in 0..count {
                         let pool_clone = Arc::clone(&pool);
                         let metrics_clone = Arc::clone(&metrics);
 
@@ -572,7 +572,7 @@ fn bench_memory_overhead(c: &mut Criterion) {
 
                     let mut handles = Vec::new();
 
-                    for i in 0..load {
+                    for _i in 0..load {
                         let pool_clone = Arc::clone(&pool);
                         let metrics_clone = Arc::clone(&metrics);
                         let mem_clone = Arc::clone(&memory_allocations);
@@ -630,7 +630,7 @@ fn bench_pool_hit_rate_analysis(c: &mut Criterion) {
                     let mut handles = Vec::new();
 
                     // Simulate 500 concurrent tests
-                    for i in 0..500 {
+                    for _i in 0..500 {
                         let pool_clone = Arc::clone(&pool);
                         let handle = tokio::spawn(async move {
                             let (mut container, is_hit) = pool_clone.acquire().await;
@@ -709,7 +709,7 @@ fn bench_full_system_integration(c: &mut Criterion) {
 
             let elapsed = start.elapsed().as_secs_f64();
             let snapshot = metrics.snapshot();
-            let (hits, misses, hit_rate) = pool.stats();
+            let (_hits, _misses, hit_rate) = pool.stats();
 
             let throughput = snapshot.throughput_per_sec(elapsed);
 

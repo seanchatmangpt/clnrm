@@ -434,7 +434,7 @@ fn benchmark_cpu_utilization_patterns(c: &mut Criterion) {
                             while compute_start.elapsed() < Duration::from_millis(10) {
                                 result = result.wrapping_add(i as u64);
                                 // Simulate light async I/O to avoid blocking
-                                if result % 100 == 0 {
+                                if result.is_multiple_of(100) {
                                     tokio::task::yield_now().await;
                                 }
                             }

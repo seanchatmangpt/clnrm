@@ -346,7 +346,7 @@ impl MetaTestingFramework {
             for observation in &result.observations {
                 report.push_str(&format!("  - {}\n", observation));
             }
-            report.push_str("\n");
+            report.push('\n');
         }
 
         // Add comparative analysis

@@ -81,7 +81,7 @@ command = ["echo", "Hello from hot reload test"]
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     // Step 5: Result display (minimal overhead)
-    let _result_display = format!("✅ Test completed: hot_reload_benchmark");
+    let _result_display = "✅ Test completed: hot_reload_benchmark".to_string();
 
     Ok(())
 }

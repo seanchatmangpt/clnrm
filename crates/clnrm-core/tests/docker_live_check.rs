@@ -7,9 +7,7 @@
 //! verify that the live-check integration works end-to-end.
 
 use clnrm_core::error::Result;
-use clnrm_core::telemetry::live_check::{
-    LiveCheckConfig, LiveCheckOrchestrator, Uninitialized, ValidationConfig, ValidationMode,
-};
+use clnrm_core::telemetry::live_check::{LiveCheckConfig, LiveCheckOrchestrator, Uninitialized};
 use clnrm_core::{cleanroom::CleanroomEnvironment, services::generic::GenericContainerPlugin};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -183,8 +181,6 @@ async fn test_surrealdb_container_emits_expected_telemetry() -> Result<()> {
 #[tokio::test]
 #[ignore] // Requires Docker and PostgreSQL image
 async fn test_postgres_container_missing_spans_detected() -> Result<()> {
-    use clnrm_core::telemetry::live_check::ValidationMode;
-
     // Arrange: Start Weaver in strict mode
     let temp_dir = TempDir::new().map_err(|e| {
         clnrm_core::error::CleanroomError::internal_error(format!(
