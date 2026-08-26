@@ -94,7 +94,7 @@ ed25519-dalek = { version = "2.1", optional = true }  # For receipt signature ve
 flate2 = "1.0"     # For gzip decompression of OCI layers
 tar = "0.4"        # For extracting tar archives
 dirs = "5.0"       # For accessing standard directories
-chicago-tdd-tools = { version = "1.4.0", features = ["async", "observability-full", "integration-full"] }
+chicago-tdd-tools = { version = "26.8.9", features = ["async", "observability-full", "integration-full"] }
 
 [dev-dependencies]
 # Property-based testing
