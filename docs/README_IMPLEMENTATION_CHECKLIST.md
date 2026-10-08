@@ -91,7 +91,7 @@ clnrm run examples/basic.clnrm.toml
 ### 3. Next Steps
 - [Common Workflows](#common-workflows) - Running tests, validating, debugging
 - [Design Philosophy](#design-philosophy) - Why we use `cargo make`, Chicago TDD, etc.
-- [Full Command Reference](book/src/reference/cli-reference.md) - All 26 commands
+- [Full Command Reference](../book/src/reference/cli-reference.md) - All 26 commands
 ```
 
 **Changes**:
@@ -122,7 +122,7 @@ cargo make test    # ✓ 1s timeout per test, guaranteed completion
 cargo test         # ✗ Hangs indefinitely, no protection
 ```
 
-See Principle 1 in [Code Standards](docs/CODE_STANDARDS.md) for enforcement rules.
+See Principle 1 in [Code Standards](./CODE_STANDARDS.md) for enforcement rules.
 
 ### Principle 2: Type-Safe Error Handling
 **Pattern**: Production code uses `Result<T, CleanroomError>`, never `unwrap()`
@@ -175,7 +175,7 @@ fn test_container_lifecycle() {
 ---
 
 ## Design Philosophy in Context
-See [CODE_STANDARDS.md](docs/CODE_STANDARDS.md) for detailed enforcement rules.
+See [CODE_STANDARDS.md](./CODE_STANDARDS.md) for detailed enforcement rules.
 ```
 
 **Changes**:
@@ -253,7 +253,7 @@ clnrm graph test.clnrm.toml
 ```markdown
 ## Command Reference
 
-Quick reference. See [Full Reference](book/src/reference/cli-reference.md) for detailed usage, options, and examples.
+Quick reference. See [Full Reference](../book/src/reference/cli-reference.md) for detailed usage, options, and examples.
 
 ### Test Execution (5 commands)
 - `clnrm run <CONFIG>` - Execute tests from TOML specification
@@ -390,7 +390,7 @@ clnrm health --verbose
 2. Validate configuration: `clnrm validate test.clnrm.toml`
 3. Start collector if needed: `clnrm services start collector`
 
-**More**: [OTEL Configuration Guide](docs/OTEL_SETUP.md)
+**More**: OTEL Configuration Guide <!-- TODO: target does not exist; restore or write target: docs/OTEL_SETUP.md -->
 
 ---
 
@@ -430,7 +430,7 @@ docker pull ubuntu:latest
 curl -I https://registry.docker.com
 ```
 
-**More**: [Docker Configuration Guide](docs/DOCKER_SETUP.md)
+**More**: Docker Configuration Guide <!-- TODO: target does not exist; restore or write target: docs/DOCKER_SETUP.md -->
 
 ---
 
@@ -464,7 +464,7 @@ base_image = "ubuntu:latest"
 image = "{{ base_image }}"
 ```
 
-**More**: [Template Guide](docs/TEMPLATE_GUIDE.md)
+**More**: Template Guide <!-- TODO: target does not exist; restore or write target: docs/TEMPLATE_GUIDE.md -->
 
 ---
 
@@ -472,7 +472,7 @@ image = "{{ base_image }}"
 
 **Not finding your issue?** Try:
 1. Run `clnrm health --verbose` for system diagnostics
-2. Check [Full Troubleshooting Guide](docs/troubleshooting.md)
+2. Check Full Troubleshooting Guide <!-- TODO: target does not exist; restore or write target: docs/troubleshooting.md -->
 3. Open issue on [GitHub](https://github.com/seanchatmangpt/clnrm/issues)
 ```
 
@@ -495,7 +495,7 @@ image = "{{ base_image }}"
 ```markdown
 ## For Developers & Contributors
 
-clnrm is built using strict quality standards. See [CODE_STANDARDS.md](docs/CODE_STANDARDS.md) for:
+clnrm is built using strict quality standards. See [CODE_STANDARDS.md](./CODE_STANDARDS.md) for:
 
 - Type safety requirements (100% type coverage)
 - Testing standards (Chicago TDD, 80%+ coverage)
@@ -523,7 +523,7 @@ clnrm is built using strict quality standards. See [CODE_STANDARDS.md](docs/CODE
 - **CLI**: [clap](https://crates.io/crates/clap) (Argument parsing)
 - **Async**: [tokio](https://crates.io/crates/tokio) (Async runtime)
 
-See [Cargo.toml](Cargo.toml) for complete dependency list.
+See [Cargo.toml](../Cargo.toml) for complete dependency list.
 ```
 
 **Time**: 10 minutes | **Effort**: Low | **Risk**: None
@@ -603,7 +603,7 @@ clnrm run tests/container-lifecycle.clnrm.toml --format json
 ```
 
 **Common Issues**:
-- "Port already in use" → See [Troubleshooting](#port-already-in-use)
+- "Port already in use" → See [Troubleshooting](#problem-error-address-already-in-use-or-port-8080-already-in-use)
 - "Container fails to start" → Run `clnrm dry-run` to preview
 - "Tests timeout" → Increase `timeout_seconds` in TOML
 

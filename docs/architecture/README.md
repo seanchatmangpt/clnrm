@@ -125,7 +125,7 @@ An investigation into using ggen (ontology-driven code generation) to refactor t
 1. Read this README (5 min)
 2. Read [GGEN_QUICK_START.md](./GGEN_QUICK_START.md) (30 min)
 3. Skim [GGEN_MARKETPLACE_APPROACH.md](./GGEN_MARKETPLACE_APPROACH.md) (20 min)
-4. See [../BUILD_SYSTEM_SUMMARY.md](../BUILD_SYSTEM_SUMMARY.md) for build details
+4. See `BUILD_SYSTEM_SUMMARY.md` <!-- TODO: target does not exist; restore or write target: ../BUILD_SYSTEM_SUMMARY.md --> for build details
 
 **Team Leads**:
 1. Read [GGEN_MARKETPLACE_APPROACH.md](./GGEN_MARKETPLACE_APPROACH.md) (1 hour)
@@ -185,7 +185,7 @@ An investigation into using ggen (ontology-driven code generation) to refactor t
 
 ### Internal
 - **Constitution**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md)
-- **Build System**: [`../BUILD_SYSTEM_SUMMARY.md`](../BUILD_SYSTEM_SUMMARY.md)
+- **Build System**: `BUILD_SYSTEM_SUMMARY.md` <!-- TODO: target does not exist; restore or write target: ../BUILD_SYSTEM_SUMMARY.md -->
 - **Makefile.toml**: [`../../Makefile.toml`](../../Makefile.toml)
 
 ---

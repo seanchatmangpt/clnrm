@@ -724,7 +724,7 @@ echo "✅ Performance meets baseline requirements"
 - [OCI Image Spec](https://github.com/opencontainers/image-spec)
 - [OCI Runtime Spec](https://github.com/opencontainers/runtime-spec)
 - [clnrm Architecture](/docs/V2_0_0_ARCHITECTURE.md)
-- [Performance Baselines](/docs/PERFORMANCE_BASELINE.md)
+- [Performance Baselines](./GVISOR_PERFORMANCE_BASELINE.md)
 
 ---
 

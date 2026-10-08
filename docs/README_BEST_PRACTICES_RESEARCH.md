@@ -115,13 +115,13 @@ clnrm run examples/basic.clnrm.toml
 ## What's Next?
 
 **Learn by doing:**
-- [Running your first test](#quick-start)
-- [Validating configurations](docs/tutorials/validation.md)
-- [Observing test execution](#observation--debugging) with `clnrm spans`
+- [Running your first test](#2-quick-start-structure-for-5-minute-first-success)
+- Validating configurations <!-- TODO: target does not exist; restore or write target: docs/tutorials/validation.md -->
+- Observing test execution <!-- TODO: target does not exist; restore or write target: #observation--debugging --> with `clnrm spans`
 
 **Dive deeper:**
-- [Full command reference](book/src/reference/cli-reference.md)
-- [TOML specification guide](docs/V2_0_0_CONFIG_REFERENCE.md)
+- [Full command reference](../book/src/reference/cli-reference.md)
+- [TOML specification guide](./V2_0_0_CONFIG_REFERENCE.md)
 ```
 
 **Critical elements**:
@@ -154,7 +154,7 @@ version = "2.1.0"
 <!-- auto-generated from Cargo.toml -->
 **Current Version**: [![Crates.io](https://img.shields.io/crates/v/clnrm.svg)](https://crates.io/crates/clnrm)
 
-See [CHANGELOG](CHANGELOG.md) for release history and [docs.rs](https://docs.rs/clnrm) for API documentation.
+See [CHANGELOG](../CHANGELOG.md) for release history and [docs.rs](https://docs.rs/clnrm) for API documentation.
 ```
 
 ### Implementation Options
@@ -361,7 +361,7 @@ clnrm health --verbose
 2. Check endpoint in config: `clnrm validate test.clnrm.toml`
 3. Start collector if needed: `clnrm services start collector`
 
-**Related Docs**: [OTEL Configuration Guide](docs/OTEL_SETUP.md)
+**Related Docs**: OTEL Configuration Guide <!-- TODO: target does not exist; restore or write target: docs/OTEL_SETUP.md -->
 
 ---
 
@@ -542,7 +542,7 @@ Then reference in README:
 
 Latest version: [![Crates.io](https://img.shields.io/crates/v/clnrm.svg)](https://crates.io/crates/clnrm)
 
-See [CHANGELOG](CHANGELOG.md) for what's new in each version.
+See [CHANGELOG](../CHANGELOG.md) for what's new in each version.
 ```
 
 ---
@@ -589,7 +589,7 @@ clnrm run examples/basic.clnrm.toml
 ### 3. What's Next?
 - [Common Workflows](#common-workflows) - Running tests, validating configs, debugging
 - [Design Philosophy](#design-philosophy) - Why we use `cargo make`, Chicago TDD, etc.
-- [Full Command Reference](book/src/reference/cli-reference.md) - All 26 commands
+- [Full Command Reference](../book/src/reference/cli-reference.md) - All 26 commands
 
 ---
 
@@ -637,7 +637,7 @@ clnrm graph test.clnrm.toml       # Dependency visualization
 
 ## Command Reference
 
-Quick reference. See [Full Reference](book/src/reference/cli-reference.md) for details.
+Quick reference. See [Full Reference](../book/src/reference/cli-reference.md) for details.
 
 ### Test Execution
 - `clnrm run` - Execute tests from TOML specification
@@ -693,13 +693,13 @@ Quick reference. See [Full Reference](book/src/reference/cli-reference.md) for d
 **Root Cause**: Collector not running or misconfigured
 **Solution**: Run `clnrm health --verbose` to diagnose
 
-[See full troubleshooting guide](docs/troubleshooting.md)
+See full troubleshooting guide <!-- TODO: target does not exist; restore or write target: docs/troubleshooting.md -->
 
 ---
 
 ## Development & Contributing
 
-See [CODE_STANDARDS.md](docs/CODE_STANDARDS.md) for:
+See [CODE_STANDARDS.md](./CODE_STANDARDS.md) for:
 - Type safety requirements
 - Testing standards (Chicago TDD)
 - Error handling patterns
@@ -709,7 +709,7 @@ See [CODE_STANDARDS.md](docs/CODE_STANDARDS.md) for:
 
 ## License
 
-MIT. See [LICENSE](LICENSE) for details.
+MIT. See [LICENSE](../LICENSE) for details.
 ```
 
 ---

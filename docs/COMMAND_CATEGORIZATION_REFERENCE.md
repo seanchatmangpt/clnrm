@@ -1026,7 +1026,7 @@ Coverage:
 ```markdown
 ## Command Reference
 
-Quick reference organized by feature. See [Full Reference](book/src/reference/cli-reference.md) for detailed usage.
+Quick reference organized by feature. See [Full Reference](../book/src/reference/cli-reference.md) for detailed usage.
 
 ### Test Execution
 - `clnrm run` - Execute tests

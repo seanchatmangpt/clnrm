@@ -11,16 +11,16 @@ This document provides the comprehensive design for integrating OpenTelemetry (O
 
 ## Table of Contents
 
-1. [Current Telemetry System](#current-telemetry-system)
-2. [gvisor Backend Changes](#gvisor-backend-changes)
-3. [Telemetry Mapping Strategy](#telemetry-mapping-strategy)
-4. [New Span Structures](#new-span-structures)
-5. [Metric Collection](#metric-collection)
-6. [OTLP Payload Examples](#otlp-payload-examples)
-7. [Backwards Compatibility](#backwards-compatibility)
-8. [Implementation Plan](#implementation-plan)
-9. [Testing Strategy](#testing-strategy)
-10. [Migration Guide](#migration-guide)
+1. [Current Telemetry System](#1-current-telemetry-system)
+2. [gvisor Backend Changes](#2-gvisor-backend-changes)
+3. [Telemetry Mapping Strategy](#3-telemetry-mapping-strategy)
+4. [New Span Structures](#4-new-span-structures)
+5. [Metric Collection](#5-metric-collection)
+6. [OTLP Payload Examples](#6-otlp-payload-examples)
+7. [Backwards Compatibility](#7-backwards-compatibility)
+8. [Implementation Plan](#8-implementation-plan)
+9. [Testing Strategy](#9-testing-strategy)
+10. [Migration Guide](#10-migration-guide)
 
 ---
 

@@ -511,14 +511,14 @@ We're excited to announce that clnrm v2.0.0 has successfully eliminated all Dock
 
 ## Migration
 
-See our [Migration Guide](docs/GVISOR_MIGRATION_GUIDE.md) for step-by-step instructions.
+See our Migration Guide <!-- TODO: target does not exist; restore or write target: docs/GVISOR_MIGRATION_GUIDE.md --> for step-by-step instructions.
 
 ## Documentation
 
-- [Architecture](docs/GVISOR_ARCHITECTURE.md)
-- [User Guide](docs/GVISOR_USER_GUIDE.md)
-- [Developer Guide](docs/GVISOR_DEVELOPER_GUIDE.md)
-- [Troubleshooting](docs/GVISOR_TROUBLESHOOTING_GUIDE.md)
+- Architecture <!-- TODO: target does not exist; restore or write target: docs/GVISOR_ARCHITECTURE.md -->
+- User Guide <!-- TODO: target does not exist; restore or write target: docs/GVISOR_USER_GUIDE.md -->
+- Developer Guide <!-- TODO: target does not exist; restore or write target: docs/GVISOR_DEVELOPER_GUIDE.md -->
+- Troubleshooting <!-- TODO: target does not exist; restore or write target: docs/GVISOR_TROUBLESHOOTING_GUIDE.md -->
 
 ## What's Next
 

@@ -8,13 +8,13 @@
 
 ## Table of Contents
 
-1. [Architecture Documentation](#architecture-documentation)
-2. [User Guide](#user-guide)
-3. [Developer Guide](#developer-guide)
-4. [Migration Guide](#migration-guide)
-5. [Troubleshooting Guide](#troubleshooting-guide)
-6. [Configuration Reference](#configuration-reference)
-7. [Example Scenarios](#example-scenarios)
+1. [Architecture Documentation](#1-architecture-documentation)
+2. [User Guide](#2-user-guide)
+3. [Developer Guide](#3-developer-guide)
+4. [Migration Guide](#4-migration-guide)
+5. [Troubleshooting Guide](#5-troubleshooting-guide)
+6. [Configuration Reference](#6-configuration-reference)
+7. [Example Scenarios](#7-example-scenarios)
 
 ---
 
@@ -650,7 +650,7 @@ let backend = GVisorBackend::new("alpine:latest")?
 
 ## Migration from Docker
 
-See [Migration Guide](#migration-guide) for detailed migration instructions.
+See [Migration Guide](#4-migration-guide) for detailed migration instructions.
 
 ## Support
 
@@ -957,7 +957,7 @@ If migration fails, you can temporarily rollback:
 ## Support
 
 If you encounter issues:
-1. Check [Troubleshooting Guide](#troubleshooting-guide)
+1. Check [Troubleshooting Guide](#5-troubleshooting-guide)
 2. Open issue: https://github.com/seanchatmangpt/clnrm/issues
 3. Ask in discussions: https://github.com/seanchatmangpt/clnrm/discussions
 ```

@@ -236,17 +236,17 @@ See [Agent Integration Summary](./GVISOR_AGENT_INTEGRATION_SUMMARY.md) for detai
 ## Documentation
 
 ### For Users
-- [User Guide](../book/src/backends/gvisor.md) - How to use gVisor backend
-- [Migration Guide](./GVISOR_MIGRATION_GUIDE.md) - Step-by-step migration
+- User Guide <!-- TODO: target does not exist; restore or write target: ../book/src/backends/gvisor.md --> - How to use gVisor backend
+- Migration Guide <!-- TODO: target does not exist; restore or write target: ./GVISOR_MIGRATION_GUIDE.md --> - Step-by-step migration
 - [Quick Reference](./GVISOR_QUICK_REFERENCE.md) - Common commands and patterns
 
 ### For Developers
 - [Implementation Roadmap](./GVISOR_IMPLEMENTATION_ROADMAP.md) - Complete phased plan
-- [Architecture](./GVISOR_ARCHITECTURE.md) - Technical design details
+- Architecture <!-- TODO: target does not exist; restore or write target: ./GVISOR_ARCHITECTURE.md --> - Technical design details
 - [Service Management](./GVISOR_SERVICE_MANAGEMENT.md) - Service system design
 
 ### For Operations
-- [Troubleshooting](./GVISOR_TROUBLESHOOTING.md) - Common issues and solutions
+- Troubleshooting <!-- TODO: target does not exist; restore or write target: ./GVISOR_TROUBLESHOOTING.md --> - Common issues and solutions
 - [Validation Checklist](./GVISOR_DOCKER_ELIMINATION_VALIDATION.md) - Validation framework
 
 ---

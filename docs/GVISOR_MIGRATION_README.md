@@ -10,7 +10,7 @@
 | **[Executive Summary](GVISOR_MIGRATION_SUMMARY.md)** | Complete overview, deliverables, timeline | Before planning |
 | **[Migration Plan](GVISOR_MIGRATION_PLAN.md)** | Detailed architecture, strategy, examples | During implementation |
 | **[Test Migration Guide](GVISOR_TEST_MIGRATION_GUIDE.md)** | Test-by-test migration instructions | During test migration |
-| **[Backend Skeleton](../crates/clnrm-core/src/backend/gvisor_skeleton.rs)** | Reference implementation | During development |
+| **Backend Skeleton <!-- TODO: target does not exist; restore or write target: ../crates/clnrm-core/src/backend/gvisor_skeleton.rs -->** | Reference implementation | During development |
 
 ## 🎯 What's Changing?
 
@@ -315,7 +315,7 @@ impl Drop for GVisorBackend {
 - Start with: [Executive Summary](GVISOR_MIGRATION_SUMMARY.md)
 - Deep dive: [Migration Plan](GVISOR_MIGRATION_PLAN.md)
 - Test migration: [Test Guide](GVISOR_TEST_MIGRATION_GUIDE.md)
-- Code reference: [Backend Skeleton](../crates/clnrm-core/src/backend/gvisor_skeleton.rs)
+- Code reference: Backend Skeleton <!-- TODO: target does not exist; restore or write target: ../crates/clnrm-core/src/backend/gvisor_skeleton.rs -->
 
 ### External Resources
 - [gVisor Docs](https://gvisor.dev/docs/)
@@ -380,9 +380,9 @@ impl Drop for GVisorBackend {
 
 ---
 
-**Questions?** Read the [FAQ in Migration Plan](GVISOR_MIGRATION_PLAN.md#common-migration-issues--solutions)
+**Questions?** Read the [FAQ in Migration Plan](GVISOR_MIGRATION_PLAN.md) <!-- TODO: target does not exist; restore or write target: GVISOR_MIGRATION_PLAN.md#common-migration-issues--solutions -->
 
-**Ready to start?** Open [Backend Skeleton](../crates/clnrm-core/src/backend/gvisor_skeleton.rs)
+**Ready to start?** Open Backend Skeleton <!-- TODO: target does not exist; restore or write target: ../crates/clnrm-core/src/backend/gvisor_skeleton.rs -->
 
 **Need details?** Read [Executive Summary](GVISOR_MIGRATION_SUMMARY.md)
 
