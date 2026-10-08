@@ -9,7 +9,9 @@
 //! TTL emission is deterministic: individuals are sorted by identity id, and
 //! every emitted literal is escaped.
 
+use crate::environment::sigma::ContentHash;
 use crate::receipts::receipt::TestReceipt;
+use crate::receipts::store::ReceiptStore;
 use serde::Serialize;
 
 /// Projected `sj:Receipt` individual.
@@ -64,9 +66,12 @@ pub struct SjReplay {
     pub durable_location: String,
 }
 
-/// Project a `TestReceipt` to its `sj:Receipt` form.
+/// Project a `TestReceipt` to its `sj:Receipt` form (store-less view).
 ///
-/// Deterministic: same receipt in, same `SjReceipt` out. The replay command
+/// Deterministic: same receipt in, same `SjReceipt` out. Without store
+/// context a `Some` `previous_receipt` cannot resolve, so a chained receipt
+/// projects BLOCKED here; use [`to_sj_receipt_resolved`] to resolve the
+/// chain through a [`ReceiptStore`]. The replay command
 /// set is fixed (`weaver proof verify`); the durable location is the
 /// content-addressed store key.
 pub fn to_sj_receipt(r: &TestReceipt) -> SjReceipt {
@@ -89,6 +94,89 @@ pub fn to_sj_receipt(r: &TestReceipt) -> SjReceipt {
             None => r.id.as_str().to_string(),
         },
     }
+}
+
+/// Project a `TestReceipt` to its `sj:Receipt` form, resolving the chain
+/// through the store.
+///
+/// Unlike [`to_sj_receipt`] (the store-less view, where a `Some`
+/// `previous_receipt` can never resolve and is BLOCKED as an orphan), this
+/// walks `previous_receipt` links to genesis via the store and projects
+/// standing from the FULL chain: resolved + every link validates → ALIVE;
+/// any break (missing receipt, invalid receipt, cycle) → BLOCKED with the
+/// broken link as the blocking point.
+pub fn to_sj_receipt_resolved(r: &TestReceipt, store: &ReceiptStore) -> SjReceipt {
+    let standing = compute_standing_resolved(r, store);
+    let mut sj = to_sj_receipt(r);
+    sj.standing = standing;
+    sj
+}
+
+/// Compute `sj:standing` for a receipt with store context.
+///
+/// Same local conditions as [`compute_standing`] (validate, clean witness,
+/// weaver proof), but chain resolution walks the store to genesis. Returns
+/// the broken link id when the chain does not resolve.
+fn compute_standing_resolved(r: &TestReceipt, store: &ReceiptStore) -> SjStanding {
+    // Local conditions first (content hash, witness, proof).
+    if let SjStanding::BLOCKED = local_standing(r) {
+        return SjStanding::BLOCKED;
+    }
+
+    // Walk the chain to genesis through the store.
+    let mut current = Some(r.clone());
+    let mut visited: Vec<ContentHash> = Vec::new();
+    while let Some(recv) = current {
+        let id = recv.id.clone();
+        if visited.contains(&id) {
+            return SjStanding::BLOCKED; // cycle at `id`
+        }
+        visited.push(id.clone());
+
+        // Non-genesis links must resolve in the store.
+        if let Some(prev_id) = &recv.previous_receipt {
+            match store.get(prev_id) {
+                Ok(prev) => current = Some(prev),
+                Err(_) => return SjStanding::BLOCKED, // broken at `prev_id`
+            }
+        } else {
+            current = None; // genesis reached
+        }
+    }
+
+    SjStanding::ALIVE
+}
+
+/// Local (chain-independent) standing conditions: validate + clean witness +
+/// passing weaver proof. Chain resolution is handled by the callers.
+fn local_standing(r: &TestReceipt) -> SjStanding {
+    // (1) content-hash validation
+    if r.validate().is_err() {
+        return SjStanding::BLOCKED;
+    }
+
+    // (2) fully clean hermeticity witness
+    let w = &r.hermeticity_witness;
+    let witness_clean = w.network_isolated
+        && w.filesystem_isolated
+        && w.process_isolated
+        && w.deterministic
+        && w.external_connections.is_empty()
+        && w.non_hermetic_paths.is_empty()
+        && w.determinism_violations.is_empty();
+    if !witness_clean {
+        return SjStanding::BLOCKED;
+    }
+
+    // Weaver validation is part of verification evidence: a proof that
+    // explicitly failed blocks standing.
+    if let Some(proof) = &r.weaver_proof {
+        if !proof.validation_passed {
+            return SjStanding::BLOCKED;
+        }
+    }
+
+    SjStanding::ALIVE
 }
 
 /// Compute `sj:standing` for a receipt per the spec's standing law.
@@ -190,7 +278,24 @@ mod tests {
     use crate::capabilities::scenario::{CapabilityId, ScenarioId};
     use crate::environment::sigma::ContentHash;
     use crate::receipts::receipt::{OtelGraphProof, WeaverProof};
+    use crate::receipts::store::ReceiptStore;
     use std::collections::HashMap;
+
+    /// Build a valid genesis ALIVE receipt and put it (plus chained
+    /// descendants) into a fresh store. Returns (store, chain ids head→…).
+    fn store_with_chain(n: usize) -> (ReceiptStore, Vec<ContentHash>) {
+        let store = ReceiptStore::new();
+        let mut ids = Vec::new();
+        let mut prev: Option<ContentHash> = None;
+        for i in 0..n {
+            let mut r = alive_receipt(&format!("chain-{i}"));
+            r.previous_receipt = prev;
+            r.id = r.compute_id();
+            prev = Some(store.put(r).unwrap());
+            ids.push(prev.clone().unwrap());
+        }
+        (store, ids)
+    }
 
     /// Build a valid genesis ALIVE receipt (content hash consistent).
     fn alive_receipt(scenario: &str) -> TestReceipt {
@@ -310,5 +415,42 @@ mod tests {
         let sj = to_sj_receipt(&r);
         assert_eq!(sj.standing, SjStanding::ALIVE);
         assert_eq!(sj.identity.subject, "scenario-f");
+    }
+
+    #[test]
+    fn test_resolved_three_receipt_chain_is_alive() {
+        let (store, ids) = store_with_chain(3);
+        let head = store.get(&ids[2]).unwrap();
+        assert!(head.previous_receipt.is_some());
+
+        // Store-less view: chained receipt cannot resolve in isolation.
+        assert_eq!(to_sj_receipt(&head).standing, SjStanding::BLOCKED);
+
+        // Store-aware view: full chain resolves → ALIVE.
+        let sj = to_sj_receipt_resolved(&head, &store);
+        assert_eq!(sj.standing, SjStanding::ALIVE);
+        // chain hash still projected faithfully
+        assert_eq!(sj.receipt, ids[1].as_str());
+    }
+
+    #[test]
+    fn test_resolved_broken_middle_link_is_blocked_naming_link() {
+        let (store, ids) = store_with_chain(3);
+        // Break the middle link (link 2 of the chain).
+        store.delete(&ids[1]).unwrap();
+
+        let head = store.get(&ids[2]).unwrap();
+        let sj = to_sj_receipt_resolved(&head, &store);
+        assert_eq!(sj.standing, SjStanding::BLOCKED);
+        // The blocking point is the deleted middle link, by id.
+        assert_eq!(sj.receipt, ids[1].as_str());
+    }
+
+    #[test]
+    fn test_resolved_genesis_still_alive_in_store() {
+        let (store, ids) = store_with_chain(3);
+        let genesis = store.get(&ids[0]).unwrap();
+        let sj = to_sj_receipt_resolved(&genesis, &store);
+        assert_eq!(sj.standing, SjStanding::ALIVE);
     }
 }
