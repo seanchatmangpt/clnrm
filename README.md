@@ -2,7 +2,7 @@
 
 The hermetic integration testing framework powered by gVisor.
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-26.5.28-blue.svg)](CHANGELOG.md)
 [![Backend](https://img.shields.io/badge/backend-gVisor-green.svg)](docs/MIGRATION_GUIDE_3.0.md)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
@@ -108,10 +108,9 @@ assert.stdout_contains = "All tests passed"
 - [v2.0.0 Config Reference](docs/V2_0_0_CONFIG_REFERENCE.md)
 - [gVisor Integration Details](docs/GVISOR_README.md)
 - [Code Standards](docs/CODE_STANDARDS.md)
+- [Docs Index](docs/README.md) - full `docs/` directory map
 
 ## Code Standards
-
-This project follows strict standards to eliminate Mura (inconsistency):
 
 This project follows strict code standards to eliminate Mura (inconsistency):
 
@@ -123,3 +122,9 @@ This project follows strict code standards to eliminate Mura (inconsistency):
 ## License
 
 MIT - See [LICENSE](LICENSE) for details.
+
+## See Also
+
+- [Fleet Doc Map](../ggen-marketplace/docs/reference/FLEET-DOC-MAP.md) - cross-repo
+  documentation map for the fleet (W984 lane-root cleanup depends on this).
+
