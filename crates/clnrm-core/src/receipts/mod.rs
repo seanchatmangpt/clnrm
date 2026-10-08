@@ -103,6 +103,7 @@
 //! ```
 
 pub mod receipt;
+pub mod sj_projection;
 pub mod store;
 
 // Re-export commonly used types
@@ -110,4 +111,5 @@ pub use receipt::{
     HermeticityWitness, ImageDigest, OtelGraphProof, PathTiming, ReceiptId, ReceiptSignature,
     TestReceipt, TimingFootprint, TimingViolation, WeaverProof,
 };
+pub use sj_projection::{to_sj_receipt, to_sj_ttl, SjIdentity, SjReceipt, SjReplay, SjStanding};
 pub use store::{ChainValidationResult, ReceiptStore};

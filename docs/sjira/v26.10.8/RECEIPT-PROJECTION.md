@@ -80,6 +80,14 @@ Courts (`courts/stop.rq`) consume projected receipts as RDF, not markdown:
 4. **Replay**: any court admission is replayable via the chain: fetch receipts by id from
    out-of-subject storage, recompute `compute_id()` per link, re-verify signatures.
 
+## Implementation
+
+Implemented: `crates/clnrm-core/src/receipts/sj_projection.rs` — `to_sj_receipt`
+(TestReceipt → SjReceipt with computed standing) and `to_sj_ttl` (deterministic,
+id-sorted Turtle emission). Standing law as specified above; a receipt viewed in
+isolation cannot resolve a `Some` chain link, so un-resolved links project as
+BLOCKED, never rounded up.
+
 ## See Also
 
 - `crates/clnrm-core/src/receipts/receipt.rs`
